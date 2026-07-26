@@ -14,7 +14,9 @@ const PETICIONES_MAXIMAS = Number.isInteger(Number(process.env.SYNC_MAX_REQUESTS
   && Number(process.env.SYNC_MAX_REQUESTS) > 0
   ? Number(process.env.SYNC_MAX_REQUESTS)
   : Infinity;
-const RETARDO = 7000;
+const RETARDO = Number(process.env.SYNC_DELAY_MS) >= 0
+  ? Number(process.env.SYNC_DELAY_MS)
+  : 7000;
 let peticionesRealizadas = 0;
 let detener = false;
 

@@ -16,7 +16,9 @@ const PETICIONES_MAXIMAS_DIA = Number.isInteger(Number(process.env.SYNC_MAX_REQU
   && Number(process.env.SYNC_MAX_REQUESTS) > 0
   ? Number(process.env.SYNC_MAX_REQUESTS)
   : Infinity; // el control compartido usa el límite real del proveedor
-const RETARDO_ENTRE_DETALLES = 7000; // 7 segundos para respetar el límite por minuto
+const RETARDO_ENTRE_DETALLES = Number(process.env.SYNC_DELAY_MS) >= 0
+  ? Number(process.env.SYNC_DELAY_MS)
+  : 7000; // pausa entre detalles; con plan PRO puede bajarse vía SYNC_DELAY_MS
 let peticionesRealizadas = 0;
 let detenerPorLimite = false;
 
