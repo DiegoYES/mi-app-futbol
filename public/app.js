@@ -596,20 +596,21 @@ async function toggleEstadisticasPartido(elemento, partidoId) {
             const res = await fetch(`/api/partidos/${partidoId}/estadisticas`);
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             const data = await res.json();
+            const stat = valor => valor === null || valor === undefined ? '—' : valor;
 
         let html = `<h4>Estadísticas</h4>
         <table class="mini-table">
             <thead><tr><th>Estadística</th><th>${escaparHtml(data.equipo_local.nombre)}</th><th>${escaparHtml(data.equipo_visitante.nombre)}</th></tr></thead>
                 <tbody>
                     <tr><td>Goles</td><td>${data.equipo_local.goles}</td><td>${data.equipo_visitante.goles}</td></tr>
-                    <tr><td>Tiros Totales</td><td>${data.equipo_local.tiros_total}</td><td>${data.equipo_visitante.tiros_total}</td></tr>
-                    <tr><td>Tiros a Puerta</td><td>${data.equipo_local.tiros_puerta}</td><td>${data.equipo_visitante.tiros_puerta}</td></tr>
-                    <tr><td>Córners</td><td>${data.equipo_local.corners}</td><td>${data.equipo_visitante.corners}</td></tr>
-                    <tr><td>Faltas</td><td>${data.equipo_local.faltas}</td><td>${data.equipo_visitante.faltas}</td></tr>
-                    <tr><td>Tarjetas Amarillas</td><td>${data.equipo_local.tarjetas_amarillas}</td><td>${data.equipo_visitante.tarjetas_amarillas}</td></tr>
-                    <tr><td>Tarjetas Rojas</td><td>${data.equipo_local.tarjetas_rojas}</td><td>${data.equipo_visitante.tarjetas_rojas}</td></tr>
-                    <tr><td>Fueras de Juego</td><td>${data.equipo_local.offsides}</td><td>${data.equipo_visitante.offsides}</td></tr>
-                    <tr><td>Posesión (%)</td><td>${data.equipo_local.posesion}</td><td>${data.equipo_visitante.posesion}</td></tr>
+                    <tr><td>Tiros Totales</td><td>${stat(data.equipo_local.tiros_total)}</td><td>${stat(data.equipo_visitante.tiros_total)}</td></tr>
+                    <tr><td>Tiros a Puerta</td><td>${stat(data.equipo_local.tiros_puerta)}</td><td>${stat(data.equipo_visitante.tiros_puerta)}</td></tr>
+                    <tr><td>Córners</td><td>${stat(data.equipo_local.corners)}</td><td>${stat(data.equipo_visitante.corners)}</td></tr>
+                    <tr><td>Faltas</td><td>${stat(data.equipo_local.faltas)}</td><td>${stat(data.equipo_visitante.faltas)}</td></tr>
+                    <tr><td>Tarjetas Amarillas</td><td>${stat(data.equipo_local.tarjetas_amarillas)}</td><td>${stat(data.equipo_visitante.tarjetas_amarillas)}</td></tr>
+                    <tr><td>Tarjetas Rojas</td><td>${stat(data.equipo_local.tarjetas_rojas)}</td><td>${stat(data.equipo_visitante.tarjetas_rojas)}</td></tr>
+                    <tr><td>Fueras de Juego</td><td>${stat(data.equipo_local.offsides)}</td><td>${stat(data.equipo_visitante.offsides)}</td></tr>
+                    <tr><td>Posesión (%)</td><td>${stat(data.equipo_local.posesion)}</td><td>${stat(data.equipo_visitante.posesion)}</td></tr>
                 </tbody>
             </table>`;
 

@@ -59,7 +59,7 @@ function fecha(valor) {
 }
 
 async function cargarHistorial() {
-  const respuesta = await fetch('/api/picks/seguimiento');
+  const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
   if (!respuesta.ok) return;
   const datos = await respuesta.json();
   const r = datos.resumen;
@@ -92,10 +92,14 @@ document.getElementById('historial').addEventListener('click', async event => {
   const boton = event.target.closest('[data-delete]');
   if (!boton) return;
   const respuesta = await fetch(`/api/picks/seguimiento/${boton.dataset.delete}`, { method: 'DELETE' });
-  if (respuesta.ok) cargarHistorial();
+  if (respuesta.ok) {
+    window.FutbolPicks?.notificarCambio?.();
+  }
 });
 
 document.addEventListener('DOMContentLoaded', cargarHistorial);
+window.addEventListener('futbol:picks-actualizados', cargarHistorial);
+window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
 </script>
 </body>
 </html>

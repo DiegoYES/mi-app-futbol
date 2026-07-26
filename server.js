@@ -766,6 +766,8 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
     const golesLocal = partido.equipo_local.goles;
     const golesVisitante = partido.equipo_visitante.goles;
     const totalGoles = golesLocal + golesVisitante;
+    const tieneEstadisticas = partido.estadisticas_completas === true;
+    const valorAvanzado = valor => tieneEstadisticas ? (valor ?? null) : null;
 
     // Mercados calculados
     const mercados = {
@@ -793,31 +795,34 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
       liga: partido.liga.nombre,
       liga_id: partido.liga.id,
       temporada: partido.liga.temporada,
+      cobertura: { estadisticas: tieneEstadisticas },
       equipo_local: {
+        id: partido.equipo_local.id,
         nombre: partido.equipo_local.nombre,
         logo: partido.equipo_local.logo,
         goles: golesLocal,
-        tiros_total: partido.equipo_local.tiros_total || 0,
-        tiros_puerta: partido.equipo_local.tiros_puerta || 0,
-        corners: partido.equipo_local.corners || 0,
-        faltas: partido.equipo_local.faltas || 0,
-        tarjetas_amarillas: partido.equipo_local.tarjetas_amarillas || 0,
-        tarjetas_rojas: partido.equipo_local.tarjetas_rojas || 0,
-        offsides: partido.equipo_local.offsides || 0,
-        posesion: partido.equipo_local.posesion || 'N/A'
+        tiros_total: valorAvanzado(partido.equipo_local.tiros_total),
+        tiros_puerta: valorAvanzado(partido.equipo_local.tiros_puerta),
+        corners: valorAvanzado(partido.equipo_local.corners),
+        faltas: valorAvanzado(partido.equipo_local.faltas),
+        tarjetas_amarillas: valorAvanzado(partido.equipo_local.tarjetas_amarillas),
+        tarjetas_rojas: valorAvanzado(partido.equipo_local.tarjetas_rojas),
+        offsides: valorAvanzado(partido.equipo_local.offsides),
+        posesion: valorAvanzado(partido.equipo_local.posesion)
       },
       equipo_visitante: {
+        id: partido.equipo_visitante.id,
         nombre: partido.equipo_visitante.nombre,
         logo: partido.equipo_visitante.logo,
         goles: golesVisitante,
-        tiros_total: partido.equipo_visitante.tiros_total || 0,
-        tiros_puerta: partido.equipo_visitante.tiros_puerta || 0,
-        corners: partido.equipo_visitante.corners || 0,
-        faltas: partido.equipo_visitante.faltas || 0,
-        tarjetas_amarillas: partido.equipo_visitante.tarjetas_amarillas || 0,
-        tarjetas_rojas: partido.equipo_visitante.tarjetas_rojas || 0,
-        offsides: partido.equipo_visitante.offsides || 0,
-        posesion: partido.equipo_visitante.posesion || 'N/A'
+        tiros_total: valorAvanzado(partido.equipo_visitante.tiros_total),
+        tiros_puerta: valorAvanzado(partido.equipo_visitante.tiros_puerta),
+        corners: valorAvanzado(partido.equipo_visitante.corners),
+        faltas: valorAvanzado(partido.equipo_visitante.faltas),
+        tarjetas_amarillas: valorAvanzado(partido.equipo_visitante.tarjetas_amarillas),
+        tarjetas_rojas: valorAvanzado(partido.equipo_visitante.tarjetas_rojas),
+        offsides: valorAvanzado(partido.equipo_visitante.offsides),
+        posesion: valorAvanzado(partido.equipo_visitante.posesion)
       },
       mercados
     });
