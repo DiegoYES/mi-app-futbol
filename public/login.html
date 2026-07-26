@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceso · Comparador Estadístico</title>
+<style>
+  :root { --primary: #0a2540; --accent: #00d4ff; --bg: #f3f4f6; --card: #fff; --text: #334155; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #0a2540, #123a5e); color: var(--text); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+  .card { background: var(--card); border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.3); width: 100%; max-width: 420px; overflow: hidden; }
+  .card-head { background: var(--primary); color: #fff; padding: 24px; text-align: center; }
+  .card-head h1 { margin: 0 0 6px; font-size: 1.5rem; }
+  .card-head p { margin: 0; opacity: .8; font-size: .9rem; }
+  .tabs { display: flex; border-bottom: 1px solid #e5e7eb; }
+  .tabs button { flex: 1; padding: 14px; background: #fff; color: var(--text); border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: .95rem; font-weight: 600; }
+  .tabs button.active { color: var(--primary); border-bottom-color: var(--accent); }
+  form { padding: 24px; }
+  label { display: block; font-size: .85rem; font-weight: 600; margin-bottom: 6px; color: #475569; }
+  input { width: 100%; padding: 11px; border: 1px solid #cbd5e1; border-radius: 8px; margin-bottom: 16px; font-size: .95rem; }
+  input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(0,212,255,.15); }
+  button.submit { width: 100%; padding: 12px; background: var(--primary); color: #fff; border: none; border-radius: 8px; font-size: 1rem; font-weight: 600; cursor: pointer; }
+  button.submit:hover { background: #123a5e; }
+  button.submit:disabled { opacity: .6; cursor: not-allowed; }
+  .msg { padding: 11px; border-radius: 8px; margin-bottom: 16px; font-size: .88rem; display: none; }
+  .msg.error { background: #fee2e2; color: #991b1b; display: block; }
+  .msg.ok { background: #dcfce7; color: #166534; display: block; }
+  .nota { text-align: center; font-size: .82rem; color: #64748b; padding: 0 24px 22px; }
+  .nota strong { color: var(--primary); }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="card-head">
+    <h1>⚽ Comparador Estadístico</h1>
+    <p>Análisis de datos para tus apuestas</p>
+  </div>
+
+  <div class="tabs">
+    <button id="tabLogin" class="active" onclick="cambiarTab('login')">Iniciar sesión</button>
+    <button id="tabRegistro" onclick="cambiarTab('registro')">Crear cuenta</button>
+  </div>
+
+  <div id="msg" class="msg"></div>
+
+  <form id="formLogin" onsubmit="enviar(event,'login')">
+    <label for="loginEmail">Email</label>
+    <input id="loginEmail" type="email" required autocomplete="email">
+    <label for="loginPassword">Contraseña</label>
+    <input id="loginPassword" type="password" required autocomplete="current-password">
+    <button class="submit" type="submit">Entrar</button>
+  </form>
+
+  <form id="formRegistro" style="display:none" onsubmit="enviar(event,'registro')">
+    <label for="regNombre">Nombre</label>
+    <input id="regNombre" type="text" autocomplete="name">
+    <label for="regEmail">Email</label>
+    <input id="regEmail" type="email" required autocomplete="email">
+    <label for="regPassword">Contraseña (mín. 8 caracteres)</label>
+    <input id="regPassword" type="password" required minlength="8" autocomplete="new-password">
+    <button class="submit" type="submit">Crear cuenta y probar gratis</button>
+  </form>
+
+  <p class="nota">Al registrarte obtienes <strong>7 días de prueba gratis</strong> con acceso completo.</p>
+</div>
+
+<script>
+function cambiarTab(tab) {
+  const esLogin = tab === 'login';
+  document.getElementById('formLogin').style.display = esLogin ? 'block' : 'none';
+  document.getElementById('formRegistro').style.display = esLogin ? 'none' : 'block';
+  document.getElementById('tabLogin').classList.toggle('active', esLogin);
+  document.getElementById('tabRegistro').classList.toggle('active', !esLogin);
+  mostrar('', '');
+}
+
+function mostrar(texto, tipo) {
+  const el = document.getElementById('msg');
+  el.textContent = texto;
+  el.className = texto ? 'msg ' + tipo : 'msg';
+}
+
+async function enviar(evento, tipo) {
+  evento.preventDefault();
+  const boton = evento.target.querySelector('button.submit');
+  boton.disabled = true;
+  mostrar('', '');
+
+  const cuerpo = tipo === 'login'
+    ? { email: loginEmail.value, password: loginPassword.value }
+    : { email: regEmail.value, password: regPassword.value, nombre: regNombre.value };
+
+  try {
+    const resp = await fetch('/api/auth/' + tipo, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(cuerpo)
+    });
+    const datos = await resp.json();
+
+    if (!resp.ok) {
+      mostrar(datos.error || 'Ocurrió un error', 'error');
+      boton.disabled = false;
+      return;
+    }
+
+    mostrar('¡Listo! Entrando...', 'ok');
+    window.location.href = datos.usuario.rol === 'admin' ? '/admin.html' : '/';
+  } catch (err) {
+    mostrar('No se pudo conectar con el servidor', 'error');
+    boton.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

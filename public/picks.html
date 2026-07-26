@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis picks</title>
+<meta name="theme-color" content="#07100d">
+<link rel="stylesheet" href="/styles.css">
+<script src="/auth-client.js"></script>
+<style>
+  .page-nav { display:flex; gap:16px; margin-bottom:24px; }
+  .page-nav a { color:var(--green); text-decoration:none; font-size:.85rem; }
+  .pick-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:20px; }
+  .pick-kpi { padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
+  .pick-kpi span { display:block; color:var(--muted); font-size:.7rem; text-transform:uppercase; }
+  .pick-kpi strong { display:block; margin-top:3px; font-size:1.6rem; }
+  .history-list { display:grid; gap:10px; }
+  .history-item { display:grid; grid-template-columns:minmax(210px,1.4fr) minmax(160px,1fr) auto auto; align-items:center; gap:16px; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
+  .history-match strong, .history-market strong { display:block; }
+  .history-match span, .history-market span { color:var(--muted); font-size:.74rem; }
+  .history-prob { font-size:1.3rem; font-weight:900; }
+  .status { padding:5px 9px; border-radius:999px; font-size:.7rem; font-weight:850; text-transform:uppercase; }
+  .status-pendiente { color:var(--amber); background:rgba(245,190,91,.12); }
+  .status-acertado { color:var(--green); background:rgba(84,227,142,.12); }
+  .status-fallado { color:var(--red); background:rgba(255,124,120,.12); }
+  .delete-pick { min-height:30px; padding:0 9px; background:transparent; border:1px solid var(--line); color:var(--muted); }
+  @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:1fr auto; } }
+</style>
+</head>
+<body>
+<main class="container">
+  <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/calendario.html">Calendario</a></nav>
+  <header class="header">
+    <div class="header-copy">
+      <p class="eyebrow">Registro verificable</p>
+      <h1>Mis <span>picks.</span></h1>
+      <p>Aquí no cuentan retrospectivas: solamente pronósticos guardados antes del inicio y liquidados contra el marcador final.</p>
+    </div>
+  </header>
+
+  <section id="resumen" class="pick-kpis"><div class="loader">Cargando rendimiento...</div></section>
+  <section class="picks-section">
+    <div class="section-heading">
+      <div><p class="eyebrow">Historial</p><h3>Pronósticos guardados</h3></div>
+      <span class="model-badge">Auditable</span>
+    </div>
+    <div id="historial" class="history-list"><div class="loader">Liquidando resultados pendientes...</div></div>
+  </section>
+</main>
+<script>
+function esc(valor) {
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+}
+
+function fecha(valor) {
+  return new Date(valor).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+async function cargarHistorial() {
+  const respuesta = await fetch('/api/picks/seguimiento');
+  if (!respuesta.ok) return;
+  const datos = await respuesta.json();
+  const r = datos.resumen;
+  document.getElementById('resumen').innerHTML = `
+    <article class="pick-kpi"><span>Total</span><strong>${r.total}</strong></article>
+    <article class="pick-kpi"><span>Pendientes</span><strong>${r.pendientes}</strong></article>
+    <article class="pick-kpi"><span>Acertados</span><strong>${r.acertados}</strong></article>
+    <article class="pick-kpi"><span>Efectividad</span><strong>${r.efectividad ?? '—'}${r.efectividad == null ? '' : '%'}</strong></article>
+    <article class="pick-kpi"><span>Brier ↓</span><strong>${r.brier ?? '—'}</strong></article>`;
+
+  const historial = document.getElementById('historial');
+  if (!datos.picks.length) {
+    historial.innerHTML = '<div class="empty-state">Todavía no tienes picks. Abre un partido futuro desde el calendario y guarda un mercado antes de que comience.</div>';
+    return;
+  }
+  historial.innerHTML = datos.picks.map(pick => {
+    const enlace = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}`;
+    const marcador = pick.marcador_final?.local != null
+      ? ` · ${pick.marcador_final.local}-${pick.marcador_final.visitante}` : '';
+    return `<article class="history-item">
+      <div class="history-match"><strong>${esc(pick.local.nombre)} vs ${esc(pick.visitante.nombre)}</strong><span>${fecha(pick.fecha_partido)} · ${esc(pick.liga.nombre)}${marcador}</span></div>
+      <div class="history-market"><strong>${esc(pick.mercado.nombre)}</strong><span>Confianza ${esc(pick.confianza)} · muestra ${pick.muestra}</span></div>
+      <div class="history-prob">${pick.estimacion}%</div>
+      <div><a class="status status-${esc(pick.estado)}" href="${enlace}">${esc(pick.estado)}</a>${pick.estado === 'pendiente' ? `<button class="delete-pick" data-delete="${esc(pick._id)}" type="button">Quitar</button>` : ''}</div>
+    </article>`;
+  }).join('');
+}
+
+document.getElementById('historial').addEventListener('click', async event => {
+  const boton = event.target.closest('[data-delete]');
+  if (!boton) return;
+  const respuesta = await fetch(`/api/picks/seguimiento/${boton.dataset.delete}`, { method: 'DELETE' });
+  if (respuesta.ok) cargarHistorial();
+});
+
+document.addEventListener('DOMContentLoaded', cargarHistorial);
+</script>
+</body>
+</html>

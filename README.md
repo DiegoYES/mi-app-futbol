@@ -1,1 +1,145 @@
-# mi-app-futbol
+# Comparador estadístico de fútbol
+
+Aplicación Express + MongoDB para comparar equipos, mercados de goles, partidos
+recientes, enfrentamientos directos y eventos por rango de minutos.
+
+## Puesta en marcha
+
+1. Copia `.env.example` a `.env` y configura MongoDB, API-Football y JWT.
+2. Instala dependencias con `npm install`.
+3. Arranca la aplicación con `npm start`.
+4. Abre `http://localhost:3000/login.html`.
+
+Comandos de comprobación:
+
+```bash
+npm test
+npm run check
+npm run audit:data
+npm run sync:stats
+npm run sync:halves
+npm run sync:events
+```
+
+## Datos y sincronización
+
+La sincronización se controla desde `.env`:
+
+```dotenv
+FOOTBALL_SEASON=2026
+SYNC_LEAGUES=262,253,71,39,140,61,135,78
+```
+
+`FOOTBALL_SEASON` usa el año con el que API-Football identifica la temporada.
+El año `2025` representa la campaña 2025-26 en Europa y el calendario 2025 en
+México, Estados Unidos y Brasil; `2026` representa 2026-27 en Europa y el
+calendario 2026 en América. `SYNC_LEAGUES` acepta IDs separados por comas.
+
+Flujo recomendado para una temporada:
+
+```bash
+FOOTBALL_SEASON=2026 SYNC_LEAGUES=262,253,71,39,140,61,135,78 npm run sync:seasons
+FOOTBALL_SEASON=2026 SYNC_LEAGUES=262,253,71,39,140,61,135,78 npm run sync:fixtures
+FOOTBALL_SEASON=2026 SYNC_LEAGUES=262,253,71,39,140,61,135,78 npm run sync:plan
+FOOTBALL_SEASON=2026 SYNC_LEAGUES=262,253,71,39,140,61,135,78 npm run sync:details
+npm run audit:data
+```
+
+`sync:fixtures` consume dos llamadas por liga (equipos y fixtures), hace upsert y
+preserva el detalle avanzado existente. `sync:details` consulta hasta 20 partidos
+finalizados por llamada y guarda estadísticas, eventos, alineaciones y jugadores.
+Todos los comandos son reanudables. La interfaz exige liga y temporada en cada
+lado del comparador, por lo que no mezcla campañas silenciosamente.
+`ANALYSIS_MIN_SEASON=2025` mantiene 2022-24 fuera de picks y comparación de forma,
+pero conserva ese archivo para H2H, perfiles de jugadores y tablas históricas.
+
+## Cobertura prioritaria al 26 de julio de 2026
+
+- Base total: 15,173 partidos, 302 equipos y 11,299 jugadores, sin inconsistencias de marcador,
+  total de goles, ambos-anotan ni identificadores.
+- Temporada API 2025 completa para Liga MX, MLS, Brasileirão, Premier League,
+  LaLiga, Ligue 1, Serie A y Bundesliga.
+- Temporada API 2026 actual para Liga MX, MLS y Brasileirão, incluyendo los
+  partidos finalizados disponibles a la fecha.
+- Campaña europea 2026-27 preparada con sus fixtures futuros; el detalle se irá
+  incorporando conforme terminen los encuentros.
+- Estadísticas, eventos y jugadores completos en todos los finalizados de este
+  bloque salvo un fixture de Brasileirão cuyo proveedor no entregó jugadores.
+- Archivo 2022-23, 2023-24 y 2024-25 de las ocho ligas prioritarias: 9,035
+  finalizados con estadísticas y eventos completos; seis no incluyen jugadores
+  porque el proveedor no entregó ese bloque.
+
+La interfaz representa estadísticas avanzadas ausentes con `—`; nunca las
+convierte en cero. Las ligas sin partidos guardados aparecen deshabilitadas.
+
+## Mantenimiento
+
+Los índices requeridos por las consultas se declaran en los modelos y pueden
+crearse de forma no destructiva con:
+
+```bash
+npm run db:indexes
+```
+
+La auditoría es de solo lectura. No imprime la URI de MongoDB ni otras credenciales.
+
+## Cuota Pro y orden de trabajo
+
+Todos los clientes de API-Football reservan su consulta en un contador diario
+compartido. El límite de respaldo es 7,500 y el margen predeterminado es 0 para
+aprovechar todo el cupo confirmado; puedes reservar llamadas manuales con
+`API_FOOTBALL_QUOTA_MARGIN`. Dos scripts ejecutados el mismo día no pueden gastar
+la misma cuota dos veces. El panel de administración muestra el consumo del día.
+
+El límite configurado es únicamente un respaldo inicial: después de cada
+respuesta el cliente sincroniza el límite diario y las consultas restantes desde
+los encabezados oficiales. Así, una asignación real distinta de 7,500 no queda
+recortada artificialmente. Un 429 por minuto no se marca como día agotado.
+
+Las keys adicionales (`API_FOOTBALL_KEY_2` o `API_FOOTBALL_KEYS`) no suman
+cuotas. Solo se usan como respaldo de autenticación al activar
+`API_FOOTBALL_ALLOW_KEY_FAILOVER=true`, y deben pertenecer a un uso autorizado
+del mismo proyecto o equipo. Nunca se rota de key para evadir un límite diario.
+
+Para cada refresco se recomienda este orden:
+
+1. `npm run sync:plan` para contar faltantes sin gastar API.
+2. `npm run quota:sync` para leer el cupo real mediante `/status`.
+3. `npm run sync:details` para traer hasta 20 partidos por llamada, incluyendo
+   estadísticas completas, eventos, alineaciones y rendimientos de jugadores.
+4. Validar picks y cobertura; `npm run sync:halves` queda para después porque
+   primer y segundo tiempo requieren dos llamadas adicionales por partido.
+
+Cada comando reanuda únicamente documentos pendientes y se detiene al agotar el
+cupo. `SYNC_MAX_REQUESTS=3` limita voluntariamente una corrida a tres llamadas y
+`SYNC_LEAGUES=262` aísla Liga MX. Con la lista prioritaria completa se recorren
+las ocho competiciones objetivo de una temporada. Los huecos que el proveedor ya
+devolvió vacíos no se consultan repetidamente; para un reintento explícito usa
+`SYNC_RETRY_GAPS=true` junto con un `SYNC_MAX_REQUESTS` pequeño.
+
+## Funciones analíticas
+
+- Picks históricos de goles, resultado, córners, tarjetas amarillas/rojas, tiros,
+  tiros a puerta, faltas y fueras de juego. Incluyen líneas Over/Under totales y
+  por equipo, suavizado, muestra y número de fuentes disponibles.
+- Seguimiento personal: solo permite guardar antes del inicio, liquida el mercado
+  contra el partido final y calcula efectividad y puntuación Brier.
+- Boletas personales de hasta 20 selecciones: permiten combinar mercados del
+  mismo cruce o de partidos distintos, vuelven a validar cada porcentaje en el
+  servidor y generan una lista copiable para buscarla manualmente en la casa.
+- Los mercados avanzados excluyen partidos sin `estadisticas_completas`; nunca
+  cuentan un dato ausente como cero y no se recomiendan con menos de 5 muestras
+  de ambos equipos.
+- Perfiles de árbitros derivados de fixtures, goles, tarjetas y faltas.
+- Calendario y detalle de partidos preparado para fixtures futuros.
+- Directorio y perfiles de jugadores por competición y temporada.
+- H2H multitemporada y trayectoria histórica de equipos con posición, puntos,
+  récord y diferencia de goles reconstruidos por campaña.
+
+## Marcas, imágenes y responsabilidad
+
+El pie de todas las páginas enlaza a `/legal.html`. El producto se identifica
+como independiente y no afiliado; nombres y recursos gráficos se presentan con
+fines descriptivos. Los términos de API-SPORTS advierten que algunos logos o
+imágenes pueden requerir autorización adicional de sus titulares, por lo que el
+aviso no sustituye una revisión de licencias antes de comercializar el servicio.
