@@ -6,7 +6,8 @@ const EMPTY_STATS = Object.freeze({
   faltas: 0,
   amarillas: 0,
   rojas: 0,
-  offsides: 0
+  offsides: 0,
+  entradas: 0
 });
 
 function numero(valor) {
@@ -30,7 +31,8 @@ function estadisticasPeriodo(equipo, half) {
       faltas: numero(equipo.faltas),
       amarillas: numero(equipo.tarjetas_amarillas),
       rojas: numero(equipo.tarjetas_rojas),
-      offsides: numero(equipo.offsides)
+      offsides: numero(equipo.offsides),
+      entradas: numero(equipo.entradas)
     };
   }
 
@@ -48,7 +50,8 @@ function estadisticasPeriodo(equipo, half) {
     faltas: numero(datos.faltas),
     amarillas: numero(datos.tarjetas_amarillas),
     rojas: numero(datos.tarjetas_rojas),
-    offsides: numero(datos.offsides)
+    offsides: numero(datos.offsides),
+    entradas: numero(datos.entradas)
   };
 }
 
@@ -73,9 +76,22 @@ function contador(total, jugados) {
   return { total, porcentaje: porcentaje(total, jugados) };
 }
 
+function promedio(total, muestra) {
+  return muestra === 0 ? null : Number((total / muestra).toFixed(2));
+}
+
 function calcularEstadisticas(partidos, teamId, half = 0) {
   const contextos = partidos
-    .map(partido => contextoPartido(partido, teamId, half))
+    .map(partido => {
+      const contexto = contextoPartido(partido, teamId, half);
+      if (!contexto) return null;
+      return {
+        ...contexto,
+        estadisticasDisponibles: half === 0
+          ? Boolean(partido.estadisticas_completas)
+          : Boolean(partido.tiempos_completos)
+      };
+    })
     .filter(Boolean);
   const jugados = contextos.length;
 
@@ -88,11 +104,36 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
   let over15 = 0;
   let over25 = 0;
   let over35 = 0;
+  let under05 = 0;
+  let under15 = 0;
+  let under25 = 0;
+  let under35 = 0;
   let btts = 0;
   let equipoOver15 = 0;
   let rivalOver15 = 0;
 
-  for (const { statsEquipo, statsRival } of contextos) {
+  let muestraAvanzada = 0;
+  let cornersOver95 = 0;
+  const sumas = {
+    tirosFavor: 0,
+    tirosContra: 0,
+    tirosPuertaFavor: 0,
+    tirosPuertaContra: 0,
+    cornersFavor: 0,
+    cornersContra: 0,
+    cornersTotales: 0,
+    tarjetasFavor: 0,
+    tarjetasContra: 0,
+    tarjetasTotales: 0,
+    faltasFavor: 0,
+    faltasContra: 0,
+    offsidesFavor: 0,
+    offsidesContra: 0,
+    entradasFavor: 0,
+    entradasContra: 0
+  };
+
+  for (const { statsEquipo, statsRival, estadisticasDisponibles } of contextos) {
     const golesEquipo = statsEquipo.goles;
     const golesRival = statsRival.goles;
     const totalGoles = golesEquipo + golesRival;
@@ -108,9 +149,37 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     if (totalGoles >= 2) over15++;
     if (totalGoles >= 3) over25++;
     if (totalGoles >= 4) over35++;
+    if (totalGoles < 1) under05++;
+    if (totalGoles < 2) under15++;
+    if (totalGoles < 3) under25++;
+    if (totalGoles < 4) under35++;
     if (golesEquipo >= 1 && golesRival >= 1) btts++;
     if (golesEquipo >= 2) equipoOver15++;
     if (golesRival >= 2) rivalOver15++;
+
+    if (!estadisticasDisponibles) continue;
+
+    const tarjetasEquipo = statsEquipo.amarillas + statsEquipo.rojas;
+    const tarjetasRival = statsRival.amarillas + statsRival.rojas;
+    const cornersTotales = statsEquipo.corners + statsRival.corners;
+    muestraAvanzada++;
+    sumas.tirosFavor += statsEquipo.tiros;
+    sumas.tirosContra += statsRival.tiros;
+    sumas.tirosPuertaFavor += statsEquipo.tiros_puerta;
+    sumas.tirosPuertaContra += statsRival.tiros_puerta;
+    sumas.cornersFavor += statsEquipo.corners;
+    sumas.cornersContra += statsRival.corners;
+    sumas.cornersTotales += cornersTotales;
+    sumas.tarjetasFavor += tarjetasEquipo;
+    sumas.tarjetasContra += tarjetasRival;
+    sumas.tarjetasTotales += tarjetasEquipo + tarjetasRival;
+    sumas.faltasFavor += statsEquipo.faltas;
+    sumas.faltasContra += statsRival.faltas;
+    sumas.offsidesFavor += statsEquipo.offsides;
+    sumas.offsidesContra += statsRival.offsides;
+    sumas.entradasFavor += statsEquipo.entradas;
+    sumas.entradasContra += statsRival.entradas;
+    if (cornersTotales >= 10) cornersOver95++;
   }
 
   const equipoOver15Contador = contador(equipoOver15, jugados);
@@ -127,9 +196,35 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     over15: contador(over15, jugados),
     over25: contador(over25, jugados),
     over35: contador(over35, jugados),
+    under05: contador(under05, jugados),
+    under15: contador(under15, jugados),
+    under25: contador(under25, jugados),
+    under35: contador(under35, jugados),
     btts: contador(btts, jugados),
     equipoOver15: equipoOver15Contador,
     rivalOver15: rivalOver15Contador,
+    avanzadas: {
+      muestra: muestraAvanzada,
+      promedios: {
+        tirosFavor: promedio(sumas.tirosFavor, muestraAvanzada),
+        tirosContra: promedio(sumas.tirosContra, muestraAvanzada),
+        tirosPuertaFavor: promedio(sumas.tirosPuertaFavor, muestraAvanzada),
+        tirosPuertaContra: promedio(sumas.tirosPuertaContra, muestraAvanzada),
+        cornersFavor: promedio(sumas.cornersFavor, muestraAvanzada),
+        cornersContra: promedio(sumas.cornersContra, muestraAvanzada),
+        cornersTotales: promedio(sumas.cornersTotales, muestraAvanzada),
+        tarjetasFavor: promedio(sumas.tarjetasFavor, muestraAvanzada),
+        tarjetasContra: promedio(sumas.tarjetasContra, muestraAvanzada),
+        tarjetasTotales: promedio(sumas.tarjetasTotales, muestraAvanzada),
+        faltasFavor: promedio(sumas.faltasFavor, muestraAvanzada),
+        faltasContra: promedio(sumas.faltasContra, muestraAvanzada),
+        offsidesFavor: promedio(sumas.offsidesFavor, muestraAvanzada),
+        offsidesContra: promedio(sumas.offsidesContra, muestraAvanzada),
+        entradasFavor: promedio(sumas.entradasFavor, muestraAvanzada),
+        entradasContra: promedio(sumas.entradasContra, muestraAvanzada)
+      },
+      cornersOver95: contador(cornersOver95, muestraAvanzada)
+    },
     // Alias temporales para no romper clientes anteriores de la API.
     ttFavor15: equipoOver15Contador,
     ttContra15: rivalOver15Contador
@@ -171,7 +266,10 @@ function detallarPartido(partido, teamId, half = 0) {
     amarillas: valorDetallado(statsEquipo.amarillas),
     rojas: valorDetallado(statsEquipo.rojas),
     offsides: valorDetallado(statsEquipo.offsides),
-    rival_estadisticas: statsRival
+    entradas: valorDetallado(statsEquipo.entradas),
+    rival_estadisticas: Object.fromEntries(
+      Object.entries(statsRival).map(([clave, valor]) => [clave, valorDetallado(valor)])
+    )
   };
 }
 

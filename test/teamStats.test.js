@@ -19,6 +19,7 @@ function equipo(id, nombre, goles, golesPrimerTiempo, stats1 = {}, stats2 = {}) 
     tarjetas_amarillas: 2,
     tarjetas_rojas: 0,
     offsides: 1,
+    entradas: 3,
     estadisticas_1t: stats1,
     estadisticas_2t: stats2
   };
@@ -48,7 +49,35 @@ test('calcula el modo general respetando el rol local y visitante', () => {
   assert.equal(stats.golesFavor, 3);
   assert.equal(stats.golesContra, 4);
   assert.deepEqual(stats.over25, { total: 2, porcentaje: '100.0' });
+  assert.deepEqual(stats.under35, { total: 1, porcentaje: '50.0' });
   assert.deepEqual(stats.equipoOver15, { total: 1, porcentaje: '50.0' });
+});
+
+test('calcula promedios avanzados solo con partidos que tienen cobertura', () => {
+  const partidosConCobertura = partidos.map((partido, indice) => ({
+    ...partido,
+    estadisticas_completas: indice === 0
+  }));
+  partidosConCobertura[0].equipo_visitante = {
+    ...partidosConCobertura[0].equipo_visitante,
+    tiros_total: 14,
+    tiros_puerta: 6,
+    corners: 7,
+    faltas: 11,
+    tarjetas_amarillas: 3,
+    offsides: 2,
+    entradas: 9
+  };
+
+  const stats = calcularEstadisticas(partidosConCobertura, 10);
+
+  assert.equal(stats.avanzadas.muestra, 1);
+  assert.equal(stats.avanzadas.promedios.tirosFavor, 10);
+  assert.equal(stats.avanzadas.promedios.tirosContra, 14);
+  assert.equal(stats.avanzadas.promedios.cornersFavor, 5);
+  assert.equal(stats.avanzadas.promedios.cornersContra, 7);
+  assert.equal(stats.avanzadas.promedios.entradasFavor, 3);
+  assert.deepEqual(stats.avanzadas.cornersOver95, { total: 1, porcentaje: '100.0' });
 });
 
 test('calcula resultados y goles del primer tiempo', () => {
@@ -92,4 +121,6 @@ test('no presenta estadísticas avanzadas faltantes como ceros reales', () => {
   assert.equal(detalle.estadisticas_disponibles, false);
   assert.equal(detalle.tiros, null);
   assert.equal(detalle.corners, null);
+  assert.equal(detalle.entradas, null);
+  assert.equal(detalle.rival_estadisticas.tiros, null);
 });

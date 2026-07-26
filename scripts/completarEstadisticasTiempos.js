@@ -88,6 +88,7 @@ async function completarTiemposLiga(leagueId) {
           update[`equipo_local.${halfKey}.tarjetas_amarillas`] = obtenerValor(s, 'Yellow Cards');
           update[`equipo_local.${halfKey}.tarjetas_rojas`] = obtenerValor(s, 'Red Cards');
           update[`equipo_local.${halfKey}.offsides`] = obtenerValor(s, 'Offsides');
+          update[`equipo_local.${halfKey}.entradas`] = obtenerValor(s, 'Tackles');
         }
         if (awayStats) {
           const s = awayStats.statistics;
@@ -101,6 +102,7 @@ async function completarTiemposLiga(leagueId) {
           update[`equipo_visitante.${halfKey}.tarjetas_amarillas`] = obtenerValor(s, 'Yellow Cards');
           update[`equipo_visitante.${halfKey}.tarjetas_rojas`] = obtenerValor(s, 'Red Cards');
           update[`equipo_visitante.${halfKey}.offsides`] = obtenerValor(s, 'Offsides');
+          update[`equipo_visitante.${halfKey}.entradas`] = obtenerValor(s, 'Tackles');
         }
       }
 

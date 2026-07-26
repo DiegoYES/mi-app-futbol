@@ -35,6 +35,9 @@
   table.comp td.metrica { text-align: center; color: var(--muted); font-size: .82rem; }
   table.comp td.val { text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
   table.comp td.val.mejor { color: var(--green); }
+  table.comp tr.comp-section td { padding: 15px 12px 8px; border-bottom-color: rgba(84,227,142,.2); color: var(--green); font-size: .67rem; font-weight: 850; letter-spacing: .09em; text-align: left; text-transform: uppercase; }
+  table.comp tr.comp-section small { margin-left: 7px; color: var(--muted); font-size: .62rem; font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .comparison-note { margin: 12px 0 0; color: var(--muted); font-size: .7rem; line-height: 1.55; }
 
   .barra-comp { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--surface-soft); margin-top: 4px; }
   .barra-comp i { display: block; height: 100%; }
@@ -229,20 +232,32 @@ async function cargarCabecera() {
 }
 
 function filaComparativa(etiqueta, a, b, sufijo = '', mayorEsMejor = true) {
-  const na = parseFloat(a) || 0;
-  const nb = parseFloat(b) || 0;
+  const tieneA = a !== null && a !== undefined && a !== '' && Number.isFinite(Number(a));
+  const tieneB = b !== null && b !== undefined && b !== '' && Number.isFinite(Number(b));
+  const na = tieneA ? Number(a) : 0;
+  const nb = tieneB ? Number(b) : 0;
   const total = na + nb;
-  const anchoA = total ? (na / total) * 100 : 50;
-  const mejorA = mayorEsMejor ? na > nb : na < nb;
-  const mejorB = mayorEsMejor ? nb > na : nb < na;
+  const anchoA = tieneA && tieneB && total ? (na / total) * 100 : 50;
+  const mejorA = tieneA && tieneB && (mayorEsMejor ? na > nb : na < nb);
+  const mejorB = tieneA && tieneB && (mayorEsMejor ? nb > na : nb < na);
+  const mostrarA = tieneA ? `${a}${sufijo}` : '—';
+  const mostrarB = tieneB ? `${b}${sufijo}` : '—';
 
   return `<tr>
-    <td class="val ${mejorA ? 'mejor' : ''}">${a}${sufijo}</td>
+    <td class="val ${mejorA ? 'mejor' : ''}">${mostrarA}</td>
     <td class="metrica">${etiqueta}
       <div class="barra-comp"><i class="a" style="width:${anchoA}%"></i><i class="b" style="width:${100 - anchoA}%"></i></div>
     </td>
-    <td class="val ${mejorB ? 'mejor' : ''}">${b}${sufijo}</td>
+    <td class="val ${mejorB ? 'mejor' : ''}">${mostrarB}</td>
   </tr>`;
+}
+
+function seccionComparativa(titulo, detalle = '') {
+  return `<tr class="comp-section"><td colspan="3">${esc(titulo)}${detalle ? `<small>${esc(detalle)}</small>` : ''}</td></tr>`;
+}
+
+function numeroComparativo(valor) {
+  return valor == null ? null : Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function pintarComparacion() {
@@ -267,6 +282,10 @@ function pintarComparacion() {
   const promGolesB = b.jugados ? (b.golesFavor / b.jugados).toFixed(2) : '0.00';
   const promContraA = a.jugados ? (a.golesContra / a.jugados).toFixed(2) : '0.00';
   const promContraB = b.jugados ? (b.golesContra / b.jugados).toFixed(2) : '0.00';
+  const avanzadaA = a.avanzadas || { muestra: 0, promedios: {}, cornersOver95: null };
+  const avanzadaB = b.avanzadas || { muestra: 0, promedios: {}, cornersOver95: null };
+  const aa = avanzadaA.promedios || {};
+  const ab = avanzadaB.promedios || {};
 
   cont.innerHTML = `
     <table class="comp">
@@ -274,6 +293,7 @@ function pintarComparacion() {
         <th>${esc(datosLocal.info.equipo)}</th><th>Métrica</th><th>${esc(datosVisitante.info.equipo)}</th>
       </tr></thead>
       <tbody>
+        ${seccionComparativa('Forma y resultados', `${a.jugados} vs ${b.jugados} partidos`)}
         <tr>
           <td class="val"><div class="forma">${formaA || '—'}</div></td>
           <td class="metrica">Últimos 5</td>
@@ -287,13 +307,34 @@ function pintarComparacion() {
         ${filaComparativa('Goles en contra', a.golesContra, b.golesContra, '', false)}
         ${filaComparativa('Promedio goles a favor', promGolesA, promGolesB)}
         ${filaComparativa('Promedio goles en contra', promContraA, promContraB, '', false)}
+        ${seccionComparativa('Mercados de goles', 'frecuencia en la muestra seleccionada')}
         ${filaComparativa('Over 0.5', pct(a.over05?.porcentaje), pct(b.over05?.porcentaje), '%')}
         ${filaComparativa('Over 1.5', pct(a.over15?.porcentaje), pct(b.over15?.porcentaje), '%')}
         ${filaComparativa('Over 2.5', pct(a.over25?.porcentaje), pct(b.over25?.porcentaje), '%')}
         ${filaComparativa('Over 3.5', pct(a.over35?.porcentaje), pct(b.over35?.porcentaje), '%')}
+        ${filaComparativa('Under 0.5', pct(a.under05?.porcentaje), pct(b.under05?.porcentaje), '%')}
+        ${filaComparativa('Under 1.5', pct(a.under15?.porcentaje), pct(b.under15?.porcentaje), '%')}
+        ${filaComparativa('Under 2.5', pct(a.under25?.porcentaje), pct(b.under25?.porcentaje), '%')}
+        ${filaComparativa('Under 3.5', pct(a.under35?.porcentaje), pct(b.under35?.porcentaje), '%')}
+        ${filaComparativa('TT +1.5 a favor', pct(a.equipoOver15?.porcentaje), pct(b.equipoOver15?.porcentaje), '%')}
+        ${filaComparativa('TT +1.5 en contra', pct(a.rivalOver15?.porcentaje), pct(b.rivalOver15?.porcentaje), '%', false)}
         ${filaComparativa('Ambos anotan', pct(a.btts?.porcentaje), pct(b.btts?.porcentaje), '%')}
+        ${seccionComparativa('Producción avanzada', `cobertura ${avanzadaA.muestra}/${a.jugados} vs ${avanzadaB.muestra}/${b.jugados}`)}
+        ${filaComparativa('Tarjetas registradas (prom.)', numeroComparativo(aa.tarjetasFavor), numeroComparativo(ab.tarjetasFavor), '', false)}
+        ${filaComparativa('Córners a favor (prom.)', numeroComparativo(aa.cornersFavor), numeroComparativo(ab.cornersFavor))}
+        ${filaComparativa('Córners en contra (prom.)', numeroComparativo(aa.cornersContra), numeroComparativo(ab.cornersContra), '', false)}
+        ${filaComparativa('Córners totales (prom.)', numeroComparativo(aa.cornersTotales), numeroComparativo(ab.cornersTotales))}
+        ${filaComparativa('Córners over 9.5', avanzadaA.cornersOver95?.porcentaje ?? null, avanzadaB.cornersOver95?.porcentaje ?? null, '%')}
+        ${filaComparativa('Tiros a favor (prom.)', numeroComparativo(aa.tirosFavor), numeroComparativo(ab.tirosFavor))}
+        ${filaComparativa('Tiros concedidos (prom.)', numeroComparativo(aa.tirosContra), numeroComparativo(ab.tirosContra), '', false)}
+        ${filaComparativa('Tiros a puerta (prom.)', numeroComparativo(aa.tirosPuertaFavor), numeroComparativo(ab.tirosPuertaFavor))}
+        ${filaComparativa('Tiros a puerta concedidos (prom.)', numeroComparativo(aa.tirosPuertaContra), numeroComparativo(ab.tirosPuertaContra), '', false)}
+        ${filaComparativa('Faltas (prom.)', numeroComparativo(aa.faltasFavor), numeroComparativo(ab.faltasFavor), '', false)}
+        ${filaComparativa('Fueras de juego (prom.)', numeroComparativo(aa.offsidesFavor), numeroComparativo(ab.offsidesFavor), '', false)}
+        ${filaComparativa('Entradas (prom.)', numeroComparativo(aa.entradasFavor), numeroComparativo(ab.entradasFavor))}
       </tbody>
-    </table>`;
+    </table>
+    <p class="comparison-note">Los promedios avanzados solo usan partidos con cobertura confirmada. “Tarjetas registradas” suma amarillas y rojas simples; una casa de apuestas puede aplicar reglas de puntuación distintas.</p>`;
 }
 
 async function cargarH2H() {
