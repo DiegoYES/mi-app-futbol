@@ -6,13 +6,18 @@ const EMPTY_STATS = Object.freeze({
   faltas: 0,
   amarillas: 0,
   rojas: 0,
-  offsides: 0,
-  entradas: 0
+  offsides: 0
 });
 
 function numero(valor) {
   const convertido = Number(valor);
   return Number.isFinite(convertido) ? convertido : 0;
+}
+
+function numeroNullable(valor) {
+  if (valor === null || valor === undefined || valor === '') return null;
+  const convertido = Number(valor);
+  return Number.isFinite(convertido) ? convertido : null;
 }
 
 function porcentaje(total, jugados) {
@@ -25,14 +30,13 @@ function estadisticasPeriodo(equipo, half) {
   if (half === 0) {
     return {
       goles: numero(equipo.goles),
-      tiros: numero(equipo.tiros_total),
-      tiros_puerta: numero(equipo.tiros_puerta),
-      corners: numero(equipo.corners),
-      faltas: numero(equipo.faltas),
-      amarillas: numero(equipo.tarjetas_amarillas),
-      rojas: numero(equipo.tarjetas_rojas),
-      offsides: numero(equipo.offsides),
-      entradas: numero(equipo.entradas)
+      tiros: numeroNullable(equipo.tiros_total),
+      tiros_puerta: numeroNullable(equipo.tiros_puerta),
+      corners: numeroNullable(equipo.corners),
+      faltas: numeroNullable(equipo.faltas),
+      amarillas: numeroNullable(equipo.tarjetas_amarillas),
+      rojas: numeroNullable(equipo.tarjetas_rojas),
+      offsides: numeroNullable(equipo.offsides)
     };
   }
 
@@ -44,14 +48,13 @@ function estadisticasPeriodo(equipo, half) {
 
   return {
     goles,
-    tiros: numero(datos.tiros_total),
-    tiros_puerta: numero(datos.tiros_puerta),
-    corners: numero(datos.corners),
-    faltas: numero(datos.faltas),
-    amarillas: numero(datos.tarjetas_amarillas),
-    rojas: numero(datos.tarjetas_rojas),
-    offsides: numero(datos.offsides),
-    entradas: numero(datos.entradas)
+    tiros: numeroNullable(datos.tiros_total),
+    tiros_puerta: numeroNullable(datos.tiros_puerta),
+    corners: numeroNullable(datos.corners),
+    faltas: numeroNullable(datos.faltas),
+    amarillas: numeroNullable(datos.tarjetas_amarillas),
+    rojas: numeroNullable(datos.tarjetas_rojas),
+    offsides: numeroNullable(datos.offsides)
   };
 }
 
@@ -128,9 +131,13 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     faltasFavor: 0,
     faltasContra: 0,
     offsidesFavor: 0,
-    offsidesContra: 0,
-    entradasFavor: 0,
-    entradasContra: 0
+    offsidesContra: 0
+  };
+  const muestras = Object.fromEntries(Object.keys(sumas).map(clave => [clave, 0]));
+  const acumular = (clave, valor) => {
+    if (valor === null || valor === undefined || !Number.isFinite(Number(valor))) return;
+    sumas[clave] += Number(valor);
+    muestras[clave]++;
   };
 
   for (const { statsEquipo, statsRival, estadisticasDisponibles } of contextos) {
@@ -159,27 +166,30 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
 
     if (!estadisticasDisponibles) continue;
 
-    const tarjetasEquipo = statsEquipo.amarillas + statsEquipo.rojas;
-    const tarjetasRival = statsRival.amarillas + statsRival.rojas;
-    const cornersTotales = statsEquipo.corners + statsRival.corners;
+    const tarjetasEquipo = statsEquipo.amarillas == null || statsEquipo.rojas == null
+      ? null : statsEquipo.amarillas + statsEquipo.rojas;
+    const tarjetasRival = statsRival.amarillas == null || statsRival.rojas == null
+      ? null : statsRival.amarillas + statsRival.rojas;
+    const cornersTotales = statsEquipo.corners == null || statsRival.corners == null
+      ? null : statsEquipo.corners + statsRival.corners;
+    const tarjetasTotales = tarjetasEquipo == null || tarjetasRival == null
+      ? null : tarjetasEquipo + tarjetasRival;
     muestraAvanzada++;
-    sumas.tirosFavor += statsEquipo.tiros;
-    sumas.tirosContra += statsRival.tiros;
-    sumas.tirosPuertaFavor += statsEquipo.tiros_puerta;
-    sumas.tirosPuertaContra += statsRival.tiros_puerta;
-    sumas.cornersFavor += statsEquipo.corners;
-    sumas.cornersContra += statsRival.corners;
-    sumas.cornersTotales += cornersTotales;
-    sumas.tarjetasFavor += tarjetasEquipo;
-    sumas.tarjetasContra += tarjetasRival;
-    sumas.tarjetasTotales += tarjetasEquipo + tarjetasRival;
-    sumas.faltasFavor += statsEquipo.faltas;
-    sumas.faltasContra += statsRival.faltas;
-    sumas.offsidesFavor += statsEquipo.offsides;
-    sumas.offsidesContra += statsRival.offsides;
-    sumas.entradasFavor += statsEquipo.entradas;
-    sumas.entradasContra += statsRival.entradas;
-    if (cornersTotales >= 10) cornersOver95++;
+    acumular('tirosFavor', statsEquipo.tiros);
+    acumular('tirosContra', statsRival.tiros);
+    acumular('tirosPuertaFavor', statsEquipo.tiros_puerta);
+    acumular('tirosPuertaContra', statsRival.tiros_puerta);
+    acumular('cornersFavor', statsEquipo.corners);
+    acumular('cornersContra', statsRival.corners);
+    acumular('cornersTotales', cornersTotales);
+    acumular('tarjetasFavor', tarjetasEquipo);
+    acumular('tarjetasContra', tarjetasRival);
+    acumular('tarjetasTotales', tarjetasTotales);
+    acumular('faltasFavor', statsEquipo.faltas);
+    acumular('faltasContra', statsRival.faltas);
+    acumular('offsidesFavor', statsEquipo.offsides);
+    acumular('offsidesContra', statsRival.offsides);
+    if (cornersTotales !== null && cornersTotales >= 10) cornersOver95++;
   }
 
   const equipoOver15Contador = contador(equipoOver15, jugados);
@@ -206,24 +216,23 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     avanzadas: {
       muestra: muestraAvanzada,
       promedios: {
-        tirosFavor: promedio(sumas.tirosFavor, muestraAvanzada),
-        tirosContra: promedio(sumas.tirosContra, muestraAvanzada),
-        tirosPuertaFavor: promedio(sumas.tirosPuertaFavor, muestraAvanzada),
-        tirosPuertaContra: promedio(sumas.tirosPuertaContra, muestraAvanzada),
-        cornersFavor: promedio(sumas.cornersFavor, muestraAvanzada),
-        cornersContra: promedio(sumas.cornersContra, muestraAvanzada),
-        cornersTotales: promedio(sumas.cornersTotales, muestraAvanzada),
-        tarjetasFavor: promedio(sumas.tarjetasFavor, muestraAvanzada),
-        tarjetasContra: promedio(sumas.tarjetasContra, muestraAvanzada),
-        tarjetasTotales: promedio(sumas.tarjetasTotales, muestraAvanzada),
-        faltasFavor: promedio(sumas.faltasFavor, muestraAvanzada),
-        faltasContra: promedio(sumas.faltasContra, muestraAvanzada),
-        offsidesFavor: promedio(sumas.offsidesFavor, muestraAvanzada),
-        offsidesContra: promedio(sumas.offsidesContra, muestraAvanzada),
-        entradasFavor: promedio(sumas.entradasFavor, muestraAvanzada),
-        entradasContra: promedio(sumas.entradasContra, muestraAvanzada)
+        tirosFavor: promedio(sumas.tirosFavor, muestras.tirosFavor),
+        tirosContra: promedio(sumas.tirosContra, muestras.tirosContra),
+        tirosPuertaFavor: promedio(sumas.tirosPuertaFavor, muestras.tirosPuertaFavor),
+        tirosPuertaContra: promedio(sumas.tirosPuertaContra, muestras.tirosPuertaContra),
+        cornersFavor: promedio(sumas.cornersFavor, muestras.cornersFavor),
+        cornersContra: promedio(sumas.cornersContra, muestras.cornersContra),
+        cornersTotales: promedio(sumas.cornersTotales, muestras.cornersTotales),
+        tarjetasFavor: promedio(sumas.tarjetasFavor, muestras.tarjetasFavor),
+        tarjetasContra: promedio(sumas.tarjetasContra, muestras.tarjetasContra),
+        tarjetasTotales: promedio(sumas.tarjetasTotales, muestras.tarjetasTotales),
+        faltasFavor: promedio(sumas.faltasFavor, muestras.faltasFavor),
+        faltasContra: promedio(sumas.faltasContra, muestras.faltasContra),
+        offsidesFavor: promedio(sumas.offsidesFavor, muestras.offsidesFavor),
+        offsidesContra: promedio(sumas.offsidesContra, muestras.offsidesContra)
       },
-      cornersOver95: contador(cornersOver95, muestraAvanzada)
+      muestras,
+      cornersOver95: contador(cornersOver95, muestras.cornersTotales)
     },
     // Alias temporales para no romper clientes anteriores de la API.
     ttFavor15: equipoOver15Contador,
@@ -266,7 +275,6 @@ function detallarPartido(partido, teamId, half = 0) {
     amarillas: valorDetallado(statsEquipo.amarillas),
     rojas: valorDetallado(statsEquipo.rojas),
     offsides: valorDetallado(statsEquipo.offsides),
-    entradas: valorDetallado(statsEquipo.entradas),
     rival_estadisticas: Object.fromEntries(
       Object.entries(statsRival).map(([clave, valor]) => [clave, valorDetallado(valor)])
     )

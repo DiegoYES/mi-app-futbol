@@ -294,6 +294,11 @@ select:disabled { cursor: not-allowed; opacity: 0.45; }
 .record-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 .market-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); margin-top: 9px; }
 
+.frequency-toolbar { display:flex;align-items:center;justify-content:flex-end;gap:12px;margin:0 0 14px;color:var(--muted);font-size:.7rem; }
+.frequency-switch { display:flex;gap:4px;padding:4px;border:1px solid var(--line);border-radius:11px;background:var(--surface-raised); }
+.frequency-switch button { min-height:32px;padding:0 11px;border:1px solid transparent;background:transparent;color:var(--muted);font-size:.68rem; }
+.frequency-switch button[aria-pressed="true"] { border-color:rgba(84,227,142,.35);background:rgba(84,227,142,.12);color:var(--green); }
+
 .trend-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; color: var(--muted); }
 .trend-heading strong { color: var(--ink); font-size: .8rem; }
 .trend-heading span { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
@@ -619,6 +624,7 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   .record-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .market-grid { grid-template-columns: 1fr; }
   .advanced-metric-grid { grid-template-columns: 1fr; }
+  .frequency-toolbar { align-items:flex-start;flex-direction:column; }
   .compare-action { align-items: stretch; flex-direction: column; }
   .pick-shortcut { right: 10px; bottom: 10px; max-width: calc(100vw - 20px); }
   .bet-slip { right: 10px; bottom: 10px; width: calc(100vw - 20px); max-height: calc(100vh - 20px); }

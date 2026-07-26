@@ -107,8 +107,8 @@ Para cada refresco se recomienda este orden:
 2. `npm run quota:sync` para leer el cupo real mediante `/status`.
 3. `npm run sync:details` para traer hasta 20 partidos por llamada, incluyendo
    estadísticas completas, eventos, alineaciones y rendimientos de jugadores.
-4. Validar picks y cobertura; `npm run sync:halves` queda para después porque
-   primer y segundo tiempo requieren dos llamadas adicionales por partido.
+4. Validar picks y cobertura; `npm run sync:halves` usa `half=true` y obtiene
+   primer y segundo tiempo juntos en una llamada adicional por partido.
 
 Cada comando reanuda únicamente documentos pendientes y se detiene al agotar el
 cupo. `SYNC_MAX_REQUESTS=3` limita voluntariamente una corrida a tres llamadas y

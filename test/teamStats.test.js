@@ -19,7 +19,6 @@ function equipo(id, nombre, goles, golesPrimerTiempo, stats1 = {}, stats2 = {}) 
     tarjetas_amarillas: 2,
     tarjetas_rojas: 0,
     offsides: 1,
-    entradas: 3,
     estadisticas_1t: stats1,
     estadisticas_2t: stats2
   };
@@ -65,8 +64,7 @@ test('calcula promedios avanzados solo con partidos que tienen cobertura', () =>
     corners: 7,
     faltas: 11,
     tarjetas_amarillas: 3,
-    offsides: 2,
-    entradas: 9
+    offsides: 2
   };
 
   const stats = calcularEstadisticas(partidosConCobertura, 10);
@@ -76,8 +74,30 @@ test('calcula promedios avanzados solo con partidos que tienen cobertura', () =>
   assert.equal(stats.avanzadas.promedios.tirosContra, 14);
   assert.equal(stats.avanzadas.promedios.cornersFavor, 5);
   assert.equal(stats.avanzadas.promedios.cornersContra, 7);
-  assert.equal(stats.avanzadas.promedios.entradasFavor, 3);
   assert.deepEqual(stats.avanzadas.cornersOver95, { total: 1, porcentaje: '100.0' });
+});
+
+test('excluye una métrica ausente sin descartar las demás estadísticas del tiempo', () => {
+  const conTiempos = [{
+    ...partidos[0],
+    tiempos_completos: true,
+    equipo_local: {
+      ...partidos[0].equipo_local,
+      estadisticas_1t: { tiros_total: 8, tiros_puerta: 3, corners: 5, faltas: null, tarjetas_amarillas: 1, tarjetas_rojas: 0, offsides: 0 }
+    },
+    equipo_visitante: {
+      ...partidos[0].equipo_visitante,
+      estadisticas_1t: { tiros_total: 5, tiros_puerta: 2, corners: 3, faltas: null, tarjetas_amarillas: 2, tarjetas_rojas: 0, offsides: 1 }
+    }
+  }];
+
+  const stats = calcularEstadisticas(conTiempos, 10, 1);
+
+  assert.equal(stats.avanzadas.muestra, 1);
+  assert.equal(stats.avanzadas.promedios.tirosFavor, 8);
+  assert.equal(stats.avanzadas.promedios.faltasFavor, null);
+  assert.equal(stats.avanzadas.muestras.faltasFavor, 0);
+  assert.equal(stats.avanzadas.muestras.cornersFavor, 1);
 });
 
 test('calcula resultados y goles del primer tiempo', () => {
@@ -121,6 +141,5 @@ test('no presenta estadísticas avanzadas faltantes como ceros reales', () => {
   assert.equal(detalle.estadisticas_disponibles, false);
   assert.equal(detalle.tiros, null);
   assert.equal(detalle.corners, null);
-  assert.equal(detalle.entradas, null);
   assert.equal(detalle.rival_estadisticas.tiros, null);
 });

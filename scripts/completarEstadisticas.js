@@ -61,7 +61,6 @@ async function completarLiga(leagueId) {
           update['equipo_local.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
           update['equipo_local.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
           update['equipo_local.offsides'] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
-          update['equipo_local.entradas'] = parseInt(s.find(x => x.type === 'Tackles')?.value) || 0;
         }
         if (awayStats) {
           const s = awayStats.statistics;
@@ -72,7 +71,6 @@ async function completarLiga(leagueId) {
           update['equipo_visitante.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
           update['equipo_visitante.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
           update['equipo_visitante.offsides'] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
-          update['equipo_visitante.entradas'] = parseInt(s.find(x => x.type === 'Tackles')?.value) || 0;
         }
 
         if (Object.keys(update).length > 0) {

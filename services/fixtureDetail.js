@@ -22,8 +22,7 @@ function camposEstadisticas(prefijo, bloque) {
     [`${prefijo}.faltas`]: valorStat(stats, 'Fouls'),
     [`${prefijo}.tarjetas_amarillas`]: valorStat(stats, 'Yellow Cards'),
     [`${prefijo}.tarjetas_rojas`]: valorStat(stats, 'Red Cards'),
-    [`${prefijo}.offsides`]: valorStat(stats, 'Offsides'),
-    [`${prefijo}.entradas`]: valorStat(stats, 'Tackles')
+    [`${prefijo}.offsides`]: valorStat(stats, 'Offsides')
   };
 }
 

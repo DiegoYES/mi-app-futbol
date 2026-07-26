@@ -18,6 +18,7 @@ const RETARDO = Number(process.env.SYNC_DELAY_MS) >= 0
   ? Number(process.env.SYNC_DELAY_MS)
   : 500;                         // 2 req/s, por debajo del límite Pro de 5 req/s
 const TEMPORADA = Number(process.env.FOOTBALL_SEASON || config.seasonDefault);
+const REINTENTAR_HUECOS = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_RETRY_GAPS || ''));
 let peticionesRealizadas = 0;
 let detener = false;
 
@@ -28,46 +29,68 @@ function esperar(ms) {
 }
 
 // Extrae un valor numérico de las estadísticas de un equipo
-function obtenerValor(stats, tipo) {
+function obtenerValor(stats, tipo, valorNulo = 0) {
   const stat = stats?.find(s => s.type === tipo);
-  return parseInt(stat?.value) || 0;
+  if (stat?.value === null || stat?.value === undefined || stat?.value === '') return valorNulo;
+  const valor = Number.parseFloat(String(stat.value).replace('%', ''));
+  return Number.isFinite(valor) ? valor : valorNulo;
 }
 
 async function completarTiemposLiga(leagueId) {
   // Buscar partidos que ya tengan estadísticas completas (tiros_total > 0) 
   // pero que aún NO tengan los datos de 1T y 2T
-  const partidosFaltantes = await Partido.find({
+  const filtroPendientes = {
     'liga.id': leagueId,
     'liga.temporada': TEMPORADA,
     estado: { $in: ['FT', 'AET', 'PEN'] },
     estadisticas_completas: true,
     tiempos_completos: { $ne: true }
-  }).lean();
+  };
+  if (!REINTENTAR_HUECOS) {
+    filtroPendientes.$or = [
+      { tiempos_consultados_en: null },
+      { tiempos_consultados_en: { $exists: false } }
+    ];
+  }
+  const partidosFaltantes = await Partido.find(filtroPendientes).lean();
 
   console.log(`   ⚽ Liga ${leagueId}: ${partidosFaltantes.length} partidos sin datos por tiempo.`);
 
   for (let p of partidosFaltantes) {
-    if (detener || peticionesRealizadas + 2 > PETICIONES_MAXIMAS) break;
+    if (detener || peticionesRealizadas >= PETICIONES_MAXIMAS) break;
 
     try {
-      // Obtener 1T
+      // API-Football devuelve partido completo, 1T y 2T en una sola llamada
+      // al usar half=true. Evita gastar dos consultas por fixture.
       await esperar(RETARDO);
-      const { data: data1 } = await axios.get('https://v3.football.api-sports.io/fixtures/statistics', {
-        params: { fixture: p.api_id, half: '1st' },
+      const { data } = await axios.get('https://v3.football.api-sports.io/fixtures/statistics', {
+        params: { fixture: p.api_id, half: true },
         httpsAgent, timeout: 10000
       });
       peticionesRealizadas++;
 
-      // Obtener 2T
-      await esperar(RETARDO);
-      const { data: data2 } = await axios.get('https://v3.football.api-sports.io/fixtures/statistics', {
-        params: { fixture: p.api_id, half: '2nd' },
-        httpsAgent, timeout: 10000
-      });
-      peticionesRealizadas++;
+      const respuesta = data.response || [];
+      const stats1T = respuesta.map(item => ({
+        team: item.team,
+        statistics: item.statistics_1h || []
+      }));
+      const stats2T = respuesta.map(item => ({
+        team: item.team,
+        statistics: item.statistics_2h || []
+      }));
+      const tieneAmbosTiempos = stats1T.every(item => item.statistics.length)
+        && stats2T.every(item => item.statistics.length)
+        && stats1T.length === 2
+        && stats2T.length === 2;
 
-      const stats1T = data1.response;
-      const stats2T = data2.response;
+      if (!tieneAmbosTiempos) {
+        await Partido.updateOne({ api_id: p.api_id }, { $set: {
+          tiempos_consultados_en: new Date(),
+          tiempos_disponibles: false
+        } });
+        console.warn(`      ⚠️ Partido ${p.api_id}: el proveedor no entregó ambos tiempos; no se marcará completo.`);
+        continue;
+      }
 
       const update = {};
 
@@ -84,11 +107,10 @@ async function completarTiemposLiga(leagueId) {
           update[`equipo_local.${halfKey}.tiros_total`] = obtenerValor(s, 'Total Shots');
           update[`equipo_local.${halfKey}.tiros_puerta`] = obtenerValor(s, 'Shots on Goal');
           update[`equipo_local.${halfKey}.corners`] = obtenerValor(s, 'Corner Kicks');
-          update[`equipo_local.${halfKey}.faltas`] = obtenerValor(s, 'Fouls');
+          update[`equipo_local.${halfKey}.faltas`] = obtenerValor(s, 'Fouls', null);
           update[`equipo_local.${halfKey}.tarjetas_amarillas`] = obtenerValor(s, 'Yellow Cards');
           update[`equipo_local.${halfKey}.tarjetas_rojas`] = obtenerValor(s, 'Red Cards');
           update[`equipo_local.${halfKey}.offsides`] = obtenerValor(s, 'Offsides');
-          update[`equipo_local.${halfKey}.entradas`] = obtenerValor(s, 'Tackles');
         }
         if (awayStats) {
           const s = awayStats.statistics;
@@ -98,11 +120,10 @@ async function completarTiemposLiga(leagueId) {
           update[`equipo_visitante.${halfKey}.tiros_total`] = obtenerValor(s, 'Total Shots');
           update[`equipo_visitante.${halfKey}.tiros_puerta`] = obtenerValor(s, 'Shots on Goal');
           update[`equipo_visitante.${halfKey}.corners`] = obtenerValor(s, 'Corner Kicks');
-          update[`equipo_visitante.${halfKey}.faltas`] = obtenerValor(s, 'Fouls');
+          update[`equipo_visitante.${halfKey}.faltas`] = obtenerValor(s, 'Fouls', null);
           update[`equipo_visitante.${halfKey}.tarjetas_amarillas`] = obtenerValor(s, 'Yellow Cards');
           update[`equipo_visitante.${halfKey}.tarjetas_rojas`] = obtenerValor(s, 'Red Cards');
           update[`equipo_visitante.${halfKey}.offsides`] = obtenerValor(s, 'Offsides');
-          update[`equipo_visitante.${halfKey}.entradas`] = obtenerValor(s, 'Tackles');
         }
       }
 
@@ -111,6 +132,8 @@ async function completarTiemposLiga(leagueId) {
 
       if (Object.keys(update).length > 0) {
         update.tiempos_completos = true;
+        update.tiempos_disponibles = true;
+        update.tiempos_consultados_en = new Date();
         await Partido.updateOne({ api_id: p.api_id }, { $set: update });
         console.log(`      ✅ Partido ${p.api_id} actualizado (1T/2T).`);
       }
