@@ -42,6 +42,13 @@ test('los enfrentamientos del centro de partido exponen detalles desplegables', 
   assert.match(html, /Ver estadísticas/);
 });
 
+test('el directorio de competiciones agrupa temporadas y permite elegirlas', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'competiciones.html'), 'utf8');
+  assert.match(html, /data-competition-season/);
+  assert.match(html, /temporadas\.map/);
+  assert.match(html, /ligas\/torneos únicos/);
+});
+
 test('user-library.js contiene JavaScript válido', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'user-library.js'), 'utf8');
   assert.doesNotThrow(() => new Function(codigo));

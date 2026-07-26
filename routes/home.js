@@ -5,6 +5,7 @@ const PickGuardado = require('../models/PickGuardado');
 const Boleta = require('../models/Boleta');
 const config = require('../config/leagues');
 const { etiquetaTemporada } = require('../services/seasonLabel');
+const { construirCatalogo } = require('../services/competitionCatalog');
 
 const router = express.Router();
 
@@ -42,7 +43,9 @@ router.get('/resumen', async (req, res) => {
       jugadores: jugadores.length,
       picks,
       boletas,
-      competiciones: competiciones.length,
+      ligas: new Set(competiciones.map(item => Number(item._id.id))).size,
+      competiciones: new Set(competiciones.map(item => Number(item._id.id))).size,
+      temporadas_guardadas: competiciones.length,
       rango: rango[0] || { desde: null, hasta: null },
       temporadas: [...new Set(competiciones.map(item => item._id.temporada))].sort((a, b) => b - a)
     });
@@ -53,24 +56,13 @@ router.get('/resumen', async (req, res) => {
 
 router.get('/competiciones', async (_req, res) => {
   try {
-    const competiciones = (await obtenerCompeticiones()).map(item => ({
-      id: item._id.id,
-      temporada: item._id.temporada,
-      temporada_etiqueta: etiquetaTemporada(item._id.id, item._id.temporada),
-      nombre: item.nombre || config.ligas[item._id.id]?.nombre || `Competición ${item._id.id}`,
-      pais: config.ligas[item._id.id]?.pais || 'Internacional',
-      principal: config.ligas[item._id.id]?.liga_principal === true,
-      partidos: item.partidos,
-      finalizados: item.finalizados,
-      cobertura: {
-        estadisticas: item.estadisticas,
-        detalles: item.detalles,
-        jugadores: item.jugadores
-      },
-      desde: item.desde,
-      hasta: item.hasta
-    }));
-    res.json({ competiciones });
+    const filas = await obtenerCompeticiones();
+    const competiciones = construirCatalogo(filas, config.ligas, etiquetaTemporada);
+    res.json({
+      competiciones,
+      total: competiciones.length,
+      temporadas_guardadas: filas.length
+    });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
