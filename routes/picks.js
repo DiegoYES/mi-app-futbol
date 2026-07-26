@@ -110,6 +110,7 @@ async function liquidarPendientes(usuarioId) {
 
 router.get('/partido/:id', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const partidoId = Number.parseInt(req.params.id, 10);
     if (!Number.isInteger(partidoId)) {
       return res.status(400).json({ error: 'El partido no es válido.' });
@@ -150,6 +151,7 @@ router.get('/partido/:id', async (req, res) => {
 
 router.post('/seguimiento', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const partidoId = Number.parseInt(req.body?.partido_id, 10);
     const mercadoId = typeof req.body?.mercado_id === 'string' ? req.body.mercado_id : '';
     if (!Number.isInteger(partidoId) || !mercadoId) {
@@ -196,6 +198,7 @@ router.post('/seguimiento', async (req, res) => {
 
 router.get('/seguimiento', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     await liquidarPendientes(req.usuario._id);
     const picks = await PickGuardado.find({ usuario: req.usuario._id })
       .sort({ fecha_partido: -1, creado_en: -1 }).limit(200).lean();
@@ -207,6 +210,7 @@ router.get('/seguimiento', async (req, res) => {
 
 router.delete('/seguimiento/:id', async (req, res) => {
   try {
+    res.set('Cache-Control', 'no-store');
     const eliminado = await PickGuardado.findOneAndDelete({
       _id: req.params.id,
       usuario: req.usuario._id,

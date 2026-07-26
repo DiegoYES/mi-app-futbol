@@ -28,6 +28,20 @@ test('app.js contiene JavaScript válido', () => {
   assert.doesNotThrow(() => new Function(codigo));
 });
 
+test('auth-client.js contiene JavaScript válido y monta Mis picks globales', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-client.js'), 'utf8');
+  assert.doesNotThrow(() => new Function(codigo));
+  assert.match(codigo, /global-picks-widget/);
+  assert.match(codigo, /futbol:picks-actualizados/);
+});
+
+test('los enfrentamientos del centro de partido exponen detalles desplegables', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  assert.match(html, /data-h2h-details/);
+  assert.match(html, /alternarDetalleH2H/);
+  assert.match(html, /Ver estadísticas/);
+});
+
 test('user-library.js contiene JavaScript válido', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'user-library.js'), 'utf8');
   assert.doesNotThrow(() => new Function(codigo));
