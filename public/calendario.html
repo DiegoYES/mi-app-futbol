@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calendario de partidos</title>
+<meta name="theme-color" content="#07100d">
+<link rel="stylesheet" href="/styles.css">
+<script src="/auth-client.js"></script>
+<style>
+  .cal-top { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
+  .cal-top h1 { margin: 0 0 4px; font-size: 1.7rem; }
+  .cal-top p { margin: 0; color: var(--muted); font-size: .9rem; }
+
+  .date-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; padding: 12px 16px; margin-bottom: 12px; }
+  .date-bar button { background: var(--surface-soft); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; padding: 8px 14px; cursor: pointer; }
+  .date-bar button:hover { border-color: var(--green); color: var(--green); }
+  .date-bar button.primary { background: var(--green-dark); border-color: var(--green-dark); color: #fff; }
+  .date-bar input[type=date] { background: var(--surface-soft); color: var(--ink); border: 1px solid var(--line); border-radius: 9px; padding: 8px 12px; }
+  .date-label { flex: 1; min-width: 200px; text-align: center; font-weight: 600; text-transform: capitalize; }
+
+  .quick-dates { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 14px; margin-bottom: 18px; }
+  .chip { flex: 0 0 auto; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; cursor: pointer; text-align: center; min-width: 78px; }
+  .chip:hover { border-color: var(--green); }
+  .chip.active { background: var(--green-dark); border-color: var(--green); }
+  .chip .dow { display: block; font-size: .7rem; color: var(--muted); text-transform: uppercase; }
+  .chip.active .dow { color: rgba(255,255,255,.85); }
+  .chip .dnum { display: block; font-size: 1.15rem; font-weight: 700; }
+  .chip .badge-n { display: block; font-size: .66rem; color: var(--green); }
+  .chip.active .badge-n { color: #fff; }
+
+  .liga-group { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; overflow: hidden; }
+  .liga-head { background: var(--surface-soft); padding: 11px 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .liga-head .pais { font-size: .78rem; color: var(--muted); font-weight: 400; }
+
+  .match { display: grid; grid-template-columns: 62px 1fr auto 1fr; align-items: center; gap: 12px; padding: 13px 18px; border-top: 1px solid var(--line); cursor: pointer; transition: background .15s; }
+  .match:hover { background: rgba(84,227,142,.07); }
+  .match .hora { font-size: .82rem; color: var(--muted); }
+  .match .estado-live { color: var(--green); font-weight: 700; }
+  .equipo { display: flex; align-items: center; gap: 9px; min-width: 0; }
+  .equipo.der { flex-direction: row-reverse; text-align: right; }
+  .equipo img { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+  .equipo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .marcador { font-weight: 700; font-size: 1.05rem; background: var(--surface-soft); border-radius: 8px; padding: 4px 12px; min-width: 58px; text-align: center; }
+  .marcador.vs { color: var(--muted); font-weight: 400; font-size: .8rem; background: transparent; }
+
+  .vacio { text-align: center; padding: 48px 20px; color: var(--muted); background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; }
+  .vacio strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 8px; }
+  .vacio a { color: var(--green); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="cal-top">
+    <div>
+      <h1>📅 Calendario de partidos</h1>
+      <p id="subtitulo">Elige una fecha para ver los encuentros</p>
+    </div>
+    <a href="/comparador.html" style="color:var(--green);text-decoration:none">⚽ Ir al comparador →</a>
+  </div>
+
+  <div class="date-bar">
+    <button onclick="mover(-1)">‹ Anterior</button>
+    <span class="date-label" id="etiquetaFecha">—</span>
+    <button onclick="mover(1)">Siguiente ›</button>
+    <input type="date" id="selectorFecha" onchange="irA(this.value)">
+    <button class="primary" onclick="irA(hoyISO())">Hoy</button>
+  </div>
+
+  <div class="quick-dates" id="chips"></div>
+
+  <div id="contenido"><div class="vacio">Cargando...</div></div>
+</div>
+
+<script>
+let fechaActual = hoyISO();
+
+function hoyISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+function esc(valor) {
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;').replaceAll("'", '&#039;');
+}
+
+function aDate(iso) {
+  const [a, m, d] = iso.split('-').map(Number);
+  return new Date(a, m - 1, d);
+}
+
+function aISO(fecha) {
+  return `${fecha.getFullYear()}-${String(fecha.getMonth() + 1).padStart(2, '0')}-${String(fecha.getDate()).padStart(2, '0')}`;
+}
+
+function mover(dias) {
+  const f = aDate(fechaActual);
+  f.setDate(f.getDate() + dias);
+  irA(aISO(f));
+}
+
+function irA(iso) {
+  if (!iso) return;
+  fechaActual = iso;
+  document.getElementById('selectorFecha').value = iso;
+  history.replaceState(null, '', '?fecha=' + iso);
+  pintarChips();
+  cargar();
+}
+
+function pintarChips() {
+  const base = aDate(fechaActual);
+  const cont = document.getElementById('chips');
+  let html = '';
+  for (let i = -3; i <= 3; i++) {
+    const f = new Date(base);
+    f.setDate(base.getDate() + i);
+    const iso = aISO(f);
+    html += `<div class="chip ${i === 0 ? 'active' : ''}" onclick="irA('${iso}')">
+      <span class="dow">${f.toLocaleDateString('es-MX', { weekday: 'short' })}</span>
+      <span class="dnum">${f.getDate()}</span>
+      <span class="badge-n" data-dia="${iso}"></span>
+    </div>`;
+  }
+  cont.innerHTML = html;
+}
+
+async function cargar() {
+  const cont = document.getElementById('contenido');
+  cont.innerHTML = '<div class="vacio">Cargando partidos...</div>';
+
+  const f = aDate(fechaActual);
+  document.getElementById('etiquetaFecha').textContent =
+    f.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+  try {
+    const resp = await fetch('/api/calendario/dia?fecha=' + fechaActual);
+    if (!resp.ok) return;
+    const datos = await resp.json();
+
+    document.getElementById('subtitulo').textContent =
+      datos.total ? `${datos.total} partido(s) en ${datos.competiciones.length} competición(es)` : 'Sin partidos programados';
+
+    if (!datos.total) {
+      const rango = await (await fetch('/api/calendario/rango')).json();
+      cont.innerHTML = `<div class="vacio">
+        <strong>No hay partidos en esta fecha</strong>
+        Tu base de datos tiene partidos del <b>${rango.desde || '—'}</b> al <b>${rango.hasta || '—'}</b>.
+        <br><br>
+        <a href="?fecha=${rango.hasta}" onclick="irA('${rango.hasta}');return false;">Ver la última fecha con partidos →</a>
+      </div>`;
+      return;
+    }
+
+    cont.innerHTML = datos.competiciones.map(c => `
+      <div class="liga-group">
+        <div class="liga-head">
+          <span>${esc(c.liga)}</span>
+          <span class="pais">${esc(c.pais)}</span>
+        </div>
+        ${c.partidos.map(p => {
+          const marcador = p.finalizado
+            ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
+            : `<div class="marcador vs">vs</div>`;
+          return `<div class="match" onclick="abrirPartido(${p.local.id},${p.visitante.id},${c.liga_id},${p.api_id})">
+            <div class="hora">${p.finalizado ? 'Final' : esc(p.hora)}</div>
+            <div class="equipo">
+              <img src="/api/equipos/${p.local.id}/escudo" alt="">
+              <span>${esc(p.local.nombre)}</span>
+            </div>
+            ${marcador}
+            <div class="equipo der">
+              <img src="/api/equipos/${p.visitante.id}/escudo" alt="">
+              <span>${esc(p.visitante.nombre)}</span>
+            </div>
+          </div>`;
+        }).join('')}
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = '<div class="vacio">No se pudieron cargar los partidos</div>';
+  }
+}
+
+function abrirPartido(local, visitante, liga, apiId) {
+  window.location.href = `/partido.html?local=${local}&visitante=${visitante}&liga=${liga}&partido=${apiId}&fecha=${fechaActual}`;
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const params = new URLSearchParams(location.search);
+  fechaActual = params.get('fecha') || hoyISO();
+  document.getElementById('selectorFecha').value = fechaActual;
+  pintarChips();
+  cargar();
+});
+</script>
+</body>
+</html>

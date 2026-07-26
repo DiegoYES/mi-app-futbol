@@ -1,0 +1,222 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Comparador Estadístico Multiliga</title>
+    <meta name="theme-color" content="#07100d">
+    <link rel="stylesheet" href="/styles.css">
+    <script src="/auth-client.js"></script>
+    <script src="/user-library.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="header-copy">
+                <p class="eyebrow">Football intelligence</p>
+                <h1>El partido, <span>en números.</span></h1>
+                <p>Compara rendimiento, mercados y momentos del juego con información histórica de cada equipo.</p>
+            </div>
+            <div class="live-pill"><a href="/calendario.html" style="color:inherit;text-decoration:none">📅 Ver calendario de partidos →</a></div>
+        </div>
+
+        <nav class="feature-nav" aria-label="Secciones de análisis">
+            <button id="btn-referees" type="button">Explorar árbitros</button>
+            <a class="feature-link" href="/picks.html">Ver mis picks</a>
+            <a class="feature-link" href="/jugadores.html">Explorar jugadores</a>
+        </nav>
+
+        <div class="role-guide" aria-label="Roles utilizados por el modelo de picks">
+            <div><span class="role-dot local"></span><strong>Izquierda = LOCAL</strong><small>Equipo A en el pick</small></div>
+            <span class="role-vs">VS</span>
+            <div><span class="role-dot away"></span><strong>Derecha = VISITANTE</strong><small>Equipo B en el pick</small></div>
+        </div>
+
+        <div class="main-grid">
+            <!-- Panel Equipo A -->
+            <div class="team-panel" id="panel-a">
+                <div class="team-header">
+                    <img id="logo-a" src="" alt="Logo" style="display: none;">
+                    <div class="team-heading"><span class="team-kicker">Local · lado izquierdo</span><h2 id="name-a">Selecciona el local</h2></div>
+                </div>
+                <div class="scrollable-content">
+                    <div class="team-controls selection-controls">
+                        <div class="selection-field"><span>1 · Competición</span><select id="league-a" aria-label="Competición del equipo local">
+                            <option value="">-- Competición del local --</option>
+                        </select></div>
+                        <label class="selection-field"><span>2 · Temporada reciente</span><select id="season-a" disabled aria-label="Temporada del equipo local"><option value="">-- Temporada --</option></select></label>
+                        <label class="selection-field"><span>3 · Equipo local</span><select id="team-a" disabled>
+                            <option value="">-- Equipo --</option>
+                        </select></label>
+                    </div>
+                    <details class="advanced-options">
+                        <summary><span>Ajustar muestra y periodo</span><small>Opcional</small></summary>
+                    <div class="team-controls filter-controls">
+                        <label>Condición:</label>
+                        <select id="scope-a" aria-label="Forma histórica mostrada para el equipo local">
+                            <option value="general">Forma general</option>
+                            <option value="local" selected>Historial como local</option>
+                            <option value="visitante">Historial como visitante</option>
+                        </select>
+                        <label>Partidos:</label>
+                        <select id="limit-a">
+                            <option value="all">Todos</option>
+                            <option value="5">Últimos 5</option>
+                            <option value="3">Últimos 3</option>
+                        </select>
+                        <label>Tiempo:</label>
+                        <select id="half-a">
+                            <option value="0">Completo</option>
+                            <option value="1">1er T</option>
+                            <option value="2">2º T</option>
+                        </select>
+                    </div>
+                    <p class="panel-role-note"><strong>Rol del pick: LOCAL.</strong> El filtro anterior solo cambia las tendencias mostradas.</p>
+                    </details>
+                    <div class="stats-table" id="stats-a">Selecciona competición y equipo</div>
+                    <div class="last-matches" id="matches-a"></div>
+
+                    <details class="analysis-box advanced-analysis">
+                        <summary>📊 Analizar eventos por minuto <small>Opcional</small></summary>
+                        <div class="analysis-box-body">
+                        <div class="analysis-controls">
+                            <label>Rango (min):</label>
+                            <input type="number" id="a-min-inicio" value="0" min="0" max="90">
+                            <span>a</span>
+                            <input type="number" id="a-min-fin" value="15" min="0" max="90">
+                            <button id="analyze-a" type="button">Analizar</button>
+                        </div>
+                        <div class="analysis-results" id="a-analysis-results"></div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+
+            <!-- Panel Equipo B -->
+            <div class="team-panel" id="panel-b">
+                <div class="team-header">
+                    <img id="logo-b" src="" alt="Logo" style="display: none;">
+                    <div class="team-heading"><span class="team-kicker">Visitante · lado derecho</span><h2 id="name-b">Selecciona el visitante</h2></div>
+                </div>
+                <div class="scrollable-content">
+                    <div class="team-controls selection-controls">
+                        <div class="selection-field"><span>1 · Competición</span><select id="league-b" aria-label="Competición del equipo visitante">
+                            <option value="">-- Competición del visitante --</option>
+                        </select></div>
+                        <label class="selection-field"><span>2 · Temporada reciente</span><select id="season-b" disabled aria-label="Temporada del equipo visitante"><option value="">-- Temporada --</option></select></label>
+                        <label class="selection-field"><span>3 · Equipo visitante</span><select id="team-b" disabled>
+                            <option value="">-- Equipo --</option>
+                        </select></label>
+                    </div>
+                    <details class="advanced-options">
+                        <summary><span>Ajustar muestra y periodo</span><small>Opcional</small></summary>
+                    <div class="team-controls filter-controls">
+                        <label>Condición:</label>
+                        <select id="scope-b" aria-label="Forma histórica mostrada para el equipo visitante">
+                            <option value="general">Forma general</option>
+                            <option value="local">Historial como local</option>
+                            <option value="visitante" selected>Historial como visitante</option>
+                        </select>
+                        <label>Partidos:</label>
+                        <select id="limit-b">
+                            <option value="all">Todos</option>
+                            <option value="5">Últimos 5</option>
+                            <option value="3">Últimos 3</option>
+                        </select>
+                        <label>Tiempo:</label>
+                        <select id="half-b">
+                            <option value="0">Completo</option>
+                            <option value="1">1er T</option>
+                            <option value="2">2º T</option>
+                        </select>
+                    </div>
+                    <p class="panel-role-note"><strong>Rol del pick: VISITANTE.</strong> El filtro anterior solo cambia las tendencias mostradas.</p>
+                    </details>
+                    <div class="stats-table" id="stats-b">Selecciona competición y equipo</div>
+                    <div class="last-matches" id="matches-b"></div>
+
+                    <details class="analysis-box advanced-analysis">
+                        <summary>📊 Analizar eventos por minuto <small>Opcional</small></summary>
+                        <div class="analysis-box-body">
+                        <div class="analysis-controls">
+                            <label>Rango (min):</label>
+                            <input type="number" id="b-min-inicio" value="0" min="0" max="90">
+                            <span>a</span>
+                            <input type="number" id="b-min-fin" value="15" min="0" max="90">
+                            <button id="analyze-b" type="button">Analizar</button>
+                        </div>
+                        <div class="analysis-results" id="b-analysis-results"></div>
+                        </div>
+                    </details>
+                </div>
+            </div>
+        </div>
+
+        <div class="compare-action">
+            <button id="btn-picks" type="button" disabled>Generar análisis combinado</button>
+            <button id="btn-h2h" type="button" disabled>Ver historial entre ambos</button>
+            <button id="save-comparison" type="button" disabled>☆ Guardar comparación</button>
+            <button id="share-comparison" type="button" disabled>Compartir análisis</button>
+        </div>
+        <p id="comparison-action-status" class="comparison-action-status" aria-live="polite"></p>
+
+        <section class="picks-section" id="picks-section" style="display: none;">
+            <div class="section-heading">
+                <div><p class="eyebrow">Modelo combinado · local vs visitante</p><h3>Picks del partido</h3></div>
+                <div class="pick-filter-controls">
+                    <select id="pick-category" aria-label="Categoría de mercado" disabled>
+                        <option value="goles">Goles</option>
+                    </select>
+                    <button id="pick-recommended-toggle" class="filter-toggle" type="button" disabled aria-pressed="false">Sólo candidatos</button>
+                    <span class="model-badge">Beta</span>
+                </div>
+            </div>
+            <div id="picks-content"></div>
+        </section>
+
+        <div class="h2h-section" id="h2h-section" style="display: none;">
+            <h3>Historial de enfrentamientos</h3>
+            <div id="h2h-content"></div>
+        </div>
+
+        <section class="referee-section" id="referee-section" style="display: none;">
+            <div class="section-heading">
+                <div><p class="eyebrow">Disciplina y ritmo</p><h3>Árbitros</h3></div>
+                <select id="referee-league" aria-label="Liga para analizar árbitros">
+                    <option value="">Selecciona una liga</option>
+                </select>
+            </div>
+            <div id="referee-content" class="empty-state">Selecciona una liga con datos.</div>
+        </section>
+    </div>
+
+    <button id="pick-shortcut" class="pick-shortcut" type="button" hidden>
+        <span>🎯</span><span id="pick-shortcut-label">Ver picks combinados</span>
+    </button>
+
+    <aside id="bet-slip" class="bet-slip" hidden aria-label="Boleta de mercados seleccionados">
+        <div class="bet-slip-header">
+            <div><span class="eyebrow">Borrador</span><strong>Mi boleta · <b id="bet-slip-count">0</b></strong></div>
+            <button id="bet-slip-clear" type="button" class="button-quiet">Vaciar</button>
+        </div>
+        <div id="bet-slip-items" class="bet-slip-items"></div>
+        <div id="bet-slip-correlation" class="bet-slip-correlation" hidden></div>
+        <label class="bet-slip-name">Nombre
+            <input id="bet-slip-name" type="text" maxlength="100" placeholder="Ej. Champions del martes">
+        </label>
+        <p class="bet-slip-note">No calculamos cuota. Confirma líneas y disponibilidad en la casa antes de apostar.</p>
+        <div id="bet-slip-status" class="bet-slip-status"></div>
+        <div class="bet-slip-actions">
+            <button id="bet-slip-save" type="button">Guardar boleta</button>
+            <a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a>
+        </div>
+    </aside>
+
+    <dialog id="pick-explanation-dialog" class="explanation-dialog" aria-labelledby="pick-explanation-title">
+        <div class="explanation-dialog-head"><div><span>Evidencia del modelo</span><h3 id="pick-explanation-title">Explicación del mercado</h3></div><button id="pick-explanation-close" class="explanation-dialog-close" type="button" aria-label="Cerrar explicación">×</button></div>
+        <div id="pick-explanation-body" class="explanation-dialog-body"></div>
+    </dialog>
+
+    <script src="/app.js" defer></script>
+</body>
+</html>

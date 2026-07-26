@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mis boletas</title>
+<meta name="theme-color" content="#07100d">
+<link rel="stylesheet" href="/styles.css">
+<script src="/auth-client.js"></script>
+<style>
+  .page-nav { display:flex;gap:16px;margin-bottom:24px; }
+  .page-nav a { color:var(--green);text-decoration:none;font-size:.85rem; }
+  .boletas { display:grid;gap:14px; }
+  .boleta { padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface-raised); }
+  .boleta-head { display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:12px; }
+  .boleta-head h3 { margin:0;font-size:1rem; }
+  .boleta-head span { color:var(--muted);font-size:.7rem; }
+  .boleta-selecciones { display:grid;gap:7px; }
+  .boleta-item { display:grid;grid-template-columns:minmax(190px,1fr) minmax(220px,1.4fr) auto;align-items:center;gap:14px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft); }
+  .boleta-item span,.boleta-item small { color:var(--muted);font-size:.68rem; }
+  .boleta-item strong { font-size:.78rem; }
+  .boleta-prob { color:var(--green);font-size:1.05rem;font-weight:900; }
+  .boleta-actions { display:flex;gap:8px;flex-wrap:wrap;margin-top:13px; }
+  .boleta-actions button,.boleta-actions a { min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--ink);font-size:.72rem;font-weight:800;text-decoration:none;display:grid;place-items:center; }
+  .boleta-actions a { color:var(--cyan); }
+  .boleta-actions .danger { color:var(--red);margin-left:auto; }
+  @media(max-width:700px){.boleta-item{grid-template-columns:1fr auto}.boleta-item strong{grid-column:1/-1}.boleta-actions .danger{margin-left:0}}
+</style>
+</head>
+<body>
+<main class="container">
+  <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/picks.html">Mis picks</a></nav>
+  <header class="header">
+    <div class="header-copy">
+      <p class="eyebrow">Borradores personales</p>
+      <h1>Mis <span>boletas.</span></h1>
+      <p>Copia los mercados y búscalos en la casa. Las líneas y cuotas deben confirmarse antes de apostar.</p>
+    </div>
+  </header>
+  <div id="boletas" class="boletas"><div class="loader">Cargando boletas...</div></div>
+</main>
+<script>
+const boletasPorId = new Map();
+
+function esc(valor) {
+  return String(valor ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+}
+
+function fecha(valor) {
+  return new Date(valor).toLocaleString('es-MX', { dateStyle:'medium', timeStyle:'short' });
+}
+
+function textoBoleta(boleta) {
+  const lineas = boleta.selecciones.map((item, indice) => (
+    `${indice + 1}. ${item.local.nombre} (L) vs ${item.visitante.nombre} (V) — ${item.mercado.nombre} [${item.estimacion}%]`
+  ));
+  return `${boleta.nombre}\n${lineas.join('\n')}\n\nConfirma líneas y cuotas antes de apostar.`;
+}
+
+async function cargarBoletas() {
+  const respuesta = await fetch('/api/boletas');
+  if (!respuesta.ok) return;
+  const { boletas } = await respuesta.json();
+  const cont = document.getElementById('boletas');
+  boletasPorId.clear();
+  boletas.forEach(item => boletasPorId.set(String(item._id), item));
+  if (!boletas.length) {
+    cont.innerHTML = '<div class="empty-state">Todavía no guardas boletas. En el comparador abre los picks y agrega los mercados que quieras combinar.</div>';
+    return;
+  }
+  cont.innerHTML = boletas.map(boleta => `<article class="boleta">
+    <div class="boleta-head"><div><h3>${esc(boleta.nombre)}</h3><span>${fecha(boleta.creada_en)} · ${boleta.selecciones.length} selección(es)</span></div><span class="model-badge">Borrador</span></div>
+    <div class="boleta-selecciones">${boleta.selecciones.map(item => `<div class="boleta-item">
+      <span>${esc(item.local.nombre)} <b>(L)</b> vs ${esc(item.visitante.nombre)} <b>(V)</b><br>${item.fuentes?.local
+        ? `${esc(item.fuentes.local.nombre)} · ${item.fuentes.local.temporada} / ${esc(item.fuentes.visitante.nombre)} · ${item.fuentes.visitante.temporada}`
+        : `${esc(item.liga.nombre)} · ${item.liga.temporada}`}</span>
+      <strong>${esc(item.mercado.nombre)}<br><small>Confianza ${esc(item.confianza)} · muestra ${item.muestra} · ${item.fuentes}/2 fuentes</small></strong>
+      <div class="boleta-prob">${item.estimacion}%</div>
+    </div>`).join('')}</div>
+    <div class="boleta-actions"><button type="button" data-copy="${esc(boleta._id)}">Copiar lista</button><a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a><button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button></div>
+  </article>`).join('');
+}
+
+document.getElementById('boletas').addEventListener('click', async event => {
+  const copiar = event.target.closest('[data-copy]');
+  if (copiar) {
+    const boleta = boletasPorId.get(copiar.dataset.copy);
+    await navigator.clipboard.writeText(textoBoleta(boleta));
+    copiar.textContent = 'Copiado ✓';
+    return;
+  }
+  const eliminar = event.target.closest('[data-delete]');
+  if (eliminar && confirm('¿Eliminar esta boleta?')) {
+    const respuesta = await fetch(`/api/boletas/${eliminar.dataset.delete}`, { method:'DELETE' });
+    if (respuesta.ok) cargarBoletas();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', cargarBoletas);
+</script>
+</body>
+</html>

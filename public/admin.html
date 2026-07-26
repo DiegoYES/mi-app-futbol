@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel de administración</title>
+<script src="/auth-client.js"></script>
+<style>
+  :root { --primary: #0a2540; --accent: #00d4ff; --bg: #f3f4f6; }
+  * { box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #334155; margin: 0; }
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
+  h1 { color: var(--primary); font-size: 1.6rem; margin: 0 0 20px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
+  .kpi { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+  .kpi .label { font-size: .78rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 1.9rem; font-weight: 700; color: var(--primary); }
+  .barra { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  input[type=search] { flex: 1; min-width: 220px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+  table { width: 100%; background: #fff; border-collapse: collapse; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+  th { background: var(--primary); color: #fff; padding: 11px; text-align: left; font-size: .82rem; }
+  td { padding: 11px; border-bottom: 1px solid #eef2f7; font-size: .87rem; }
+  tr:hover td { background: #f8fafc; }
+  .badge { padding: 3px 9px; border-radius: 11px; font-size: .74rem; font-weight: 600; }
+  .badge.premium { background: #dcfce7; color: #166534; }
+  .badge.prueba { background: #dbeafe; color: #1e40af; }
+  .badge.expirado { background: #fee2e2; color: #991b1b; }
+  .badge.admin { background: #fef3c7; color: #92400e; }
+  .acciones button { padding: 5px 10px; margin-right: 5px; border: none; border-radius: 6px; cursor: pointer; font-size: .78rem; }
+  .btn-mes { background: var(--primary); color: #fff; }
+  .btn-off { background: #fee2e2; color: #991b1b; }
+  .btn-on { background: #dcfce7; color: #166534; }
+  .vacio { text-align: center; padding: 32px; color: #94a3b8; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🛠️ Panel de administración</h1>
+
+  <div class="kpis" id="kpis"></div>
+
+  <div class="barra">
+    <input type="search" id="busqueda" placeholder="Buscar por email o nombre..." oninput="buscarConRetraso()">
+  </div>
+
+  <table>
+    <thead>
+      <tr><th>Usuario</th><th>Plan</th><th>Vence</th><th>Registro</th><th>Último acceso</th><th>Acciones</th></tr>
+    </thead>
+    <tbody id="tbody"><tr><td colspan="6" class="vacio">Cargando...</td></tr></tbody>
+  </table>
+</div>
+
+<script>
+let temporizador;
+
+function escaparHtml(valor) {
+  return String(valor ?? '')
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
+}
+
+function fecha(valor) {
+  if (!valor) return '—';
+  return new Date(valor).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function buscarConRetraso() {
+  clearTimeout(temporizador);
+  temporizador = setTimeout(cargarUsuarios, 350);
+}
+
+async function cargarResumen() {
+  const resp = await fetch('/api/admin/resumen');
+  if (!resp.ok) return;
+  const d = await resp.json();
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="label">Usuarios</div><div class="value">${d.total}</div></div>
+    <div class="kpi"><div class="label">Premium</div><div class="value">${d.premium}</div></div>
+    <div class="kpi"><div class="label">En prueba</div><div class="value">${d.enPrueba}</div></div>
+    <div class="kpi"><div class="label">Expirados</div><div class="value">${d.expirados}</div></div>
+    <div class="kpi"><div class="label">Ingreso mensual</div><div class="value">$${d.premium * 50}</div></div>
+    <div class="kpi"><div class="label">API hoy</div><div class="value">${d.cuotaApi.usadas}/${d.cuotaApi.disponibles_para_uso}</div></div>`;
+}
+
+async function cargarUsuarios() {
+  const q = document.getElementById('busqueda').value.trim();
+  const resp = await fetch('/api/admin/usuarios?limite=200&q=' + encodeURIComponent(q));
+  if (!resp.ok) return;
+
+  const { usuarios } = await resp.json();
+  const tbody = document.getElementById('tbody');
+
+  if (!usuarios.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="vacio">Sin resultados</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = usuarios.map(u => {
+    const clase = u.rol === 'admin' ? 'admin' : u.plan;
+    const etiqueta = u.rol === 'admin' ? 'admin' : u.plan;
+    return `<tr>
+      <td><strong>${escaparHtml(u.nombre || '—')}</strong><br><span style="color:#64748b">${escaparHtml(u.email)}</span>
+        ${u.activo ? '' : '<br><span class="badge expirado">desactivado</span>'}</td>
+      <td><span class="badge ${clase}">${etiqueta}</span>
+        ${u.diasRestantes != null ? `<br><small>${u.diasRestantes} día(s)</small>` : ''}</td>
+      <td>${fecha(u.suscripcion_termina || u.prueba_termina)}</td>
+      <td>${fecha(u.fecha_registro)}</td>
+      <td>${fecha(u.ultimo_acceso)}</td>
+      <td class="acciones">
+        <button class="btn-mes" onclick="extender('${u.id}',1)">+1 mes</button>
+        <button class="btn-mes" onclick="extender('${u.id}',3)">+3 meses</button>
+        <button class="${u.activo ? 'btn-off' : 'btn-on'}" onclick="alternar('${u.id}',${!u.activo})">
+          ${u.activo ? 'Desactivar' : 'Activar'}</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function extender(id, meses) {
+  const resp = await fetch(`/api/admin/usuarios/${id}/suscripcion`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ meses })
+  });
+  const d = await resp.json();
+  if (!resp.ok) return alert(d.error);
+  refrescar();
+}
+
+async function alternar(id, activo) {
+  const resp = await fetch(`/api/admin/usuarios/${id}/activo`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ activo })
+  });
+  const d = await resp.json();
+  if (!resp.ok) return alert(d.error);
+  refrescar();
+}
+
+function refrescar() {
+  cargarResumen();
+  cargarUsuarios();
+}
+
+document.addEventListener('DOMContentLoaded', refrescar);
+</script>
+</body>
+</html>
