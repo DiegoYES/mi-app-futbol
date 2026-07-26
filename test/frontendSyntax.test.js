@@ -47,6 +47,7 @@ test('el directorio de competiciones agrupa temporadas y permite elegirlas', () 
   assert.match(html, /data-competition-season/);
   assert.match(html, /temporadas\.map/);
   assert.match(html, /ligas\/torneos únicos/);
+  assert.match(html, /normalizarCatalogo/);
 });
 
 test('user-library.js contiene JavaScript válido', () => {
