@@ -299,6 +299,48 @@ select:disabled { cursor: not-allowed; opacity: 0.45; }
 .trend-heading span { font-size: .68rem; text-transform: uppercase; letter-spacing: .08em; }
 .trend-grid { opacity: .9; }
 
+.advanced-summary {
+  margin-top: 14px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: rgba(22, 35, 31, 0.38);
+}
+
+.advanced-summary > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px;
+  cursor: pointer;
+  list-style: none;
+}
+
+.advanced-summary > summary::-webkit-details-marker { display: none; }
+.advanced-summary > summary::after { content: '+'; color: var(--green); font-size: 1.2rem; font-weight: 900; }
+.advanced-summary[open] > summary::after { content: '−'; }
+.advanced-summary > summary > span:first-child { display: grid; gap: 2px; }
+.advanced-summary > summary strong { font-size: .82rem; }
+.advanced-summary > summary small { color: var(--muted); font-size: .68rem; }
+.coverage-chip { margin-left: auto; padding: 5px 8px; border-radius: 999px; background: var(--surface-soft); color: var(--cyan); font-size: .65rem; font-weight: 800; }
+
+.advanced-metric-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  padding: 0 14px 14px;
+}
+
+.advanced-metric-card { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
+.advanced-metric-card > .metric-label { display: block; margin-bottom: 9px; color: var(--muted); font-size: .68rem; font-weight: 750; text-transform: uppercase; }
+.advanced-values { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.advanced-values span { min-width: 0; }
+.advanced-values small { display: block; color: var(--muted); font-size: .62rem; }
+.advanced-values strong { display: block; margin-top: 2px; font-size: 1rem; font-variant-numeric: tabular-nums; }
+.advanced-tendency > strong { display: block; color: var(--green); font-size: 1.15rem; }
+.advanced-tendency > small { color: var(--muted); font-size: .65rem; }
+.advanced-empty { margin: 0 14px 14px; padding: 13px; border: 1px dashed var(--line); border-radius: 11px; color: var(--muted); font-size: .75rem; }
+
 .metric-card, .market-card {
   border: 1px solid var(--line);
   border-radius: 13px;
@@ -576,6 +618,7 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   .league-picker-list,#panel-b .league-picker-list { right:auto;left:0;width:min(320px,calc(100vw - 64px)); }
   .record-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .market-grid { grid-template-columns: 1fr; }
+  .advanced-metric-grid { grid-template-columns: 1fr; }
   .compare-action { align-items: stretch; flex-direction: column; }
   .pick-shortcut { right: 10px; bottom: 10px; max-width: calc(100vw - 20px); }
   .bet-slip { right: 10px; bottom: 10px; width: calc(100vw - 20px); max-height: calc(100vh - 20px); }

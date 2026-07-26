@@ -448,6 +448,7 @@ function generarVistaPorEstadisticas(partidos, limit) {
     const tirosPuerta = partidos.map(p => p.tiros_puerta);
     const faltas = partidos.map(p => p.faltas);
     const offsides = partidos.map(p => p.offsides);
+    const entradas = partidos.map(p => p.entradas);
 
     let html = '';
     html += crearTablaEstadistica('Goles', partidos, goles.map(v => ({ valor: v })));
@@ -458,6 +459,7 @@ function generarVistaPorEstadisticas(partidos, limit) {
     html += crearTablaEstadistica('Tarjetas Amarillas', partidos, tarjetasAmarillas.map(v => ({ valor: v })));
     html += crearTablaEstadistica('Tarjetas Rojas', partidos, tarjetasRojas.map(v => ({ valor: v })));
     html += crearTablaEstadistica('Fueras de Juego', partidos, offsides.map(v => ({ valor: v })));
+    html += crearTablaEstadistica('Entradas', partidos, entradas.map(v => ({ valor: v })));
 
     return html;
 }
@@ -504,8 +506,20 @@ async function actualizarEstadisticas(lado) {
             <span class="metric-label">${label}</span>
             <span class="market-value"><strong>${valor.porcentaje}%</strong><small>${valor.total} de ${data.stats.jugados}</small></span>
         </div>`;
+        const valorPromedio = valor => valor == null
+            ? '—'
+            : Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const metricaAvanzada = (label, favor, contra, etiquetaFavor = 'A favor', etiquetaContra = 'En contra') => `<div class="advanced-metric-card">
+            <span class="metric-label">${label}</span>
+            <div class="advanced-values">
+                <span><small>${etiquetaFavor}</small><strong>${valorPromedio(favor)}</strong></span>
+                <span><small>${etiquetaContra}</small><strong>${valorPromedio(contra)}</strong></span>
+            </div>
+        </div>`;
         const golesEquipo15 = data.stats.equipoOver15 || data.stats.ttFavor15;
         const golesRival15 = data.stats.rivalOver15 || data.stats.ttContra15;
+        const avanzadas = data.stats.avanzadas || { muestra: 0, promedios: {}, cornersOver95: { total: 0, porcentaje: '0.0' } };
+        const promedios = avanzadas.promedios || {};
 
         let html = `<p class="period-label">${data.info.periodo} · ${data.stats.jugados} partidos</p>
             <div class="record-grid">
@@ -522,10 +536,35 @@ async function actualizarEstadisticas(lado) {
                 ${mercado('Más de 1.5 goles', data.stats.over15)}
                 ${mercado('Más de 2.5 goles', data.stats.over25)}
                 ${mercado('Más de 3.5 goles', data.stats.over35)}
+                ${mercado('Menos de 0.5 goles', data.stats.under05)}
+                ${mercado('Menos de 1.5 goles', data.stats.under15)}
+                ${mercado('Menos de 2.5 goles', data.stats.under25)}
+                ${mercado('Menos de 3.5 goles', data.stats.under35)}
                 ${mercado('Ambos anotan', data.stats.btts)}
                 ${mercado('Equipo +1.5 goles', golesEquipo15)}
                 ${mercado('Rival +1.5 goles', golesRival15)}
             </div>
+            <details class="advanced-summary" ${avanzadas.muestra ? '' : 'open'}>
+                <summary>
+                    <span><strong>Estadísticas avanzadas</strong><small>Promedio por partido</small></span>
+                    <span class="coverage-chip">Cobertura ${avanzadas.muestra}/${data.stats.jugados}</span>
+                </summary>
+                ${avanzadas.muestra ? `<div class="advanced-metric-grid">
+                    ${metricaAvanzada('Tiros', promedios.tirosFavor, promedios.tirosContra)}
+                    ${metricaAvanzada('Tiros a puerta', promedios.tirosPuertaFavor, promedios.tirosPuertaContra)}
+                    ${metricaAvanzada('Córners', promedios.cornersFavor, promedios.cornersContra)}
+                    ${metricaAvanzada('Tarjetas registradas', promedios.tarjetasFavor, promedios.tarjetasContra)}
+                    ${metricaAvanzada('Faltas', promedios.faltasFavor, promedios.faltasContra)}
+                    ${metricaAvanzada('Fueras de juego', promedios.offsidesFavor, promedios.offsidesContra)}
+                    ${metricaAvanzada('Entradas', promedios.entradasFavor, promedios.entradasContra)}
+                    ${metricaAvanzada('Totales del partido', promedios.cornersTotales, promedios.tarjetasTotales, 'Córners', 'Tarjetas')}
+                    <div class="advanced-metric-card advanced-tendency">
+                        <span class="metric-label">Más de 9.5 córners totales</span>
+                        <strong>${avanzadas.cornersOver95.porcentaje}%</strong>
+                        <small>${avanzadas.cornersOver95.total} de ${avanzadas.muestra} con cobertura</small>
+                    </div>
+                </div>` : '<div class="advanced-empty">Todavía no hay estadísticas avanzadas cubiertas para esta muestra. Los marcadores y tendencias de goles sí son válidos.</div>'}
+            </details>
             ${data.info.cobertura.estadisticas < data.info.cobertura.partidos
                 ? `<div class="warning">Estas tendencias usan marcadores confirmados. El detalle avanzado tiene cobertura de ${data.info.cobertura.estadisticas}/${data.info.cobertura.partidos}; los faltantes se muestran como “—”. Los picks combinados están en su bloque independiente.</div>`
                 : ''}`;
