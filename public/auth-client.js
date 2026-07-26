@@ -61,29 +61,89 @@
     document.getElementById('btnSalirPaywall').onclick = cerrarSesion;
   }
 
+  const ENLACES_NAV = [
+    { href: '/', texto: 'Inicio', icono: '🏠' },
+    { href: '/calendario.html', texto: 'Calendario', icono: '📅' },
+    { href: '/comparador.html', texto: 'Comparador', icono: '⚽' },
+    { href: '/picks.html', texto: 'Mis picks', icono: '🎯' },
+    { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' }
+  ];
+
+  function esRutaActiva(href) {
+    const actual = location.pathname.replace(/\/index\.html$/, '/');
+    return href === '/' ? actual === '/' : actual === href;
+  }
+
+  function inyectarEstilosBarra() {
+    if (document.getElementById('estilos-barra-sesion')) return;
+    const estilos = document.createElement('style');
+    estilos.id = 'estilos-barra-sesion';
+    estilos.textContent = `
+      .barra-sesion { background: linear-gradient(180deg,#0d2c47,#0a2540); color:#fff;
+        padding:0 20px; display:flex; justify-content:space-between; align-items:center; gap:16px;
+        font-family:system-ui,sans-serif; font-size:.86rem; flex-wrap:wrap;
+        border-bottom:1px solid rgba(255,255,255,.09); position:sticky; top:0; z-index:900;
+        box-shadow:0 2px 12px rgba(0,0,0,.25); }
+      .barra-sesion .usuario { display:flex; align-items:center; gap:9px; padding:11px 0; font-weight:600; }
+      .barra-sesion .chip-plan { background:rgba(84,227,142,.14); color:#54e38e; padding:3px 10px;
+        border-radius:11px; font-size:.74rem; font-weight:600; white-space:nowrap; }
+      .barra-sesion .chip-plan.alerta { background:rgba(245,190,91,.16); color:#f5be5b; }
+      .barra-sesion .chip-plan.admin { background:rgba(0,212,255,.14); color:#00d4ff; }
+      .barra-sesion nav { display:flex; align-items:center; gap:2px; flex-wrap:wrap; }
+      .barra-sesion nav a { color:rgba(255,255,255,.78); text-decoration:none; padding:13px 13px;
+        border-bottom:2px solid transparent; transition:color .15s, border-color .15s; white-space:nowrap; }
+      .barra-sesion nav a:hover { color:#fff; border-bottom-color:rgba(84,227,142,.5); }
+      .barra-sesion nav a.activo { color:#54e38e; border-bottom-color:#54e38e; font-weight:600; }
+      .barra-sesion nav a.admin { color:#00d4ff; }
+      .barra-sesion nav a.admin.activo { border-bottom-color:#00d4ff; }
+      .barra-sesion .btn-salir { background:transparent; border:1px solid rgba(255,255,255,.28);
+        color:#fff; padding:6px 14px; border-radius:7px; cursor:pointer; margin-left:10px;
+        font-size:.82rem; transition:background .15s, border-color .15s; }
+      .barra-sesion .btn-salir:hover { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.5); }
+      @media (max-width: 720px) {
+        .barra-sesion { padding:0 12px; }
+        .barra-sesion nav { width:100%; overflow-x:auto; justify-content:flex-start; }
+        .barra-sesion nav a { padding:11px 9px; font-size:.82rem; }
+        .barra-sesion nav a .txt { display:none; }
+        .barra-sesion nav a .ico { font-size:1.15rem; }
+      }`;
+    document.head.appendChild(estilos);
+  }
+
   function pintarBarra(usuario) {
-    const barra = document.createElement('div');
-    const etiqueta = usuario.rol === 'admin'
+    inyectarEstilosBarra();
+
+    const esAdmin = usuario.rol === 'admin';
+    const diasBajos = usuario.diasRestantes != null && usuario.diasRestantes <= 3;
+    const etiqueta = esAdmin
       ? 'Administrador'
       : usuario.motivo === 'prueba_activa'
-        ? `Prueba · ${usuario.diasRestantes} día(s) restantes`
+        ? `Prueba · ${usuario.diasRestantes} día(s)`
         : usuario.motivo === 'suscripcion_activa'
-          ? `Premium · ${usuario.diasRestantes} día(s) restantes`
+          ? `Premium · ${usuario.diasRestantes} día(s)`
           : 'Acceso expirado';
+    const claseChip = esAdmin ? 'admin' : (diasBajos ? 'alerta' : '');
 
-    barra.style.cssText = 'background:#0a2540;color:#fff;padding:9px 18px;display:flex;justify-content:space-between;align-items:center;gap:14px;font-family:system-ui,sans-serif;font-size:.85rem;flex-wrap:wrap';
+    const enlaces = ENLACES_NAV.map(e =>
+      `<a href="${e.href}" class="${esRutaActiva(e.href) ? 'activo' : ''}">
+        <span class="ico">${e.icono}</span> <span class="txt">${escaparHtml(e.texto)}</span>
+      </a>`).join('');
+    const enlaceAdmin = esAdmin
+      ? `<a href="/admin.html" class="admin ${esRutaActiva('/admin.html') ? 'activo' : ''}">
+          <span class="ico">🛠️</span> <span class="txt">Panel admin</span></a>`
+      : '';
+
+    const barra = document.createElement('div');
+    barra.className = 'barra-sesion';
     barra.innerHTML = `
-      <span>👤 ${escaparHtml(usuario.nombre || usuario.email)}
-        <span style="background:rgba(84,227,142,.14);color:#54e38e;padding:2px 9px;border-radius:11px;margin-left:8px">${escaparHtml(etiqueta)}</span>
+      <span class="usuario">👤 ${escaparHtml(usuario.nombre || usuario.email)}
+        <span class="chip-plan ${claseChip}">${escaparHtml(etiqueta)}</span>
       </span>
-      <span>
-        <a href="/" style="color:#fff;margin-right:14px">Inicio</a>
-        <a href="/comparador.html" style="color:#fff;margin-right:14px">Comparador</a>
-        <a href="/boletas.html" style="color:#f5be5b;margin-right:14px">Mis boletas</a>
-        <a href="/picks.html" style="color:#54e38e;margin-right:14px">Mis picks</a>
-        ${usuario.rol === 'admin' ? '<a href="/admin.html" style="color:#00d4ff;margin-right:14px">Panel admin</a>' : ''}
-        <button id="btnCerrarSesion" style="background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;padding:5px 13px;border-radius:6px;cursor:pointer">Salir</button>
-      </span>`;
+      <nav>
+        ${enlaces}
+        ${enlaceAdmin}
+        <button id="btnCerrarSesion" class="btn-salir">Salir</button>
+      </nav>`;
     document.body.prepend(barra);
     document.getElementById('btnCerrarSesion').onclick = cerrarSesion;
   }

@@ -47,6 +47,17 @@
   .vacio { text-align: center; padding: 48px 20px; color: var(--muted); background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; }
   .vacio strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 8px; }
   .vacio a { color: var(--green); }
+
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button { background: var(--surface-raised); color: var(--muted); border: 1px solid var(--line); border-radius: 10px; padding: 9px 18px; cursor: pointer; font-size: .9rem; font-weight: 600; }
+  .tabs button.active { background: var(--green-dark); border-color: var(--green); color: #fff; }
+  .tabs button:hover:not(.active) { border-color: var(--green); color: var(--green); }
+
+  .dia-bloque { margin-bottom: 26px; }
+  .dia-titulo { display: flex; align-items: baseline; gap: 10px; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 2px solid var(--line); }
+  .dia-titulo h2 { margin: 0; font-size: 1.15rem; text-transform: capitalize; }
+  .dia-titulo .cuenta { font-size: .8rem; color: var(--muted); }
+  .dia-vacio { color: var(--muted); font-size: .85rem; padding: 10px 4px; }
 </style>
 </head>
 <body>
@@ -59,21 +70,29 @@
     <a href="/comparador.html" style="color:var(--green);text-decoration:none">⚽ Ir al comparador →</a>
   </div>
 
-  <div class="date-bar">
-    <button onclick="mover(-1)">‹ Anterior</button>
-    <span class="date-label" id="etiquetaFecha">—</span>
-    <button onclick="mover(1)">Siguiente ›</button>
-    <input type="date" id="selectorFecha" onchange="irA(this.value)">
-    <button class="primary" onclick="irA(hoyISO())">Hoy</button>
+  <div class="tabs">
+    <button id="tabProximos" class="active" onclick="cambiarVista('proximos')">📆 Próximos 7 días</button>
+    <button id="tabDia" onclick="cambiarVista('dia')">🗓️ Por fecha</button>
   </div>
 
-  <div class="quick-dates" id="chips"></div>
+  <div id="controlesDia" style="display:none">
+    <div class="date-bar">
+      <button onclick="mover(-1)">‹ Anterior</button>
+      <span class="date-label" id="etiquetaFecha">—</span>
+      <button onclick="mover(1)">Siguiente ›</button>
+      <input type="date" id="selectorFecha" onchange="irA(this.value)">
+      <button class="primary" onclick="irA(hoyISO())">Hoy</button>
+    </div>
+
+    <div class="quick-dates" id="chips"></div>
+  </div>
 
   <div id="contenido"><div class="vacio">Cargando...</div></div>
 </div>
 
 <script>
 let fechaActual = hoyISO();
+let vistaActual = 'proximos';
 
 function hoyISO() {
   const d = new Date();
@@ -107,6 +126,7 @@ function irA(iso) {
   document.getElementById('selectorFecha').value = iso;
   history.replaceState(null, '', '?fecha=' + iso);
   pintarChips();
+  if (vistaActual !== 'dia') return cambiarVista('dia');
   cargar();
 }
 
@@ -125,6 +145,79 @@ function pintarChips() {
     </div>`;
   }
   cont.innerHTML = html;
+}
+
+function pintarCompeticiones(competiciones, fechaRef) {
+  return competiciones.map(c => `
+    <div class="liga-group">
+      <div class="liga-head">
+        <span>${esc(c.liga)}</span>
+        <span class="pais">${esc(c.pais)}</span>
+      </div>
+      ${c.partidos.map(p => {
+        const marcador = p.finalizado
+          ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
+          : `<div class="marcador vs">vs</div>`;
+        return `<div class="match" onclick="abrirPartido(${p.local.id},${p.visitante.id},${c.liga_id},${p.api_id},'${fechaRef}')">
+          <div class="hora">${p.finalizado ? 'Final' : esc(p.hora)}</div>
+          <div class="equipo">
+            <img src="/api/equipos/${p.local.id}/escudo" alt="">
+            <span>${esc(p.local.nombre)}</span>
+          </div>
+          ${marcador}
+          <div class="equipo der">
+            <img src="/api/equipos/${p.visitante.id}/escudo" alt="">
+            <span>${esc(p.visitante.nombre)}</span>
+          </div>
+        </div>`;
+      }).join('')}
+    </div>`).join('');
+}
+
+async function cargarProximos() {
+  const cont = document.getElementById('contenido');
+  cont.innerHTML = '<div class="vacio">Cargando próximos partidos...</div>';
+
+  try {
+    const resp = await fetch('/api/calendario/proximos?dias=7');
+    if (!resp.ok) throw new Error('respuesta no válida');
+    const datos = await resp.json();
+
+    document.getElementById('subtitulo').textContent =
+      datos.total ? `${datos.total} partido(s) en los próximos 7 días` : 'Sin partidos en los próximos 7 días';
+
+    if (!datos.total) {
+      const rango = await (await fetch('/api/calendario/rango')).json();
+      cont.innerHTML = `<div class="vacio">
+        <strong>No hay partidos programados esta semana</strong>
+        Tu base de datos tiene partidos del <b>${rango.desde || '—'}</b> al <b>${rango.hasta || '—'}</b>.
+      </div>`;
+      return;
+    }
+
+    cont.innerHTML = datos.jornadas.map(d => `
+      <div class="dia-bloque">
+        <div class="dia-titulo">
+          <h2>${esc(d.etiqueta)}</h2>
+          <span class="cuenta">${d.total ? `${d.total} partido(s)` : ''}</span>
+        </div>
+        ${d.total
+          ? pintarCompeticiones(d.competiciones, d.fecha)
+          : '<div class="dia-vacio">Sin partidos programados</div>'}
+      </div>`).join('');
+  } catch (err) {
+    cont.innerHTML = '<div class="vacio">No se pudieron cargar los partidos</div>';
+  }
+}
+
+function cambiarVista(modo) {
+  vistaActual = modo;
+  document.getElementById('tabProximos').classList.toggle('active', modo === 'proximos');
+  document.getElementById('tabDia').classList.toggle('active', modo === 'dia');
+  document.getElementById('controlesDia').style.display = modo === 'dia' ? '' : 'none';
+  history.replaceState(null, '', modo === 'dia' ? '?fecha=' + fechaActual : location.pathname);
+  if (modo === 'proximos') cargarProximos();
+  else cargar();
 }
 
 async function cargar() {
@@ -154,45 +247,24 @@ async function cargar() {
       return;
     }
 
-    cont.innerHTML = datos.competiciones.map(c => `
-      <div class="liga-group">
-        <div class="liga-head">
-          <span>${esc(c.liga)}</span>
-          <span class="pais">${esc(c.pais)}</span>
-        </div>
-        ${c.partidos.map(p => {
-          const marcador = p.finalizado
-            ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
-            : `<div class="marcador vs">vs</div>`;
-          return `<div class="match" onclick="abrirPartido(${p.local.id},${p.visitante.id},${c.liga_id},${p.api_id})">
-            <div class="hora">${p.finalizado ? 'Final' : esc(p.hora)}</div>
-            <div class="equipo">
-              <img src="/api/equipos/${p.local.id}/escudo" alt="">
-              <span>${esc(p.local.nombre)}</span>
-            </div>
-            ${marcador}
-            <div class="equipo der">
-              <img src="/api/equipos/${p.visitante.id}/escudo" alt="">
-              <span>${esc(p.visitante.nombre)}</span>
-            </div>
-          </div>`;
-        }).join('')}
-      </div>`).join('');
+    cont.innerHTML = pintarCompeticiones(datos.competiciones, fechaActual);
   } catch (err) {
     cont.innerHTML = '<div class="vacio">No se pudieron cargar los partidos</div>';
   }
 }
 
-function abrirPartido(local, visitante, liga, apiId) {
-  window.location.href = `/partido.html?local=${local}&visitante=${visitante}&liga=${liga}&partido=${apiId}&fecha=${fechaActual}`;
+function abrirPartido(local, visitante, liga, apiId, fechaRef) {
+  window.location.href = `/partido.html?local=${local}&visitante=${visitante}&liga=${liga}&partido=${apiId}&fecha=${fechaRef || fechaActual}`;
 }
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);
-  fechaActual = params.get('fecha') || hoyISO();
+  const fechaParam = params.get('fecha');
+  fechaActual = fechaParam || hoyISO();
   document.getElementById('selectorFecha').value = fechaActual;
   pintarChips();
-  cargar();
+  // Si llega con ?fecha= se abre en modo día; si no, en próximos 7 días
+  cambiarVista(fechaParam ? 'dia' : 'proximos');
 });
 </script>
 </body>

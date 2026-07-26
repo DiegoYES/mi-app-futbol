@@ -18,6 +18,19 @@ function esFinalizado(estado) {
   return ['FT', 'AET', 'PEN'].includes(estado);
 }
 
+// Etiqueta legible para un día: "Hoy", "Mañana" o "lunes 28 de julio"
+function etiquetaDia(fecha) {
+  const hoy = new Date();
+  hoy.setHours(0, 0, 0, 0);
+  const objetivo = new Date(fecha);
+  objetivo.setHours(0, 0, 0, 0);
+  const diff = Math.round((objetivo - hoy) / 86400000);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Mañana';
+  if (diff === -1) return 'Ayer';
+  return objetivo.toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
 // Partidos de una fecha concreta, agrupados por competición
 router.get('/dia', async (req, res) => {
   try {
@@ -69,6 +82,84 @@ router.get('/dia', async (req, res) => {
       fecha: texto,
       total: partidos.length,
       competiciones: Array.from(porLiga.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Partidos de los próximos N días (por defecto 7), agrupados por día y competición
+router.get('/proximos', async (req, res) => {
+  try {
+    const dias = Math.min(Math.max(parseInt(req.query.dias) || 7, 1), 30);
+    const desde = req.query.desde ? rangoDelDia(req.query.desde)?.inicio : null;
+    const inicio = desde || new Date(new Date().setHours(0, 0, 0, 0));
+    const fin = new Date(inicio);
+    fin.setDate(fin.getDate() + dias - 1);
+    fin.setHours(23, 59, 59, 999);
+
+    const filtro = { fecha: { $gte: inicio, $lte: fin } };
+    if (req.query.league) filtro['liga.id'] = parseInt(req.query.league);
+
+    const partidos = await Partido.find(filtro).sort({ fecha: 1 }).lean();
+
+    // Prepara un contenedor por cada día del rango, aunque no tenga partidos
+    const porDia = new Map();
+    for (let i = 0; i < dias; i++) {
+      const d = new Date(inicio);
+      d.setDate(d.getDate() + i);
+      const clave = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      porDia.set(clave, { fecha: clave, etiqueta: etiquetaDia(d), total: 0, competiciones: new Map() });
+    }
+
+    for (const p of partidos) {
+      const f = new Date(p.fecha);
+      const clave = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+      const dia = porDia.get(clave);
+      if (!dia) continue;
+
+      const idLiga = p.liga?.id;
+      if (!dia.competiciones.has(idLiga)) {
+        dia.competiciones.set(idLiga, {
+          liga_id: idLiga,
+          liga: p.liga?.nombre || config.ligas[idLiga]?.nombre || `Liga ${idLiga}`,
+          pais: config.ligas[idLiga]?.pais || '',
+          partidos: []
+        });
+      }
+
+      const finalizado = esFinalizado(p.estado);
+      dia.competiciones.get(idLiga).partidos.push({
+        api_id: p.api_id,
+        fecha: p.fecha,
+        hora: new Date(p.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+        estado: p.estado,
+        finalizado,
+        jornada: p.liga?.jornada || '',
+        local: {
+          id: p.equipo_local?.id,
+          nombre: p.equipo_local?.nombre,
+          logo: p.equipo_local?.logo,
+          goles: finalizado ? p.equipo_local?.goles : null
+        },
+        visitante: {
+          id: p.equipo_visitante?.id,
+          nombre: p.equipo_visitante?.nombre,
+          logo: p.equipo_visitante?.logo,
+          goles: finalizado ? p.equipo_visitante?.goles : null
+        }
+      });
+      dia.total++;
+    }
+
+    res.json({
+      desde: `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-${String(inicio.getDate()).padStart(2, '0')}`,
+      dias,
+      total: partidos.length,
+      jornadas: Array.from(porDia.values()).map(d => ({
+        ...d,
+        competiciones: Array.from(d.competiciones.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
+      }))
     });
   } catch (error) {
     res.status(500).json({ error: error.message });
