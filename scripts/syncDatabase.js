@@ -229,7 +229,6 @@ async function procesarDetallePartido(fixtureId, homeTeamId, awayTeamId) {
       update[`${prefijo}.tarjetas_amarillas`] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
       update[`${prefijo}.tarjetas_rojas`] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
       update[`${prefijo}.offsides`] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
-      update[`${prefijo}.entradas`] = parseInt(s.find(x => x.type === 'Tackles')?.value) || 0;
     }
 
     if (homeStats) extraerStats(homeStats, 'equipo_local');

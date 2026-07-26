@@ -32,8 +32,7 @@ const estadisticasSchema = new mongoose.Schema({
   faltas: Number,
   tarjetas_amarillas: Number,
   tarjetas_rojas: Number,
-  offsides: Number,
-  entradas: Number
+  offsides: Number
 }, { _id: false });
 
 const partidoSchema = new mongoose.Schema({
@@ -62,7 +61,6 @@ const partidoSchema = new mongoose.Schema({
     tarjetas_amarillas: Number,
     tarjetas_rojas: Number,
     offsides: Number,
-    entradas: Number,
     formacion: String,
     entrenador: String,
     estadisticas_1t: estadisticasSchema,
@@ -84,7 +82,6 @@ const partidoSchema = new mongoose.Schema({
     tarjetas_amarillas: Number,
     tarjetas_rojas: Number,
     offsides: Number,
-    entradas: Number,
     formacion: String,
     entrenador: String,
     estadisticas_1t: estadisticasSchema,
@@ -97,6 +94,8 @@ const partidoSchema = new mongoose.Schema({
   resultado: String,
   estadisticas_completas: { type: Boolean, default: false },
   tiempos_completos: { type: Boolean, default: false },
+  tiempos_consultados_en: { type: Date, default: null },
+  tiempos_disponibles: { type: Boolean, default: null },
   eventos_completos: { type: Boolean, default: false },
   jugadores_completos: { type: Boolean, default: false },
   detalle_completo: { type: Boolean, default: false },

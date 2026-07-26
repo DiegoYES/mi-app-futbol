@@ -150,6 +150,7 @@
       <label for="fAlcance">Condición</label><select id="fAlcance" onchange="cargarTodo()"><option value="general">Todos los partidos</option><option value="local">Solo de local</option><option value="visitante">Solo de visitante</option></select>
       <label for="fLimite">Muestra</label><select id="fLimite" onchange="cargarTodo()"><option value="all">Toda la temporada</option><option value="5">Últimos 5</option><option value="3">Últimos 3</option></select>
       <label for="fPeriodo">Periodo</label><select id="fPeriodo" onchange="cargarTodo()"><option value="0">Partido completo</option><option value="1">1.º tiempo</option><option value="2">2.º tiempo</option></select>
+      <label for="fFormato">Mostrar</label><select id="fFormato" onchange="cambiarFormatoFrecuencia(this.value)"><option value="percent">Porcentaje</option><option value="count">Veces cumplidas</option></select>
     </div>
     <div class="panel"><div class="panel-title"><h3>Comparación directa</h3><span>Misma muestra para ambos equipos</span></div><div class="panel-body" id="tablaComparacion"><div class="aviso">Cargando...</div></div></div>
   </section>
@@ -179,6 +180,8 @@ let datosLocal = null;
 let datosVisitante = null;
 let datosPicksPartido = null;
 let temporadaPartido = null;
+const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
+let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
 
 const NOMBRES_CATEGORIAS = {
   goles: 'Goles', resultado: 'Resultado', corners: 'Córners', tarjetas: 'Tarjetas',
@@ -231,7 +234,7 @@ async function cargarCabecera() {
     </a>`;
 }
 
-function filaComparativa(etiqueta, a, b, sufijo = '', mayorEsMejor = true) {
+function filaComparativa(etiqueta, a, b, sufijo = '', mayorEsMejor = true, textoA = null, textoB = null) {
   const tieneA = a !== null && a !== undefined && a !== '' && Number.isFinite(Number(a));
   const tieneB = b !== null && b !== undefined && b !== '' && Number.isFinite(Number(b));
   const na = tieneA ? Number(a) : 0;
@@ -240,8 +243,8 @@ function filaComparativa(etiqueta, a, b, sufijo = '', mayorEsMejor = true) {
   const anchoA = tieneA && tieneB && total ? (na / total) * 100 : 50;
   const mejorA = tieneA && tieneB && (mayorEsMejor ? na > nb : na < nb);
   const mejorB = tieneA && tieneB && (mayorEsMejor ? nb > na : nb < na);
-  const mostrarA = tieneA ? `${a}${sufijo}` : '—';
-  const mostrarB = tieneB ? `${b}${sufijo}` : '—';
+  const mostrarA = tieneA ? (textoA ?? `${a}${sufijo}`) : '—';
+  const mostrarB = tieneB ? (textoB ?? `${b}${sufijo}`) : '—';
 
   return `<tr>
     <td class="val ${mejorA ? 'mejor' : ''}">${mostrarA}</td>
@@ -250,6 +253,26 @@ function filaComparativa(etiqueta, a, b, sufijo = '', mayorEsMejor = true) {
     </td>
     <td class="val ${mejorB ? 'mejor' : ''}">${mostrarB}</td>
   </tr>`;
+}
+
+function filaFrecuencia(etiqueta, valorA, valorB, muestraA, muestraB, mayorEsMejor = true) {
+  const textoA = formatoFrecuencia === 'count' ? `${valorA?.total ?? 0} de ${muestraA}` : null;
+  const textoB = formatoFrecuencia === 'count' ? `${valorB?.total ?? 0} de ${muestraB}` : null;
+  return filaComparativa(
+    etiqueta,
+    valorA?.porcentaje ?? null,
+    valorB?.porcentaje ?? null,
+    formatoFrecuencia === 'percent' ? '%' : '',
+    mayorEsMejor,
+    textoA,
+    textoB
+  );
+}
+
+function cambiarFormatoFrecuencia(valor) {
+  formatoFrecuencia = valor === 'count' ? 'count' : 'percent';
+  localStorage.setItem(CLAVE_FORMATO_FRECUENCIA, formatoFrecuencia);
+  pintarComparacion();
 }
 
 function seccionComparativa(titulo, detalle = '') {
@@ -308,30 +331,35 @@ function pintarComparacion() {
         ${filaComparativa('Promedio goles a favor', promGolesA, promGolesB)}
         ${filaComparativa('Promedio goles en contra', promContraA, promContraB, '', false)}
         ${seccionComparativa('Mercados de goles', 'frecuencia en la muestra seleccionada')}
-        ${filaComparativa('Over 0.5', pct(a.over05?.porcentaje), pct(b.over05?.porcentaje), '%')}
-        ${filaComparativa('Over 1.5', pct(a.over15?.porcentaje), pct(b.over15?.porcentaje), '%')}
-        ${filaComparativa('Over 2.5', pct(a.over25?.porcentaje), pct(b.over25?.porcentaje), '%')}
-        ${filaComparativa('Over 3.5', pct(a.over35?.porcentaje), pct(b.over35?.porcentaje), '%')}
-        ${filaComparativa('Under 0.5', pct(a.under05?.porcentaje), pct(b.under05?.porcentaje), '%')}
-        ${filaComparativa('Under 1.5', pct(a.under15?.porcentaje), pct(b.under15?.porcentaje), '%')}
-        ${filaComparativa('Under 2.5', pct(a.under25?.porcentaje), pct(b.under25?.porcentaje), '%')}
-        ${filaComparativa('Under 3.5', pct(a.under35?.porcentaje), pct(b.under35?.porcentaje), '%')}
-        ${filaComparativa('TT +1.5 a favor', pct(a.equipoOver15?.porcentaje), pct(b.equipoOver15?.porcentaje), '%')}
-        ${filaComparativa('TT +1.5 en contra', pct(a.rivalOver15?.porcentaje), pct(b.rivalOver15?.porcentaje), '%', false)}
-        ${filaComparativa('Ambos anotan', pct(a.btts?.porcentaje), pct(b.btts?.porcentaje), '%')}
+        ${filaFrecuencia('Over 0.5', a.over05, b.over05, a.jugados, b.jugados)}
+        ${filaFrecuencia('Over 1.5', a.over15, b.over15, a.jugados, b.jugados)}
+        ${filaFrecuencia('Over 2.5', a.over25, b.over25, a.jugados, b.jugados)}
+        ${filaFrecuencia('Over 3.5', a.over35, b.over35, a.jugados, b.jugados)}
+        ${filaFrecuencia('Under 0.5', a.under05, b.under05, a.jugados, b.jugados)}
+        ${filaFrecuencia('Under 1.5', a.under15, b.under15, a.jugados, b.jugados)}
+        ${filaFrecuencia('Under 2.5', a.under25, b.under25, a.jugados, b.jugados)}
+        ${filaFrecuencia('Under 3.5', a.under35, b.under35, a.jugados, b.jugados)}
+        ${filaFrecuencia('TT +1.5 a favor', a.equipoOver15, b.equipoOver15, a.jugados, b.jugados)}
+        ${filaFrecuencia('TT +1.5 en contra', a.rivalOver15, b.rivalOver15, a.jugados, b.jugados, false)}
+        ${filaFrecuencia('Ambos anotan', a.btts, b.btts, a.jugados, b.jugados)}
         ${seccionComparativa('Producción avanzada', `cobertura ${avanzadaA.muestra}/${a.jugados} vs ${avanzadaB.muestra}/${b.jugados}`)}
         ${filaComparativa('Tarjetas registradas (prom.)', numeroComparativo(aa.tarjetasFavor), numeroComparativo(ab.tarjetasFavor), '', false)}
         ${filaComparativa('Córners a favor (prom.)', numeroComparativo(aa.cornersFavor), numeroComparativo(ab.cornersFavor))}
         ${filaComparativa('Córners en contra (prom.)', numeroComparativo(aa.cornersContra), numeroComparativo(ab.cornersContra), '', false)}
         ${filaComparativa('Córners totales (prom.)', numeroComparativo(aa.cornersTotales), numeroComparativo(ab.cornersTotales))}
-        ${filaComparativa('Córners over 9.5', avanzadaA.cornersOver95?.porcentaje ?? null, avanzadaB.cornersOver95?.porcentaje ?? null, '%')}
+        ${filaFrecuencia(
+          'Córners over 9.5',
+          avanzadaA.cornersOver95,
+          avanzadaB.cornersOver95,
+          avanzadaA.muestras?.cornersTotales ?? avanzadaA.muestra,
+          avanzadaB.muestras?.cornersTotales ?? avanzadaB.muestra
+        )}
         ${filaComparativa('Tiros a favor (prom.)', numeroComparativo(aa.tirosFavor), numeroComparativo(ab.tirosFavor))}
         ${filaComparativa('Tiros concedidos (prom.)', numeroComparativo(aa.tirosContra), numeroComparativo(ab.tirosContra), '', false)}
         ${filaComparativa('Tiros a puerta (prom.)', numeroComparativo(aa.tirosPuertaFavor), numeroComparativo(ab.tirosPuertaFavor))}
         ${filaComparativa('Tiros a puerta concedidos (prom.)', numeroComparativo(aa.tirosPuertaContra), numeroComparativo(ab.tirosPuertaContra), '', false)}
         ${filaComparativa('Faltas (prom.)', numeroComparativo(aa.faltasFavor), numeroComparativo(ab.faltasFavor), '', false)}
         ${filaComparativa('Fueras de juego (prom.)', numeroComparativo(aa.offsidesFavor), numeroComparativo(ab.offsidesFavor), '', false)}
-        ${filaComparativa('Entradas (prom.)', numeroComparativo(aa.entradasFavor), numeroComparativo(ab.entradasFavor))}
       </tbody>
     </table>
     <p class="comparison-note">Los promedios avanzados solo usan partidos con cobertura confirmada. “Tarjetas registradas” suma amarillas y rojas simples; una casa de apuestas puede aplicar reglas de puntuación distintas.</p>`;
@@ -560,6 +588,7 @@ async function cargarTodo() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('fFormato').value = formatoFrecuencia;
   document.getElementById('share-match').addEventListener('click',async event=>{try{await navigator.clipboard.writeText(location.href);event.currentTarget.textContent='Enlace copiado ✓'}catch{window.prompt('Copia este enlace de análisis:',location.href)}});
   if (!ID_LOCAL || !ID_VISITANTE) {
     document.getElementById('cabecera').innerHTML =

@@ -2,6 +2,8 @@ let ligasDisponibles = {};
 let picksActuales = null;
 let soloRecomendadosPicks = false;
 const seleccionesBoleta = new Map();
+const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
+let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
 
 const NOMBRES_CATEGORIAS = {
     goles: 'Goles', resultado: 'Resultado', corners: 'Córners', tarjetas: 'Tarjetas',
@@ -448,7 +450,6 @@ function generarVistaPorEstadisticas(partidos, limit) {
     const tirosPuerta = partidos.map(p => p.tiros_puerta);
     const faltas = partidos.map(p => p.faltas);
     const offsides = partidos.map(p => p.offsides);
-    const entradas = partidos.map(p => p.entradas);
 
     let html = '';
     html += crearTablaEstadistica('Goles', partidos, goles.map(v => ({ valor: v })));
@@ -459,7 +460,6 @@ function generarVistaPorEstadisticas(partidos, limit) {
     html += crearTablaEstadistica('Tarjetas Amarillas', partidos, tarjetasAmarillas.map(v => ({ valor: v })));
     html += crearTablaEstadistica('Tarjetas Rojas', partidos, tarjetasRojas.map(v => ({ valor: v })));
     html += crearTablaEstadistica('Fueras de Juego', partidos, offsides.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Entradas', partidos, entradas.map(v => ({ valor: v })));
 
     return html;
 }
@@ -502,9 +502,15 @@ async function actualizarEstadisticas(lado) {
             return;
         }
 
-        const mercado = (label, valor) => `<div class="market-card">
+        const frecuenciaPrincipal = (valor, muestra) => formatoFrecuencia === 'count'
+            ? `${valor.total} de ${muestra}`
+            : `${valor.porcentaje}%`;
+        const frecuenciaSecundaria = (valor, muestra) => formatoFrecuencia === 'count'
+            ? `${valor.porcentaje}% de la muestra`
+            : `${valor.total} de ${muestra}`;
+        const mercado = (label, valor, muestra = data.stats.jugados) => `<div class="market-card">
             <span class="metric-label">${label}</span>
-            <span class="market-value"><strong>${valor.porcentaje}%</strong><small>${valor.total} de ${data.stats.jugados}</small></span>
+            <span class="market-value"><strong>${frecuenciaPrincipal(valor, muestra)}</strong><small>${frecuenciaSecundaria(valor, muestra)}</small></span>
         </div>`;
         const valorPromedio = valor => valor == null
             ? '—'
@@ -556,12 +562,11 @@ async function actualizarEstadisticas(lado) {
                     ${metricaAvanzada('Tarjetas registradas', promedios.tarjetasFavor, promedios.tarjetasContra)}
                     ${metricaAvanzada('Faltas', promedios.faltasFavor, promedios.faltasContra)}
                     ${metricaAvanzada('Fueras de juego', promedios.offsidesFavor, promedios.offsidesContra)}
-                    ${metricaAvanzada('Entradas', promedios.entradasFavor, promedios.entradasContra)}
                     ${metricaAvanzada('Totales del partido', promedios.cornersTotales, promedios.tarjetasTotales, 'Córners', 'Tarjetas')}
                     <div class="advanced-metric-card advanced-tendency">
                         <span class="metric-label">Más de 9.5 córners totales</span>
-                        <strong>${avanzadas.cornersOver95.porcentaje}%</strong>
-                        <small>${avanzadas.cornersOver95.total} de ${avanzadas.muestra} con cobertura</small>
+                        <strong>${frecuenciaPrincipal(avanzadas.cornersOver95, avanzadas.muestras?.cornersTotales ?? avanzadas.muestra)}</strong>
+                        <small>${frecuenciaSecundaria(avanzadas.cornersOver95, avanzadas.muestras?.cornersTotales ?? avanzadas.muestra)} · con cobertura</small>
                     </div>
                 </div>` : '<div class="advanced-empty">Todavía no hay estadísticas avanzadas cubiertas para esta muestra. Los marcadores y tendencias de goles sí son válidos.</div>'}
             </details>
@@ -899,6 +904,19 @@ async function mostrarArbitros() {
 }
 
 function configurarEventos() {
+    document.querySelectorAll('[data-frequency-mode]').forEach(boton => {
+        boton.addEventListener('click', () => {
+            formatoFrecuencia = boton.dataset.frequencyMode === 'count' ? 'count' : 'percent';
+            localStorage.setItem(CLAVE_FORMATO_FRECUENCIA, formatoFrecuencia);
+            document.querySelectorAll('[data-frequency-mode]').forEach(item => {
+                item.setAttribute('aria-pressed', String(item.dataset.frequencyMode === formatoFrecuencia));
+            });
+            for (const lado of ['a', 'b']) {
+                if (document.getElementById(`team-${lado}`).value) actualizarEstadisticas(lado);
+            }
+        });
+        boton.setAttribute('aria-pressed', String(boton.dataset.frequencyMode === formatoFrecuencia));
+    });
     for (const lado of ['a', 'b']) {
         document.getElementById(`league-${lado}`).addEventListener('change', async () => {
             cargarTemporadas(lado);

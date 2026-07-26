@@ -9,24 +9,35 @@ function llamadasLote(partidos) {
 
 async function planLiga(leagueId, season) {
   const base = { 'liga.id': leagueId, 'liga.temporada': season, estado: { $in: ['FT', 'AET', 'PEN'] } };
-  const [finalizados, sinStats, sinEventos, sinJugadores, sinTiempos] = await Promise.all([
+  const [finalizados, sinStats, sinEventos, sinJugadores, sinTiempos, huecosTiempos] = await Promise.all([
     Partido.countDocuments(base),
     Partido.countDocuments({ ...base, estadisticas_completas: { $ne: true } }),
     Partido.countDocuments({ ...base, eventos_completos: { $ne: true } }),
     Partido.countDocuments({ ...base, jugadores_completos: { $ne: true } }),
-    Partido.countDocuments({ ...base, tiempos_completos: { $ne: true } })
+    Partido.countDocuments({
+      ...base,
+      tiempos_completos: { $ne: true },
+      $or: [{ tiempos_consultados_en: null }, { tiempos_consultados_en: { $exists: false } }]
+    }),
+    Partido.countDocuments({ ...base, tiempos_completos: { $ne: true }, tiempos_disponibles: false })
   ]);
   const pendientesDetalle = await Partido.countDocuments({ ...base, detalle_completo: { $ne: true } });
   return {
     liga: { id: leagueId, nombre: config.ligas[leagueId]?.nombre || String(leagueId) },
     temporada: season,
     finalizados,
-    pendientes: { estadisticas: sinStats, eventos: sinEventos, jugadores: sinJugadores, tiempos: sinTiempos },
+    pendientes: {
+      estadisticas: sinStats,
+      eventos: sinEventos,
+      jugadores: sinJugadores,
+      tiempos: sinTiempos,
+      tiempos_consultados_sin_cobertura: huecosTiempos
+    },
     costo_estimado: {
       detalle_completo_en_lotes: llamadasLote(pendientesDetalle),
-      tiempos_1t_2t_separados: sinTiempos * 2
+      tiempos_1t_2t_en_una_llamada: sinTiempos
     },
-    recomendacion: 'Primero detalle completo en lotes; deja 1T/2T para después de validar los mercados de partido completo.'
+    recomendacion: 'El detalle completo va en lotes; 1T/2T usa half=true y cuesta una llamada por partido pendiente.'
   };
 }
 
@@ -41,7 +52,7 @@ async function main() {
       notas: [
         'Una llamada /fixtures?ids=... admite hasta 20 partidos.',
         'El detalle puede traer estadísticas, eventos, alineaciones y jugadores.',
-        'Las estadísticas separadas por tiempo siguen costando dos llamadas por partido.'
+        'Las estadísticas de 1T y 2T se obtienen juntas con half=true: una llamada por partido.'
       ],
       ligas: await Promise.all(ligas.map(liga => planLiga(liga, season)))
     }, null, 2));

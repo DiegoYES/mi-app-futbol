@@ -14,7 +14,11 @@ const PETICIONES_MAXIMAS = Number.isInteger(Number(process.env.SYNC_MAX_REQUESTS
   && Number(process.env.SYNC_MAX_REQUESTS) > 0
   ? Number(process.env.SYNC_MAX_REQUESTS)
   : Infinity;
-const RETARDO = 7000;             // 7 s entre peticiones
+const RETARDO = Number(process.env.SYNC_DELAY_MS) >= 0
+  ? Number(process.env.SYNC_DELAY_MS)
+  : 500;
+const TEMPORADA = Number(process.env.FOOTBALL_SEASON || config.seasonDefault);
+const REINTENTAR_HUECOS = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_RETRY_GAPS || ''));
 let peticionesRealizadas = 0;
 let detener = false;
 
@@ -24,16 +28,17 @@ function esperar(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function obtenerValor(stats, tipo) {
+function obtenerValor(stats, tipo, valorNulo = 0) {
   const stat = stats?.find(s => s.type === tipo);
   const val = stat?.value;
-  if (val === null || val === undefined) return 0;
+  if (val === null || val === undefined || val === '') return valorNulo;
   // Si es string con '%', lo limpiamos (para posesión)
   if (typeof val === 'string') {
     const num = parseFloat(val.replace('%', '').trim());
-    return isNaN(num) ? 0 : num;
+    return isNaN(num) ? valorNulo : num;
   }
-  return parseInt(val) || 0;
+  const num = Number(val);
+  return Number.isFinite(num) ? num : valorNulo;
 }
 
 function obtenerRango(minuto) {
@@ -44,43 +49,62 @@ function obtenerRango(minuto) {
 
 async function completarTiemposYEventos(leagueId) {
   // PARTIDOS FALTANTES: la nueva condición usa 'goles' en estadisticas_1t para no repetir los ya hechos
-  const partidosFaltantes = await Partido.find({
+  const filtroPendientes = {
     'liga.id': leagueId,
-    'liga.temporada': Number(config.seasonDefault),
-    estado: 'FT',
+    'liga.temporada': TEMPORADA,
+    estado: { $in: ['FT', 'AET', 'PEN'] },
     estadisticas_completas: true,
     tiempos_completos: { $ne: true }
-  }).lean();
+  };
+  if (!REINTENTAR_HUECOS) {
+    filtroPendientes.$or = [
+      { tiempos_consultados_en: null },
+      { tiempos_consultados_en: { $exists: false } }
+    ];
+  }
+  const partidosFaltantes = await Partido.find(filtroPendientes).lean();
 
   console.log(`   ⚽ Liga ${leagueId}: ${partidosFaltantes.length} partidos sin datos de tiempos/eventos.`);
 
   for (let p of partidosFaltantes) {
-    if (detener || peticionesRealizadas >= PETICIONES_MAXIMAS) break;
+    const llamadasNecesarias = p.eventos_completos ? 1 : 2;
+    if (detener || peticionesRealizadas + llamadasNecesarias > PETICIONES_MAXIMAS) break;
 
     try {
-      // 1T
+      // Una sola consulta devuelve partido completo, 1T y 2T.
       await esperar(RETARDO);
-      const { data: data1 } = await axios.get('https://v3.football.api-sports.io/fixtures/statistics', {
-        params: { fixture: p.api_id, half: '1st' },
+      const { data: dataStats } = await axios.get('https://v3.football.api-sports.io/fixtures/statistics', {
+        params: { fixture: p.api_id, half: true },
         httpsAgent, timeout: 10000
       });
       peticionesRealizadas++;
 
-      // 2T
-      await esperar(RETARDO);
-      const { data: data2 } = await axios.get('https://v3.football.api-sports.io/fixtures/statistics', {
-        params: { fixture: p.api_id, half: '2nd' },
-        httpsAgent, timeout: 10000
-      });
-      peticionesRealizadas++;
+      const respuestaStats = dataStats.response || [];
+      const data1 = respuestaStats.map(item => ({ team: item.team, statistics: item.statistics_1h || [] }));
+      const data2 = respuestaStats.map(item => ({ team: item.team, statistics: item.statistics_2h || [] }));
+      const tieneAmbosTiempos = data1.length === 2
+        && data2.length === 2
+        && data1.every(item => item.statistics.length)
+        && data2.every(item => item.statistics.length);
 
-      // Events
-      await esperar(RETARDO);
-      const { data: dataEvents } = await axios.get('https://v3.football.api-sports.io/fixtures/events', {
-        params: { fixture: p.api_id },
-        httpsAgent, timeout: 10000
-      });
-      peticionesRealizadas++;
+      if (!tieneAmbosTiempos) {
+        await Partido.updateOne({ api_id: p.api_id }, { $set: {
+          tiempos_consultados_en: new Date(),
+          tiempos_disponibles: false
+        } });
+        console.warn(`   ⚠️ Partido ${p.api_id}: el proveedor no entregó ambos tiempos.`);
+        continue;
+      }
+
+      let dataEvents = { response: [] };
+      if (!p.eventos_completos) {
+        await esperar(RETARDO);
+        ({ data: dataEvents } = await axios.get('https://v3.football.api-sports.io/fixtures/events', {
+          params: { fixture: p.api_id },
+          httpsAgent, timeout: 10000
+        }));
+        peticionesRealizadas++;
+      }
 
       const update = {};
 
@@ -98,7 +122,7 @@ async function completarTiemposYEventos(leagueId) {
           update[`equipo_local.${halfKey}.tiros_total`] = obtenerValor(s, 'Total Shots');
           update[`equipo_local.${halfKey}.tiros_puerta`] = obtenerValor(s, 'Shots on Goal');
           update[`equipo_local.${halfKey}.corners`] = obtenerValor(s, 'Corner Kicks');
-          update[`equipo_local.${halfKey}.faltas`] = obtenerValor(s, 'Fouls');
+          update[`equipo_local.${halfKey}.faltas`] = obtenerValor(s, 'Fouls', null);
           update[`equipo_local.${halfKey}.tarjetas_amarillas`] = obtenerValor(s, 'Yellow Cards');
           update[`equipo_local.${halfKey}.tarjetas_rojas`] = obtenerValor(s, 'Red Cards');
           update[`equipo_local.${halfKey}.offsides`] = obtenerValor(s, 'Offsides');
@@ -115,7 +139,7 @@ async function completarTiemposYEventos(leagueId) {
           update[`equipo_visitante.${halfKey}.tiros_total`] = obtenerValor(s, 'Total Shots');
           update[`equipo_visitante.${halfKey}.tiros_puerta`] = obtenerValor(s, 'Shots on Goal');
           update[`equipo_visitante.${halfKey}.corners`] = obtenerValor(s, 'Corner Kicks');
-          update[`equipo_visitante.${halfKey}.faltas`] = obtenerValor(s, 'Fouls');
+          update[`equipo_visitante.${halfKey}.faltas`] = obtenerValor(s, 'Fouls', null);
           update[`equipo_visitante.${halfKey}.tarjetas_amarillas`] = obtenerValor(s, 'Yellow Cards');
           update[`equipo_visitante.${halfKey}.tarjetas_rojas`] = obtenerValor(s, 'Red Cards');
           update[`equipo_visitante.${halfKey}.offsides`] = obtenerValor(s, 'Offsides');
@@ -125,17 +149,19 @@ async function completarTiemposYEventos(leagueId) {
         }
       }
 
-      rellenarHalf('estadisticas_1t', data1.response);
-      rellenarHalf('estadisticas_2t', data2.response);
+      rellenarHalf('estadisticas_1t', data1);
+      rellenarHalf('estadisticas_2t', data2);
 
-      // Rellenar eventos y rangos
-      const eventos = dataEvents.response || [];
-      const eventosLocal = [];
-      const eventosVisitante = [];
-      const statsLocal = new Map();
-      const statsVisitante = new Map();
+      // Rellenar eventos y rangos únicamente si aún faltaban; nunca borrar
+      // eventos existentes por haber omitido deliberadamente esa consulta.
+      if (!p.eventos_completos) {
+        const eventos = dataEvents.response || [];
+        const eventosLocal = [];
+        const eventosVisitante = [];
+        const statsLocal = new Map();
+        const statsVisitante = new Map();
 
-      for (const evento of eventos) {
+        for (const evento of eventos) {
         const minuto = evento.time?.elapsed || 0;
         const tipo = (() => {
           if (evento.type === 'goal') return 'Gol';
@@ -174,14 +200,17 @@ async function completarTiemposYEventos(leagueId) {
           else if (tipo === 'Tarjeta Roja') s.rojas++;
           else if (tipo === 'Córner') s.corners++;
         }
-      }
+        }
 
-      update['equipo_local.eventos'] = eventosLocal;
-      update['equipo_local.estadisticas_por_rango'] = Array.from(statsLocal.entries()).map(([rango, vals]) => ({ rango_minutos: rango, ...vals }));
-      update['equipo_visitante.eventos'] = eventosVisitante;
-      update['equipo_visitante.estadisticas_por_rango'] = Array.from(statsVisitante.entries()).map(([rango, vals]) => ({ rango_minutos: rango, ...vals }));
+        update['equipo_local.eventos'] = eventosLocal;
+        update['equipo_local.estadisticas_por_rango'] = Array.from(statsLocal.entries()).map(([rango, vals]) => ({ rango_minutos: rango, ...vals }));
+        update['equipo_visitante.eventos'] = eventosVisitante;
+        update['equipo_visitante.estadisticas_por_rango'] = Array.from(statsVisitante.entries()).map(([rango, vals]) => ({ rango_minutos: rango, ...vals }));
+        update.eventos_completos = true;
+      }
       update.tiempos_completos = true;
-      update.eventos_completos = true;
+      update.tiempos_disponibles = true;
+      update.tiempos_consultados_en = new Date();
 
       await Partido.updateOne({ api_id: p.api_id }, { $set: update });
       console.log(`   ✅ Partido ${p.api_id} actualizado (1T/2T + eventos + posesión).`);
