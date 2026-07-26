@@ -22,6 +22,11 @@ const usuarioSchema = new mongoose.Schema({
     default: () => new Date(Date.now() + DIAS_PRUEBA * 24 * 60 * 60 * 1000)
   },
   suscripcion_termina: { type: Date, default: null },
+  meses_cortesia: { type: Number, default: 0 },
+  ip_registro: { type: String, default: null },
+  ip_ultimo_acceso: { type: String, default: null },
+  suspendido_hasta: { type: Date, default: null },
+  bloqueado_ip_duplicada: { type: Boolean, default: false },
   activo: { type: Boolean, default: true },
   ultimo_acceso: { type: Date, default: null }
 });
@@ -41,6 +46,14 @@ usuarioSchema.methods.estadoAcceso = function () {
 
   if (!this.activo) {
     return { tieneAcceso: false, motivo: 'cuenta_desactivada', plan: this.plan };
+  }
+
+  if (this.bloqueado_ip_duplicada) {
+    return { tieneAcceso: false, motivo: 'ip_duplicada', plan: this.plan };
+  }
+
+  if (this.suspendido_hasta && this.suspendido_hasta > ahora) {
+    return { tieneAcceso: false, motivo: 'suspendido', plan: this.plan, suspendido_hasta: this.suspendido_hasta };
   }
 
   if (this.rol === 'admin') {
@@ -82,7 +95,11 @@ usuarioSchema.methods.aJSON = function () {
     motivo: estado.motivo,
     diasRestantes: estado.diasRestantes,
     vence: estado.vence || null,
-    fecha_registro: this.fecha_registro
+    fecha_registro: this.fecha_registro,
+    ip_registro: this.ip_registro,
+    ip_ultimo_acceso: this.ip_ultimo_acceso,
+    suspendido_hasta: this.suspendido_hasta || null,
+    bloqueado_ip_duplicada: this.bloqueado_ip_duplicada || false
   };
 };
 

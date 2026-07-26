@@ -26,11 +26,20 @@
   .badge.prueba { background: #dbeafe; color: #1e40af; }
   .badge.expirado { background: #fee2e2; color: #991b1b; }
   .badge.admin { background: #fef3c7; color: #92400e; }
-  .acciones button { padding: 5px 10px; margin-right: 5px; border: none; border-radius: 6px; cursor: pointer; font-size: .78rem; }
+  .badge.suspendido { background: #fef3c7; color: #92400e; }
+  .badge.bloq-ip { background: #fee2e2; color: #7f1d1d; }
+  .acciones button { padding: 5px 10px; margin-right: 4px; margin-bottom: 4px; border: none; border-radius: 6px; cursor: pointer; font-size: .78rem; }
   .btn-mes { background: var(--primary); color: #fff; }
+  .btn-cortesia { background: #d1fae5; color: #065f46; }
+  .btn-suspender { background: #fef3c7; color: #92400e; }
+  .btn-levantar { background: #e0f2fe; color: #075985; }
+  .btn-desbloquear-ip { background: #ede9fe; color: #5b21b6; }
   .btn-off { background: #fee2e2; color: #991b1b; }
   .btn-on { background: #dcfce7; color: #166534; }
   .vacio { text-align: center; padding: 32px; color: #94a3b8; }
+  .ip-text { font-size: .75rem; color: #64748b; font-family: monospace; }
+  .seccion { margin-top: 32px; }
+  .seccion h2 { font-size: 1.1rem; color: var(--primary); margin-bottom: 12px; }
 </style>
 </head>
 <body>
@@ -45,10 +54,15 @@
 
   <table>
     <thead>
-      <tr><th>Usuario</th><th>Plan</th><th>Vence</th><th>Registro</th><th>Último acceso</th><th>Acciones</th></tr>
+      <tr><th>Usuario</th><th>IP</th><th>Plan</th><th>Vence</th><th>Registro</th><th>Último acceso</th><th>Acciones</th></tr>
     </thead>
-    <tbody id="tbody"><tr><td colspan="6" class="vacio">Cargando...</td></tr></tbody>
+    <tbody id="tbody"><tr><td colspan="7" class="vacio">Cargando...</td></tr></tbody>
   </table>
+
+  <div class="seccion">
+    <h2>⚠️ IPs duplicadas</h2>
+    <div id="ips-duplicadas"><p style="color:#94a3b8">Cargando...</p></div>
+  </div>
 </div>
 
 <script>
@@ -77,12 +91,15 @@ async function cargarResumen() {
   const resp = await fetch('/api/admin/resumen');
   if (!resp.ok) return;
   const d = await resp.json();
+  const cortesias = d.mesesCortesia || 0;
+  const ingresoReal = Math.max(0, d.premium - cortesias) * 50;
   document.getElementById('kpis').innerHTML = `
     <div class="kpi"><div class="label">Usuarios</div><div class="value">${d.total}</div></div>
     <div class="kpi"><div class="label">Premium</div><div class="value">${d.premium}</div></div>
     <div class="kpi"><div class="label">En prueba</div><div class="value">${d.enPrueba}</div></div>
     <div class="kpi"><div class="label">Expirados</div><div class="value">${d.expirados}</div></div>
-    <div class="kpi"><div class="label">Ingreso mensual</div><div class="value">$${d.premium * 50}</div></div>
+    <div class="kpi"><div class="label">Ingreso mensual real</div><div class="value">$${ingresoReal}</div></div>
+    <div class="kpi"><div class="label">Cortesías activas</div><div class="value">${cortesias}</div></div>
     <div class="kpi"><div class="label">API hoy</div><div class="value">${d.cuotaApi.usadas}/${d.cuotaApi.disponibles_para_uso}</div></div>`;
 }
 
@@ -95,16 +112,24 @@ async function cargarUsuarios() {
   const tbody = document.getElementById('tbody');
 
   if (!usuarios.length) {
-    tbody.innerHTML = '<tr><td colspan="6" class="vacio">Sin resultados</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" class="vacio">Sin resultados</td></tr>';
     return;
   }
 
   tbody.innerHTML = usuarios.map(u => {
     const clase = u.rol === 'admin' ? 'admin' : u.plan;
     const etiqueta = u.rol === 'admin' ? 'admin' : u.plan;
+    const esSuspendido = u.suspendido_hasta && new Date(u.suspendido_hasta) > new Date();
+    const esBloqIP = u.bloqueado_ip_duplicada;
+    const estadoBadges = [
+      !u.activo ? '<span class="badge expirado">desactivado</span>' : '',
+      esSuspendido ? `<span class="badge suspendido">suspendido</span>` : '',
+      esBloqIP ? '<span class="badge bloq-ip">bloq. IP</span>' : ''
+    ].filter(Boolean).join(' ');
     return `<tr>
       <td><strong>${escaparHtml(u.nombre || '—')}</strong><br><span style="color:#64748b">${escaparHtml(u.email)}</span>
-        ${u.activo ? '' : '<br><span class="badge expirado">desactivado</span>'}</td>
+        ${estadoBadges ? '<br>' + estadoBadges : ''}</td>
+      <td class="ip-text">${escaparHtml(u.ip_registro || '—')}</td>
       <td><span class="badge ${clase}">${etiqueta}</span>
         ${u.diasRestantes != null ? `<br><small>${u.diasRestantes} día(s)</small>` : ''}</td>
       <td>${fecha(u.suscripcion_termina || u.prueba_termina)}</td>
@@ -113,8 +138,12 @@ async function cargarUsuarios() {
       <td class="acciones">
         <button class="btn-mes" onclick="extender('${u.id}',1)">+1 mes</button>
         <button class="btn-mes" onclick="extender('${u.id}',3)">+3 meses</button>
-        <button class="${u.activo ? 'btn-off' : 'btn-on'}" onclick="alternar('${u.id}',${!u.activo})">
-          ${u.activo ? 'Desactivar' : 'Activar'}</button>
+        <button class="btn-cortesia" onclick="cortesia('${u.id}')">🎁 Cortesía</button>
+        ${esSuspendido
+          ? `<button class="btn-levantar" onclick="levantarSuspension('${u.id}')">✅ Levantar</button>`
+          : `<button class="btn-suspender" onclick="suspender('${u.id}')">⏸ Suspender</button>`}
+        ${esBloqIP ? `<button class="btn-desbloquear-ip" onclick="desbloquearIP('${u.id}')">🔓 Desbloquear IP</button>` : ''}
+        <button class="${u.activo ? 'btn-off' : 'btn-on'}" onclick="alternar('${u.id}',${!u.activo})">${u.activo ? 'Desactivar' : 'Activar'}</button>
       </td>
     </tr>`;
   }).join('');
@@ -131,6 +160,60 @@ async function extender(id, meses) {
   refrescar();
 }
 
+async function cortesia(id) {
+  if (!confirm('¿Aplicar 1 mes de cortesía? No se contará como ingreso.')) return;
+  const resp = await fetch(`/api/admin/usuarios/${id}/cortesia`, { method: 'POST' });
+  const d = await resp.json();
+  if (!resp.ok) return alert(d.error);
+  refrescar();
+}
+
+async function suspender(id) {
+  const dias = prompt('¿Cuántos días suspender? (1-365)');
+  if (!dias) return;
+  const resp = await fetch(`/api/admin/usuarios/${id}/suspender`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ dias: parseInt(dias) })
+  });
+  const d = await resp.json();
+  if (!resp.ok) return alert(d.error);
+  refrescar();
+}
+
+async function levantarSuspension(id) {
+  const resp = await fetch(`/api/admin/usuarios/${id}/suspension`, { method: 'DELETE' });
+  const d = await resp.json();
+  if (!resp.ok) return alert(d.error);
+  refrescar();
+}
+
+async function desbloquearIP(id) {
+  if (!confirm('¿Desbloquear esta cuenta? (solo cuando el usuario pague)')) return;
+  const resp = await fetch(`/api/admin/usuarios/${id}/bloqueo-ip`, { method: 'DELETE' });
+  const d = await resp.json();
+  if (!resp.ok) return alert(d.error);
+  refrescar();
+}
+
+async function cargarIPsDuplicadas() {
+  const resp = await fetch('/api/admin/ips-duplicadas');
+  if (!resp.ok) return;
+  const { duplicadas } = await resp.json();
+  const cont = document.getElementById('ips-duplicadas');
+  if (!duplicadas.length) {
+    cont.innerHTML = '<p style="color:#94a3b8">No hay IPs duplicadas.</p>';
+    return;
+  }
+  cont.innerHTML = duplicadas.map(d => `
+    <div style="background:#fff;border-radius:8px;padding:14px;margin-bottom:10px;box-shadow:0 2px 8px rgba(0,0,0,.07)">
+      <strong class="ip-text">${escaparHtml(d._id)}</strong> — <span style="color:#991b1b">${d.cuentas} cuentas</span>
+      <ul style="margin:6px 0 0;padding-left:20px">
+        ${d.usuarios.map(u => `<li>${escaparHtml(u.nombre || u.email)} <span class="badge ${u.bloqueado ? 'bloq-ip' : u.plan}">${u.bloqueado ? 'bloqueado' : u.plan}</span></li>`).join('')}
+      </ul>
+    </div>`).join('');
+}
+
 async function alternar(id, activo) {
   const resp = await fetch(`/api/admin/usuarios/${id}/activo`, {
     method: 'PATCH',
@@ -145,6 +228,7 @@ async function alternar(id, activo) {
 function refrescar() {
   cargarResumen();
   cargarUsuarios();
+  cargarIPsDuplicadas();
 }
 
 document.addEventListener('DOMContentLoaded', refrescar);

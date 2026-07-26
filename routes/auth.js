@@ -24,6 +24,12 @@ function validarEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
 }
 
+function obtenerIP(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (forwarded) return forwarded.split(',')[0].trim();
+  return req.socket?.remoteAddress || req.ip || null;
+}
+
 router.post('/registro', limiteIntentos, async (req, res) => {
   try {
     const { email, password, nombre } = req.body;
@@ -43,9 +49,21 @@ router.post('/registro', limiteIntentos, async (req, res) => {
       return res.status(409).json({ error: 'Ese email ya está registrado' });
     }
 
-    const usuario = await Usuario.create({ email, password, nombre });
-    const token = firmarToken(usuario);
+    const ip = obtenerIP(req);
 
+    // Bloquear automáticamente si ya existe una cuenta en prueba con esta IP
+    const cuentaConMismaIP = ip
+      ? await Usuario.findOne({ ip_registro: ip, rol: 'usuario', suscripcion_termina: null })
+      : null;
+
+    const usuario = await Usuario.create({
+      email, password, nombre,
+      ip_registro: ip,
+      ip_ultimo_acceso: ip,
+      bloqueado_ip_duplicada: !!cuentaConMismaIP
+    });
+
+    const token = firmarToken(usuario);
     res.cookie('token', token, OPCIONES_COOKIE);
     res.status(201).json({ usuario: usuario.aJSON() });
   } catch (error) {
@@ -71,6 +89,7 @@ router.post('/login', limiteIntentos, async (req, res) => {
     }
 
     usuario.ultimo_acceso = new Date();
+    usuario.ip_ultimo_acceso = obtenerIP(req);
     await usuario.save();
 
     const token = firmarToken(usuario);

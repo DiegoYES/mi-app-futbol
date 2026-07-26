@@ -47,17 +47,19 @@ router.get('/usuarios', async (req, res) => {
 router.get('/resumen', async (req, res) => {
   try {
     const ahora = new Date();
-    const [total, premium, enPrueba, cuotaApi] = await Promise.all([
+    const [total, premium, enPrueba, totalCortesia, cuotaApi] = await Promise.all([
       Usuario.countDocuments({}),
       Usuario.countDocuments({ suscripcion_termina: { $gt: ahora } }),
       Usuario.countDocuments({
         prueba_termina: { $gt: ahora },
         $or: [{ suscripcion_termina: null }, { suscripcion_termina: { $lte: ahora } }]
       }),
+      Usuario.aggregate([{ $group: { _id: null, total: { $sum: '$meses_cortesia' } } }]),
       crearControlCuota().consultar()
     ]);
 
-    res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, cuotaApi });
+    const mesesCortesia = totalCortesia[0]?.total || 0;
+    res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, mesesCortesia, cuotaApi });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
@@ -90,7 +92,30 @@ router.post('/usuarios/:id/suscripcion', async (req, res) => {
   }
 });
 
-// Cancelar suscripción (no borra la cuenta)
+// Cortesía: extiende 1 mes sin contar como ingreso
+router.post('/usuarios/:id/cortesia', async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+
+    const ahora = new Date();
+    const base = usuario.suscripcion_termina && usuario.suscripcion_termina > ahora
+      ? new Date(usuario.suscripcion_termina)
+      : ahora;
+
+    base.setMonth(base.getMonth() + 1);
+    usuario.suscripcion_termina = base;
+    usuario.plan = 'premium';
+    usuario.meses_cortesia = (usuario.meses_cortesia || 0) + 1;
+    await usuario.save();
+
+    res.json({ mensaje: 'Cortesía de 1 mes aplicada', usuario: usuario.aJSON() });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+
 router.delete('/usuarios/:id/suscripcion', async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id);
@@ -106,19 +131,83 @@ router.delete('/usuarios/:id/suscripcion', async (req, res) => {
   }
 });
 
+// IPs con más de una cuenta de usuario (posibles abusos)
+router.get('/ips-duplicadas', async (req, res) => {
+  try {
+    const duplicadas = await Usuario.aggregate([
+      { $match: { ip_registro: { $ne: null }, rol: 'usuario' } },
+      { $group: {
+        _id: '$ip_registro',
+        cuentas: { $sum: 1 },
+        usuarios: { $push: { id: '$_id', email: '$email', nombre: '$nombre', plan: '$plan', bloqueado: '$bloqueado_ip_duplicada' } }
+      }},
+      { $match: { cuentas: { $gte: 2 } } },
+      { $sort: { cuentas: -1 } }
+    ]);
+    res.json({ duplicadas });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Suspensión temporal
+router.post('/usuarios/:id/suspender', async (req, res) => {
+  try {
+    const dias = parseInt(req.body.dias);
+    if (!Number.isInteger(dias) || dias < 1 || dias > 365) {
+      return res.status(400).json({ error: 'Los días deben ser un entero entre 1 y 365' });
+    }
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (usuario._id.equals(req.usuario._id)) {
+      return res.status(400).json({ error: 'No puedes suspenderte a ti mismo' });
+    }
+    const hasta = new Date();
+    hasta.setDate(hasta.getDate() + dias);
+    usuario.suspendido_hasta = hasta;
+    await usuario.save();
+    res.json({ mensaje: `Cuenta suspendida por ${dias} día(s)`, usuario: usuario.aJSON() });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Levantar suspensión temporal
+router.delete('/usuarios/:id/suspension', async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+    usuario.suspendido_hasta = null;
+    await usuario.save();
+    res.json({ mensaje: 'Suspensión levantada', usuario: usuario.aJSON() });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Desbloquear cuenta bloqueada por IP duplicada (cuando el usuario paga)
+router.delete('/usuarios/:id/bloqueo-ip', async (req, res) => {
+  try {
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+    usuario.bloqueado_ip_duplicada = false;
+    await usuario.save();
+    res.json({ mensaje: 'Bloqueo por IP eliminado', usuario: usuario.aJSON() });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Activar o desactivar una cuenta
 router.patch('/usuarios/:id/activo', async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
-
     if (usuario._id.equals(req.usuario._id)) {
       return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta' });
     }
-
     usuario.activo = Boolean(req.body.activo);
     await usuario.save();
-
     res.json({ mensaje: usuario.activo ? 'Cuenta activada' : 'Cuenta desactivada', usuario: usuario.aJSON() });
   } catch (error) {
     res.status(500).json({ error: error.message });
