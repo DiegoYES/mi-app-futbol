@@ -158,10 +158,34 @@ app.get('/api/ligas/:id/equipos', cacheMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'La competición no es válida.' });
     }
 
-    const temporada = await resolverTemporada(leagueId, null, req.query.season);
+    const todasLasTemporadas = /^(1|true|yes|si|sí)$/i.test(String(req.query.allSeasons || ''));
+    const temporada = todasLasTemporadas
+      ? null
+      : await resolverTemporada(leagueId, null, req.query.season);
     let equiposArray = [];
 
-    if (temporada !== null) {
+    if (todasLasTemporadas) {
+      equiposArray = await Partido.aggregate([
+        { $match: { 'liga.id': leagueId } },
+        { $project: {
+          temporada: '$liga.temporada',
+          equipos: [
+            { id: '$equipo_local.id', nombre: '$equipo_local.nombre', logo: '$equipo_local.logo' },
+            { id: '$equipo_visitante.id', nombre: '$equipo_visitante.nombre', logo: '$equipo_visitante.logo' }
+          ]
+        } },
+        { $unwind: '$equipos' },
+        { $group: {
+          _id: '$equipos.id',
+          nombre: { $first: '$equipos.nombre' },
+          logo: { $first: '$equipos.logo' },
+          temporadas: { $addToSet: '$temporada' }
+        } },
+        { $project: { _id: 0, id: '$_id', nombre: 1, logo: 1, temporadas: 1 } },
+        { $sort: { nombre: 1 } }
+      ]);
+      equiposArray.forEach(equipo => equipo.temporadas.sort((a, b) => b - a));
+    } else if (temporada !== null) {
       equiposArray = await Partido.aggregate([
         { $match: { 'liga.id': leagueId, 'liga.temporada': temporada } },
         { $project: { equipos: [

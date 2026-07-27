@@ -50,6 +50,17 @@ test('el directorio de competiciones agrupa temporadas y permite elegirlas', () 
   assert.match(html, /normalizarCatalogo/);
 });
 
+test('el directorio de equipos selecciona ligas y delega la temporada a la ficha', () => {
+  const directorio = fs.readFileSync(path.join(__dirname, '..', 'public', 'equipos.html'), 'utf8');
+  const ficha = fs.readFileSync(path.join(__dirname, '..', 'public', 'equipo.html'), 'utf8');
+  assert.match(directorio, /allSeasons=true/);
+  assert.doesNotMatch(directorio, /value="\$\{c\.id\}:\$\{c\.temporada\}"/);
+  assert.match(ficha, /id="season"/);
+  assert.match(ficha, /Menos de 2\.5 goles/);
+  assert.match(ficha, /Producción por partido/);
+  assert.match(ficha, /recent-opponent/);
+});
+
 test('user-library.js contiene JavaScript válido', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'user-library.js'), 'utf8');
   assert.doesNotThrow(() => new Function(codigo));
