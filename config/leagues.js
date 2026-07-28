@@ -15,6 +15,9 @@ module.exports = {
     253: { nombre: 'Major League Soccer', pais: 'Estados Unidos', codigo: 'US', liga_principal: true },
     71:  { nombre: 'Brasileirão Serie A', pais: 'Brasil', codigo: 'BR', liga_principal: true },
 
+    // ----- México -----
+    263: { nombre: 'Liga de Expansión MX', pais: 'México', codigo: 'MX', liga_principal: true },
+
     // ----- Sudamérica -----
     128: { nombre: 'Argentina Primera División', pais: 'Argentina', codigo: 'AR', liga_principal: true },
     130: { nombre: 'Bolivia Primera División', pais: 'Bolivia', codigo: 'BO', liga_principal: true },
