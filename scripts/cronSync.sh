@@ -68,8 +68,10 @@ elif [ "$BATCH" = "batch2" ]; then
     node scripts/completarEstadisticas.js
 
   echo ""
-  echo "▸ Sincronizar fixtures — ligas americanas y Brasileirão"
-  SYNC_LEAGUES=253,262,71 \
+  echo "▸ Sincronizar fixtures — ligas americanas y Brasileirão (temporadas 2025 y 2026)"
+  FOOTBALL_SEASON=2026 SYNC_LEAGUES=71,262,253,263 \
+    node scripts/syncDatabase.js
+  FOOTBALL_SEASON=2025 SYNC_LEAGUES=253,263 \
     node scripts/syncDatabase.js
 
 # ------------------------------------------------------------------
@@ -80,8 +82,10 @@ elif [ "$BATCH" = "batch2" ]; then
 # ------------------------------------------------------------------
 elif [ "$BATCH" = "batch3" ]; then
   echo ""
-  echo "▸ Completar estadísticas — ligas americanas"
-  SYNC_LEAGUES=253,262,71 \
+  echo "▸ Completar estadísticas — ligas americanas (2025+2026)"
+  FOOTBALL_SEASON=2026 SYNC_LEAGUES=71,262 \
+    node scripts/completarEstadisticas.js
+  FOOTBALL_SEASON=2025 SYNC_LEAGUES=253,263 \
     node scripts/completarEstadisticas.js
 
   echo ""
