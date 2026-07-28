@@ -19,6 +19,8 @@ const RETARDO = Number(process.env.SYNC_DELAY_MS) >= 0
   : 7000;
 let peticionesRealizadas = 0;
 let detener = false;
+let actualizados = 0;
+let sinStats = 0;
 
 const httpsAgent = new https.Agent({ family: 4 });
 
@@ -31,7 +33,8 @@ async function completarLiga(leagueId) {
     'liga.id': leagueId,
     'liga.temporada': Number(config.seasonDefault),
     estado: 'FT',
-    estadisticas_completas: { $ne: true }
+    estadisticas_completas: { $ne: true },
+    estadisticas_no_disponibles: { $ne: true }
   }).lean();
 
   console.log(`   ⚽ Liga ${leagueId}: ${partidosFaltantes.length} partidos sin estadísticas.`);
@@ -49,37 +52,47 @@ async function completarLiga(leagueId) {
       peticionesRealizadas++;
 
       const fullFixture = data.response[0];
-      if (fullFixture && fullFixture.statistics) {
-        const homeStats = fullFixture.statistics.find(s => s.team.id === p.equipo_local.id);
-        const awayStats = fullFixture.statistics.find(s => s.team.id === p.equipo_visitante.id);
+      const stats = fullFixture && Array.isArray(fullFixture.statistics)
+        ? fullFixture.statistics : [];
+      const homeStats = stats.find(s => s.team.id === p.equipo_local.id);
+      const awayStats = stats.find(s => s.team.id === p.equipo_visitante.id);
 
-        const update = {};
-        if (homeStats) {
-          const s = homeStats.statistics;
-          update['equipo_local.tiros_total'] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
-          update['equipo_local.tiros_puerta'] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
-          update['equipo_local.corners'] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
-          update['equipo_local.faltas'] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
-          update['equipo_local.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
-          update['equipo_local.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
-          update['equipo_local.offsides'] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
-        }
-        if (awayStats) {
-          const s = awayStats.statistics;
-          update['equipo_visitante.tiros_total'] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
-          update['equipo_visitante.tiros_puerta'] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
-          update['equipo_visitante.corners'] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
-          update['equipo_visitante.faltas'] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
-          update['equipo_visitante.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
-          update['equipo_visitante.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
-          update['equipo_visitante.offsides'] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
-        }
+      const update = {};
+      if (homeStats) {
+        const s = homeStats.statistics;
+        update['equipo_local.tiros_total'] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
+        update['equipo_local.tiros_puerta'] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
+        update['equipo_local.corners'] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
+        update['equipo_local.faltas'] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
+        update['equipo_local.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
+        update['equipo_local.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
+        update['equipo_local.offsides'] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
+      }
+      if (awayStats) {
+        const s = awayStats.statistics;
+        update['equipo_visitante.tiros_total'] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
+        update['equipo_visitante.tiros_puerta'] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
+        update['equipo_visitante.corners'] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
+        update['equipo_visitante.faltas'] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
+        update['equipo_visitante.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
+        update['equipo_visitante.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
+        update['equipo_visitante.offsides'] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
+      }
 
-        if (Object.keys(update).length > 0) {
-          update.estadisticas_completas = true;
-          await Partido.updateOne({ api_id: p.api_id }, { $set: update });
-          console.log(`      ✅ Partido ${p.api_id} actualizado.`);
-        }
+      if (Object.keys(update).length > 0) {
+        update.estadisticas_completas = true;
+        await Partido.updateOne({ api_id: p.api_id }, { $set: update });
+        actualizados++;
+        console.log(`      ✅ Partido ${p.api_id} actualizado.`);
+      } else {
+        // El partido está finalizado pero la API no expone estadísticas para él
+        // (típico en rondas tempranas de copas). Lo marcamos para no reintentarlo
+        // en cada corrida y desperdiciar cuota.
+        await Partido.updateOne(
+          { api_id: p.api_id },
+          { $set: { estadisticas_no_disponibles: true }, $inc: { estadisticas_intentos: 1 } }
+        );
+        sinStats++;
       }
     } catch (err) {
       if (err.code === 'API_FOOTBALL_DAILY_QUOTA_EXHAUSTED') {
@@ -112,7 +125,10 @@ async function main() {
     }
   }
 
-  console.log('\n🎉 Completado (o detenido por límite).');
+  console.log(`\n🎉 Completado (o detenido por límite).`);
+  console.log(`   📊 Peticiones usadas: ${peticionesRealizadas}`);
+  console.log(`   ✅ Actualizados con stats: ${actualizados}`);
+  console.log(`   🚫 Marcados sin stats disponibles: ${sinStats}`);
   await mongoose.disconnect();
 }
 

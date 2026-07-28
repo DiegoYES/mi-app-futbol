@@ -93,6 +93,8 @@ const partidoSchema = new mongoose.Schema({
   ambos_anotan: { type: Boolean, default: false },
   resultado: String,
   estadisticas_completas: { type: Boolean, default: false },
+  estadisticas_no_disponibles: { type: Boolean, default: false },
+  estadisticas_intentos: { type: Number, default: 0 },
   tiempos_completos: { type: Boolean, default: false },
   tiempos_consultados_en: { type: Date, default: null },
   tiempos_disponibles: { type: Boolean, default: null },

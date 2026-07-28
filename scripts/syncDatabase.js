@@ -43,7 +43,8 @@ async function completarPartidosPendientes(leagueId, season) {
     'liga.id': leagueId,
     'liga.temporada': Number(season),
     estado: 'FT',
-    estadisticas_completas: { $ne: true }
+    estadisticas_completas: { $ne: true },
+    estadisticas_no_disponibles: { $ne: true }
   }).lean();
 
   if (pendientes.length === 0) return;

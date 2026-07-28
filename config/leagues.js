@@ -15,6 +15,21 @@ module.exports = {
     253: { nombre: 'Major League Soccer', pais: 'Estados Unidos', codigo: 'US', liga_principal: true },
     71:  { nombre: 'Brasileirão Serie A', pais: 'Brasil', codigo: 'BR', liga_principal: true },
 
+    // ----- Sudamérica -----
+    128: { nombre: 'Argentina Primera División', pais: 'Argentina', codigo: 'AR', liga_principal: true },
+    130: { nombre: 'Bolivia Primera División', pais: 'Bolivia', codigo: 'BO', liga_principal: true },
+    265: { nombre: 'Chile Primera División', pais: 'Chile', codigo: 'CL', liga_principal: true },
+    242: { nombre: 'Peru Primera División', pais: 'Perú', codigo: 'PE', liga_principal: true },
+    239: { nombre: 'Paraguay Primera División', pais: 'Paraguay', codigo: 'PY', liga_principal: true },
+    13:  { nombre: 'CONMEBOL Libertadores', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
+    11:  { nombre: 'CONMEBOL Sudamericana', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
+
+    // ----- Asia / África / Otros -----
+    103: { nombre: 'Eliteserien', pais: 'Noruega', codigo: 'NO', liga_principal: true },
+    98:  { nombre: 'J1 League', pais: 'Japón', codigo: 'JP', liga_principal: true },
+    169: { nombre: 'Chinese Super League', pais: 'China', codigo: 'CN', liga_principal: true },
+    233: { nombre: 'Egyptian Premier League', pais: 'Egipto', codigo: 'EG', liga_principal: true },
+
     // ----- Competiciones de copa / Europa (no principales) -----
     2:   { nombre: 'UEFA Champions League', pais: 'Europa', codigo: 'EU', liga_principal: false },
     3:   { nombre: 'UEFA Europa League', pais: 'Europa', codigo: 'EU', liga_principal: false },
