@@ -78,6 +78,49 @@ router.get('/competiciones/:id', async (req, res) => {
     if (!Number.isInteger(solicitada) || !temporadas.includes(solicitada)) return res.status(404).json({ error: 'La temporada no está guardada.' });
     const partidos = await Partido.find({ 'liga.id': id, 'liga.temporada': solicitada }).sort({ fecha: -1 }).lean();
     const finalizados = partidos.filter(partido => ['FT', 'AET', 'PEN'].includes(partido.estado));
+    const finalizado = partido => ['FT', 'AET', 'PEN'].includes(partido.estado);
+    const porJornada = new Map();
+    for (const partido of partidos) {
+      const nombreJornada = String(partido.liga?.jornada || 'Sin jornada');
+      if (!porJornada.has(nombreJornada)) porJornada.set(nombreJornada, []);
+      porJornada.get(nombreJornada).push(partido);
+    }
+    const jornadas = [...porJornada.entries()].map(([nombreJornada, lista]) => {
+      const terminados = lista.filter(finalizado);
+      return {
+        nombre: nombreJornada,
+        partidos: lista.length,
+        finalizados: terminados.length,
+        desde: lista.reduce((min, p) => !min || p.fecha < min ? p.fecha : min, null),
+        hasta: lista.reduce((max, p) => !max || p.fecha > max ? p.fecha : max, null)
+      };
+    }).sort((a, b) => new Date(a.desde) - new Date(b.desde));
+    const jornadaPedida = typeof req.query.round === 'string' ? req.query.round : '';
+    const jornadaPredeterminada = [...jornadas].reverse().find(item => item.finalizados > 0)?.nombre || jornadas[0]?.nombre || null;
+    const jornadaSeleccionada = porJornada.has(jornadaPedida) ? jornadaPedida : jornadaPredeterminada;
+    const partidosJornada = jornadaSeleccionada ? porJornada.get(jornadaSeleccionada) || [] : [];
+    const finalizadosJornada = partidosJornada.filter(finalizado);
+    const idsJornada = partidosJornada.map(partido => partido.api_id);
+    const jugadoresJornada = idsJornada.length ? await JugadorPartido.aggregate([
+      { $match: { partido_api_id: { $in: idsJornada }, 'liga.id': id, 'liga.temporada': solicitada } },
+      { $group: {
+        _id: '$jugador.id', nombre: { $first: '$jugador.nombre' }, foto: { $first: '$jugador.foto' },
+        posicion: { $first: '$posicion' }, equipo_id: { $first: '$equipo.id' }, equipo: { $first: '$equipo.nombre' },
+        partidos: { $sum: 1 }, minutos: { $sum: { $ifNull: ['$minutos', 0] } },
+        goles: { $sum: { $ifNull: ['$goles', 0] } }, asistencias: { $sum: { $ifNull: ['$asistencias', 0] } },
+        tiros: { $sum: { $ifNull: ['$tiros', 0] } }, tiros_puerta: { $sum: { $ifNull: ['$tiros_puerta', 0] } },
+        pases_clave: { $sum: { $ifNull: ['$pases_clave', 0] } }, entradas: { $sum: { $ifNull: ['$entradas', 0] } },
+        atajadas: { $sum: { $ifNull: ['$atajadas', 0] } }, amarillas: { $sum: { $ifNull: ['$amarillas', 0] } },
+        suma_calificacion: { $sum: { $cond: [{ $ne: ['$calificacion', null] }, '$calificacion', 0] } },
+        calificaciones: { $sum: { $cond: [{ $ne: ['$calificacion', null] }, 1, 0] } }
+      } },
+      { $addFields: { calificacion: { $cond: [{ $gt: ['$calificaciones', 0] }, { $round: [{ $divide: ['$suma_calificacion', '$calificaciones'] }, 2] }, null] } } },
+      { $sort: { goles: -1, asistencias: -1, calificacion: -1, minutos: -1, nombre: 1 } },
+      { $limit: 40 },
+      { $project: { _id: 0, id: '$_id', nombre: 1, foto: 1, posicion: 1, equipo_id: 1, equipo: 1, partidos: 1, minutos: 1, goles: 1, asistencias: 1, tiros: 1, tiros_puerta: 1, pases_clave: 1, entradas: 1, atajadas: 1, amarillas: 1, calificacion: 1 } }
+    ]) : [];
+    const totalMetrica = campo => finalizadosJornada.reduce((total, partido) => total + (Number(partido.equipo_local?.[campo]) || 0) + (Number(partido.equipo_visitante?.[campo]) || 0), 0);
+    const golesJornada = totalMetrica('goles');
     const tabla = new Map();
     const fila = equipo => {
       if (!tabla.has(equipo.id)) tabla.set(equipo.id, { id: equipo.id, nombre: equipo.nombre, jugados: 0, ganados: 0, empatados: 0, perdidos: 0, goles_favor: 0, goles_contra: 0, puntos: 0 });
@@ -116,6 +159,27 @@ router.get('/competiciones/:id', async (req, res) => {
       },
       clasificacion,
       clasificacion_oficial: config.ligas[id]?.liga_principal === true,
+      jornadas,
+      jornada: jornadaSeleccionada ? {
+        nombre: jornadaSeleccionada,
+        resumen: {
+          partidos: partidosJornada.length,
+          finalizados: finalizadosJornada.length,
+          goles: golesJornada,
+          goles_por_partido: finalizadosJornada.length ? Number((golesJornada / finalizadosJornada.length).toFixed(2)) : null,
+          victorias_local: finalizadosJornada.filter(p => Number(p.equipo_local.goles) > Number(p.equipo_visitante.goles)).length,
+          empates: finalizadosJornada.filter(p => Number(p.equipo_local.goles) === Number(p.equipo_visitante.goles)).length,
+          victorias_visitante: finalizadosJornada.filter(p => Number(p.equipo_local.goles) < Number(p.equipo_visitante.goles)).length,
+          tiros: totalMetrica('tiros_total'), tiros_puerta: totalMetrica('tiros_puerta'), corners: totalMetrica('corners'),
+          faltas: totalMetrica('faltas'), amarillas: totalMetrica('tarjetas_amarillas'), rojas: totalMetrica('tarjetas_rojas')
+        },
+        partidos: [...partidosJornada].sort((a, b) => new Date(a.fecha) - new Date(b.fecha)).map(p => ({
+          api_id: p.api_id, fecha: p.fecha, estado: p.estado,
+          local: { id: p.equipo_local.id, nombre: p.equipo_local.nombre, goles: p.equipo_local.goles },
+          visitante: { id: p.equipo_visitante.id, nombre: p.equipo_visitante.nombre, goles: p.equipo_visitante.goles }
+        })),
+        jugadores: jugadoresJornada
+      } : null,
       recientes: partidos.slice(0, 12).map(p => ({
         api_id: p.api_id, fecha: p.fecha, estado: p.estado,
         local: { id: p.equipo_local.id, nombre: p.equipo_local.nombre, goles: p.equipo_local.goles },
