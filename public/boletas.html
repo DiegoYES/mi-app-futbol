@@ -24,7 +24,8 @@
   .boleta-actions button,.boleta-actions a { min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--ink);font-size:.72rem;font-weight:800;text-decoration:none;display:grid;place-items:center; }
   .boleta-actions a { color:var(--cyan); }
   .boleta-actions .danger { color:var(--red);margin-left:auto; }
-  @media(max-width:700px){.boleta-item{grid-template-columns:1fr auto}.boleta-item strong{grid-column:1/-1}.boleta-actions .danger{margin-left:0}}
+  @media(max-width:700px){.page-nav{overflow-x:auto;white-space:nowrap}.boleta{padding:14px}.boleta-head{flex-direction:column;gap:5px}.boleta-item{grid-template-columns:minmax(0,1fr) auto;gap:9px}.boleta-item strong{grid-column:1/-1;overflow-wrap:anywhere}.boleta-actions{display:grid;grid-template-columns:1fr 1fr}.boleta-actions button,.boleta-actions a{min-height:44px}.boleta-actions .danger{margin-left:0}}
+  @media(max-width:380px){.boleta-item{grid-template-columns:1fr}.boleta-prob{grid-column:1}.boleta-actions{grid-template-columns:1fr}}
 </style>
 </head>
 <body>

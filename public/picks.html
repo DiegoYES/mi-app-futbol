@@ -23,8 +23,9 @@
   .status-pendiente { color:var(--amber); background:rgba(245,190,91,.12); }
   .status-acertado { color:var(--green); background:rgba(84,227,142,.12); }
   .status-fallado { color:var(--red); background:rgba(255,124,120,.12); }
-  .delete-pick { min-height:30px; padding:0 9px; background:transparent; border:1px solid var(--line); color:var(--muted); }
-  @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:1fr auto; } }
+  .delete-pick { min-height:40px; padding:0 12px; background:transparent; border:1px solid var(--line); color:var(--muted); }
+  @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:minmax(0,1fr) auto;gap:12px; } }
+  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem} }
 </style>
 </head>
 <body>

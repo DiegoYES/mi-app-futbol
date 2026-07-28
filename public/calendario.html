@@ -58,6 +58,30 @@
   .dia-titulo h2 { margin: 0; font-size: 1.15rem; text-transform: capitalize; }
   .dia-titulo .cuenta { font-size: .8rem; color: var(--muted); }
   .dia-vacio { color: var(--muted); font-size: .85rem; padding: 10px 4px; }
+  @media(max-width:700px) {
+    .cal-top { align-items:flex-start;flex-direction:column;gap:12px; }
+    .tabs { overflow-x:auto;scroll-snap-type:x proximity; }
+    .tabs button { flex:1 0 auto;min-height:44px;scroll-snap-align:start; }
+    .date-bar { display:grid;grid-template-columns:1fr 1fr;padding:12px; }
+    .date-label { grid-column:1/-1;grid-row:1;min-width:0; }
+    .date-bar input[type=date],.date-bar .primary { width:100%;min-height:44px; }
+    .quick-dates { scroll-snap-type:x proximity; }
+    .chip { min-height:60px;scroll-snap-align:start; }
+    .match { grid-template-columns:50px minmax(0,1fr) auto;padding:13px 12px;gap:8px; }
+    .match .hora { grid-row:1 / span 2; }
+    .equipo,.equipo.der { grid-column:2;flex-direction:row;text-align:left; }
+    .marcador { grid-column:3;grid-row:1 / span 2; }
+    .liga-head { padding-inline:12px;gap:8px; }
+  }
+  @media(max-width:380px) {
+    .date-bar { grid-template-columns:1fr; }
+    .date-label,.date-bar>* { grid-column:1; }
+    .date-bar button { width:100%; }
+    .match { grid-template-columns:minmax(0,1fr) auto; }
+    .match .hora { grid-column:1/-1;grid-row:auto; }
+    .equipo,.equipo.der { grid-column:1; }
+    .marcador { grid-column:2;grid-row:2 / span 2; }
+  }
 </style>
 </head>
 <body>

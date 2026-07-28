@@ -17,7 +17,8 @@
   .kpi .value { font-size: 1.9rem; font-weight: 700; color: var(--primary); }
   .barra { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   input[type=search] { flex: 1; min-width: 220px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
-  table { width: 100%; background: #fff; border-collapse: collapse; border-radius: 10px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
+  .table-scroll { width:100%;overflow-x:auto;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.07);-webkit-overflow-scrolling:touch; }
+  table { width: 100%; min-width:900px; background: #fff; border-collapse: collapse; }
   th { background: var(--primary); color: #fff; padding: 11px; text-align: left; font-size: .82rem; }
   td { padding: 11px; border-bottom: 1px solid #eef2f7; font-size: .87rem; }
   tr:hover td { background: #f8fafc; }
@@ -28,7 +29,7 @@
   .badge.admin { background: #fef3c7; color: #92400e; }
   .badge.suspendido { background: #fef3c7; color: #92400e; }
   .badge.bloq-ip { background: #fee2e2; color: #7f1d1d; }
-  .acciones button { padding: 5px 10px; margin-right: 4px; margin-bottom: 4px; border: none; border-radius: 6px; cursor: pointer; font-size: .78rem; }
+  .acciones button { min-height:40px;padding: 7px 10px; margin-right: 4px; margin-bottom: 4px; border: none; border-radius: 6px; cursor: pointer; font-size: .78rem; }
   .btn-mes { background: var(--primary); color: #fff; }
   .btn-cortesia { background: #d1fae5; color: #065f46; }
   .btn-suspender { background: #fef3c7; color: #92400e; }
@@ -40,6 +41,8 @@
   .ip-text { font-size: .75rem; color: #64748b; font-family: monospace; }
   .seccion { margin-top: 32px; }
   .seccion h2 { font-size: 1.1rem; color: var(--primary); margin-bottom: 12px; }
+  @media(max-width:600px){.wrap{padding:18px 12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}}
+  @media(max-width:360px){.kpis{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -52,12 +55,12 @@
     <input type="search" id="busqueda" placeholder="Buscar por email o nombre..." oninput="buscarConRetraso()">
   </div>
 
-  <table>
+  <div class="table-scroll"><table>
     <thead>
       <tr><th>Usuario</th><th>IP</th><th>Plan</th><th>Vence</th><th>Registro</th><th>Último acceso</th><th>Acciones</th></tr>
     </thead>
     <tbody id="tbody"><tr><td colspan="7" class="vacio">Cargando...</td></tr></tbody>
-  </table>
+  </table></div>
 
   <div class="seccion">
     <h2>⚠️ IPs duplicadas</h2>
