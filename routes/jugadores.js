@@ -11,8 +11,26 @@ router.get('/', async (req, res) => {
     const match = {};
     const league = Number.parseInt(req.query.league, 10);
     const season = Number.parseInt(req.query.season, 10);
+    const team = Number.parseInt(req.query.team, 10);
     if (Number.isInteger(league)) match['liga.id'] = league;
     if (Number.isInteger(season)) match['liga.temporada'] = season;
+    if (Number.isInteger(team)) match['equipo.id'] = team;
+    const jornada = typeof req.query.round === 'string' ? req.query.round.trim().slice(0, 100) : '';
+    let jornadas = [];
+    if (Number.isInteger(team) && Number.isInteger(league) && Number.isInteger(season)) {
+      const partidosEquipo = await Partido.find({
+        'liga.id': league, 'liga.temporada': season,
+        $or: [{ 'equipo_local.id': team }, { 'equipo_visitante.id': team }]
+      }).select('api_id fecha liga.jornada').sort({ fecha: 1 }).lean();
+      const porJornada = new Map();
+      for (const partido of partidosEquipo) {
+        const nombre = String(partido.liga?.jornada || 'Sin jornada');
+        if (!porJornada.has(nombre)) porJornada.set(nombre, { nombre, fecha: partido.fecha, partidos: [] });
+        porJornada.get(nombre).partidos.push(partido.api_id);
+      }
+      jornadas = [...porJornada.values()].map(item => ({ nombre: item.nombre, fecha: item.fecha, partidos: item.partidos.length }));
+      if (jornada && porJornada.has(jornada)) match.partido_api_id = { $in: porJornada.get(jornada).partidos };
+    }
     const q = String(req.query.q || '').slice(0, 80);
     const acentos = { a: '[aáàäâã]', e: '[eéèëê]', i: '[iíìïî]', o: '[oóòöôõ]', u: '[uúùüû]', n: '[nñ]' };
     const fragmentos = tokens(q).map(token => [...token].map(letra => acentos[letra] || letra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(''));
@@ -32,14 +50,25 @@ router.get('/', async (req, res) => {
         asistencias: { $sum: '$asistencias' },
         tiros: { $sum: '$tiros' },
         tiros_puerta: { $sum: '$tiros_puerta' },
+        pases: { $sum: '$pases' },
+        pases_clave: { $sum: '$pases_clave' },
+        entradas: { $sum: '$entradas' },
+        intercepciones: { $sum: '$intercepciones' },
+        duelos: { $sum: '$duelos' },
+        duelos_ganados: { $sum: '$duelos_ganados' },
+        regates: { $sum: '$regates' },
+        regates_exitosos: { $sum: '$regates_exitosos' },
+        atajadas: { $sum: '$atajadas' },
         amarillas: { $sum: '$amarillas' },
-        faltas: { $sum: '$faltas_cometidas' }
+        rojas: { $sum: '$rojas' },
+        faltas: { $sum: '$faltas_cometidas' },
+        calificacion: { $avg: '$calificacion' }
       } },
-      { $sort: { partidos: -1, nombre: 1 } },
+      { $sort: { minutos: -1, goles: -1, nombre: 1 } },
       { $limit: limite },
-      { $project: { _id: 0, id: '$_id', nombre: 1, foto: 1, posicion: 1, equipos: 1, partidos: 1, minutos: 1, goles: 1, asistencias: 1, tiros: 1, tiros_puerta: 1, amarillas: 1, faltas: 1 } }
+      { $project: { _id: 0, id: '$_id', nombre: 1, foto: 1, posicion: 1, equipos: 1, partidos: 1, minutos: 1, goles: 1, asistencias: 1, tiros: 1, tiros_puerta: 1, pases: 1, pases_clave: 1, entradas: 1, intercepciones: 1, duelos: 1, duelos_ganados: 1, regates: 1, regates_exitosos: 1, atajadas: 1, amarillas: 1, rojas: 1, faltas: 1, calificacion: { $cond: [{ $ne: ['$calificacion', null] }, { $round: ['$calificacion', 2] }, null] } } }
     ]);
-    res.json({ jugadores });
+    res.json({ jugadores, jornadas, jornada: jornada || null });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }
