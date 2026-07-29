@@ -1,6 +1,8 @@
 const express = require('express');
 const Partido = require('../models/partido');
 const config = require('../config/leagues');
+const { cacheMiddleware } = require('../middleware/cache');
+const { analizarPartidosCalendario } = require('../services/calendarPicks');
 
 const router = express.Router();
 
@@ -161,6 +163,30 @@ router.get('/proximos', async (req, res) => {
         competiciones: Array.from(d.competiciones.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
       }))
     });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Picks compactos para el calendario. Se calculan en lote y se cachean 10 minutos.
+router.get('/picks', cacheMiddleware, async (req, res) => {
+  try {
+    const texto = req.query.fecha || req.query.desde || new Date().toISOString().slice(0, 10);
+    const rango = rangoDelDia(texto);
+    if (!rango) return res.status(400).json({ error: 'Fecha inválida. Usa el formato YYYY-MM-DD' });
+    const dias = req.query.fecha ? 1 : Math.min(Math.max(Number.parseInt(req.query.dias || '7', 10), 1), 7);
+    const fin = new Date(rango.inicio);
+    fin.setDate(fin.getDate() + dias - 1);
+    fin.setHours(23, 59, 59, 999);
+    const partidos = await Partido.find({ fecha: { $gte: rango.inicio, $lte: fin } }).sort({ fecha: 1 }).lean();
+    const analisis = await analizarPartidosCalendario(partidos);
+    const porPartido = Object.fromEntries(analisis.map(item => [item.partido_id, item.picks]));
+    const mejores = analisis
+      .filter(item => item.picks.length)
+      .map(item => ({ ...item, pick: item.picks[0] }))
+      .sort((a, b) => b.pick.estimacion - a.pick.estimacion || b.pick.muestra - a.pick.muestra)
+      .slice(0, 5);
+    res.json({ desde: texto, dias, partidos: analisis.length, por_partido: porPartido, mejores });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

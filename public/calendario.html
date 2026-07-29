@@ -43,6 +43,13 @@
   .equipo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .marcador { font-weight: 700; font-size: 1.05rem; background: var(--surface-soft); border-radius: 8px; padding: 4px 12px; min-width: 58px; text-align: center; }
   .marcador.vs { color: var(--muted); font-weight: 400; font-size: .8rem; background: transparent; }
+  .match-shell { border-top:1px solid var(--line); }.match-shell .match { border-top:0; }
+  .match-picks { padding:0 18px 12px 92px; }.pick-loading { color:var(--muted);font-size:.65rem; }
+  .calendar-picks { border:1px solid rgba(84,227,142,.2);border-radius:11px;background:rgba(84,227,142,.045);overflow:hidden; }
+  .calendar-picks summary { display:grid;grid-template-columns:auto minmax(0,1fr) auto auto;align-items:center;gap:9px;padding:9px 11px;cursor:pointer;list-style:none; }.calendar-picks summary::-webkit-details-marker{display:none}.calendar-picks summary::before{content:'★';color:var(--green)}
+  .pick-best { min-width:0;overflow:hidden;font-size:.7rem;font-weight:800;text-overflow:ellipsis;white-space:nowrap; }.pick-score { color:var(--green);font-size:.78rem;font-weight:900; }.pick-toggle { color:var(--muted);font-size:.6rem; }.calendar-picks[open] .pick-toggle::after{content:'Cerrar'}.calendar-picks:not([open]) .pick-toggle::after{content:'Ver top 5'}
+  .pick-list { display:grid;gap:6px;padding:0 10px 10px; }.pick-row { display:grid;grid-template-columns:22px minmax(0,1fr) auto auto;align-items:center;gap:8px;padding:8px;border-radius:9px;background:var(--surface-raised);font-size:.66rem; }.pick-rank { color:var(--muted);text-align:center; }.pick-copy { min-width:0; }.pick-copy strong,.pick-copy small{display:block}.pick-copy strong{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.pick-copy small{margin-top:2px;color:var(--muted)}.pick-percent{font-size:.75rem}.save-calendar-pick{min-height:34px;padding:0 9px;border:1px solid var(--line);border-radius:8px;background:var(--surface-soft);color:var(--ink);font-size:.6rem;font-weight:800;cursor:pointer}.save-calendar-pick:hover{border-color:var(--green)}.save-calendar-pick.saved{color:var(--green)}
+  .daily-picks { display:none;margin-bottom:18px;padding:16px;border:1px solid rgba(84,227,142,.25);border-radius:15px;background:linear-gradient(135deg,rgba(84,227,142,.08),var(--surface-raised)); }.daily-picks.visible{display:block}.daily-picks-head{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.daily-picks h2{margin:0;font-size:1rem}.daily-picks p{margin:4px 0 0;color:var(--muted);font-size:.68rem}.daily-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px}.daily-card{padding:10px;border:1px solid var(--line);border-radius:11px;background:var(--surface);color:var(--ink);text-decoration:none}.daily-card span,.daily-card strong,.daily-card small{display:block}.daily-card span{overflow:hidden;color:var(--muted);font-size:.58rem;text-overflow:ellipsis;white-space:nowrap}.daily-card strong{margin:7px 0 4px;font-size:.7rem}.daily-card small{color:var(--green);font-weight:900}
 
   .vacio { text-align: center; padding: 48px 20px; color: var(--muted); background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; }
   .vacio strong { display: block; color: var(--ink); font-size: 1.05rem; margin-bottom: 8px; }
@@ -72,6 +79,7 @@
     .equipo,.equipo.der { grid-column:2;flex-direction:row;text-align:left; }
     .marcador { grid-column:3;grid-row:1 / span 2; }
     .liga-head { padding-inline:12px;gap:8px; }
+    .match-picks{padding:0 12px 12px}.daily-grid{display:flex;overflow:auto;scroll-snap-type:x proximity}.daily-card{flex:0 0 210px;scroll-snap-align:start}.pick-row{grid-template-columns:20px minmax(0,1fr) auto}.save-calendar-pick{grid-column:2/-1;width:100%}
   }
   @media(max-width:380px) {
     .date-bar { grid-template-columns:1fr; }
@@ -81,6 +89,7 @@
     .match .hora { grid-column:1/-1;grid-row:auto; }
     .equipo,.equipo.der { grid-column:1; }
     .marcador { grid-column:2;grid-row:2 / span 2; }
+    .calendar-picks summary{grid-template-columns:auto minmax(0,1fr) auto}.pick-toggle{grid-column:2}.pick-score{grid-column:3;grid-row:1 / span 2}
   }
 </style>
 </head>
@@ -111,12 +120,14 @@
     <div class="quick-dates" id="chips"></div>
   </div>
 
+  <section id="daily-picks" class="daily-picks" aria-live="polite"></section>
   <div id="contenido"><div class="vacio">Cargando...</div></div>
 </div>
 
 <script>
 let fechaActual = hoyISO();
 let vistaActual = 'proximos';
+let cargaPicksId = 0;
 
 function hoyISO() {
   const d = new Date();
@@ -182,7 +193,8 @@ function pintarCompeticiones(competiciones, fechaRef) {
         const marcador = p.finalizado
           ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
           : `<div class="marcador vs">vs</div>`;
-        return `<div class="match" onclick="abrirPartido(${p.local.id},${p.visitante.id},${c.liga_id},${p.api_id},'${fechaRef}')">
+        const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
+        return `<div class="match-shell"><div class="match" onclick="abrirPartido(${p.local.id},${p.visitante.id},${c.liga_id},${p.api_id},'${fechaRef}')">
           <div class="hora">${p.finalizado ? 'Final' : esc(p.hora)}</div>
           <div class="equipo">
             <img src="/api/equipos/${p.local.id}/escudo" alt="">
@@ -193,13 +205,21 @@ function pintarCompeticiones(competiciones, fechaRef) {
             <img src="/api/equipos/${p.visitante.id}/escudo" alt="">
             <span>${esc(p.visitante.nombre)}</span>
           </div>
-        </div>`;
+        </div>${p.finalizado?'':`<div class="match-picks" data-pick-match="${p.api_id}" data-match-url="${url}"><span class="pick-loading">Calculando candidatos…</span></div>`}</div>`;
       }).join('')}
     </div>`).join('');
 }
 
+function pintarPick(pick,indice,partidoId){return `<div class="pick-row"><span class="pick-rank">${indice+1}</span><div class="pick-copy"><strong>${esc(pick.mercado)}</strong><small>${esc(pick.confianza)} · muestra ${pick.muestra} · ${esc((pick.evidencia||[]).join(' + '))}</small></div><b class="pick-percent">${pick.estimacion}%</b><button class="save-calendar-pick" type="button" data-save-pick="${partidoId}" data-market="${esc(pick.id)}">Guardar</button></div>`}
+
+function pintarPicksCalendario(datos,periodo){document.querySelectorAll('[data-pick-match]').forEach(slot=>{const id=slot.dataset.pickMatch;const picks=datos.por_partido?.[id]||[];if(!picks.length){slot.innerHTML='<span class="pick-loading">Sin candidatos con evidencia suficiente.</span>';return}slot.innerHTML=`<details class="calendar-picks"><summary><span class="pick-best">${esc(picks[0].mercado)}</span><strong class="pick-score">${picks[0].estimacion}%</strong><span class="pick-toggle"></span></summary><div class="pick-list">${picks.map((pick,i)=>pintarPick(pick,i,id)).join('')}<a href="${esc(slot.dataset.matchUrl)}" class="save-calendar-pick">Abrir análisis completo →</a></div></details>`});const top=document.getElementById('daily-picks');if(!datos.mejores?.length){top.classList.remove('visible');top.innerHTML='';return}top.innerHTML=`<div class="daily-picks-head"><div><h2>⭐ Mejores picks ${periodo}</h2><p>Un candidato por partido, ordenado por confianza estadística.</p></div><small>${datos.mejores.length} candidatos</small></div><div class="daily-grid">${datos.mejores.map(item=>`<a class="daily-card" href="/partido.html?local=${item.local.id}&visitante=${item.visitante.id}&liga=${item.liga.id}&partido=${item.partido_id}"><span>${esc(item.local.nombre)} vs ${esc(item.visitante.nombre)}</span><strong>${esc(item.pick.mercado)}</strong><small>${item.pick.estimacion}% · muestra ${item.pick.muestra}</small></a>`).join('')}</div>`;top.classList.add('visible')}
+
+async function cargarPicksCalendario(query,periodo){const carga=++cargaPicksId;try{const r=await fetch('/api/calendario/picks?'+query);if(!r.ok)throw new Error();const datos=await r.json();if(carga!==cargaPicksId)return;pintarPicksCalendario(datos,periodo)}catch{if(carga!==cargaPicksId)return;document.querySelectorAll('[data-pick-match]').forEach(slot=>slot.innerHTML='<span class="pick-loading">Picks no disponibles.</span>')}}
+
 async function cargarProximos() {
   const cont = document.getElementById('contenido');
+  cargaPicksId++;
+  document.getElementById('daily-picks').classList.remove('visible');
   cont.innerHTML = '<div class="vacio">Cargando próximos partidos...</div>';
 
   try {
@@ -229,6 +249,7 @@ async function cargarProximos() {
           ? pintarCompeticiones(d.competiciones, d.fecha)
           : '<div class="dia-vacio">Sin partidos programados</div>'}
       </div>`).join('');
+    cargarPicksCalendario('desde='+encodeURIComponent(datos.desde)+'&dias=7','de los próximos 7 días');
   } catch (err) {
     cont.innerHTML = '<div class="vacio">No se pudieron cargar los partidos</div>';
   }
@@ -246,6 +267,8 @@ function cambiarVista(modo) {
 
 async function cargar() {
   const cont = document.getElementById('contenido');
+  cargaPicksId++;
+  document.getElementById('daily-picks').classList.remove('visible');
   cont.innerHTML = '<div class="vacio">Cargando partidos...</div>';
 
   const f = aDate(fechaActual);
@@ -272,6 +295,7 @@ async function cargar() {
     }
 
     cont.innerHTML = pintarCompeticiones(datos.competiciones, fechaActual);
+    cargarPicksCalendario('fecha='+encodeURIComponent(fechaActual),'del día');
   } catch (err) {
     cont.innerHTML = '<div class="vacio">No se pudieron cargar los partidos</div>';
   }
@@ -280,6 +304,8 @@ async function cargar() {
 function abrirPartido(local, visitante, liga, apiId, fechaRef) {
   window.location.href = `/partido.html?local=${local}&visitante=${visitante}&liga=${liga}&partido=${apiId}&fecha=${fechaRef || fechaActual}`;
 }
+
+document.addEventListener('click',async event=>{const boton=event.target.closest('[data-save-pick]');if(!boton)return;event.preventDefault();event.stopPropagation();boton.disabled=true;try{const r=await fetch('/api/picks/seguimiento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({partido_id:Number(boton.dataset.savePick),mercado_id:boton.dataset.market})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'No se pudo guardar');boton.textContent='✓ Guardado';boton.classList.add('saved')}catch(error){boton.textContent=error.message;setTimeout(()=>{boton.textContent='Guardar';boton.disabled=false},2200)}});
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);

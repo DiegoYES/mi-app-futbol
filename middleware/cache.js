@@ -6,7 +6,7 @@ const cache = new NodeCache({ stdTTL: 3600, checkperiod: 600 });
 
 // TTL corto (10 min) para endpoints que cambian el día del partido
 const TTL_CORTO = 600;
-const PATRONES_TTL_CORTO = ['/h2h', '/historial', '/estadisticas-detalladas'];
+const PATRONES_TTL_CORTO = ['/h2h', '/historial', '/estadisticas-detalladas', '/calendario/picks'];
 
 function cacheMiddleware(req, res, next) {
   const key = req.originalUrl;
