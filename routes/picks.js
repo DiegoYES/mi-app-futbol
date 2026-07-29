@@ -20,14 +20,8 @@ async function obtenerHistoricos(partido) {
     api_id: { $ne: partido.api_id }
   };
   return Promise.all([
-    Partido.find({ ...filtroBase, $or: [
-      { 'equipo_local.id': partido.equipo_local.id },
-      { 'equipo_visitante.id': partido.equipo_local.id }
-    ] }).sort({ fecha: -1 }).lean(),
-    Partido.find({ ...filtroBase, $or: [
-      { 'equipo_local.id': partido.equipo_visitante.id },
-      { 'equipo_visitante.id': partido.equipo_visitante.id }
-    ] }).sort({ fecha: -1 }).lean()
+    Partido.find({ ...filtroBase, 'equipo_local.id': partido.equipo_local.id }).sort({ fecha: -1 }).lean(),
+    Partido.find({ ...filtroBase, 'equipo_visitante.id': partido.equipo_visitante.id }).sort({ fecha: -1 }).lean()
   ]);
 }
 

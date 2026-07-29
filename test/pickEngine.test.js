@@ -43,6 +43,26 @@ test('genera picks ordenados y conserva la evidencia de ambos equipos', () => {
   assert.match(resultado.metodologia, /no es una probabilidad calibrada/);
 });
 
+test('proyecta al local solo con partidos en casa y al visitante solo con salidas', () => {
+  const localEnCasa = partido(1, 10, 2, 30, 0);
+  const localFuera = partido(2, 30, 4, 10, 0);
+  const visitanteFuera = partido(3, 40, 0, 20, 2);
+  const visitanteEnCasa = partido(4, 20, 4, 40, 0);
+  const explicacion = explicarMercado({
+    partidosLocal: [localFuera, localEnCasa],
+    teamLocal: 10,
+    partidosVisitante: [visitanteEnCasa, visitanteFuera],
+    teamVisitante: 20,
+    mercadoId: 'over_1_5',
+    detalle: 5
+  });
+
+  assert.deepEqual(explicacion.detalle_fuentes[0].partidos.map(item => item.api_id), [1]);
+  assert.deepEqual(explicacion.detalle_fuentes[1].partidos.map(item => item.api_id), [3]);
+  assert.equal(explicacion.detalle_fuentes[0].partidos[0].condicion_referencia, 'local');
+  assert.equal(explicacion.detalle_fuentes[1].partidos[0].condicion_referencia, 'visitante');
+});
+
 test('no convierte estadísticas avanzadas faltantes en ceros', () => {
   const sinCobertura = partido(1, 10, 1, 20, 0);
   const datos = frecuencia([sinCobertura], 10);

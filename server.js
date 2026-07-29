@@ -383,12 +383,8 @@ app.get('/api/picks/explicacion', cacheMiddleware, async (req, res) => {
     const filtroLocal = { 'liga.id': leagueLocal, 'liga.temporada': seasonLocal, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const filtroVisitante = { 'liga.id': leagueVisitante, 'liga.temporada': seasonVisitante, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const [partidosLocal, partidosVisitante] = await Promise.all([
-      Partido.find({ ...filtroLocal, $or: [
-        { 'equipo_local.id': teamLocal }, { 'equipo_visitante.id': teamLocal }
-      ] }).sort({ fecha: -1 }).lean(),
-      Partido.find({ ...filtroVisitante, $or: [
-        { 'equipo_local.id': teamVisitante }, { 'equipo_visitante.id': teamVisitante }
-      ] }).sort({ fecha: -1 }).lean()
+      Partido.find({ ...filtroLocal, 'equipo_local.id': teamLocal }).sort({ fecha: -1 }).lean(),
+      Partido.find({ ...filtroVisitante, 'equipo_visitante.id': teamVisitante }).sort({ fecha: -1 }).lean()
     ]);
     const explicacion = explicarMercado({
       partidosLocal,
@@ -438,12 +434,8 @@ app.get('/api/picks', cacheMiddleware, async (req, res) => {
     const filtroLocal = { 'liga.id': leagueLocal, 'liga.temporada': seasonLocal, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const filtroVisitante = { 'liga.id': leagueVisitante, 'liga.temporada': seasonVisitante, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const [partidosLocal, partidosVisitante] = await Promise.all([
-      Partido.find({ ...filtroLocal, $or: [
-        { 'equipo_local.id': teamLocal }, { 'equipo_visitante.id': teamLocal }
-      ] }).sort({ fecha: -1 }).lean(),
-      Partido.find({ ...filtroVisitante, $or: [
-        { 'equipo_local.id': teamVisitante }, { 'equipo_visitante.id': teamVisitante }
-      ] }).sort({ fecha: -1 }).lean()
+      Partido.find({ ...filtroLocal, 'equipo_local.id': teamLocal }).sort({ fecha: -1 }).lean(),
+      Partido.find({ ...filtroVisitante, 'equipo_visitante.id': teamVisitante }).sort({ fecha: -1 }).lean()
     ]);
     const resultado = generarPicks({ partidosLocal, teamLocal, partidosVisitante, teamVisitante, limite: limit });
     const partidoNombreLocal = partidosLocal.find(p => (

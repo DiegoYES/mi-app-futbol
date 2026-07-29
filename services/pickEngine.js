@@ -73,6 +73,11 @@ function confianza(muestra) {
   return 'baja';
 }
 
+function partidosEnCondicion(partidos, teamId, condicion) {
+  const campo = condicion === 'local' ? 'equipo_local' : 'equipo_visitante';
+  return partidos.filter(partido => partido?.[campo]?.id === teamId);
+}
+
 function combinar(mercado, a, b) {
   const disponibles = [
     { rol: 'local', dato: a },
@@ -114,10 +119,10 @@ function combinar(mercado, a, b) {
 function explicarMercado({ partidosLocal, teamLocal, partidosVisitante, teamVisitante, mercadoId, limite = 10, detalle = 3 }) {
   const mercado = obtenerMercado(mercadoId);
   if (!mercado) return null;
-  const registrosLocal = partidosLocal
+  const registrosLocal = partidosEnCondicion(partidosLocal, teamLocal, 'local')
     .map(partido => ({ partido, contexto: contextoPartido(partido, teamLocal) }))
     .filter(item => item.contexto);
-  const registrosVisitante = partidosVisitante
+  const registrosVisitante = partidosEnCondicion(partidosVisitante, teamVisitante, 'visitante')
     .map(partido => ({ partido, contexto: contextoPartido(partido, teamVisitante) }))
     .filter(item => item.contexto);
   return combinar(
@@ -128,8 +133,8 @@ function explicarMercado({ partidosLocal, teamLocal, partidosVisitante, teamVisi
 }
 
 function generarPicks({ partidosLocal, teamLocal, partidosVisitante, teamVisitante, limite = 10 }) {
-  const local = frecuencia(partidosLocal, teamLocal, 'local', limite);
-  const visitante = frecuencia(partidosVisitante, teamVisitante, 'visitante', limite);
+  const local = frecuencia(partidosEnCondicion(partidosLocal, teamLocal, 'local'), teamLocal, 'local', limite);
+  const visitante = frecuencia(partidosEnCondicion(partidosVisitante, teamVisitante, 'visitante'), teamVisitante, 'visitante', limite);
   const mercados = MERCADOS
     .map(mercado => combinar(mercado, local[mercado.id], visitante[mercado.id]))
     .filter(Boolean)
@@ -142,8 +147,8 @@ function generarPicks({ partidosLocal, teamLocal, partidosVisitante, teamVisitan
     mercados,
     recomendados,
     categorias: [...new Set(mercados.map(item => item.categoria))],
-    metodologia: 'Frecuencia histórica suavizada; las estadísticas avanzadas excluyen partidos sin cobertura. Esto no es una probabilidad calibrada ni garantiza resultados.'
+    metodologia: 'Frecuencia histórica suavizada: el local usa únicamente sus partidos en casa y el visitante únicamente sus partidos fuera; las estadísticas avanzadas excluyen partidos sin cobertura. Esto no es una probabilidad calibrada ni garantiza resultados.'
   };
 }
 
-module.exports = { confianza, explicarMercado, frecuencia, generarPicks };
+module.exports = { confianza, explicarMercado, frecuencia, generarPicks, partidosEnCondicion };
