@@ -18,20 +18,26 @@ function formatearFecha(fecha) {
   return fecha.toISOString().slice(0, 10);
 }
 
-// Construye la lista de fechas a consultar según los argumentos de la línea de comandos
-function resolverFechas() {
-  const args = process.argv.slice(2);
-  const hoy = new Date();
+// Construye la lista de fechas UTC a consultar. Por defecto se incluyen ayer y
+// hoy porque un día de México/Sudamérica cruza la medianoche UTC.
+function resolverFechas(args = process.argv.slice(2), hoy = new Date()) {
 
   const argFecha = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
   if (argFecha) return [argFecha];
 
   const argDias = args.find(a => /^--dias=\d+$/.test(a));
-  const dias = argDias ? parseInt(argDias.split('=')[1]) : 1;
+  if (argDias) {
+    const dias = parseInt(argDias.split('=')[1]);
+    return Array.from({ length: Math.min(dias, 10) }, (_, i) => {
+      const f = new Date(hoy);
+      f.setUTCDate(hoy.getUTCDate() + i);
+      return formatearFecha(f);
+    });
+  }
 
-  return Array.from({ length: Math.min(dias, 10) }, (_, i) => {
+  return [-1, 0].map(desplazamiento => {
     const f = new Date(hoy);
-    f.setDate(hoy.getDate() + i);
+    f.setUTCDate(hoy.getUTCDate() + desplazamiento);
     return formatearFecha(f);
   });
 }
@@ -131,8 +137,12 @@ async function main() {
   await mongoose.disconnect();
 }
 
-main().catch(async err => {
-  console.error('❌ Error:', err.message);
-  await mongoose.disconnect();
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch(async err => {
+    console.error('❌ Error:', err.message);
+    await mongoose.disconnect();
+    process.exit(1);
+  });
+}
+
+module.exports = { formatearFecha, resolverFechas, sincronizarFecha };

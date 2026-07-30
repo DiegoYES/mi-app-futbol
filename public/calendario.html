@@ -183,6 +183,21 @@ function pintarChips() {
 }
 
 function pintarCompeticiones(competiciones, fechaRef) {
+  const etiquetasEstado = {
+    PST: 'Aplazado',
+    CANC: 'Cancelado',
+    Canc: 'Cancelado',
+    ABD: 'Abandonado',
+    AWD: 'Adjudicado',
+    WO: 'Walkover',
+    SUSP: 'Suspendido',
+    INT: 'Interrumpido',
+    '1H': 'En vivo',
+    HT: 'Descanso',
+    '2H': 'En vivo',
+    ET: 'Prórroga',
+    BT: 'Pausa'
+  };
   return competiciones.map(c => `
     <div class="liga-group">
       <div class="liga-head">
@@ -190,12 +205,13 @@ function pintarCompeticiones(competiciones, fechaRef) {
         <span class="pais">${esc(c.pais)}</span>
       </div>
       ${c.partidos.map(p => {
+        const estadoVisible = p.finalizado ? 'Final' : (etiquetasEstado[p.estado] || p.hora);
         const marcador = p.finalizado
           ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
           : `<div class="marcador vs">vs</div>`;
         const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
         return `<div class="match-shell"><div class="match" onclick="abrirPartido(${p.local.id},${p.visitante.id},${c.liga_id},${p.api_id},'${fechaRef}')">
-          <div class="hora">${p.finalizado ? 'Final' : esc(p.hora)}</div>
+          <div class="hora">${esc(estadoVisible)}</div>
           <div class="equipo">
             <img src="/api/equipos/${p.local.id}/escudo" alt="">
             <span>${esc(p.local.nombre)}</span>

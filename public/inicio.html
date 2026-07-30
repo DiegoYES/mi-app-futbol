@@ -79,11 +79,11 @@
       <div class="home-search"><input id="home-team-search" type="search" autocomplete="off" placeholder="Buscar cualquier equipo: “Madrid Real”, “Re Mad”…" aria-label="Buscar equipo" aria-controls="home-team-results"><span class="home-search-mark">⌕</span><div id="home-team-results" class="home-search-results" hidden></div></div>
     </div>
     <aside class="snapshot">
-      <div class="snapshot-head"><strong>Base disponible</strong><span id="home-status">Cargando</span></div>
+      <div class="snapshot-head"><strong>Base para análisis</strong><span id="home-status">Cargando</span></div>
       <div class="snapshot-grid">
-        <div><span>Partidos</span><strong id="stat-partidos">—</strong></div>
-        <div><span>Ligas</span><strong id="stat-competiciones">—</strong></div>
-        <div><span>Con stats</span><strong id="stat-stats">—</strong></div>
+        <div><span>Partidos analizados</span><strong id="stat-partidos">—</strong></div>
+        <div><span>Competiciones</span><strong id="stat-competiciones">—</strong></div>
+        <div><span>Campañas guardadas</span><strong id="stat-campanas">—</strong></div>
         <div><span>Jugadores</span><strong id="stat-jugadores">—</strong></div>
         <div><span>Mis picks</span><strong id="stat-picks">—</strong></div>
         <div><span>Mis boletas</span><strong id="stat-boletas">—</strong></div>
@@ -147,14 +147,14 @@ document.addEventListener('DOMContentLoaded', async () => {
     const respuesta = await fetch('/api/home/resumen');
     const datos = await respuesta.json();
     if (!respuesta.ok) throw new Error(datos.error || 'No disponible');
-    document.getElementById('stat-partidos').textContent = numero(datos.partidos);
+    document.getElementById('stat-partidos').textContent = numero(datos.con_estadisticas);
     document.getElementById('stat-competiciones').textContent = numero(datos.ligas ?? datos.competiciones);
-    document.getElementById('stat-stats').textContent = numero(datos.con_estadisticas);
+    document.getElementById('stat-campanas').textContent = numero(datos.temporadas_guardadas);
     document.getElementById('stat-jugadores').textContent = numero(datos.jugadores);
     document.getElementById('stat-picks').textContent = numero(datos.picks);
     document.getElementById('stat-boletas').textContent = numero(datos.boletas);
-    document.getElementById('home-status').textContent = 'En línea';
-    document.getElementById('home-range').textContent = `Archivo ${datos.temporadas.join(', ')} · ${fecha(datos.rango.desde)} a ${fecha(datos.rango.hasta)}.`;
+    document.getElementById('home-status').textContent = 'Disponible';
+    document.getElementById('home-range').textContent = `Solo partidos con estadísticas utilizables; futuros y aplazados no inflan la cifra. Archivo ${datos.temporadas.join(', ')} · ${fecha(datos.rango.desde)} a ${fecha(datos.rango.hasta)}.`;
   } catch (error) {
     document.getElementById('home-status').textContent = 'Sin conexión';
     document.getElementById('home-range').textContent = error.message;

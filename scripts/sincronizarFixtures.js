@@ -29,7 +29,10 @@ async function sincronizarLiga(leagueId) {
   ]);
   const equipos = datosEquipos.response || [];
   const fixtures = datosFixtures.response || [];
-  if (!equipos.length && !fixtures.length) throw new Error(`${nombre} ${temporada} no devolvió equipos ni fixtures.`);
+  if (!equipos.length && !fixtures.length) {
+    console.log(`   ↷ sin equipos ni fixtures disponibles; se continúa con la siguiente liga.`);
+    return { leagueId, nombre, temporada, equipos: 0, fixtures: 0, finalizados: 0 };
+  }
 
   if (equipos.length) {
     await Equipo.bulkWrite(equipos.map(item => ({ updateOne: {
