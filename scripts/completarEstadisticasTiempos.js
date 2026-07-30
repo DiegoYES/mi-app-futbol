@@ -19,8 +19,12 @@ const RETARDO = Number(process.env.SYNC_DELAY_MS) >= 0
   : 500;                         // 2 req/s, por debajo del límite Pro de 5 req/s
 const TEMPORADA = Number(process.env.FOOTBALL_SEASON || config.seasonDefault);
 const REINTENTAR_HUECOS = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_RETRY_GAPS || ''));
+const VERBOSE = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_VERBOSE || ''));
 let peticionesRealizadas = 0;
 let detener = false;
+let totalCompletados = 0;
+let totalSinCobertura = 0;
+let totalErrores = 0;
 
 const httpsAgent = new https.Agent({ family: 4 });
 
@@ -53,6 +57,9 @@ async function completarTiemposLiga(leagueId) {
     ];
   }
   const partidosFaltantes = await Partido.find(filtroPendientes).lean();
+  let completados = 0;
+  let sinCobertura = 0;
+  let errores = 0;
 
   console.log(`   ⚽ Liga ${leagueId}: ${partidosFaltantes.length} partidos sin datos por tiempo.`);
 
@@ -88,7 +95,9 @@ async function completarTiemposLiga(leagueId) {
           tiempos_consultados_en: new Date(),
           tiempos_disponibles: false
         } });
-        console.warn(`      ⚠️ Partido ${p.api_id}: el proveedor no entregó ambos tiempos; no se marcará completo.`);
+        sinCobertura++;
+        totalSinCobertura++;
+        if (VERBOSE) console.warn(`      ⚠️ Partido ${p.api_id}: el proveedor no entregó ambos tiempos; no se marcará completo.`);
         continue;
       }
 
@@ -135,7 +144,9 @@ async function completarTiemposLiga(leagueId) {
         update.tiempos_disponibles = true;
         update.tiempos_consultados_en = new Date();
         await Partido.updateOne({ api_id: p.api_id }, { $set: update });
-        console.log(`      ✅ Partido ${p.api_id} actualizado (1T/2T).`);
+        completados++;
+        totalCompletados++;
+        if (VERBOSE) console.log(`      ✅ Partido ${p.api_id} actualizado (1T/2T).`);
       }
     } catch (err) {
       if (err.code === 'API_FOOTBALL_DAILY_QUOTA_EXHAUSTED') {
@@ -147,10 +158,17 @@ async function completarTiemposLiga(leagueId) {
         detener = true;
         break;
       } else {
+        errores++;
+        totalErrores++;
         console.error(`   ❌ Error actualizando tiempos partido ${p.api_id}: ${err.message}`);
       }
     }
+    const procesados = completados + sinCobertura + errores;
+    if (!VERBOSE && procesados > 0 && procesados % 50 === 0) {
+      console.log(`      ↳ ${procesados}/${partidosFaltantes.length}: ${completados} completos · ${sinCobertura} sin cobertura · ${errores} errores`);
+    }
   }
+  console.log(`   📊 ${JSON.stringify({ consultados: completados + sinCobertura + errores, completados, sinCobertura, errores })}`);
 }
 
 async function main() {
@@ -170,6 +188,7 @@ async function main() {
   }
 
   console.log('\n🎉 Completado (o detenido por límite).');
+  console.log(`📊 ${JSON.stringify({ llamadas: peticionesRealizadas, completados: totalCompletados, sinCobertura: totalSinCobertura, errores: totalErrores })}`);
   await mongoose.disconnect();
 }
 
