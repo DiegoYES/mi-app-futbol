@@ -2,6 +2,9 @@ const express = require('express');
 const Usuario = require('../models/Usuario');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { crearControlCuota } = require('../services/apiQuota');
+const MercadoCasa = require('../models/MercadoCasa');
+const ActualizacionMercados = require('../models/ActualizacionMercados');
+const { refrescarMercados } = require('../services/betting/marketCollectionService');
 
 const router = express.Router();
 
@@ -209,6 +212,49 @@ router.patch('/usuarios/:id/activo', async (req, res) => {
     usuario.activo = Boolean(req.body.activo);
     await usuario.save();
     res.json({ mensaje: usuario.activo ? 'Cuenta activada' : 'Cuenta desactivada', usuario: usuario.aJSON() });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Diagnóstico y actualización de mercados. Ambas rutas heredan autenticación admin.
+router.post('/mercados/actualizar', async (_req, res) => {
+  try {
+    const resultado = await refrescarMercados();
+    res.status(resultado.selecciones_guardadas ? 200 : 422).json({ resultado });
+  } catch (error) {
+    res.status(502).json({ error: error.message });
+  }
+});
+
+router.get('/mercados/diagnostico', async (_req, res) => {
+  try {
+    const ahora = new Date();
+    const [ultima, vigentes, categorias, estados, problemas] = await Promise.all([
+      ActualizacionMercados.findOne({ proveedor: 'playdoit' }).sort({ iniciada_en: -1 }).lean(),
+      MercadoCasa.countDocuments({ proveedor: 'playdoit', expira_en: { $gt: ahora } }),
+      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', expira_en: { $gt: ahora } } }, { $group: { _id: '$categoria', total: { $sum: 1 } } }, { $sort: { total: -1 } }]),
+      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', expira_en: { $gt: ahora } } }, { $group: { _id: '$estado', total: { $sum: 1 } } }, { $sort: { total: -1 } }]),
+      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', problemas: { $ne: [] } } }, { $unwind: '$problemas' }, { $group: { _id: '$problemas', total: { $sum: 1 } } }, { $sort: { total: -1 } }, { $limit: 20 }])
+    ]);
+    res.json({ ultima_actualizacion: ultima, selecciones_vigentes: vigentes, categorias, estados, problemas_normalizacion: problemas });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+router.get('/mercados', async (req, res) => {
+  try {
+    const limite = Math.min(Math.max(Number.parseInt(req.query.limite, 10) || 100, 1), 500);
+    const pagina = Math.max(Number.parseInt(req.query.pagina, 10) || 1, 1);
+    const filtro = { proveedor: 'playdoit' };
+    if (req.query.vigentes !== 'false') filtro.expira_en = { $gt: new Date() };
+    if (req.query.categoria) filtro.categoria = req.query.categoria;
+    const [selecciones, total] = await Promise.all([
+      MercadoCasa.find(filtro).sort({ recolectado_en: -1 }).skip((pagina - 1) * limite).limit(limite).lean(),
+      MercadoCasa.countDocuments(filtro)
+    ]);
+    res.json({ total, pagina, limite, selecciones });
   } catch (error) {
     res.status(500).json({ error: error.message });
   }

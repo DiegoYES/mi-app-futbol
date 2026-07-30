@@ -1,0 +1,12 @@
+{
+  "fixture_notice": "DATOS SIMULADOS EXCLUSIVAMENTE PARA PRUEBAS; NO FUERON OBTENIDOS DE PLAYDOIT",
+  "events": [{
+    "eventId": "sim-event-1", "eventName": "Equipo Norte vs Equipo Sur",
+    "homeTeam": "Equipo Norte", "awayTeam": "Equipo Sur", "startTime": "2030-01-20T20:00:00.000Z",
+    "marketId": "sim-market-1", "marketName": "Tarjetas del jugador",
+    "outcomes": [
+      { "selectionId": "sim-over", "selectionName": "Luciano Sarmiento Más de 1.5", "decimalOdds": 1.85, "status": "OPEN" },
+      { "selectionId": "sim-under", "selectionName": "Luciano Sarmiento Menos de 1.5", "decimalOdds": 1.95, "status": "OPEN" }
+    ]
+  }]
+}

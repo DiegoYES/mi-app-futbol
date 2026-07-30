@@ -86,3 +86,12 @@ test('el directorio de jugadores requiere una sesión', async t => {
   assert.equal(respuesta.status, 401);
   assert.equal(body.codigo, 'SIN_TOKEN');
 });
+
+test('la actualización de mercados nunca queda expuesta sin sesión administrativa', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const respuesta = await fetch(`${baseUrl}/api/admin/mercados/actualizar`, { method: 'POST' });
+  const body = await respuesta.json();
+
+  assert.equal(respuesta.status, 401);
+  assert.equal(body.codigo, 'SIN_TOKEN');
+});

@@ -7,6 +7,8 @@ const UsoApiDiario = require('../models/UsoApiDiario');
 const PickGuardado = require('../models/PickGuardado');
 const Boleta = require('../models/Boleta');
 const JugadorPartido = require('../models/JugadorPartido');
+const MercadoCasa = require('../models/MercadoCasa');
+const ActualizacionMercados = require('../models/ActualizacionMercados');
 
 async function main() {
   if (!process.env.MONGODB_URI) throw new Error('Falta MONGODB_URI.');
@@ -20,9 +22,11 @@ async function main() {
       UsoApiDiario.createIndexes(),
       PickGuardado.createIndexes(),
       Boleta.createIndexes(),
-      JugadorPartido.createIndexes()
+      JugadorPartido.createIndexes(),
+      MercadoCasa.createIndexes(),
+      ActualizacionMercados.createIndexes()
     ]);
-    console.log('✅ Índices verificados: partidos, equipos, jugadores, usuarios, cuota API, picks y boletas.');
+    console.log('✅ Índices verificados: partidos, equipos, jugadores, usuarios, cuota API, picks, boletas y mercados de casas.');
   } finally {
     await mongoose.disconnect();
   }

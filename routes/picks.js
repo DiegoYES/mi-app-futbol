@@ -3,6 +3,7 @@ const Partido = require('../models/partido');
 const PickGuardado = require('../models/PickGuardado');
 const { explicarMercado, generarPicks } = require('../services/pickEngine');
 const { evaluarMercado, resumirRendimiento } = require('../services/pickTracking');
+const { evaluarPartidoEnCasa } = require('../services/betting/bookmakerIntegrationService');
 
 const router = express.Router();
 const ESTADOS_FINALIZADOS = new Set(['FT', 'AET', 'PEN']);
@@ -114,6 +115,14 @@ router.get('/partido/:id', async (req, res) => {
 
     const resultado = await analizarPartido(partido);
     const finalizado = esFinalizado(partido);
+    const casa = await evaluarPartidoEnCasa(partido, resultado).catch(error => ({
+      proveedor: 'playdoit',
+      estado: 'INTEGRATION_ERROR',
+      actualizado_en: null,
+      resultados: [],
+      resumen: { INTEGRATION_ERROR: 1 },
+      problema: error.message
+    }));
     const guardados = await PickGuardado.find({
       usuario: req.usuario._id,
       partido_api_id: partido.api_id
@@ -127,13 +136,25 @@ router.get('/partido/:id', async (req, res) => {
         : partido.fecha <= new Date()
           ? 'El partido ya comenzó; los picks solo se guardan antes del inicio.'
           : null,
-      mercados: resultado.mercados.map(mercado => ({
-        ...mercado,
-        guardado: guardados.some(item => item.mercado.id === mercado.id),
-        resultado_historico: finalizado
-          ? evaluarMercado(mercado.id, partido)
-          : null
-      })),
+      mercados: resultado.mercados.map(mercado => {
+        const disponible = casa.resultados.find(item => item.modelo?.mercado_id === mercado.id);
+        const alternativas = casa.resultados.filter(item => (
+          !item.modelo?.mercado_id &&
+          item.seleccion?.categoria === ({ goles: 'goals', tarjetas: 'cards', tiros: 'shots', tiros_puerta: 'shots_on_target', faltas: 'fouls', corners: 'corners' })[mercado.categoria] &&
+          item.seleccion?.lado?.toLowerCase() === mercado.tipo &&
+          item.modelo?.alcance === mercado.alcance
+        )).map(item => item.seleccion.linea).filter(Number.isFinite);
+        return {
+          ...mercado,
+          guardado: guardados.some(item => item.mercado.id === mercado.id),
+          resultado_historico: finalizado ? evaluarMercado(mercado.id, partido) : null,
+          disponibilidad_casa: disponible || {
+            estado: casa.estado === 'MATCHED' ? 'MARKET_NOT_FOUND' : casa.estado,
+            lineas_alternativas: [...new Set(alternativas)]
+          }
+        };
+      }),
+      casa,
       recomendados: resultado.recomendados.map(item => item.id),
       categorias: resultado.categorias,
       metodologia: resultado.metodologia

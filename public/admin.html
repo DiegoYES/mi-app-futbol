@@ -41,6 +41,14 @@
   .ip-text { font-size: .75rem; color: #64748b; font-family: monospace; }
   .seccion { margin-top: 32px; }
   .seccion h2 { font-size: 1.1rem; color: var(--primary); margin-bottom: 12px; }
+  .mercados-panel { background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.07); }
+  .mercados-actions { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px; }
+  .btn-mercados { border:0;border-radius:8px;background:var(--primary);color:#fff;padding:10px 14px;cursor:pointer;min-height:42px; }
+  .btn-mercados:disabled { opacity:.55;cursor:wait; }
+  .mercados-status { font-size:.88rem;color:#64748b; }
+  .diag-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px; }
+  .diag-item { background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:11px;overflow-wrap:anywhere; }
+  .diag-item b { display:block;color:var(--primary);font-size:1.15rem; }
   @media(max-width:600px){.wrap{padding:18px 12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}}
   @media(max-width:360px){.kpis{grid-template-columns:1fr}}
 </style>
@@ -50,6 +58,17 @@
   <h1>🛠️ Panel de administración</h1>
 
   <div class="kpis" id="kpis"></div>
+
+  <div class="seccion">
+    <h2>Mercados de Playdoit</h2>
+    <div class="mercados-panel">
+      <div class="mercados-actions">
+        <button class="btn-mercados" id="actualizar-mercados" type="button" onclick="actualizarMercados()">Actualizar mercados</button>
+        <span class="mercados-status" id="estado-mercados">Consultando diagnóstico…</span>
+      </div>
+      <div class="diag-grid" id="diagnostico-mercados"></div>
+    </div>
+  </div>
 
   <div class="barra">
     <input type="search" id="busqueda" placeholder="Buscar por email o nombre..." oninput="buscarConRetraso()">
@@ -152,6 +171,40 @@ async function cargarUsuarios() {
   }).join('');
 }
 
+async function cargarDiagnosticoMercados() {
+  const resp = await fetch('/api/admin/mercados/diagnostico');
+  if (!resp.ok) return;
+  const d = await resp.json();
+  const ultima = d.ultima_actualizacion;
+  document.getElementById('estado-mercados').textContent = ultima
+    ? `Última ejecución: ${new Date(ultima.iniciada_en).toLocaleString('es-MX')} · ${ultima.estado}`
+    : 'Todavía no hay actualizaciones registradas.';
+  const problemas = (d.problemas_normalizacion || []).reduce((suma, item) => suma + item.total, 0);
+  document.getElementById('diagnostico-mercados').innerHTML = `
+    <div class="diag-item"><span>Selecciones vigentes</span><b>${d.selecciones_vigentes || 0}</b></div>
+    <div class="diag-item"><span>Detectadas</span><b>${ultima?.selecciones_detectadas || 0}</b></div>
+    <div class="diag-item"><span>Guardadas</span><b>${ultima?.selecciones_guardadas || 0}</b></div>
+    <div class="diag-item"><span>Eventos</span><b>${ultima?.eventos || 0}</b></div>
+    <div class="diag-item"><span>Problemas</span><b>${problemas + (ultima?.problemas?.length || 0)}</b></div>
+    <div class="diag-item"><span>Estrategia</span><b style="font-size:.9rem">${escaparHtml(ultima?.estrategia || '—')}</b></div>`;
+}
+
+async function actualizarMercados() {
+  const boton = document.getElementById('actualizar-mercados');
+  boton.disabled = true;
+  document.getElementById('estado-mercados').textContent = 'Abriendo navegador y recolectando mercados…';
+  try {
+    const resp = await fetch('/api/admin/mercados/actualizar', { method: 'POST' });
+    const d = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(d.error || d.resultado?.problemas?.[0]?.mensaje || 'La actualización no obtuvo mercados.');
+  } catch (error) {
+    document.getElementById('estado-mercados').textContent = `No se pudo actualizar: ${error.message}`;
+  } finally {
+    boton.disabled = false;
+    await cargarDiagnosticoMercados();
+  }
+}
+
 async function extender(id, meses) {
   const resp = await fetch(`/api/admin/usuarios/${id}/suscripcion`, {
     method: 'POST',
@@ -232,6 +285,7 @@ function refrescar() {
   cargarResumen();
   cargarUsuarios();
   cargarIPsDuplicadas();
+  cargarDiagnosticoMercados();
 }
 
 document.addEventListener('DOMContentLoaded', refrescar);

@@ -1,0 +1,14 @@
+{
+  "equipos": {},
+  "jugadores": {},
+  "ligas": {},
+  "mercados": {
+    "tarjetas del jugador": "player_cards",
+    "player cards": "player_cards",
+    "yellow cards": "player_cards",
+    "tiros del jugador": "player_shots",
+    "player shots": "player_shots",
+    "tiros a puerta del jugador": "player_shots_on_target",
+    "shots on target": "player_shots_on_target"
+  }
+}
