@@ -14,16 +14,94 @@ module.exports = {
     262: { nombre: 'Liga MX', pais: 'México', codigo: 'MX', liga_principal: true },
     253: { nombre: 'Major League Soccer', pais: 'Estados Unidos', codigo: 'US', liga_principal: true },
     71:  { nombre: 'Brasileirão Serie A', pais: 'Brasil', codigo: 'BR', liga_principal: true },
+    72:  { nombre: 'Brasileirão Serie B', pais: 'Brasil', codigo: 'BR', liga_principal: true },
+
+    // ----- Inglaterra (divisiones inferiores) -----
+    41:  { nombre: 'League One', pais: 'Inglaterra', codigo: 'GB', liga_principal: true },
+    42:  { nombre: 'League Two', pais: 'Inglaterra', codigo: 'GB', liga_principal: true },
+    43:  { nombre: 'National League', pais: 'Inglaterra', codigo: 'GB', liga_principal: true },
+
+    // ----- Francia (tercera división) -----
+    63:  { nombre: 'National 1', pais: 'Francia', codigo: 'FR', liga_principal: true },
+
+    // ----- Alemania -----
+    80:  { nombre: '3. Liga', pais: 'Alemania', codigo: 'DE', liga_principal: true },
+
+    // ----- Países Bajos -----
+    88:  { nombre: 'Eredivisie', pais: 'Países Bajos', codigo: 'NL', liga_principal: true },
+    89:  { nombre: 'Eerste Divisie', pais: 'Países Bajos', codigo: 'NL', liga_principal: true },
+
+    // ----- Portugal -----
+    94:  { nombre: 'Primeira Liga', pais: 'Portugal', codigo: 'PT', liga_principal: true },
+    95:  { nombre: 'Segunda Liga', pais: 'Portugal', codigo: 'PT', liga_principal: true },
+
+    // ----- Bélgica -----
+    144: { nombre: 'Jupiler Pro League', pais: 'Bélgica', codigo: 'BE', liga_principal: true },
+    145: { nombre: 'Challenger Pro League', pais: 'Bélgica', codigo: 'BE', liga_principal: true },
+
+    // ----- Turquía -----
+    203: { nombre: 'Süper Lig', pais: 'Turquía', codigo: 'TR', liga_principal: true },
+    204: { nombre: '1. Lig', pais: 'Turquía', codigo: 'TR', liga_principal: true },
+
+    // ----- Europa (mercados activos en casas de apuestas) -----
+    179: { nombre: 'Scottish Premiership', pais: 'Escocia', codigo: 'GB', liga_principal: true },
+    180: { nombre: 'Scottish Championship', pais: 'Escocia', codigo: 'GB', liga_principal: true },
+    183: { nombre: 'Scottish League One', pais: 'Escocia', codigo: 'GB', liga_principal: true },
+    184: { nombre: 'Scottish League Two', pais: 'Escocia', codigo: 'GB', liga_principal: true },
+    218: { nombre: 'Bundesliga Austria', pais: 'Austria', codigo: 'AT', liga_principal: true },
+    219: { nombre: '2. Liga Austria', pais: 'Austria', codigo: 'AT', liga_principal: true },
+    119: { nombre: 'Superliga Dinamarca', pais: 'Dinamarca', codigo: 'DK', liga_principal: true },
+    120: { nombre: '1st Division Dinamarca', pais: 'Dinamarca', codigo: 'DK', liga_principal: true },
+    207: { nombre: 'Swiss Super League', pais: 'Suiza', codigo: 'CH', liga_principal: true },
+    208: { nombre: 'Swiss Challenge League', pais: 'Suiza', codigo: 'CH', liga_principal: true },
+    106: { nombre: 'Ekstraklasa', pais: 'Polonia', codigo: 'PL', liga_principal: true },
+    107: { nombre: 'I Liga Polonia', pais: 'Polonia', codigo: 'PL', liga_principal: true },
+    113: { nombre: 'Allsvenskan', pais: 'Suecia', codigo: 'SE', liga_principal: true },
+    114: { nombre: 'Superettan', pais: 'Suecia', codigo: 'SE', liga_principal: true },
+    345: { nombre: 'Czech Liga', pais: 'República Checa', codigo: 'CZ', liga_principal: true },
+    283: { nombre: 'Liga I', pais: 'Rumania', codigo: 'RO', liga_principal: true },
+    244: { nombre: 'Veikkausliiga', pais: 'Finlandia', codigo: 'FI', liga_principal: true },
+    357: { nombre: 'Premier Division', pais: 'Irlanda', codigo: 'IE', liga_principal: true },
+    104: { nombre: '1. Division', pais: 'Noruega', codigo: 'NO', liga_principal: true },
+    164: { nombre: 'Urvalsdeild', pais: 'Islandia', codigo: 'IS', liga_principal: true },
+    172: { nombre: 'First League', pais: 'Bulgaria', codigo: 'BG', liga_principal: true },
+    197: { nombre: 'Super League 1', pais: 'Grecia', codigo: 'GR', liga_principal: true },
+    210: { nombre: 'HNL', pais: 'Croacia', codigo: 'HR', liga_principal: true },
+    271: { nombre: 'NB I', pais: 'Hungría', codigo: 'HU', liga_principal: true },
+    286: { nombre: 'Super Liga', pais: 'Serbia', codigo: 'RS', liga_principal: true },
+    333: { nombre: 'Premier League', pais: 'Ucrania', codigo: 'UA', liga_principal: true },
+    318: { nombre: '1. Division', pais: 'Chipre', codigo: 'CY', liga_principal: true },
+    383: { nombre: "Ligat Ha'al", pais: 'Israel', codigo: 'IL', liga_principal: true },
+
+    // ----- Australia, Asia y Norteamérica -----
+    188: { nombre: 'A-League', pais: 'Australia', codigo: 'AU', liga_principal: true },
+    292: { nombre: 'K League 1', pais: 'Corea del Sur', codigo: 'KR', liga_principal: true },
+    293: { nombre: 'K League 2', pais: 'Corea del Sur', codigo: 'KR', liga_principal: true },
+    307: { nombre: 'Saudi Pro League', pais: 'Arabia Saudita', codigo: 'SA', liga_principal: true },
+    308: { nombre: 'Saudi First Division', pais: 'Arabia Saudita', codigo: 'SA', liga_principal: true },
+    288: { nombre: 'Premier Soccer League', pais: 'Sudáfrica', codigo: 'ZA', liga_principal: true },
+    301: { nombre: 'Pro League', pais: 'Emiratos Árabes Unidos', codigo: 'AE', liga_principal: true },
+    305: { nombre: 'Stars League', pais: 'Catar', codigo: 'QA', liga_principal: true },
+    99:  { nombre: 'J2 League', pais: 'Japón', codigo: 'JP', liga_principal: true },
+    479: { nombre: 'Canadian Premier League', pais: 'Canadá', codigo: 'CA', liga_principal: true },
 
     // ----- México -----
     263: { nombre: 'Liga de Expansión MX', pais: 'México', codigo: 'MX', liga_principal: true },
 
     // ----- Sudamérica -----
     128: { nombre: 'Argentina Primera División', pais: 'Argentina', codigo: 'AR', liga_principal: true },
-    130: { nombre: 'Bolivia Primera División', pais: 'Bolivia', codigo: 'BO', liga_principal: true },
+    130: { nombre: 'Copa Argentina', pais: 'Argentina', codigo: 'AR', liga_principal: false },
+    344: { nombre: 'Bolivia Primera División', pais: 'Bolivia', codigo: 'BO', liga_principal: true },
     265: { nombre: 'Chile Primera División', pais: 'Chile', codigo: 'CL', liga_principal: true },
-    242: { nombre: 'Peru Primera División', pais: 'Perú', codigo: 'PE', liga_principal: true },
-    239: { nombre: 'Paraguay Primera División', pais: 'Paraguay', codigo: 'PY', liga_principal: true },
+    281: { nombre: 'Perú Primera División', pais: 'Perú', codigo: 'PE', liga_principal: true },
+    250: { nombre: 'Paraguay División Profesional - Apertura', pais: 'Paraguay', codigo: 'PY', liga_principal: true },
+    252: { nombre: 'Paraguay División Profesional - Clausura', pais: 'Paraguay', codigo: 'PY', liga_principal: true },
+    239: { nombre: 'Colombia Primera A', pais: 'Colombia', codigo: 'CO', liga_principal: true },
+    242: { nombre: 'Ecuador Liga Pro', pais: 'Ecuador', codigo: 'EC', liga_principal: true },
+    268: { nombre: 'Uruguay Primera División', pais: 'Uruguay', codigo: 'UY', liga_principal: true },
+    129: { nombre: 'Argentina Primera Nacional', pais: 'Argentina', codigo: 'AR', liga_principal: true },
+    240: { nombre: 'Colombia Primera B', pais: 'Colombia', codigo: 'CO', liga_principal: true },
+    75:  { nombre: 'Brasileirão Serie C', pais: 'Brasil', codigo: 'BR', liga_principal: true },
     13:  { nombre: 'CONMEBOL Libertadores', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
     11:  { nombre: 'CONMEBOL Sudamericana', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
 
@@ -33,10 +111,23 @@ module.exports = {
     169: { nombre: 'Chinese Super League', pais: 'China', codigo: 'CN', liga_principal: true },
     233: { nombre: 'Egyptian Premier League', pais: 'Egipto', codigo: 'EG', liga_principal: true },
 
+    // ----- Fútbol femenil -----
+    44:  { nombre: "Women's Super League", pais: 'Inglaterra', codigo: 'GB', liga_principal: true },
+    142: { nombre: 'Liga F', pais: 'España', codigo: 'ES', liga_principal: true },
+    64:  { nombre: 'Première Ligue Femenina', pais: 'Francia', codigo: 'FR', liga_principal: true },
+    82:  { nombre: 'Frauen-Bundesliga', pais: 'Alemania', codigo: 'DE', liga_principal: true },
+    139: { nombre: 'Serie A Women', pais: 'Italia', codigo: 'IT', liga_principal: true },
+    190: { nombre: 'A-League Women', pais: 'Australia', codigo: 'AU', liga_principal: true },
+    254: { nombre: 'NWSL', pais: 'Estados Unidos', codigo: 'US', liga_principal: true },
+    549: { nombre: 'Damallsvenskan', pais: 'Suecia', codigo: 'SE', liga_principal: true },
+    673: { nombre: 'Liga MX Femenil', pais: 'México', codigo: 'MX', liga_principal: true },
+    74:  { nombre: 'Brasileirão Femenino', pais: 'Brasil', codigo: 'BR', liga_principal: true },
+
     // ----- Competiciones de copa / Europa (no principales) -----
     2:   { nombre: 'UEFA Champions League', pais: 'Europa', codigo: 'EU', liga_principal: false },
     3:   { nombre: 'UEFA Europa League', pais: 'Europa', codigo: 'EU', liga_principal: false },
     848: { nombre: 'UEFA Europa Conference League', pais: 'Europa', codigo: 'EU', liga_principal: false },
+    525: { nombre: 'UEFA Champions League Women', pais: 'Europa', codigo: 'EU', liga_principal: false },
     45:  { nombre: 'FA Cup', pais: 'Inglaterra', codigo: 'GB', liga_principal: false },
     143: { nombre: 'Copa del Rey', pais: 'España', codigo: 'ES', liga_principal: false }
   },
