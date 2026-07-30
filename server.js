@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const helmet = require('helmet');
 const path = require('path');
 const mongoose = require('mongoose');
 const config = require('./config/leagues');
@@ -17,15 +18,52 @@ const picksRoutes = require('./routes/picks');
 const boletasRoutes = require('./routes/boletas');
 const homeRoutes = require('./routes/home');
 const jugadoresRoutes = require('./routes/jugadores');
+const systemRoutes = require('./routes/system');
 const { protegido, requireAuth, requireAdmin } = require('./middleware/auth');
+const {
+  asignarIdSolicitud,
+  configurarProxy,
+  limiteApi,
+  manejarJsonInvalido,
+  validarOrigenNavegador
+} = require('./middleware/security');
+const { observarHttp } = require('./middleware/observability');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const cacheEscudos = new Map();
 const TEMPORADA_MIN_ANALISIS = Number.parseInt(process.env.ANALYSIS_MIN_SEASON || '2025', 10);
 
-app.use(express.json());
+app.disable('x-powered-by');
+configurarProxy(app);
+app.use(asignarIdSolicitud);
+app.use(observarHttp);
+app.use(helmet({
+  // Compatibilidad temporal con scripts/estilos inline existentes. Aun así se
+  // bloquean scripts remotos, iframes, objetos y conexiones a otros orígenes.
+  contentSecurityPolicy: { directives: {
+    defaultSrc: ["'self'"],
+    scriptSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", "'unsafe-inline'"],
+    imgSrc: ["'self'", 'data:', 'https://media.api-sports.io'],
+    connectSrc: ["'self'"],
+    fontSrc: ["'self'", 'data:'],
+    objectSrc: ["'none'"],
+    baseUri: ["'self'"],
+    formAction: ["'self'"],
+    frameAncestors: ["'none'"],
+    upgradeInsecureRequests: process.env.NODE_ENV === 'production' ? [] : null
+  } },
+  crossOriginEmbedderPolicy: false,
+  strictTransportSecurity: process.env.NODE_ENV === 'production'
+    ? { maxAge: 15_552_000, includeSubDomains: true }
+    : false
+}));
+app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '32kb' }));
 app.use(cookieParser());
+
+app.use('/health', systemRoutes);
+app.use('/api', validarOrigenNavegador, limiteApi);
 
 // / y /index.html son la portada; el comparador vive en una ruta explícita.
 app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(__dirname, 'public', 'inicio.html')));
@@ -46,6 +84,7 @@ app.use('/api/home', ...protegido, homeRoutes);
 app.use('/api/jugadores', ...protegido, jugadoresRoutes);
 app.use('/api/arbitros', protegido);
 app.use('/api/calendario', protegido, calendarioRoutes);
+app.use(manejarJsonInvalido);
 
 async function resolverTemporada(leagueId, teamId, solicitada, soloFinalizados = false) {
   if (solicitada !== undefined) {
@@ -854,17 +893,38 @@ async function iniciarServidor() {
   if (!process.env.JWT_SECRET) {
     throw new Error('Falta la variable de entorno JWT_SECRET.');
   }
+  if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32) {
+    throw new Error('JWT_SECRET debe tener al menos 32 caracteres en producción.');
+  }
 
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('✅ Conectado a MongoDB');
 
-  return app.listen(PORT, () => {
+  const servidor = app.listen(PORT, () => {
     console.log(`🚀 Servidor listo en http://localhost:${PORT}`);
   });
+  servidor.keepAliveTimeout = 65_000;
+  servidor.headersTimeout = 66_000;
+  servidor.requestTimeout = 60_000;
+  return servidor;
 }
 
 if (require.main === module) {
-  iniciarServidor().catch(error => {
+  iniciarServidor().then(servidor => {
+    let cerrando = false;
+    const apagar = señal => {
+      if (cerrando) return;
+      cerrando = true;
+      console.log(`\n${señal}: cerrando servidor de forma segura...`);
+      servidor.close(async () => {
+        await mongoose.disconnect().catch(() => {});
+        process.exit(0);
+      });
+      setTimeout(() => process.exit(1), 15_000).unref();
+    };
+    process.once('SIGTERM', () => apagar('SIGTERM'));
+    process.once('SIGINT', () => apagar('SIGINT'));
+  }).catch(error => {
     console.error('❌ No se pudo iniciar el servidor:', error.message);
     process.exitCode = 1;
   });

@@ -25,9 +25,9 @@ function validarEmail(email) {
 }
 
 function obtenerIP(req) {
-  const forwarded = req.headers['x-forwarded-for'];
-  if (forwarded) return forwarded.split(',')[0].trim();
-  return req.socket?.remoteAddress || req.ip || null;
+  // Express sólo honra X-Forwarded-For según TRUST_PROXY; nunca confiamos en
+  // el encabezado directamente porque un cliente podría falsificarlo.
+  return req.ip || req.socket?.remoteAddress || null;
 }
 
 router.post('/registro', limiteIntentos, async (req, res) => {

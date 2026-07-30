@@ -5,6 +5,11 @@ const { crearControlCuota } = require('../services/apiQuota');
 const MercadoCasa = require('../models/MercadoCasa');
 const ActualizacionMercados = require('../models/ActualizacionMercados');
 const { refrescarMercados } = require('../services/betting/marketCollectionService');
+const { controlTraficoApi } = require('../services/apiTrafficControl');
+const { obtenerApiKeys } = require('../services/apiQuota');
+const { obtenerEstadisticasCache } = require('../middleware/cache');
+const mongoose = require('mongoose');
+const { obtenerMetricasHttp } = require('../middleware/observability');
 
 const router = express.Router();
 
@@ -65,6 +70,32 @@ router.get('/resumen', async (req, res) => {
     res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, mesesCortesia, cuotaApi });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+// Estado operativo sin valores secretos. Útil para alertas y diagnóstico.
+router.get('/produccion/estado', async (_req, res) => {
+  try {
+    const cuotaApi = await crearControlCuota().consultar();
+    res.json({
+      estado: 'ok',
+      proceso: {
+        uptime_segundos: Math.floor(process.uptime()),
+        memoria_mb: Math.round(process.memoryUsage().rss / 1024 / 1024),
+        entorno: process.env.NODE_ENV || 'development'
+      },
+      mongodb: mongoose.connection.readyState === 1 ? 'ok' : 'no_disponible',
+      api_football: {
+        configurada: obtenerApiKeys().length > 0,
+        claves_configuradas: obtenerApiKeys().length,
+        cuota_diaria: cuotaApi,
+        trafico: controlTraficoApi.estado()
+      },
+      cache: obtenerEstadisticasCache(),
+      http: obtenerMetricasHttp()
+    });
+  } catch (error) {
+    res.status(503).json({ estado: 'degradado', error: 'No se pudo consultar el estado operativo.' });
   }
 });
 

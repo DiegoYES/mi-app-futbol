@@ -4,9 +4,12 @@ const assert = require('node:assert/strict');
 const UsoApiDiario = require('../models/UsoApiDiario');
 const {
   ApiFootballProviderError,
+  ApiFootballRateLimitError,
   CuotaApiAgotadaError,
   crearControlCuota,
   extraerCuotaDiaria,
+  extraerCuotaMinuto,
+  esLimiteTemporal,
   instalarControlCuotaAxios,
   obtenerConfiguracion,
   obtenerDiaCuota,
@@ -58,6 +61,24 @@ test('extrae el límite diario dinámico sin confundir encabezados por minuto', 
   assert.deepEqual(cuota, { limite: 117, restantes: 116, origen: 'headers' });
 });
 
+test('extrae por separado el límite por minuto', () => {
+  const cuota = extraerCuotaMinuto({ headers: {
+    'x-ratelimit-requests-limit': '7500',
+    'x-ratelimit-requests-remaining': '7400',
+    'X-RateLimit-Limit': '300',
+    'X-RateLimit-Remaining': '299'
+  } });
+
+  assert.deepEqual(cuota, { limite: 300, restantes: 299, origen: 'headers' });
+});
+
+test('un error requests sin referencia al día se trata como límite temporal', () => {
+  assert.equal(esLimiteTemporal({
+    status: 200,
+    data: { errors: { requests: 'Request limit reached, slow down.' } }
+  }), true);
+});
+
 test('sincroniza un límite dinámico reportado por el proveedor', async () => {
   let cambiosAplicados;
   const modelo = {
@@ -100,7 +121,8 @@ test('un 429 por minuto no agota el día ni rota de key', async () => {
     env: {
       API_FOOTBALL_KEY: 'principal',
       API_FOOTBALL_KEY_2: 'respaldo',
-      API_FOOTBALL_ALLOW_KEY_FAILOVER: 'true'
+      API_FOOTBALL_ALLOW_KEY_FAILOVER: 'true',
+      API_FOOTBALL_MAX_RETRIES: '0'
     },
     control: {
       async reservar() {},
@@ -119,9 +141,56 @@ test('un 429 por minuto no agota el día ni rota de key', async () => {
     }
   };
 
-  await assert.rejects(interceptorError(error), recibido => recibido === error);
+  await assert.rejects(interceptorError(error), recibido => {
+    assert.ok(recibido instanceof ApiFootballRateLimitError);
+    assert.equal(recibido.code, 'API_FOOTBALL_RATE_LIMITED');
+    return true;
+  });
   assert.equal(agotadas, 0);
   assert.equal(reintentos, 0);
+});
+
+test('reintenta errors.rateLimit sin marcar agotada la cuota diaria', async () => {
+  let interceptorRespuesta;
+  let configReintentada;
+  let agotadas = 0;
+  const axiosFalso = {
+    async request(config) {
+      configReintentada = config;
+      return { data: { response: [] } };
+    },
+    interceptors: {
+      request: { use() { return 1; } },
+      response: { use(fn) { interceptorRespuesta = fn; return 2; } }
+    }
+  };
+  const trafico = {
+    async antesDeSolicitar() {},
+    registrarExito() {},
+    registrarFallo() {},
+    puedeReintentar: () => true,
+    async esperarReintento() { return { intento: 1, espera: 0 }; },
+    estado: () => ({ reintentar_en_ms: 0 })
+  };
+  instalarControlCuotaAxios(axiosFalso, {
+    env: { API_FOOTBALL_KEY: 'prueba' },
+    trafico,
+    control: {
+      async reservar() {},
+      async marcarAgotada() { agotadas++; }
+    }
+  });
+
+  const resultado = await interceptorRespuesta({
+    status: 200,
+    data: { errors: { rateLimit: 'Too many requests per minute.' } },
+    config: { url: '/fixtures', __apiQuotaReservada: true }
+  });
+
+  assert.deepEqual(resultado, { data: { response: [] } });
+  assert.equal(configReintentada.__apiRetryCount, 1);
+  assert.equal(configReintentada.__apiQuotaReservada, false);
+  assert.equal(agotadas, 0);
 });
 
 test('el interceptor detecta el límite aunque API-Football responda HTTP 200', async () => {

@@ -21,6 +21,9 @@ npm run sync:halves
 npm run sync:events
 ```
 
+La lista de seguridad, variables, alertas y plantilla de VM está en
+[`docs/PRODUCCION.md`](docs/PRODUCCION.md).
+
 ## Datos y sincronización
 
 La sincronización se controla desde `.env`:

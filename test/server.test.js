@@ -21,6 +21,44 @@ test('la página de acceso es pública', async t => {
   assert.match(html, /Iniciar sesión/);
 });
 
+test('expone salud y cabeceras seguras sin revelar Express', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const respuesta = await fetch(`${baseUrl}/health/live`);
+  const body = await respuesta.json();
+
+  assert.equal(respuesta.status, 200);
+  assert.equal(body.estado, 'ok');
+  assert.equal(respuesta.headers.get('x-powered-by'), null);
+  assert.equal(respuesta.headers.get('x-content-type-options'), 'nosniff');
+  assert.match(respuesta.headers.get('content-security-policy'), /default-src 'self'/);
+  assert.ok(respuesta.headers.get('x-request-id'));
+});
+
+test('rechaza escrituras web desde un origen ajeno', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const respuesta = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { origin: 'https://sitio-malicioso.example' }
+  });
+  const body = await respuesta.json();
+
+  assert.equal(respuesta.status, 403);
+  assert.equal(body.codigo, 'ORIGEN_NO_PERMITIDO');
+});
+
+test('rechaza cuerpos JSON demasiado grandes con una respuesta controlada', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const respuesta = await fetch(`${baseUrl}/api/auth/login`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ email: 'a@example.com', password: 'x'.repeat(40_000) })
+  });
+  const body = await respuesta.json();
+
+  assert.equal(respuesta.status, 413);
+  assert.equal(body.codigo, 'BODY_MUY_GRANDE');
+});
+
 test('index.html muestra la portada y el comparador conserva su propia ruta', async t => {
   const baseUrl = await servidorTemporal(t);
   const [inicio, comparador] = await Promise.all([
