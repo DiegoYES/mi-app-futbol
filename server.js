@@ -17,6 +17,7 @@ const picksRoutes = require('./routes/picks');
 const boletasRoutes = require('./routes/boletas');
 const homeRoutes = require('./routes/home');
 const jugadoresRoutes = require('./routes/jugadores');
+const sugerenciasRoutes = require('./routes/sugerencias');
 const { protegido, requireAuth, requireAdmin } = require('./middleware/auth');
 
 const app = express();
@@ -34,6 +35,8 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
+// El buzón solo exige sesión: también sirve para reportar problemas de acceso.
+app.use('/api/sugerencias', requireAuth, sugerenciasRoutes);
 
 // Todos los endpoints de datos requieren sesión válida y acceso vigente
 app.use('/api/ligas', protegido);

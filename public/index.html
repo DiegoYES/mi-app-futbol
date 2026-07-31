@@ -53,7 +53,7 @@
                             <option value="">-- Competición del local --</option>
                         </select></div>
                         <label class="selection-field"><span>2 · Temporada reciente</span><select id="season-a" disabled aria-label="Temporada del equipo local"><option value="">-- Temporada --</option></select></label>
-                        <label class="selection-field"><span>3 · Equipo local</span><select id="team-a" disabled>
+                        <label class="selection-field"><span>3 · Equipo local</span><select id="team-a" disabled aria-label="Equipo local">
                             <option value="">-- Equipo --</option>
                         </select></label>
                     </div>
@@ -67,13 +67,13 @@
                             <option value="visitante">Historial como visitante</option>
                         </select>
                         <label>Partidos:</label>
-                        <select id="limit-a">
+                            <select id="limit-a" aria-label="Cantidad de partidos del equipo local">
                             <option value="all">Todos</option>
                             <option value="5">Últimos 5</option>
                             <option value="3">Últimos 3</option>
                         </select>
                         <label>Tiempo:</label>
-                        <select id="half-a">
+                            <select id="half-a" aria-label="Periodo del equipo local">
                             <option value="0">Completo</option>
                             <option value="1">1er T</option>
                             <option value="2">2º T</option>
@@ -112,7 +112,7 @@
                             <option value="">-- Competición del visitante --</option>
                         </select></div>
                         <label class="selection-field"><span>2 · Temporada reciente</span><select id="season-b" disabled aria-label="Temporada del equipo visitante"><option value="">-- Temporada --</option></select></label>
-                        <label class="selection-field"><span>3 · Equipo visitante</span><select id="team-b" disabled>
+                        <label class="selection-field"><span>3 · Equipo visitante</span><select id="team-b" disabled aria-label="Equipo visitante">
                             <option value="">-- Equipo --</option>
                         </select></label>
                     </div>
@@ -126,13 +126,13 @@
                             <option value="visitante" selected>Historial como visitante</option>
                         </select>
                         <label>Partidos:</label>
-                        <select id="limit-b">
+                            <select id="limit-b" aria-label="Cantidad de partidos del equipo visitante">
                             <option value="all">Todos</option>
                             <option value="5">Últimos 5</option>
                             <option value="3">Últimos 3</option>
                         </select>
                         <label>Tiempo:</label>
-                        <select id="half-b">
+                            <select id="half-b" aria-label="Periodo del equipo visitante">
                             <option value="0">Completo</option>
                             <option value="1">1er T</option>
                             <option value="2">2º T</option>
@@ -161,10 +161,13 @@
         </div>
 
         <div class="compare-action">
-            <button id="btn-picks" type="button" disabled>Generar análisis combinado</button>
-            <button id="btn-h2h" type="button" disabled>Ver historial entre ambos</button>
-            <button id="save-comparison" type="button" disabled>☆ Guardar comparación</button>
-            <button id="share-comparison" type="button" disabled>Compartir análisis</button>
+            <div class="compare-primary-copy"><span>Siguiente paso</span><strong>Combina ambos historiales</strong></div>
+            <button id="btn-picks" class="compare-primary" type="button" disabled>Generar análisis →</button>
+            <div class="compare-secondary" aria-label="Acciones secundarias de la comparación">
+                <button id="btn-h2h" type="button" disabled>H2H</button>
+                <button id="save-comparison" type="button" disabled aria-label="Guardar comparación">☆ Guardar</button>
+                <button id="share-comparison" type="button" disabled>Compartir</button>
+            </div>
         </div>
         <p id="comparison-action-status" class="comparison-action-status" aria-live="polite"></p>
 

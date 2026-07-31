@@ -5,12 +5,12 @@
 # Uso desde crontab:
 #   10 0  * * *  /home/diego/mi-app-futbol/scripts/cronSync.sh batch1 >> /tmp/futbol-batch1.log 2>&1
 #   0  6  * * *  /home/diego/mi-app-futbol/scripts/cronSync.sh batch2 >> /tmp/futbol-batch2.log 2>&1
-#   0  16 * * *  /home/diego/mi-app-futbol/scripts/cronSync.sh batch3 >> /tmp/futbol-batch3.log 2>&1
+#   0  18 * * *  /home/diego/mi-app-futbol/scripts/cronSync.sh batch3 >> /tmp/futbol-batch3.log 2>&1
 #
 # Horario del sistema (CST, UTC-6):
 #   batch1: 00:10 → cierre de los partidos americanos de la noche
 #   batch2: 06:00 → recoger partidos nocturnos y preparar el día
-#   batch3: 16:00 → recoger Europa y actualizar América antes del cierre nocturno
+#   batch3: 18:00 → inicia el nuevo día UTC/cuota y recoge detalles con jugadores
 # =============================================================================
 set -u
 BATCH="${1:-batch1}"
@@ -83,7 +83,7 @@ elif [ "$BATCH" = "batch2" ]; then
     node scripts/syncDatabase.js
 
 # ------------------------------------------------------------------
-# BATCH 3 (16:00 CST): actualización de tarde
+# BATCH 3 (18:00 CST, 00:00 UTC): actualización tras renovar la cuota diaria
 #   - Completar stats de partidos americanos que acabaron esta noche
 #   - Segundas divisiones pendientes de carga histórica
 #   - Carga masiva progresiva (si queda cuota disponible)

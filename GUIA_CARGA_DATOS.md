@@ -4,6 +4,23 @@
 
 **Reset de cuota: 6:00 PM México todos los días**
 
+## ⏰ Pendiente de hoy — 30 de julio de 2026, 6:00 PM México
+
+Revisar la cuota renovada y ejecutar el lote que completa estadísticas, eventos,
+alineaciones y **rendimientos de jugadores**:
+
+```bash
+npm run quota:sync
+npm run sync:plan
+bash scripts/cronSync.sh batch3
+```
+
+La página de jugadores depende del bloque `players` obtenido por
+`npm run sync:details` (incluido en `batch3`). Una competición puede tener
+partidos y estadísticas de equipo pero seguir sin rendimientos individuales si
+este lote no se ha ejecutado. `npm run sync:plan` permite revisar los faltantes
+antes de consumir cuota.
+
 > 💡 Usa `SYNC_DELAY_MS=300` (seguro para plan PRO, ~200/min). Los partidos de copas sin estadísticas (ej. rondas tempranas de FA Cup) ahora se marcan automáticamente y **no se reintentan**, así no se desperdicia cuota.
 
 ---

@@ -223,6 +223,7 @@ function actualizarAccionesComparacion() {
     document.getElementById('btn-picks').disabled = !listoPicks;
     document.getElementById('save-comparison').disabled = !listoPicks;
     document.getElementById('share-comparison').disabled = !listoPicks;
+    document.querySelector('.compare-action')?.classList.toggle('is-ready', listoPicks);
     if (listoPicks) actualizarUrlComparador();
 
     const acceso = document.getElementById('pick-shortcut');
