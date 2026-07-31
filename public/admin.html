@@ -49,7 +49,22 @@
   .diag-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px; }
   .diag-item { background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:11px;overflow-wrap:anywhere; }
   .diag-item b { display:block;color:var(--primary);font-size:1.15rem; }
-  @media(max-width:600px){.wrap{padding:18px 12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}}
+  .ticket-tools { display:flex;gap:10px;flex-wrap:wrap;margin-bottom:12px; }
+  .ticket-tools select { min-height:40px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155; }
+  .admin-tickets { display:grid;gap:12px; }
+  .admin-ticket { background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  .admin-ticket-head { display:flex;justify-content:space-between;gap:14px;align-items:flex-start; }
+  .admin-ticket h3 { margin:3px 0 5px;color:var(--primary);font-size:1rem; }
+  .admin-ticket-meta { color:#64748b;font-size:.75rem; }
+  .admin-ticket-desc { white-space:pre-wrap;overflow-wrap:anywhere;font-size:.86rem;line-height:1.5; }
+  .ticket-edit { display:grid;grid-template-columns:140px 140px minmax(220px,1fr) auto;gap:9px;align-items:end;margin-top:13px;padding-top:13px;border-top:1px solid #e2e8f0; }
+  .ticket-edit label { display:block;color:#64748b;font-size:.68rem;margin-bottom:4px; }
+  .ticket-edit select,.ticket-edit textarea { width:100%;min-height:40px;padding:8px;border:1px solid #cbd5e1;border-radius:7px;font:inherit; }
+  .ticket-edit textarea { min-height:64px;resize:vertical; }
+  .btn-ticket { min-height:40px;border:0;border-radius:7px;background:var(--primary);color:#fff;padding:9px 13px;cursor:pointer; }
+  .ticket-empty { padding:25px;text-align:center;color:#94a3b8;background:#fff;border-radius:10px; }
+  @media(max-width:800px){.ticket-edit{grid-template-columns:1fr 1fr}.ticket-edit>div:nth-child(3){grid-column:1/-1}.admin-ticket-head{display:block}}
+  @media(max-width:600px){.wrap{padding:18px 12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}.ticket-edit{grid-template-columns:1fr}.ticket-edit>div:nth-child(3){grid-column:auto}}
   @media(max-width:360px){.kpis{grid-template-columns:1fr}}
 </style>
 </head>
@@ -68,6 +83,28 @@
       </div>
       <div class="diag-grid" id="diagnostico-mercados"></div>
     </div>
+  </div>
+
+  <div class="seccion">
+    <h2>💡 Sugerencias y tickets</h2>
+    <div class="ticket-tools">
+      <select id="filtro-ticket-estado" onchange="cargarTickets()">
+        <option value="">Todos los estados</option>
+        <option value="nueva">Nuevos</option>
+        <option value="en_revision">En revisión</option>
+        <option value="planeada">Planeados</option>
+        <option value="resuelta">Resueltos</option>
+        <option value="descartada">Descartados</option>
+      </select>
+      <select id="filtro-ticket-tipo" onchange="cargarTickets()">
+        <option value="">Todos los tipos</option>
+        <option value="idea">Ideas</option>
+        <option value="mejora">Mejoras</option>
+        <option value="error">Errores</option>
+        <option value="otro">Otros</option>
+      </select>
+    </div>
+    <div class="admin-tickets" id="admin-tickets"><div class="ticket-empty">Cargando tickets…</div></div>
   </div>
 
   <div class="barra">
@@ -122,7 +159,78 @@ async function cargarResumen() {
     <div class="kpi"><div class="label">Expirados</div><div class="value">${d.expirados}</div></div>
     <div class="kpi"><div class="label">Ingreso mensual real</div><div class="value">$${ingresoReal}</div></div>
     <div class="kpi"><div class="label">Cortesías activas</div><div class="value">${cortesias}</div></div>
-    <div class="kpi"><div class="label">API hoy</div><div class="value">${d.cuotaApi.usadas}/${d.cuotaApi.disponibles_para_uso}</div></div>`;
+    <div class="kpi"><div class="label">API hoy</div><div class="value">${d.cuotaApi.usadas}/${d.cuotaApi.disponibles_para_uso}</div></div>
+    <div class="kpi"><div class="label">Tickets abiertos</div><div class="value">${d.ticketsAbiertos || 0}</div></div>`;
+}
+
+const ESTADOS_TICKET = {
+  nueva:'Nueva', en_revision:'En revisión', planeada:'Planeada', resuelta:'Resuelta', descartada:'Descartada'
+};
+const TIPOS_TICKET = { idea:'Idea', mejora:'Mejora', error:'Error', otro:'Otro' };
+const PRIORIDADES_TICKET = { baja:'Baja', media:'Media', alta:'Alta', urgente:'Urgente' };
+
+function opcionesTicket(opciones, actual) {
+  return Object.entries(opciones).map(([valor, etiqueta]) =>
+    `<option value="${valor}" ${valor === actual ? 'selected' : ''}>${etiqueta}</option>`).join('');
+}
+
+async function cargarTickets() {
+  const estado = document.getElementById('filtro-ticket-estado').value;
+  const tipo = document.getElementById('filtro-ticket-tipo').value;
+  const params = new URLSearchParams({ limite: '100' });
+  if (estado) params.set('estado', estado);
+  if (tipo) params.set('tipo', tipo);
+  const contenedor = document.getElementById('admin-tickets');
+  const resp = await fetch('/api/admin/sugerencias?' + params);
+  const datos = await resp.json().catch(() => ({}));
+  if (!resp.ok) {
+    contenedor.innerHTML = `<div class="ticket-empty">${escaparHtml(datos.error || 'No se pudieron cargar los tickets.')}</div>`;
+    return;
+  }
+  if (!datos.tickets.length) {
+    contenedor.innerHTML = '<div class="ticket-empty">No hay tickets con estos filtros.</div>';
+    return;
+  }
+  contenedor.innerHTML = datos.tickets.map(ticket => `
+    <article class="admin-ticket" data-ticket="${ticket._id}">
+      <div class="admin-ticket-head">
+        <div><span class="admin-ticket-meta">${escaparHtml(TIPOS_TICKET[ticket.tipo])} · ${fecha(ticket.creada_en)}</span><h3>${escaparHtml(ticket.asunto)}</h3><span class="admin-ticket-meta">${escaparHtml(ticket.usuario?.nombre || 'Usuario eliminado')} · ${escaparHtml(ticket.usuario?.email || 'sin email')}</span></div>
+        <span class="badge ${ticket.estado === 'resuelta' ? 'premium' : ticket.estado === 'descartada' ? 'expirado' : 'prueba'}">${escaparHtml(ESTADOS_TICKET[ticket.estado])}</span>
+      </div>
+      <p class="admin-ticket-desc">${escaparHtml(ticket.descripcion)}</p>
+      <div class="ticket-edit">
+        <div><label>Estado</label><select data-campo="estado">${opcionesTicket(ESTADOS_TICKET, ticket.estado)}</select></div>
+        <div><label>Prioridad</label><select data-campo="prioridad">${opcionesTicket(PRIORIDADES_TICKET, ticket.prioridad)}</select></div>
+        <div><label>Respuesta al usuario</label><textarea maxlength="2000" data-campo="respuesta">${escaparHtml(ticket.respuesta_admin || '')}</textarea></div>
+        <button class="btn-ticket" type="button" onclick="actualizarTicket('${ticket._id}', this)">Guardar</button>
+      </div>
+    </article>`).join('');
+}
+
+async function actualizarTicket(id, boton) {
+  const tarjeta = document.querySelector(`[data-ticket="${id}"]`);
+  boton.disabled = true;
+  boton.textContent = 'Guardando…';
+  try {
+    const resp = await fetch(`/api/admin/sugerencias/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        estado: tarjeta.querySelector('[data-campo="estado"]').value,
+        prioridad: tarjeta.querySelector('[data-campo="prioridad"]').value,
+        respuesta_admin: tarjeta.querySelector('[data-campo="respuesta"]').value
+      })
+    });
+    const datos = await resp.json();
+    if (!resp.ok) throw new Error(datos.error || 'No se pudo guardar.');
+    boton.textContent = 'Guardado ✓';
+    await cargarResumen();
+    setTimeout(() => cargarTickets(), 500);
+  } catch (error) {
+    alert(error.message);
+    boton.disabled = false;
+    boton.textContent = 'Guardar';
+  }
 }
 
 async function cargarUsuarios() {
@@ -286,6 +394,7 @@ function refrescar() {
   cargarUsuarios();
   cargarIPsDuplicadas();
   cargarDiagnosticoMercados();
+  cargarTickets();
 }
 
 document.addEventListener('DOMContentLoaded', refrescar);

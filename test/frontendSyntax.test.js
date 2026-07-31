@@ -6,7 +6,7 @@ const path = require('node:path');
 const paginas = [
   'index.html', 'inicio.html', 'login.html', 'admin.html', 'calendario.html',
   'partido.html', 'picks.html', 'boletas.html', 'equipos.html', 'equipo.html', 'jugadores.html',
-  'competiciones.html', 'competicion.html', 'jugador.html', 'arbitros.html'
+  'competiciones.html', 'competicion.html', 'jugador.html', 'arbitros.html', 'sugerencias.html'
 ];
 
 for (const pagina of paginas) {
@@ -64,4 +64,13 @@ test('el directorio de equipos selecciona ligas y delega la temporada a la ficha
 test('user-library.js contiene JavaScript válido', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'user-library.js'), 'utf8');
   assert.doesNotThrow(() => new Function(codigo));
+});
+
+test('el directorio de jugadores separa competición y temporada', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'jugadores.html'), 'utf8');
+  assert.match(html, /id="liga"/);
+  assert.match(html, /id="temporada"/);
+  assert.match(html, /pintarTemporadas/);
+  assert.match(html, /&season=\$\{season\}/);
+  assert.doesNotMatch(html, /const \[league,season\]=valor\.split/);
 });

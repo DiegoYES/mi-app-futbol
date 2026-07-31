@@ -447,8 +447,17 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
 .stat-badge .label { color: var(--muted); font-size: 0.68rem; }
 .stat-badge .value { color: var(--green); font-size: 1.08rem; font-weight: 850; }
 
-.compare-action { display: flex; justify-content: center; gap: 10px; margin: 24px 0; text-align: center; }
-.compare-action button { min-height: 48px; padding: 0 24px; }
+.compare-action { display:flex;align-items:center;justify-content:center;gap:12px;margin:24px 0;padding:12px;border:1px solid var(--line);border-radius:16px;background:rgba(16,26,23,.94);box-shadow:0 18px 45px rgba(0,0,0,.22);text-align:center;transition:border-color .18s,box-shadow .18s; }
+.compare-action.is-ready { position:sticky;bottom:12px;z-index:45;border-color:rgba(84,227,142,.3);box-shadow:0 20px 60px rgba(0,0,0,.55),0 0 0 4px rgba(84,227,142,.05); }
+.compare-action button { min-height:44px;padding:0 16px; }
+.compare-primary-copy { min-width:160px;text-align:left; }
+.compare-primary-copy span,.compare-primary-copy strong { display:block; }
+.compare-primary-copy span { color:var(--muted);font-size:.62rem;font-weight:850;letter-spacing:.08em;text-transform:uppercase; }
+.compare-primary-copy strong { margin-top:2px;font-size:.78rem; }
+.compare-primary { min-height:50px!important;padding-inline:25px!important;box-shadow:0 8px 24px rgba(84,227,142,.12); }
+.compare-secondary { display:flex;gap:7px;padding-left:5px;border-left:1px solid var(--line); }
+.compare-secondary button { border:1px solid var(--line);background:var(--surface-raised);color:var(--muted);font-size:.7rem; }
+.compare-secondary button:not(:disabled):hover { border-color:rgba(104,217,231,.42);color:var(--ink); }
 .comparison-action-status { min-height:20px;margin:-14px 0 20px;color:var(--green);font-size:.7rem;text-align:center; }
 
 .pick-shortcut {
@@ -621,7 +630,8 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   .team-controls { padding-inline: 18px; }
   .advanced-options { margin-inline: 18px; }
   .h2h-section, .picks-section, .referee-section { padding: 18px; }
-  .compare-action { flex-wrap: wrap; }
+  .compare-action { flex-wrap:wrap; }
+  .compare-primary-copy { flex:1; }
 }
 
 @media (max-width: 560px) {
@@ -640,7 +650,10 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   .market-grid { grid-template-columns: 1fr; }
   .advanced-metric-grid { grid-template-columns: 1fr; }
   .frequency-toolbar { align-items:flex-start;flex-direction:column; }
-  .compare-action { align-items: stretch; flex-direction: column; }
+  .compare-action { align-items:stretch;bottom:max(8px,env(safe-area-inset-bottom));flex-direction:column; }
+  .compare-primary-copy { text-align:center; }
+  .compare-secondary { display:grid;grid-template-columns:repeat(3,1fr);padding:7px 0 0;border-top:1px solid var(--line);border-left:0; }
+  .compare-secondary button { width:100%;padding-inline:8px; }
   .pick-shortcut { right: 10px; bottom: 10px; max-width: calc(100vw - 20px); }
   .bet-slip { right: 10px; bottom:max(10px,env(safe-area-inset-bottom)); width: calc(100vw - 20px); max-height: calc(100dvh - 20px - env(safe-area-inset-bottom)); }
   .feature-nav { display: grid; grid-template-columns: 1fr; }

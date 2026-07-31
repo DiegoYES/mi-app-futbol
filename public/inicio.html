@@ -18,9 +18,10 @@
     .hero-copy h1 { position:relative;z-index:1;max-width:780px;margin:0;font-size:clamp(2.7rem,6vw,5.8rem);line-height:.91;letter-spacing:-.065em; }
     .hero-copy h1 span { color:var(--green); }
     .hero-copy > p:not(.eyebrow) { max-width:650px;margin:24px 0 0;color:var(--muted);font-size:1.02rem; }
-    .hero-actions { display:flex;gap:10px;flex-wrap:wrap;margin-top:28px; }
+    .hero-actions { display:grid;grid-template-columns:repeat(3,max-content);gap:10px;margin-top:28px; }
     .hero-actions a { position:relative;z-index:1;display:inline-flex;align-items:center;min-height:46px;padding:0 18px;border:1px solid var(--line);border-radius:12px;color:var(--ink);font-size:.8rem;font-weight:900;text-decoration:none; }
     .hero-actions .primary { border-color:var(--green);background:var(--green);color:#07100d; }
+    .hero-actions .quiet { color:var(--cyan); }
     .home-search { position:relative;z-index:5;max-width:660px;margin-top:14px; }.home-search input { width:100%;min-height:50px;padding:0 48px 0 16px;border:1px solid var(--line);border-radius:13px;background:rgba(7,16,13,.7);color:var(--ink);outline:none; }.home-search input:focus { border-color:rgba(84,227,142,.55);box-shadow:0 0 0 3px rgba(84,227,142,.08); }.home-search-mark { position:absolute;right:16px;top:14px;color:var(--green);font-weight:900; }
     .home-search-results { position:absolute;left:0;right:0;top:57px;z-index:30;max-height:330px;overflow:auto;padding:7px;border:1px solid var(--line);border-radius:13px;background:rgba(16,26,23,.98);box-shadow:0 22px 55px rgba(0,0,0,.5); }.home-search-results[hidden]{display:none}.home-search-result { display:flex;align-items:center;gap:11px;padding:10px;border-radius:9px;color:var(--ink);text-decoration:none; }.home-search-result:hover,.home-search-result:focus { background:var(--surface-soft); }.home-search-result img { width:34px;height:34px;object-fit:contain;padding:3px;border-radius:9px;background:#f4f8f5; }.home-search-result strong,.home-search-result span { display:block; }.home-search-result strong { font-size:.76rem; }.home-search-result span { color:var(--muted);font-size:.63rem; }.home-search-empty { padding:15px;color:var(--muted);font-size:.7rem;text-align:center; }
     .snapshot { padding:26px; }
@@ -35,7 +36,7 @@
     .home-title { display:flex;justify-content:space-between;align-items:end;gap:20px;margin:42px 0 15px; }
     .home-title h2 { margin:0;font-size:1.45rem; }
     .home-title p { margin:0;color:var(--muted);font-size:.75rem; }
-    .portal-grid { display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px; }
+    .portal-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px; }
     .portal { min-height:205px;display:flex;flex-direction:column;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--surface);color:var(--ink);text-decoration:none;transition:transform .18s,border-color .18s,background .18s; }
     .portal:hover { transform:translateY(-3px);border-color:rgba(84,227,142,.38);background:var(--surface-raised); }
     .portal.featured { background:linear-gradient(145deg,rgba(84,227,142,.12),var(--surface)); }
@@ -43,6 +44,14 @@
     .portal h3 { margin:25px 0 6px;font-size:1rem; }
     .portal p { margin:0;color:var(--muted);font-size:.74rem; }
     .portal small { margin-top:auto;padding-top:18px;color:var(--green);font-size:.67rem;font-weight:900; }
+    .portal.featured { border-color:rgba(84,227,142,.24); }
+    .portal.featured:nth-child(2) { border-color:rgba(104,217,231,.24);background:linear-gradient(145deg,rgba(104,217,231,.1),var(--surface)); }
+    .portal.featured:nth-child(2) small { color:var(--cyan); }
+    .tool-grid { display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:9px; }
+    .tool-link { min-height:106px;display:flex;flex-direction:column;justify-content:space-between;padding:15px;border:1px solid var(--line);border-radius:14px;background:rgba(16,26,23,.72);color:var(--ink);text-decoration:none;transition:border-color .18s,background .18s; }
+    .tool-link:hover { border-color:rgba(84,227,142,.34);background:var(--surface-raised); }
+    .tool-link span { color:var(--green);font-size:.7rem;font-weight:900; }
+    .tool-link strong { font-size:.82rem; }
     .workflow { display:grid;grid-template-columns:repeat(3,1fr);gap:12px;counter-reset:step; }
     .workflow article { position:relative;padding:20px 20px 20px 58px;border:1px solid var(--line);border-radius:15px;background:rgba(16,26,23,.7); }
     .workflow article::before { counter-increment:step;content:counter(step);position:absolute;left:18px;top:20px;width:25px;height:25px;display:grid;place-items:center;border-radius:50%;background:rgba(84,227,142,.13);color:var(--green);font-size:.7rem;font-weight:900; }
@@ -52,7 +61,7 @@
     .personal-grid { display:grid;grid-template-columns:1fr 1fr;gap:12px; }.personal-panel { padding:18px;border:1px solid var(--line);border-radius:17px;background:var(--surface); }.personal-panel-head { display:flex;justify-content:space-between;align-items:center;margin-bottom:12px; }.personal-panel-head h3 { margin:0;font-size:.95rem; }.personal-list { display:grid;gap:7px; }.personal-item { display:grid;grid-template-columns:38px 1fr auto;align-items:center;gap:10px;padding:10px;border:1px solid var(--line);border-radius:11px;color:var(--ink);text-decoration:none; }.personal-item img { width:34px;height:34px;object-fit:contain;padding:3px;border-radius:8px;background:#f4f8f5; }.personal-item strong,.personal-item small { display:block; }.personal-item strong { font-size:.73rem; }.personal-item small { color:var(--muted);font-size:.6rem; }.personal-item button { min-height:30px;padding:0 9px;background:transparent;color:var(--muted); }.personal-empty { padding:18px;border:1px dashed var(--line);border-radius:11px;color:var(--muted);font-size:.68rem;text-align:center; }
     .radar { margin-top:18px;padding:22px;border:1px solid var(--line);border-radius:22px;background:rgba(16,26,23,.86);box-shadow:var(--shadow); }
     .radar-head { display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:16px; }
-    .radar-head h2 { margin:0;font-size:1.35rem; }.radar-head p { margin:5px 0 0;color:var(--muted);font-size:.72rem; }
+    .radar-head h2 { margin:0;font-size:1.35rem; }.radar-head p { margin:5px 0 0;color:var(--muted);font-size:.76rem; }
     .radar-date { padding:6px 10px;border:1px solid rgba(84,227,142,.25);border-radius:999px;color:var(--green);font-size:.65rem;font-weight:850;text-transform:uppercase; }
     .radar-filters { display:flex;gap:7px;overflow-x:auto;margin-bottom:13px;padding-bottom:2px; }.radar-filters button { min-height:34px;padding:0 12px;border:1px solid var(--line);background:var(--surface-raised);color:var(--muted);font-size:.68rem;white-space:nowrap; }.radar-filters button.active { border-color:var(--green);color:var(--green); }
     .radar-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px; }
@@ -60,8 +69,10 @@
     .radar-meta { display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.6rem;text-transform:uppercase; }.radar-teams { display:grid;gap:8px;margin:15px 0; }.radar-team { display:flex;align-items:center;gap:9px;font-size:.76rem;font-weight:800; }.radar-team img { width:25px;height:25px;object-fit:contain;padding:2px;border-radius:7px;background:#f4f8f5; }.radar-team b { margin-left:auto;font-size:.9rem; }
     .radar-pick { margin-top:auto;padding-top:12px;border-top:1px solid var(--line); }.radar-pick span { display:block;color:var(--muted);font-size:.65rem; }.radar-pick strong { display:flex;justify-content:space-between;gap:10px;margin-top:3px;font-size:.76rem; }.radar-pick em { color:var(--green);font-size:1rem;font-style:normal; }.radar-outcome { margin-top:6px;color:var(--muted);font-size:.6rem; }
     .radar-empty { grid-column:1/-1;padding:30px;border:1px dashed var(--line);border-radius:13px;color:var(--muted);text-align:center;font-size:.75rem; }
-    @media(max-width:980px){.home-hero{grid-template-columns:1fr}.portal-grid{grid-template-columns:repeat(2,1fr)}.radar-grid{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:600px){.home{width:min(100% - 20px,1280px);padding-top:20px}.hero-copy{padding:28px 20px}.hero-copy h1{font-size:clamp(2.45rem,13vw,3.5rem)}.hero-copy>p:not(.eyebrow){margin-top:18px;font-size:.92rem}.hero-actions{display:grid;grid-template-columns:1fr}.hero-actions a{justify-content:center}.snapshot,.radar{padding:18px}.portal-grid,.workflow,.radar-grid,.personal-grid{grid-template-columns:1fr}.portal{min-height:165px}.home-title,.radar-head{align-items:start;flex-direction:column}.snapshot-grid{grid-template-columns:1fr 1fr}.home-search input{font-size:1rem}.radar-date{white-space:normal}.personal-item{grid-template-columns:38px minmax(0,1fr) auto}}
+    @media(max-width:980px){.home-hero{grid-template-columns:1fr}.portal-grid{grid-template-columns:repeat(3,1fr)}.tool-grid{grid-template-columns:repeat(3,1fr)}.radar-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:700px){.hero-actions{grid-template-columns:1fr 1fr}.hero-actions .primary{grid-column:1/-1}.hero-actions a{justify-content:center}.portal-grid{grid-template-columns:1fr}.tool-grid{grid-template-columns:repeat(2,1fr)}}
+    @media(max-width:600px){.home{width:min(100% - 20px,1280px);padding-top:20px}.hero-copy{padding:28px 20px}.hero-copy h1{font-size:clamp(2.45rem,13vw,3.5rem)}.hero-copy>p:not(.eyebrow){margin-top:18px;font-size:.92rem}.snapshot,.radar{padding:18px}.workflow,.radar-grid,.personal-grid{grid-template-columns:1fr}.portal{min-height:150px}.home-title,.radar-head{align-items:start;flex-direction:column}.snapshot-grid{grid-template-columns:1fr 1fr}.home-search input{font-size:1rem}.radar-date{white-space:normal}.personal-item{grid-template-columns:38px minmax(0,1fr) auto}}
+    @media(max-width:430px){.hero-actions,.tool-grid{grid-template-columns:1fr}.hero-actions .primary{grid-column:auto}.tool-link{min-height:84px}.home-title{margin-top:32px}}
     @media(max-width:360px){.snapshot-grid{grid-template-columns:1fr}.snapshot-grid div{display:flex;align-items:center;justify-content:space-between}.snapshot-grid strong{margin:0}.hero-copy,.snapshot,.radar{border-radius:18px}}
   </style>
 </head>
@@ -69,14 +80,15 @@
 <main class="home">
   <section class="home-hero">
     <div class="hero-copy">
-      <p class="eyebrow">Centro de análisis · temporada histórica</p>
-      <h1>Decide con contexto, <span>no con corazonadas.</span></h1>
-      <p>Explora partidos, compara equipos y convierte tendencias históricas en picks transparentes que puedes revisar partido por partido.</p>
+      <p class="eyebrow">Datos de hoy · archivo histórico</p>
+      <h1>Encuentra el partido. <span>Entiende el contexto.</span></h1>
+      <p>Revisa la jornada disponible, compara el rendimiento local y visitante y abre la evidencia detrás de cada tendencia.</p>
       <div class="hero-actions">
-        <a class="primary" href="/comparador.html">Abrir comparador →</a>
-        <a href="/calendario.html">Explorar calendario</a>
+        <a class="primary" href="/calendario.html">Ver partidos disponibles →</a>
+        <a href="/comparador.html">Comparar equipos</a>
+        <a class="quiet" href="#buscar-equipo" id="focus-team-search">Buscar equipo</a>
       </div>
-      <div class="home-search"><input id="home-team-search" type="search" autocomplete="off" placeholder="Buscar cualquier equipo: “Madrid Real”, “Re Mad”…" aria-label="Buscar equipo" aria-controls="home-team-results"><span class="home-search-mark">⌕</span><div id="home-team-results" class="home-search-results" hidden></div></div>
+      <div class="home-search" id="buscar-equipo"><input id="home-team-search" type="search" autocomplete="off" placeholder="Escribe al menos 2 letras para buscar un equipo" aria-label="Buscar equipo" aria-controls="home-team-results"><span class="home-search-mark" aria-hidden="true">⌕</span><div id="home-team-results" class="home-search-results" role="listbox" hidden></div></div>
     </div>
     <aside class="snapshot">
       <div class="snapshot-head"><strong>Base para análisis</strong><span id="home-status">Cargando</span></div>
@@ -93,27 +105,31 @@
   </section>
 
   <section class="radar" aria-labelledby="radar-title">
-    <div class="radar-head"><div><p class="eyebrow">Radar de partidos</p><h2 id="radar-title">Qué merece una revisión</h2><p id="radar-copy">Buscando la jornada disponible y sus mejores muestras históricas.</p></div><span class="radar-date" id="radar-date">Cargando</span></div>
+    <div class="radar-head"><div><p class="eyebrow">Radar de partidos</p><h2 id="radar-title">Lecturas destacadas de la jornada</h2><p id="radar-copy">Buscando partidos disponibles y tendencias con respaldo histórico.</p></div><span class="radar-date" id="radar-date">Cargando</span></div>
     <div class="radar-filters" id="radar-filters" aria-label="Filtrar mercados"></div>
     <div class="radar-grid" id="radar-grid"><div class="radar-empty">Construyendo radar sin consumir la API externa…</div></div>
   </section>
 
-  <div class="home-title"><h2>¿Qué quieres analizar?</h2><p>Cada herramienta conserva la misma fuente y metodología.</p></div>
+  <div class="home-title"><h2>Empieza por aquí</h2><p>Tres rutas directas para llegar al análisis.</p></div>
   <section class="portal-grid" aria-label="Herramientas principales">
-    <a class="portal featured" href="/comparador.html"><span class="portal-icon">VS</span><h3>Comparador</h3><p>Combina el historial de un local y un visitante, incluso desde competiciones distintas.</p><small>Crear análisis →</small></a>
-    <a class="portal" href="/calendario.html"><span class="portal-icon">📅</span><h3>Calendario</h3><p>Navega las fechas guardadas y abre el análisis de un partido concreto.</p><small>Ver partidos →</small></a>
-    <a class="portal" href="/equipos.html"><span class="portal-icon">⚽</span><h3>Equipos</h3><p>Directorio por competición y acceso rápido a cada lado del comparador.</p><small>Explorar equipos →</small></a>
-    <a class="portal" href="/jugadores.html"><span class="portal-icon">10</span><h3>Jugadores</h3><p>Minutos, tiros, goles, asistencias, faltas y tarjetas cuando exista cobertura.</p><small>Ver jugadores →</small></a>
-    <a class="portal" href="/competiciones.html"><span class="portal-icon">◎</span><h3>Competiciones</h3><p>Temporadas, cantidad de partidos y cobertura avanzada realmente almacenada.</p><small>Revisar cobertura →</small></a>
-    <a class="portal" href="/arbitros.html"><span class="portal-icon">▣</span><h3>Árbitros</h3><p>Disciplina, faltas, tarjetas y muestra disponible por competición.</p><small>Analizar árbitros →</small></a>
-    <a class="portal" href="/picks.html"><span class="portal-icon">✓</span><h3>Mis picks</h3><p>Seguimiento, resultados históricos y medición de rendimiento personal.</p><small>Abrir seguimiento →</small></a>
-    <a class="portal" href="/boletas.html"><span class="portal-icon">＋</span><h3>Mis boletas</h3><p>Agrupa mercados, conserva la evidencia y prepara tu búsqueda en la casa.</p><small>Ver borradores →</small></a>
+    <a class="portal featured" href="/calendario.html"><span class="portal-icon">📅</span><h3>Partidos disponibles</h3><p>Elige un encuentro real de la jornada y abre su análisis con el contexto ya configurado.</p><small>Ir al calendario →</small></a>
+    <a class="portal featured" href="/comparador.html"><span class="portal-icon">VS</span><h3>Comparación libre</h3><p>Enfrenta cualquier local y visitante, incluso si pertenecen a competiciones distintas.</p><small>Crear comparación →</small></a>
+    <a class="portal featured" href="/equipos.html"><span class="portal-icon">⚽</span><h3>Explorar un equipo</h3><p>Consulta su forma, campañas y partidos recientes antes de construir una comparación.</p><small>Buscar en el directorio →</small></a>
   </section>
 
   <div class="home-title"><h2>Tu espacio</h2><p>Guardado en este dispositivo para volver sin perder el contexto.</p></div>
   <section class="personal-grid">
     <article class="personal-panel"><div class="personal-panel-head"><h3>Equipos favoritos</h3><a href="/equipos.html">Explorar →</a></div><div id="favorite-teams" class="personal-list"></div></article>
     <article class="personal-panel"><div class="personal-panel-head"><h3>Comparaciones guardadas</h3><a href="/comparador.html">Crear →</a></div><div id="saved-comparisons" class="personal-list"></div></article>
+  </section>
+
+  <div class="home-title"><h2>Más herramientas</h2><p>Profundiza cuando ya tengas una pregunta concreta.</p></div>
+  <section class="tool-grid" aria-label="Herramientas adicionales">
+    <a class="tool-link" href="/competiciones.html"><span>◎ COBERTURA</span><strong>Competiciones</strong></a>
+    <a class="tool-link" href="/jugadores.html"><span>10 RENDIMIENTO</span><strong>Jugadores</strong></a>
+    <a class="tool-link" href="/arbitros.html"><span>▣ DISCIPLINA</span><strong>Árbitros</strong></a>
+    <a class="tool-link" href="/picks.html"><span>✓ SEGUIMIENTO</span><strong>Mis picks</strong></a>
+    <a class="tool-link" href="/boletas.html"><span>＋ BORRADORES</span><strong>Mis boletas</strong></a>
   </section>
 
   <div class="home-title"><h2>Flujo recomendado</h2><p>Primero evidencia, después selección.</p></div>
@@ -134,15 +150,15 @@ function pintarBiblioteca(){const favoritos=FutbolLibrary.favoritos();document.g
 function pintarRadar(categoria='goles'){
   document.querySelectorAll('[data-radar-category]').forEach(b=>b.classList.toggle('active',b.dataset.radarCategory===categoria));
   const grid=document.getElementById('radar-grid');
-  const cards=radarPartidos.map(({partido,analisis,liga})=>{const mercados=(analisis?.mercados||[]).filter(m=>m.categoria===categoria);const recomendados=new Set(analisis?.recomendados||[]);const pick=mercados.find(m=>recomendados.has(m.id))||mercados[0];if(!pick)return null;const url=`/partido.html?local=${partido.local.id}&visitante=${partido.visitante.id}&liga=${liga.liga_id}&partido=${partido.api_id}&fecha=${document.getElementById('radar-date').dataset.fecha}#picks`;const resultado=pick.resultado_historico===true?'✓ habría acertado':pick.resultado_historico===false?'× habría fallado':'Abrir análisis';return `<a class="radar-card" href="${url}"><div class="radar-meta"><span>${esc(liga.liga)}</span><span>${esc(partido.hora)}</span></div><div class="radar-teams"><div class="radar-team"><img src="/api/equipos/${partido.local.id}/escudo" alt=""><span>${esc(partido.local.nombre)}</span>${partido.finalizado?`<b>${partido.local.goles}</b>`:''}</div><div class="radar-team"><img src="/api/equipos/${partido.visitante.id}/escudo" alt=""><span>${esc(partido.visitante.nombre)}</span>${partido.finalizado?`<b>${partido.visitante.goles}</b>`:''}</div></div><div class="radar-pick"><span>Lectura destacada · ${esc(pick.confianza)}</span><strong>${esc(pick.mercado)} <em>${pick.estimacion}%</em></strong><div class="radar-outcome">${resultado} · muestra ${pick.muestra}</div></div></a>`}).filter(Boolean);
+  const cards=radarPartidos.map(({partido,analisis,liga})=>{const mercados=(analisis?.mercados||[]).filter(m=>m.categoria===categoria);const recomendados=new Set(analisis?.recomendados||[]);const pick=mercados.find(m=>recomendados.has(m.id))||mercados[0];if(!pick)return null;const esCandidato=recomendados.has(pick.id);const motivo=esCandidato?'Candidato por muestra y consistencia':'Mayor respaldo disponible';const url=`/partido.html?local=${partido.local.id}&visitante=${partido.visitante.id}&liga=${liga.liga_id}&partido=${partido.api_id}&fecha=${document.getElementById('radar-date').dataset.fecha}#picks`;const resultado=pick.resultado_historico===true?'✓ habría acertado':pick.resultado_historico===false?'× habría fallado':'Abrir evidencia';return `<a class="radar-card" href="${url}"><div class="radar-meta"><span>${esc(liga.liga)}</span><span>${esc(partido.hora)}</span></div><div class="radar-teams"><div class="radar-team"><img src="/api/equipos/${partido.local.id}/escudo" alt=""><span>${esc(partido.local.nombre)}</span>${partido.finalizado?`<b>${partido.local.goles}</b>`:''}</div><div class="radar-team"><img src="/api/equipos/${partido.visitante.id}/escudo" alt=""><span>${esc(partido.visitante.nombre)}</span>${partido.finalizado?`<b>${partido.visitante.goles}</b>`:''}</div></div><div class="radar-pick"><span>${motivo} · ${esc(pick.confianza||'con cobertura')}</span><strong>${esc(pick.mercado)} <em>${pick.estimacion}%</em></strong><div class="radar-outcome">${resultado} · muestra ${pick.muestra}</div></div></a>`}).filter(Boolean);
   grid.innerHTML=cards.join('')||'<div class="radar-empty">Esta jornada no tiene mercados con cobertura para la categoría elegida.</div>';
 }
 async function cargarRadar(){try{const rangoResp=await fetch('/api/calendario/rango');const rango=await rangoResp.json();if(!rango.hasta)throw new Error('No hay calendario almacenado');const ahora=new Date();const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;const dentro=hoy>=rango.desde&&hoy<=rango.hasta;const objetivo=dentro?hoy:rango.hasta;const diaResp=await fetch(`/api/calendario/dia?fecha=${objetivo}`);const dia=await diaResp.json();const planos=dia.competiciones.flatMap(liga=>liga.partidos.map(partido=>({liga,partido}))).slice(0,6);radarPartidos=await Promise.all(planos.map(async item=>{try{const r=await fetch(`/api/picks/partido/${item.partido.api_id}`);return {...item,analisis:r.ok?await r.json():null}}catch{return {...item,analisis:null}}}));const categorias=[...new Set(radarPartidos.flatMap(x=>x.analisis?.categorias||[]))];const fechaEl=document.getElementById('radar-date');fechaEl.textContent=dentro?'Partidos de hoy':'Última jornada guardada';fechaEl.dataset.fecha=objetivo;document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${planos.length} partidos · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;const filtros=document.getElementById('radar-filters');filtros.innerHTML=categorias.map(c=>`<button type="button" data-radar-category="${esc(c)}">${esc(radarCategorias[c]||c)}</button>`).join('');filtros.onclick=e=>{const b=e.target.closest('[data-radar-category]');if(b)pintarRadar(b.dataset.radarCategory)};pintarRadar(categorias.includes('goles')?'goles':categorias[0]);}catch(error){document.getElementById('radar-date').textContent='Sin datos';document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`}}
 async function cargarIndiceEquipos(){if(indiceEquipos)return indiceEquipos;const salida=document.getElementById('home-team-results');salida.hidden=false;salida.innerHTML='<div class="home-search-empty">Preparando índice local…</div>';const r=await fetch('/api/home/competiciones');if(!r.ok)throw new Error('No se pudieron cargar las competiciones');const d=await r.json();const porLiga=new Map();for(const liga of d.competiciones||[]){const temporadas=Array.isArray(liga.temporadas)?liga.temporadas:[{temporada:liga.temporada,etiqueta:liga.temporada_etiqueta}];const temporada=temporadas.find(t=>Number(t.temporada)>=2025)||temporadas[0];if(!temporada)continue;const candidata={...liga,temporada:Number(temporada.temporada),temporada_etiqueta:temporada.etiqueta};const actual=porLiga.get(Number(liga.id));if(!actual||candidata.temporada>actual.temporada)porLiga.set(Number(liga.id),candidata)}const competiciones=[...porLiga.values()];const respuestas=await Promise.all(competiciones.map(async liga=>{const respuesta=await fetch(`/api/ligas/${liga.id}/equipos?season=${liga.temporada}`);if(!respuesta.ok)return {liga,equipos:[]};return {liga,equipos:await respuesta.json()}}));const mapa=new Map();for(const {liga,equipos} of respuestas){for(const equipo of equipos){const actual=mapa.get(equipo.id);const etiqueta=`${liga.nombre} ${liga.temporada_etiqueta||liga.temporada}`;if(!actual){mapa.set(equipo.id,{...equipo,league:liga.id,season:liga.temporada,competiciones:[etiqueta],principal:liga.principal});continue}if(!actual.competiciones.includes(etiqueta))actual.competiciones.push(etiqueta);if((liga.principal&&!actual.principal)||(liga.principal===actual.principal&&liga.temporada>actual.season)){actual.league=liga.id;actual.season=liga.temporada;actual.principal=liga.principal}}}indiceEquipos=[...mapa.values()];return indiceEquipos}
-async function buscarEquipoGlobal(){const input=document.getElementById('home-team-search');const salida=document.getElementById('home-team-results');const consulta=input.value.trim();if(!consulta){salida.hidden=true;return}try{const equipos=await cargarIndiceEquipos();const encontrados=FutbolSearch.ordenar(equipos,consulta,e=>e.nombre).slice(0,8);salida.hidden=false;salida.innerHTML=encontrados.map(e=>`<a class="home-search-result" href="/equipo.html?id=${e.id}&league=${e.league}&season=${e.season}"><img src="/api/equipos/${e.id}/escudo" alt=""><div><strong>${esc(e.nombre)}</strong><span>${esc(e.competiciones.join(' · '))}</span></div></a>`).join('')||'<div class="home-search-empty">No encontramos un equipo con todos esos fragmentos.</div>'}catch(error){salida.hidden=false;salida.innerHTML='<div class="home-search-empty">No se pudo preparar la búsqueda.</div>'}}
+async function buscarEquipoGlobal(){const input=document.getElementById('home-team-search');const salida=document.getElementById('home-team-results');const consulta=input.value.trim();if(consulta.length<2){salida.hidden=true;return}try{const equipos=await cargarIndiceEquipos();if(input.value.trim()!==consulta)return;const encontrados=FutbolSearch.ordenar(equipos,consulta,e=>e.nombre).slice(0,8);salida.hidden=false;salida.innerHTML=encontrados.map(e=>`<a class="home-search-result" role="option" href="/equipo.html?id=${e.id}&league=${e.league}&season=${e.season}"><img src="/api/equipos/${e.id}/escudo" alt=""><div><strong>${esc(e.nombre)}</strong><span>${esc(e.competiciones.join(' · '))}</span></div></a>`).join('')||'<div class="home-search-empty">No encontramos un equipo con todos esos fragmentos.</div>'}catch(error){salida.hidden=false;salida.innerHTML='<div class="home-search-empty">No se pudo preparar la búsqueda.</div>'}}
 document.addEventListener('DOMContentLoaded', async () => {
   pintarBiblioteca();document.getElementById('saved-comparisons').onclick=e=>{const b=e.target.closest('[data-remove-comparison]');if(b){FutbolLibrary.quitarComparacion(b.dataset.removeComparison);pintarBiblioteca()}};window.addEventListener('storage',pintarBiblioteca);
-  const buscador=document.getElementById('home-team-search');buscador.addEventListener('input',buscarEquipoGlobal);buscador.addEventListener('keydown',event=>{if(event.key==='Enter'){const primero=document.querySelector('.home-search-result');if(primero)location.href=primero.href}});document.addEventListener('click',event=>{if(!event.target.closest('.home-search'))document.getElementById('home-team-results').hidden=true});
+  const buscador=document.getElementById('home-team-search');let esperaBusqueda;buscador.addEventListener('input',()=>{clearTimeout(esperaBusqueda);esperaBusqueda=setTimeout(buscarEquipoGlobal,250)});buscador.addEventListener('keydown',event=>{if(event.key==='Enter'){const primero=document.querySelector('.home-search-result');if(primero)location.href=primero.href}});document.getElementById('focus-team-search').addEventListener('click',event=>{event.preventDefault();buscador.focus();document.getElementById('buscar-equipo').scrollIntoView({behavior:'smooth',block:'center'})});document.addEventListener('click',event=>{if(!event.target.closest('.home-search'))document.getElementById('home-team-results').hidden=true});
   try {
     const respuesta = await fetch('/api/home/resumen');
     const datos = await respuesta.json();

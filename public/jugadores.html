@@ -1,11 +1,113 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Jugadores</title><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css"><script src="/auth-client.js"></script><script src="/search-utils.js"></script></head>
-<body><main class="catalog">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Jugadores</title>
+  <meta name="theme-color" content="#07100d">
+  <link rel="stylesheet" href="/styles.css">
+  <link rel="stylesheet" href="/catalog.css">
+  <script src="/auth-client.js"></script>
+  <script src="/search-utils.js"></script>
+</head>
+<body>
+<main class="catalog">
   <nav class="catalog-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/equipos.html">Equipos</a><a href="/competiciones.html">Competiciones</a></nav>
-  <header class="catalog-head"><div><p class="eyebrow">Rendimiento individual</p><h1>Datos de <span>jugadores.</span></h1><p>Esta sección se llenará automáticamente con minutos, tiros, goles, asistencias, faltas y tarjetas durante la sincronización por lotes.</p></div></header>
-  <div class="catalog-controls"><select id="liga"><option value="">Todas las competiciones</option></select><input id="buscar" type="search" placeholder="Buscar jugador…"><button id="filtrar" type="button">Buscar</button></div>
+  <header class="catalog-head">
+    <div><p class="eyebrow">Rendimiento individual</p><h1>Datos de <span>jugadores.</span></h1><p>Elige primero la competición y después su temporada para consultar minutos, tiros, goles, asistencias, faltas y tarjetas.</p></div>
+  </header>
+
+  <section class="catalog-controls player-filters" aria-label="Filtros de jugadores">
+    <label class="catalog-filter-field"><span>1 · Competición</span><select id="liga"><option value="">Todas las competiciones</option></select></label>
+    <label class="catalog-filter-field"><span>2 · Temporada</span><select id="temporada" disabled><option value="">Elige una competición</option></select></label>
+    <label class="catalog-filter-field player-search"><span>3 · Jugador</span><input id="buscar" type="search" autocomplete="off" placeholder="Buscar por nombre…"></label>
+    <button id="filtrar" type="button">Buscar</button>
+    <span id="resultados" class="catalog-result-count" aria-live="polite"></span>
+  </section>
+
   <div id="lista" class="catalog-grid"><div class="loader">Buscando jugadores…</div></div>
-</main><script>
+</main>
+<script>
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-async function cargar(){const consulta=document.getElementById('buscar').value;const valor=document.getElementById('liga').value;const [league,season]=valor.split(':');const p=new URLSearchParams({q:consulta,limite:60});if(league)p.set('league',league);if(season)p.set('season',season);const r=await fetch('/api/jugadores?'+p);const d=await r.json().catch(()=>({}));const lista=document.getElementById('lista');if(!r.ok){lista.innerHTML=`<div class="warning">${esc(d.error||'No disponible')}</div>`;return}const jugadores=FutbolSearch.ordenar(d.jugadores,consulta,j=>j.nombre);lista.innerHTML=jugadores.map(j=>`<a class="catalog-card" href="/jugador.html?id=${j.id}${league?`&league=${league}`:''}"><div class="catalog-card-head">${j.foto?`<img src="${esc(j.foto)}" alt="Foto de ${esc(j.nombre)}">`:''}<div><h3>${esc(j.nombre)}</h3><p>${esc(j.equipos.join(', '))} · ${esc(j.posicion||'—')}</p></div></div><div class="metric-row"><span>Partidos<b>${j.partidos}</b></span><span>Goles<b>${j.goles}</b></span><span>Tiros puerta<b>${j.tiros_puerta}</b></span></div><small>${j.minutos} minutos en esta temporada · abrir historial en la liga →</small></a>`).join('')||'<div class="catalog-empty">Todavía no hay rendimientos individuales que coincidan. La sección se llenará con <b>npm run sync:details</b>.</div>'}
-document.addEventListener('DOMContentLoaded',async()=>{const r=await fetch('/api/home/competiciones');const d=await r.json();document.getElementById('liga').innerHTML='<option value="">Todas las competiciones y temporadas</option>'+d.competiciones.map(c=>`<option value="${c.id}:${c.temporada}">${esc(c.nombre)} · ${c.temporada_etiqueta||c.temporada}</option>`).join('');document.getElementById('filtrar').onclick=cargar;document.getElementById('liga').onchange=cargar;document.getElementById('buscar').onkeydown=e=>{if(e.key==='Enter')cargar()};cargar()});
-</script></body></html>
+let competiciones=[];
+
+function competenciaActual(){
+  const id=Number(document.getElementById('liga').value);
+  return competiciones.find(item=>item.id===id)||null;
+}
+
+function pintarTemporadas(temporadaPreferida=''){
+  const select=document.getElementById('temporada');
+  const competencia=competenciaActual();
+  if(!competencia){
+    select.disabled=true;
+    select.innerHTML='<option value="">Todas las temporadas</option>';
+    return;
+  }
+  select.disabled=false;
+  select.innerHTML=competencia.temporadas.map(item=>`<option value="${item.temporada}">${esc(item.etiqueta||item.temporada)} · ${item.cobertura?.jugadores||0} partidos con jugadores</option>`).join('');
+  const preferida=String(temporadaPreferida||'');
+  if(preferida&&[...select.options].some(option=>option.value===preferida))select.value=preferida;
+}
+
+function actualizarUrl(){
+  const params=new URLSearchParams();
+  const league=document.getElementById('liga').value;
+  const season=document.getElementById('temporada').value;
+  const q=document.getElementById('buscar').value.trim();
+  if(league)params.set('league',league);
+  if(season)params.set('season',season);
+  if(q)params.set('q',q);
+  history.replaceState(null,'',`/jugadores.html${params.size?`?${params}`:''}`);
+}
+
+async function cargar(){
+  const consulta=document.getElementById('buscar').value.trim();
+  const league=document.getElementById('liga').value;
+  const season=document.getElementById('temporada').value;
+  const params=new URLSearchParams({q:consulta,limite:60});
+  if(league)params.set('league',league);
+  if(season)params.set('season',season);
+  const lista=document.getElementById('lista');
+  lista.innerHTML='<div class="loader">Buscando jugadores…</div>';
+  actualizarUrl();
+  try{
+    const respuesta=await fetch(`/api/jugadores?${params}`);
+    const datos=await respuesta.json().catch(()=>({}));
+    if(!respuesta.ok)throw new Error(datos.error||'No disponible');
+    const jugadores=FutbolSearch.ordenar(datos.jugadores||[],consulta,jugador=>jugador.nombre);
+    document.getElementById('resultados').textContent=`${jugadores.length} jugador${jugadores.length===1?'':'es'}`;
+    const contexto=[competenciaActual()?.nombre,document.getElementById('temporada').selectedOptions[0]?.text?.split(' · ')[0]].filter(Boolean).join(' · ');
+    lista.innerHTML=jugadores.map(jugador=>`<a class="catalog-card" href="/jugador.html?id=${jugador.id}${league?`&league=${league}`:''}${season?`&season=${season}`:''}"><div class="catalog-card-head">${jugador.foto?`<img src="${esc(jugador.foto)}" alt="Foto de ${esc(jugador.nombre)}" loading="lazy">`:'<span class="catalog-logo-placeholder" aria-hidden="true">10</span>'}<div><h3>${esc(jugador.nombre)}</h3><p>${esc(jugador.equipos.join(', '))} · ${esc(jugador.posicion||'—')}</p></div></div><div class="metric-row"><span>Partidos<b>${jugador.partidos}</b></span><span>Goles<b>${jugador.goles}</b></span><span>Tiros puerta<b>${jugador.tiros_puerta}</b></span></div><small>${jugador.minutos} minutos${contexto?` · ${esc(contexto)}`:''} →</small></a>`).join('')||`<div class="catalog-empty"><strong>Sin rendimientos para estos filtros.</strong><span>${league&&season?'Esta competición y temporada todavía no tienen estadísticas individuales guardadas.':'Elige una competición y una temporada para revisar su cobertura.'}</span></div>`;
+  }catch(error){
+    document.getElementById('resultados').textContent='';
+    lista.innerHTML=`<div class="warning">${esc(error.message)}</div>`;
+  }
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  const params=new URLSearchParams(location.search);
+  const lista=document.getElementById('lista');
+  try{
+    const respuesta=await fetch('/api/home/competiciones');
+    const datos=await respuesta.json().catch(()=>({}));
+    if(!respuesta.ok)throw new Error(datos.error||'No disponible');
+    competiciones=(datos.competiciones||[]).map(item=>({...item,id:Number(item.id),temporadas:[...(item.temporadas||[])].sort((a,b)=>b.temporada-a.temporada)}));
+    const liga=document.getElementById('liga');
+    liga.innerHTML='<option value="">Todas las competiciones</option>'+competiciones.map(item=>`<option value="${item.id}">${esc(item.nombre)} · ${esc(item.pais)}</option>`).join('');
+    const ligaInicial=params.get('league');
+    if(ligaInicial&&[...liga.options].some(option=>option.value===ligaInicial))liga.value=ligaInicial;
+    pintarTemporadas(params.get('season'));
+    document.getElementById('buscar').value=params.get('q')||'';
+    liga.addEventListener('change',()=>{pintarTemporadas();cargar()});
+    document.getElementById('temporada').addEventListener('change',cargar);
+    document.getElementById('filtrar').addEventListener('click',cargar);
+    document.getElementById('buscar').addEventListener('keydown',event=>{if(event.key==='Enter')cargar()});
+    cargar();
+  }catch(error){
+    lista.innerHTML=`<div class="warning">No se pudieron cargar las competiciones: ${esc(error.message)}</div>`;
+  }
+});
+</script>
+</body>
+</html>

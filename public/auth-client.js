@@ -66,7 +66,8 @@
     { href: '/calendario.html', texto: 'Calendario', icono: '📅' },
     { href: '/comparador.html', texto: 'Comparador', icono: '⚽' },
     { href: '/picks.html', texto: 'Mis picks', icono: '🎯' },
-    { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' }
+    { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' },
+    { href: '/sugerencias.html', texto: 'Sugerencias', icono: '💡' }
   ];
 
   function esRutaActiva(href) {
@@ -79,7 +80,7 @@
     const estilos = document.createElement('style');
     estilos.id = 'estilos-barra-sesion';
     estilos.textContent = `
-      .barra-sesion { background: linear-gradient(180deg,#0d2c47,#0a2540); color:#fff;
+      .barra-sesion { background:rgba(8,19,15,.96);color:#fff;backdrop-filter:blur(16px);
         padding:0 20px; display:flex; justify-content:space-between; align-items:center; gap:16px;
         font-family:system-ui,sans-serif; font-size:.86rem; flex-wrap:wrap;
         border-bottom:1px solid rgba(255,255,255,.09); position:sticky; top:0; z-index:900;
@@ -101,11 +102,13 @@
         font-size:.82rem; transition:background .15s, border-color .15s; }
       .barra-sesion .btn-salir:hover { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.5); }
       @media (max-width: 720px) {
-        .barra-sesion { padding:0 12px; }
-        .barra-sesion nav { width:100%; overflow-x:auto; justify-content:flex-start; }
-        .barra-sesion nav a { padding:11px 9px; font-size:.82rem; }
-        .barra-sesion nav a .txt { display:none; }
-        .barra-sesion nav a .ico { font-size:1.15rem; }
+        .barra-sesion { gap:0;padding:0 12px; }
+        .barra-sesion .usuario { width:100%;justify-content:space-between;padding:8px 2px;font-size:.76rem; }
+        .barra-sesion nav { width:calc(100% + 24px);flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;margin:0 -12px;padding:0 8px;border-top:1px solid rgba(255,255,255,.07);scrollbar-width:none;scroll-snap-type:x proximity; }
+        .barra-sesion nav::-webkit-scrollbar { display:none; }
+        .barra-sesion nav a { display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;padding:9px 8px;font-size:.7rem;scroll-snap-align:start; }
+        .barra-sesion nav a .ico { font-size:.88rem; }
+        .barra-sesion .btn-salir { flex:0 0 auto;min-height:32px;margin:5px 4px;padding:5px 11px;font-size:.7rem; }
       }`;
     document.head.appendChild(estilos);
   }
@@ -139,7 +142,7 @@
       <span class="usuario">👤 ${escaparHtml(usuario.nombre || usuario.email)}
         <span class="chip-plan ${claseChip}">${escaparHtml(etiqueta)}</span>
       </span>
-      <nav>
+      <nav aria-label="Navegación principal">
         ${enlaces}
         ${enlaceAdmin}
         <button id="btnCerrarSesion" class="btn-salir">Salir</button>

@@ -28,7 +28,7 @@ test('index.html muestra la portada y el comparador conserva su propia ruta', as
     fetch(`${baseUrl}/comparador.html`).then(respuesta => respuesta.text())
   ]);
 
-  assert.match(inicio, /Decide con contexto/);
+  assert.match(inicio, /Encuentra el partido/);
   assert.doesNotMatch(inicio, /Selecciona el local/);
   assert.match(comparador, /Selecciona el local/);
 });
@@ -72,6 +72,15 @@ test('las boletas guardadas requieren una sesión', async t => {
 test('el resumen de inicio requiere una sesión', async t => {
   const baseUrl = await servidorTemporal(t);
   const respuesta = await fetch(`${baseUrl}/api/home/resumen`);
+  const body = await respuesta.json();
+
+  assert.equal(respuesta.status, 401);
+  assert.equal(body.codigo, 'SIN_TOKEN');
+});
+
+test('el buzón de sugerencias requiere una sesión', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const respuesta = await fetch(`${baseUrl}/api/sugerencias`);
   const body = await respuesta.json();
 
   assert.equal(respuesta.status, 401);

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sugerencias y tickets</title>
+<script src="/auth-client.js"></script>
+<style>
+  :root{--bg:#09130f;--panel:#111e19;--panel2:#16251f;--line:rgba(255,255,255,.11);--text:#eef8f2;--muted:#9db1a8;--green:#54e38e;--cyan:#68d9e7;--amber:#f5be5b;--red:#ff7c78}
+  *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 80% 0,rgba(84,227,142,.1),transparent 34%),var(--bg);color:var(--text);font-family:Inter,system-ui,sans-serif;min-height:100vh}
+  .wrap{width:min(1080px,calc(100% - 32px));margin:0 auto;padding:48px 0 70px}.hero{display:grid;grid-template-columns:1.25fr .75fr;gap:28px;align-items:end;margin-bottom:28px}.eyebrow{color:var(--green);font-size:.72rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase}.hero h1{font-size:clamp(2rem,5vw,4rem);line-height:1;margin:10px 0 14px;letter-spacing:-.04em}.hero p{max-width:650px;color:var(--muted);line-height:1.65;margin:0}.note{padding:16px;border:1px solid rgba(104,217,231,.25);border-radius:14px;background:rgba(104,217,231,.06);color:#cbeef2;font-size:.82rem;line-height:1.5}
+  .layout{display:grid;grid-template-columns:minmax(0,.82fr) minmax(0,1.18fr);gap:20px;align-items:start}.panel{border:1px solid var(--line);border-radius:18px;background:rgba(17,30,25,.94);box-shadow:0 24px 70px rgba(0,0,0,.28)}.form-panel{padding:22px;position:sticky;top:88px}.panel h2{margin:0 0 18px;font-size:1.05rem}.field{margin-bottom:15px}.field label{display:block;margin-bottom:7px;color:#c7d7cf;font-size:.75rem;font-weight:750}.field input,.field select,.field textarea{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:10px;background:#0c1712;color:var(--text);font:inherit;outline:none}.field textarea{min-height:170px;resize:vertical;line-height:1.5}.field input:focus,.field select:focus,.field textarea:focus{border-color:var(--green);box-shadow:0 0 0 3px rgba(84,227,142,.1)}.help{display:block;margin-top:5px;color:var(--muted);font-size:.67rem}.submit{width:100%;min-height:46px;border:0;border-radius:11px;background:var(--green);color:#06100b;font-weight:900;cursor:pointer}.submit:disabled{opacity:.55;cursor:wait}.mensaje{min-height:20px;margin:11px 0 0;font-size:.75rem}.mensaje.ok{color:var(--green)}.mensaje.error{color:var(--red)}
+  .list-panel{padding:22px}.list-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}.count{padding:4px 9px;border-radius:999px;background:rgba(84,227,142,.12);color:var(--green);font-size:.68rem;font-weight:850}.tickets{display:grid;gap:11px}.ticket{padding:16px;border:1px solid var(--line);border-radius:13px;background:rgba(255,255,255,.025)}.ticket-top{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}.ticket h3{margin:5px 0 0;font-size:.94rem}.ticket p{margin:11px 0 0;color:#bdcec5;font-size:.78rem;line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}.meta{color:var(--muted);font-size:.65rem}.badges{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}.badge{padding:4px 8px;border-radius:999px;font-size:.58rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;background:rgba(255,255,255,.08)}.badge.nueva{color:var(--cyan)}.badge.en_revision,.badge.planeada{color:var(--amber)}.badge.resuelta{color:var(--green)}.badge.descartada{color:var(--red)}.respuesta{margin-top:13px;padding:12px;border-left:3px solid var(--green);border-radius:6px;background:rgba(84,227,142,.07)}.respuesta b{display:block;color:var(--green);font-size:.68rem;margin-bottom:5px}.respuesta p{margin:0;color:#d9e7df}.empty{padding:45px 20px;text-align:center;color:var(--muted);font-size:.82rem;border:1px dashed var(--line);border-radius:13px}
+  @media(max-width:780px){.wrap{width:min(100% - 22px,1080px);padding-top:32px}.hero,.layout{grid-template-columns:1fr}.hero{gap:17px}.form-panel{position:static}.ticket-top{display:block}.badges{justify-content:flex-start;margin-top:9px}}
+</style>
+</head>
+<body>
+<main class="wrap">
+  <section class="hero">
+    <div>
+      <div class="eyebrow">Buzón de producto</div>
+      <h1>Ayúdanos a mejorar.</h1>
+      <p>Comparte una idea, solicita una mejora o reporta algo que no esté funcionando. Podrás seguir aquí el estado y la respuesta del equipo.</p>
+    </div>
+    <div class="note">Describe qué esperabas, qué ocurrió y en qué pantalla estabas. Entre más contexto tengamos, más rápido podremos revisarlo.</div>
+  </section>
+
+  <section class="layout">
+    <form class="panel form-panel" id="ticket-form">
+      <h2>Crear un ticket</h2>
+      <div class="field">
+        <label for="tipo">Tipo</label>
+        <select id="tipo" required>
+          <option value="idea">Idea</option>
+          <option value="mejora">Mejora</option>
+          <option value="error">Algo no funciona</option>
+          <option value="otro">Otro</option>
+        </select>
+      </div>
+      <div class="field">
+        <label for="asunto">Asunto</label>
+        <input id="asunto" minlength="5" maxlength="120" required placeholder="Ej. Filtro por torneo en el calendario">
+        <small class="help">Entre 5 y 120 caracteres.</small>
+      </div>
+      <div class="field">
+        <label for="descripcion">Cuéntanos el detalle</label>
+        <textarea id="descripcion" minlength="20" maxlength="3000" required placeholder="¿Qué cambiarías o qué problema encontraste?"></textarea>
+        <small class="help">Entre 20 y 3000 caracteres.</small>
+      </div>
+      <button class="submit" id="enviar" type="submit">Enviar ticket</button>
+      <p class="mensaje" id="mensaje" role="status"></p>
+    </form>
+
+    <section class="panel list-panel">
+      <div class="list-head"><h2>Mis tickets</h2><span class="count" id="cantidad">0</span></div>
+      <div class="tickets" id="tickets"><div class="empty">Cargando tus tickets…</div></div>
+    </section>
+  </section>
+</main>
+<script>
+const ETIQUETAS_ESTADO = {
+  nueva: 'Nueva', en_revision: 'En revisión', planeada: 'Planeada', resuelta: 'Resuelta', descartada: 'Descartada'
+};
+const ETIQUETAS_TIPO = { idea: 'Idea', mejora: 'Mejora', error: 'Error', otro: 'Otro' };
+
+function escaparHtml(valor) {
+  return String(valor ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+}
+
+function fecha(valor) {
+  return new Date(valor).toLocaleString('es-MX', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+}
+
+async function cargarTickets() {
+  const contenedor = document.getElementById('tickets');
+  try {
+    const respuesta = await fetch('/api/sugerencias');
+    const datos = await respuesta.json();
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar los tickets.');
+    document.getElementById('cantidad').textContent = datos.tickets.length;
+    if (!datos.tickets.length) {
+      contenedor.innerHTML = '<div class="empty">Todavía no has enviado tickets.</div>';
+      return;
+    }
+    contenedor.innerHTML = datos.tickets.map(ticket => `
+      <article class="ticket">
+        <div class="ticket-top">
+          <div><span class="meta">${escaparHtml(ETIQUETAS_TIPO[ticket.tipo])} · ${fecha(ticket.creada_en)}</span><h3>${escaparHtml(ticket.asunto)}</h3></div>
+          <div class="badges"><span class="badge ${ticket.estado}">${escaparHtml(ETIQUETAS_ESTADO[ticket.estado])}</span><span class="badge">${escaparHtml(ticket.prioridad)}</span></div>
+        </div>
+        <p>${escaparHtml(ticket.descripcion)}</p>
+        ${ticket.respuesta_admin ? `<div class="respuesta"><b>Respuesta del equipo</b><p>${escaparHtml(ticket.respuesta_admin)}</p></div>` : ''}
+      </article>`).join('');
+  } catch (error) {
+    contenedor.innerHTML = `<div class="empty">${escaparHtml(error.message)}</div>`;
+  }
+}
+
+document.getElementById('ticket-form').addEventListener('submit', async evento => {
+  evento.preventDefault();
+  const boton = document.getElementById('enviar');
+  const mensaje = document.getElementById('mensaje');
+  boton.disabled = true;
+  mensaje.className = 'mensaje';
+  mensaje.textContent = 'Enviando…';
+  try {
+    const respuesta = await fetch('/api/sugerencias', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        tipo: document.getElementById('tipo').value,
+        asunto: document.getElementById('asunto').value,
+        descripcion: document.getElementById('descripcion').value
+      })
+    });
+    const datos = await respuesta.json();
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudo enviar el ticket.');
+    evento.target.reset();
+    mensaje.className = 'mensaje ok';
+    mensaje.textContent = datos.mensaje;
+    await cargarTickets();
+  } catch (error) {
+    mensaje.className = 'mensaje error';
+    mensaje.textContent = error.message;
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+document.addEventListener('DOMContentLoaded', cargarTickets);
+</script>
+</body>
+</html>

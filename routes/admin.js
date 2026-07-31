@@ -4,6 +4,7 @@ const { requireAuth, requireAdmin } = require('../middleware/auth');
 const { crearControlCuota } = require('../services/apiQuota');
 const MercadoCasa = require('../models/MercadoCasa');
 const ActualizacionMercados = require('../models/ActualizacionMercados');
+const Sugerencia = require('../models/Sugerencia');
 const { refrescarMercados } = require('../services/betting/marketCollectionService');
 
 const router = express.Router();
@@ -50,7 +51,7 @@ router.get('/usuarios', async (req, res) => {
 router.get('/resumen', async (req, res) => {
   try {
     const ahora = new Date();
-    const [total, premium, enPrueba, totalCortesia, cuotaApi] = await Promise.all([
+    const [total, premium, enPrueba, totalCortesia, cuotaApi, ticketsAbiertos] = await Promise.all([
       Usuario.countDocuments({}),
       Usuario.countDocuments({ suscripcion_termina: { $gt: ahora } }),
       Usuario.countDocuments({
@@ -58,13 +59,80 @@ router.get('/resumen', async (req, res) => {
         $or: [{ suscripcion_termina: null }, { suscripcion_termina: { $lte: ahora } }]
       }),
       Usuario.aggregate([{ $group: { _id: null, total: { $sum: '$meses_cortesia' } } }]),
-      crearControlCuota().consultar()
+      crearControlCuota().consultar(),
+      Sugerencia.countDocuments({ estado: { $in: ['nueva', 'en_revision', 'planeada'] } })
     ]);
 
     const mesesCortesia = totalCortesia[0]?.total || 0;
-    res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, mesesCortesia, cuotaApi });
+    res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, mesesCortesia, cuotaApi, ticketsAbiertos });
   } catch (error) {
     res.status(500).json({ error: error.message });
+  }
+});
+
+const ESTADOS_TICKET = new Set(['nueva', 'en_revision', 'planeada', 'resuelta', 'descartada']);
+const TIPOS_TICKET = new Set(['idea', 'mejora', 'error', 'otro']);
+const PRIORIDADES_TICKET = new Set(['baja', 'media', 'alta', 'urgente']);
+
+router.get('/sugerencias', async (req, res) => {
+  try {
+    const pagina = Math.max(Number.parseInt(req.query.pagina, 10) || 1, 1);
+    const limite = Math.min(Math.max(Number.parseInt(req.query.limite, 10) || 50, 1), 100);
+    const filtro = {};
+    if (ESTADOS_TICKET.has(req.query.estado)) filtro.estado = req.query.estado;
+    if (TIPOS_TICKET.has(req.query.tipo)) filtro.tipo = req.query.tipo;
+
+    const [tickets, total] = await Promise.all([
+      Sugerencia.find(filtro)
+        .populate('usuario', 'nombre email')
+        .sort({ creada_en: -1 })
+        .skip((pagina - 1) * limite)
+        .limit(limite)
+        .lean(),
+      Sugerencia.countDocuments(filtro)
+    ]);
+    res.json({ tickets, total, pagina, limite });
+  } catch {
+    res.status(500).json({ error: 'No se pudieron consultar los tickets.' });
+  }
+});
+
+router.patch('/sugerencias/:id', async (req, res) => {
+  try {
+    const estado = req.body?.estado;
+    const prioridad = req.body?.prioridad;
+    const respuesta = typeof req.body?.respuesta_admin === 'string'
+      ? req.body.respuesta_admin.trim()
+      : undefined;
+    const cambios = {};
+
+    if (estado !== undefined) {
+      if (!ESTADOS_TICKET.has(estado)) return res.status(400).json({ error: 'Estado no válido.' });
+      cambios.estado = estado;
+    }
+    if (prioridad !== undefined) {
+      if (!PRIORIDADES_TICKET.has(prioridad)) return res.status(400).json({ error: 'Prioridad no válida.' });
+      cambios.prioridad = prioridad;
+    }
+    if (respuesta !== undefined) {
+      if (respuesta.length > 2000) return res.status(400).json({ error: 'La respuesta no puede superar 2000 caracteres.' });
+      cambios.respuesta_admin = respuesta;
+      cambios.respondida_por = respuesta ? req.usuario._id : null;
+      cambios.respondida_en = respuesta ? new Date() : null;
+    }
+    if (!Object.keys(cambios).length) {
+      return res.status(400).json({ error: 'No hay cambios válidos.' });
+    }
+
+    const ticket = await Sugerencia.findByIdAndUpdate(req.params.id, { $set: cambios }, {
+      new: true,
+      runValidators: true
+    }).populate('usuario', 'nombre email');
+    if (!ticket) return res.status(404).json({ error: 'Ticket no encontrado.' });
+    res.json({ mensaje: 'Ticket actualizado.', ticket });
+  } catch (error) {
+    if (error.name === 'CastError') return res.status(404).json({ error: 'Ticket no encontrado.' });
+    res.status(500).json({ error: 'No se pudo actualizar el ticket.' });
   }
 });
 
