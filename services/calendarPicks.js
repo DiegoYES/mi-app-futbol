@@ -2,6 +2,16 @@ const Partido = require('../models/partido');
 const { generarPicks } = require('./pickEngine');
 
 const FINALIZADOS = ['FT', 'AET', 'PEN'];
+const CAMPOS_HISTORICOS = [
+  'api_id', 'fecha', 'estado', 'estadisticas_completas',
+  'liga.id', 'liga.temporada',
+  'equipo_local.id', 'equipo_local.nombre', 'equipo_local.goles',
+  'equipo_local.tiros_total', 'equipo_local.tiros_puerta', 'equipo_local.corners',
+  'equipo_local.faltas', 'equipo_local.tarjetas_amarillas', 'equipo_local.tarjetas_rojas', 'equipo_local.offsides',
+  'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.goles',
+  'equipo_visitante.tiros_total', 'equipo_visitante.tiros_puerta', 'equipo_visitante.corners',
+  'equipo_visitante.faltas', 'equipo_visitante.tarjetas_amarillas', 'equipo_visitante.tarjetas_rojas', 'equipo_visitante.offsides'
+].join(' ');
 
 function familiaMercado(pick) {
   return `${pick.categoria}:${pick.alcance || 'total'}:${pick.tipo || pick.id}`;
@@ -58,7 +68,7 @@ async function analizarPartidosCalendario(partidos, limiteMuestra = 10) {
         { 'equipo_local.id': { $in: [...grupo.locales] } },
         { 'equipo_visitante.id': { $in: [...grupo.visitantes] } }
       ]
-    }).sort({ fecha: -1 }).lean();
+    }).select(CAMPOS_HISTORICOS).sort({ fecha: -1 }).lean();
     historicosPorGrupo.set(clave, historicos);
   }));
 

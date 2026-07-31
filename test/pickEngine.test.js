@@ -63,6 +63,39 @@ test('proyecta al local solo con partidos en casa y al visitante solo con salida
   assert.equal(explicacion.detalle_fuentes[1].partidos[0].condicion_referencia, 'visitante');
 });
 
+test('respeta condiciones independientes elegidas en el comparador', () => {
+  const localSoloFuera = partido(1, 30, 0, 10, 2);
+  const visitanteSoloEnCasa = partido(2, 20, 3, 40, 1);
+  const resultado = generarPicks({
+    partidosLocal: [localSoloFuera],
+    teamLocal: 10,
+    partidosVisitante: [visitanteSoloEnCasa],
+    teamVisitante: 20,
+    condicionLocal: 'visitante',
+    condicionVisitante: 'local',
+    limiteLocal: null,
+    limiteVisitante: null
+  });
+
+  assert.ok(resultado.mercados.length > 0);
+  assert.deepEqual(resultado.filtros.local, { condicion: 'visitante', limite: null, periodo: 0 });
+  assert.deepEqual(resultado.filtros.visitante, { condicion: 'local', limite: null, periodo: 0 });
+  assert.equal(resultado.mercados.find(item => item.id === 'over_1_5').fuentes, 2);
+});
+
+test('usa el periodo elegido para calcular las frecuencias de picks', () => {
+  const local = partido(1, 10, 2, 30, 1);
+  const visitante = partido(2, 40, 1, 20, 2);
+  local.equipo_local.goles_primer_tiempo = 0;
+  local.equipo_visitante.goles_primer_tiempo = 0;
+  visitante.equipo_local.goles_primer_tiempo = 0;
+  visitante.equipo_visitante.goles_primer_tiempo = 0;
+  const completo = generarPicks({ partidosLocal: [local], teamLocal: 10, partidosVisitante: [visitante], teamVisitante: 20 });
+  const primerTiempo = generarPicks({ partidosLocal: [local], teamLocal: 10, partidosVisitante: [visitante], teamVisitante: 20, halfLocal: 1, halfVisitante: 1 });
+
+  assert.ok(completo.mercados.find(item => item.id === 'over_1_5').estimacion > primerTiempo.mercados.find(item => item.id === 'over_1_5').estimacion);
+});
+
 test('no convierte estadísticas avanzadas faltantes en ceros', () => {
   const sinCobertura = partido(1, 10, 1, 20, 0);
   const datos = frecuencia([sinCobertura], 10);

@@ -25,6 +25,25 @@ function agregarOpcion(select, valor, texto, deshabilitada = false) {
     select.add(opcion);
 }
 
+function normalizarBusqueda(valor) {
+    return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+}
+
+function coincideBusqueda(texto, consulta) {
+    const palabras = normalizarBusqueda(consulta).split(/\s+/).filter(Boolean);
+    const contenido = normalizarBusqueda(texto);
+    return palabras.every(palabra => contenido.includes(palabra));
+}
+
+function cerrarOtrosSelectores(listaActual) {
+    document.querySelectorAll('.league-picker-list,.team-picker-list').forEach(lista => {
+        if (lista === listaActual) return;
+        lista.hidden = true;
+        lista.parentElement?.classList.remove('open');
+        lista.parentElement?.querySelector('[aria-expanded]')?.setAttribute('aria-expanded', 'false');
+    });
+}
+
 function prepararSelectorLiga(select) {
     if (select.dataset.visualReady) return;
     select.dataset.visualReady = 'true';
@@ -43,6 +62,19 @@ function prepararSelectorLiga(select) {
     lista.className = 'league-picker-list';
     lista.setAttribute('role', 'listbox');
     lista.hidden = true;
+    const buscador = document.createElement('input');
+    buscador.type = 'search';
+    buscador.className = 'picker-search';
+    buscador.placeholder = 'Buscar liga o país…';
+    buscador.setAttribute('aria-label', 'Buscar competición por nombre o país');
+    const resultados = document.createElement('div');
+    resultados.className = 'league-picker-results';
+    const basico = document.createElement('button');
+    basico.type = 'button';
+    basico.className = 'league-picker-basic';
+    basico.dataset.basicLeagueSelector = '';
+    basico.textContent = 'Usar selector básico';
+    lista.append(buscador, resultados, basico);
     contenedor.append(boton, lista);
 
     const cerrar = () => {
@@ -50,28 +82,44 @@ function prepararSelectorLiga(select) {
         contenedor.classList.remove('open');
         boton.setAttribute('aria-expanded', 'false');
     };
+    const pintarOpciones = () => {
+        const opciones = [...select.options].filter(opcion => opcion.value).map(opcion => ligasDisponibles[opcion.value]).filter(Boolean);
+        const filtradas = opciones.filter(liga => coincideBusqueda(`${liga.nombre} ${liga.pais}`, buscador.value));
+        const porPais = new Map();
+        filtradas.forEach(liga => {
+            const pais = liga.pais || 'Otras competiciones';
+            if (!porPais.has(pais)) porPais.set(pais, []);
+            porPais.get(pais).push(liga);
+        });
+        resultados.innerHTML = [...porPais.entries()].map(([pais, ligas]) => `<section class="league-picker-group">
+            <h4>${escaparHtml(pais)} <span>${ligas.length}</span></h4>
+            ${ligas.map(datos => `<button type="button" role="option" data-league-value="${datos.id}" aria-selected="${select.value === String(datos.id)}"><img src="/api/ligas/${datos.id}/logo" alt=""><span><strong>${escaparHtml(datos.nombre)}</strong><small>${escaparHtml(datos.pais)} · ${datos.temporada_analisis ? `análisis ${datos.temporadas_analisis?.find(t => t.temporada === datos.temporada_analisis)?.etiqueta || datos.temporada_analisis}` : 'archivo histórico'}</small></span></button>`).join('')}
+        </section>`).join('') || '<p class="league-picker-empty">No encontramos ligas con esa búsqueda.</p>';
+    };
     const render = () => {
         const seleccionada = select.selectedOptions[0];
         const liga = ligasDisponibles[select.value];
+        const total = [...select.options].filter(opcion => opcion.value).length;
         boton.innerHTML = liga
             ? `<img src="/api/ligas/${liga.id}/logo" alt=""><span>${escaparHtml(liga.nombre)}</span><small>${escaparHtml(liga.pais)}</small><b>⌄</b>`
-            : `<i class="league-picker-placeholder" aria-hidden="true">⚽</i><span>${escaparHtml(seleccionada?.text || 'Selecciona competición')}</span><small>8 ligas disponibles</small><b>⌄</b>`;
+            : `<i class="league-picker-placeholder" aria-hidden="true">⚽</i><span>${escaparHtml(seleccionada?.text || 'Selecciona competición')}</span><small>${total} ligas disponibles</small><b>⌄</b>`;
         boton.disabled = select.disabled;
-        const opciones = [...select.options].filter(opcion => opcion.value).map(opcion => {
-            const datos = ligasDisponibles[opcion.value];
-            if (!datos) return '';
-            return `<button type="button" role="option" data-league-value="${opcion.value}" aria-selected="${select.value === opcion.value}"><img src="/api/ligas/${datos.id}/logo" alt=""><span><strong>${escaparHtml(datos.nombre)}</strong><small>${escaparHtml(datos.pais)} · ${datos.temporada_analisis ? `análisis ${datos.temporadas_analisis?.find(t => t.temporada === datos.temporada_analisis)?.etiqueta || datos.temporada_analisis}` : 'archivo histórico'}</small></span></button>`;
-        }).join('');
-        lista.innerHTML = `${opciones || '<p class="league-picker-empty">No hay competiciones disponibles.</p>'}<button type="button" class="league-picker-basic" data-basic-league-selector>Usar selector básico</button>`;
+        pintarOpciones();
     };
     boton.addEventListener('click', event => {
         event.stopPropagation();
-        document.querySelectorAll('.league-picker-list').forEach(otra => { if (otra !== lista) otra.hidden = true; });
+        cerrarOtrosSelectores(lista);
         lista.hidden = !lista.hidden;
         contenedor.classList.toggle('open', !lista.hidden);
         boton.setAttribute('aria-expanded', String(!lista.hidden));
+        if (!lista.hidden) {
+            buscador.value = '';
+            pintarOpciones();
+            requestAnimationFrame(() => buscador.focus());
+        }
     });
     lista.addEventListener('click', event => {
+        event.stopPropagation();
         if (event.target.closest('[data-basic-league-selector]')) {
             select.mostrarFallbackNativo();
             return;
@@ -83,6 +131,8 @@ function prepararSelectorLiga(select) {
         render();
         select.dispatchEvent(new Event('change', { bubbles: true }));
     });
+    buscador.addEventListener('input', pintarOpciones);
+    buscador.addEventListener('keydown', event => { if (event.key === 'Escape') cerrar(); });
     document.addEventListener('click', cerrar);
     select.actualizarSelectorVisual = render;
     select.mostrarFallbackNativo = () => {
@@ -95,9 +145,83 @@ function prepararSelectorLiga(select) {
     render();
 }
 
+function prepararSelectorEquipo(select) {
+    if (select.dataset.visualReady) return;
+    select.dataset.visualReady = 'true';
+    select.classList.add('team-select-native');
+    const contenedor = document.createElement('div');
+    contenedor.className = 'team-picker';
+    select.parentNode.insertBefore(contenedor, select);
+    contenedor.appendChild(select);
+    const boton = document.createElement('button');
+    boton.type = 'button';
+    boton.className = 'team-picker-button';
+    boton.setAttribute('aria-haspopup', 'listbox');
+    boton.setAttribute('aria-expanded', 'false');
+    const lista = document.createElement('div');
+    lista.className = 'team-picker-list';
+    lista.hidden = true;
+    const buscador = document.createElement('input');
+    buscador.type = 'search';
+    buscador.className = 'picker-search';
+    buscador.placeholder = 'Buscar equipo…';
+    buscador.setAttribute('aria-label', 'Buscar equipo por nombre');
+    const resultados = document.createElement('div');
+    resultados.className = 'team-picker-results';
+    lista.append(buscador, resultados);
+    contenedor.append(boton, lista);
+
+    const cerrar = () => {
+        lista.hidden = true;
+        contenedor.classList.remove('open');
+        boton.setAttribute('aria-expanded', 'false');
+    };
+    const pintarOpciones = () => {
+        const equipos = (select.equiposDisponibles || []).filter(equipo => coincideBusqueda(equipo.nombre, buscador.value));
+        resultados.innerHTML = equipos.map(equipo => `<button type="button" role="option" data-team-value="${equipo.id}" aria-selected="${select.value === String(equipo.id)}"><img src="/api/equipos/${equipo.id}/escudo" alt=""><span><strong>${escaparHtml(equipo.nombre)}</strong><small>${equipo.id === Number(select.value) ? 'Seleccionado' : 'Elegir equipo'}</small></span></button>`).join('') || '<p class="league-picker-empty">No encontramos equipos con esa búsqueda.</p>';
+    };
+    const render = () => {
+        const equipo = (select.equiposDisponibles || []).find(item => String(item.id) === select.value);
+        const total = select.equiposDisponibles?.length || 0;
+        boton.innerHTML = equipo
+            ? `<img src="/api/equipos/${equipo.id}/escudo" alt=""><span>${escaparHtml(equipo.nombre)}</span><small>Equipo seleccionado</small><b>⌄</b>`
+            : `<i class="league-picker-placeholder" aria-hidden="true">⌕</i><span>${escaparHtml(select.selectedOptions[0]?.text || 'Selecciona equipo')}</span><small>${total ? `${total} equipos` : 'Elige liga y temporada'}</small><b>⌄</b>`;
+        boton.disabled = select.disabled;
+        pintarOpciones();
+    };
+    boton.addEventListener('click', event => {
+        event.stopPropagation();
+        cerrarOtrosSelectores(lista);
+        lista.hidden = !lista.hidden;
+        contenedor.classList.toggle('open', !lista.hidden);
+        boton.setAttribute('aria-expanded', String(!lista.hidden));
+        if (!lista.hidden) {
+            buscador.value = '';
+            pintarOpciones();
+            requestAnimationFrame(() => buscador.focus());
+        }
+    });
+    lista.addEventListener('click', event => {
+        event.stopPropagation();
+        const opcion = event.target.closest('[data-team-value]');
+        if (!opcion) return;
+        select.value = opcion.dataset.teamValue;
+        cerrar();
+        render();
+        select.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    buscador.addEventListener('input', pintarOpciones);
+    buscador.addEventListener('keydown', event => { if (event.key === 'Escape') cerrar(); });
+    document.addEventListener('click', cerrar);
+    select.actualizarSelectorVisual = render;
+    render();
+}
+
 function claveBoleta(mercadoId) {
     if (!picksActuales) return '';
-    return `${picksActuales.local.id}:${picksActuales.visitante.id}:${picksActuales.liga_ids.local}:${picksActuales.liga_ids.visitante}:${picksActuales.temporadas.local}:${picksActuales.temporadas.visitante}:${mercadoId}`;
+    const fl = picksActuales.filtros?.local || {};
+    const fv = picksActuales.filtros?.visitante || {};
+    return `${picksActuales.local.id}:${picksActuales.visitante.id}:${picksActuales.liga_ids.local}:${picksActuales.liga_ids.visitante}:${picksActuales.temporadas.local}:${picksActuales.temporadas.visitante}:${fl.condicion}:${fl.limite}:${fl.periodo}:${fv.condicion}:${fv.limite}:${fv.periodo}:${mercadoId}`;
 }
 
 function pintarBoleta() {
@@ -162,6 +286,12 @@ function alternarSeleccionBoleta(mercadoId) {
             league_visitante: picksActuales.liga_ids.visitante,
             temporada_local: picksActuales.temporadas.local,
             temporada_visitante: picksActuales.temporadas.visitante,
+            condicion_local: picksActuales.filtros?.local?.condicion,
+            condicion_visitante: picksActuales.filtros?.visitante?.condicion,
+            limite_local: picksActuales.filtros?.local?.limite,
+            limite_visitante: picksActuales.filtros?.visitante?.limite,
+            periodo_local: picksActuales.filtros?.local?.periodo,
+            periodo_visitante: picksActuales.filtros?.visitante?.periodo,
             mercado_id: mercado.id,
             mercado_nombre: mercado.mercado,
             local_nombre: picksActuales.local.nombre,
@@ -191,9 +321,10 @@ async function guardarBoleta() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 nombre: document.getElementById('bet-slip-name').value,
-                selecciones: items.map(({ team_local, team_visitante, league_local, league_visitante, temporada_local, temporada_visitante, mercado_id }) => ({
+                selecciones: items.map(({ team_local, team_visitante, league_local, league_visitante, temporada_local, temporada_visitante, condicion_local, condicion_visitante, limite_local, limite_visitante, periodo_local, periodo_visitante, mercado_id }) => ({
                     team_local, team_visitante, league_local, league_visitante,
-                    temporada_local, temporada_visitante, mercado_id
+                    temporada_local, temporada_visitante, condicion_local, condicion_visitante,
+                    limite_local, limite_visitante, periodo_local, periodo_visitante, mercado_id
                 }))
             })
         });
@@ -235,7 +366,7 @@ function actualizarAccionesComparacion() {
     }
     if (acceso.dataset.pareja !== pareja) {
         acceso.dataset.pareja = pareja;
-        acceso.hidden = false;
+        acceso.hidden = true;
     }
     const nombreA = document.getElementById('team-a').selectedOptions[0]?.text || 'Equipo A';
     const nombreB = document.getElementById('team-b').selectedOptions[0]?.text || 'Equipo B';
@@ -298,7 +429,9 @@ async function cargarEquipos(lado) {
     const season = document.getElementById(`season-${lado}`).value;
     const teamSel = document.getElementById(`team-${lado}`);
     teamSel.innerHTML = '<option value="">-- Equipo --</option>';
+    teamSel.equiposDisponibles = [];
     teamSel.disabled = true;
+    teamSel.actualizarSelectorVisual?.();
     document.getElementById(`name-${lado}`).textContent = lado === 'a' ? 'Selecciona el local' : 'Selecciona el visitante';
     document.getElementById(`logo-${lado}`).style.display = 'none';
     document.getElementById(`stats-${lado}`).textContent = 'Selecciona competición y equipo';
@@ -311,7 +444,9 @@ async function cargarEquipos(lado) {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const equiposArray = await res.json();
         equiposArray.forEach(eq => agregarOpcion(teamSel, eq.id, eq.nombre));
+        teamSel.equiposDisponibles = equiposArray;
         teamSel.disabled = false;
+        teamSel.actualizarSelectorVisual?.();
     } catch (err) {
         console.error(`Error cargando equipos para lado ${lado}:`, err);
     }
@@ -341,6 +476,7 @@ async function preseleccionarDesdeUrl() {
         const teamSelect = document.getElementById(`team-${config.lado}`);
         if (![...teamSelect.options].some(option => option.value === teamId)) continue;
         teamSelect.value = teamId;
+        teamSelect.actualizarSelectorVisual?.();
         for (const filtro of ['scope', 'limit', 'half']) {
             const valor = params.get(config[filtro]);
             const select = document.getElementById(`${filtro}-${config.lado}`);
@@ -775,7 +911,7 @@ function pintarPicks() {
             <a class="pick-side away" href="/equipo.html?id=${picksActuales.visitante.id}&league=${picksActuales.liga_ids.visitante}&season=${picksActuales.temporadas.visitante}">${logoVisitante}<span class="pick-side-copy"><span>VISITANTE · DERECHA</span><strong>${escaparHtml(picksActuales.visitante.nombre)}</strong><small>${escaparHtml(picksActuales.ligas.visitante.nombre)} · ${picksActuales.temporadas.visitante}</small></span></a>
         </div>
         <div class="pick-grid">${tarjetas}</div>
-        <p class="method-note">${escaparHtml(picksActuales.metodologia)} La izquierda siempre se modela como local usando ${escaparHtml(picksActuales.ligas.local.nombre)} y la derecha como visitante usando ${escaparHtml(picksActuales.ligas.visitante.nombre)}. Comparar competiciones distintas mezcla contextos y se muestra como referencia, no como una predicción calibrada.</p>`;
+        <p class="method-note">${escaparHtml(picksActuales.metodologia)} Los roles del cruce siguen siendo izquierda-local y derecha-visitante, pero la evidencia histórica respeta los filtros elegidos. Comparar competiciones distintas mezcla contextos y se muestra como referencia, no como una predicción calibrada.</p>`;
 }
 
 function pintarCasosExplicacion(explicacion) {
@@ -807,7 +943,12 @@ async function cargarExplicacionPick(mercadoId, contenedor) {
         league2: picksActuales.liga_ids.visitante,
         season1: picksActuales.temporadas.local,
         season2: picksActuales.temporadas.visitante,
-        limit: 10,
+        scope1: picksActuales.filtros?.local?.condicion || 'local',
+        scope2: picksActuales.filtros?.visitante?.condicion || 'visitante',
+        limit1: picksActuales.filtros?.local?.limite ?? 'all',
+        limit2: picksActuales.filtros?.visitante?.limite ?? 'all',
+        half1: picksActuales.filtros?.local?.periodo || 0,
+        half2: picksActuales.filtros?.visitante?.periodo || 0,
         market: mercadoId
     });
     try {
@@ -838,11 +979,24 @@ async function mostrarPicks() {
     content.innerHTML = '<div class="loader">Calculando frecuencias históricas...</div>';
 
     try {
-        const respuesta = await fetch(`/api/picks?team1=${teamA}&team2=${teamB}&league1=${leagueA}&league2=${leagueB}&season1=${seasonA}&season2=${seasonB}&limit=10`);
-        if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-        const data = await respuesta.json();
+        const filtros = new URLSearchParams({
+            team1: teamA, team2: teamB, league1: leagueA, league2: leagueB,
+            season1: seasonA, season2: seasonB,
+            scope1: document.getElementById('scope-a').value,
+            scope2: document.getElementById('scope-b').value,
+            limit1: document.getElementById('limit-a').value,
+            limit2: document.getElementById('limit-b').value,
+            half1: document.getElementById('half-a').value,
+            half2: document.getElementById('half-b').value
+        });
+        const respuesta = await fetch(`/api/picks?${filtros}`);
+        const data = await respuesta.json().catch(() => ({}));
+        if (!respuesta.ok) throw new Error(data.error || `HTTP ${respuesta.status}`);
         if (!data.mercados.length) {
-            content.innerHTML = '<div class="empty-state">No hay muestra suficiente para esta comparación.</div>';
+            const muestra = data.local && data.visitante ? `Muestra encontrada: ${data.local.muestra} para ${escaparHtml(data.local.nombre)} y ${data.visitante.muestra} para ${escaparHtml(data.visitante.nombre)}.` : '';
+            content.innerHTML = `<div class="empty-state"><strong>No hay mercados calculables con estos filtros.</strong><br>${muestra}<br><small>${escaparHtml(data.metodologia || 'Prueba ampliando la condición o usando el partido completo.')}</small></div>`;
+            document.getElementById('pick-category').disabled = true;
+            document.getElementById('pick-recommended-toggle').disabled = true;
             return;
         }
 
@@ -991,6 +1145,7 @@ function configurarEventos() {
 
 document.addEventListener('DOMContentLoaded', async () => {
     ['league-a', 'league-b'].forEach(id => prepararSelectorLiga(document.getElementById(id)));
+    ['team-a', 'team-b'].forEach(id => prepararSelectorEquipo(document.getElementById(id)));
     configurarEventos();
     await cargarLigas();
     await preseleccionarDesdeUrl();

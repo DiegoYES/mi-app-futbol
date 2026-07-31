@@ -10,6 +10,24 @@ function entero(valor) {
   return Number.isInteger(numero) ? numero : null;
 }
 
+function condicion(valor, predeterminada) {
+  const resultado = typeof valor === 'string' ? valor : predeterminada;
+  return ['general', 'local', 'visitante'].includes(resultado) ? resultado : null;
+}
+
+function limite(valor) {
+  if (valor === null) return null;
+  if (valor === undefined) return 10;
+  const resultado = entero(valor);
+  return [3, 5, 10, 20].includes(resultado) ? resultado : undefined;
+}
+
+function periodo(valor) {
+  if (valor === undefined) return 0;
+  const resultado = entero(valor);
+  return [0, 1, 2].includes(resultado) ? resultado : null;
+}
+
 router.post('/', async (req, res) => {
   try {
     const entradas = req.body?.selecciones;
@@ -25,20 +43,27 @@ router.post('/', async (req, res) => {
       const leagueVisitante = entero(entrada.league_visitante ?? entrada.league);
       const temporadaLocal = entero(entrada.temporada_local ?? entrada.temporada);
       const temporadaVisitante = entero(entrada.temporada_visitante ?? entrada.temporada);
+      const condicionLocal = condicion(entrada.condicion_local, 'local');
+      const condicionVisitante = condicion(entrada.condicion_visitante, 'visitante');
+      const limiteLocal = limite(entrada.limite_local);
+      const limiteVisitante = limite(entrada.limite_visitante);
+      const halfLocal = periodo(entrada.periodo_local);
+      const halfVisitante = periodo(entrada.periodo_visitante);
       const mercadoId = typeof entrada.mercado_id === 'string' ? entrada.mercado_id : '';
-      if (![teamLocal, teamVisitante, leagueLocal, leagueVisitante].every(Number.isInteger) || teamLocal === teamVisitante || !obtenerMercado(mercadoId)) {
+      if (![teamLocal, teamVisitante, leagueLocal, leagueVisitante].every(Number.isInteger) || teamLocal === teamVisitante || !condicionLocal || !condicionVisitante || limiteLocal === undefined || limiteVisitante === undefined || halfLocal === null || halfVisitante === null || !obtenerMercado(mercadoId)) {
         return res.status(400).json({ error: 'Una de las selecciones no es válida.' });
       }
-      const clave = `${teamLocal}:${teamVisitante}:${leagueLocal}:${leagueVisitante}:${temporadaLocal ?? ''}:${temporadaVisitante ?? ''}:${mercadoId}`;
+      const clave = `${teamLocal}:${teamVisitante}:${leagueLocal}:${leagueVisitante}:${temporadaLocal ?? ''}:${temporadaVisitante ?? ''}:${condicionLocal}:${limiteLocal}:${halfLocal}:${condicionVisitante}:${limiteVisitante}:${halfVisitante}:${mercadoId}`;
       unicas.set(clave, {
         clave, teamLocal, teamVisitante, leagueLocal, leagueVisitante,
-        temporadaLocal, temporadaVisitante, mercadoId
+        temporadaLocal, temporadaVisitante, condicionLocal, condicionVisitante,
+        limiteLocal, limiteVisitante, halfLocal, halfVisitante, mercadoId
       });
     }
 
     const grupos = new Map();
     for (const seleccion of unicas.values()) {
-      const claveGrupo = `${seleccion.teamLocal}:${seleccion.teamVisitante}:${seleccion.leagueLocal}:${seleccion.leagueVisitante}:${seleccion.temporadaLocal ?? ''}:${seleccion.temporadaVisitante ?? ''}`;
+      const claveGrupo = `${seleccion.teamLocal}:${seleccion.teamVisitante}:${seleccion.leagueLocal}:${seleccion.leagueVisitante}:${seleccion.temporadaLocal ?? ''}:${seleccion.temporadaVisitante ?? ''}:${seleccion.condicionLocal}:${seleccion.limiteLocal}:${seleccion.halfLocal}:${seleccion.condicionVisitante}:${seleccion.limiteVisitante}:${seleccion.halfVisitante}`;
       if (!grupos.has(claveGrupo)) grupos.set(claveGrupo, { ...seleccion, mercados: [] });
       grupos.get(claveGrupo).mercados.push(seleccion);
     }
@@ -73,7 +98,11 @@ router.post('/', async (req, res) => {
           confianza: mercado.confianza,
           muestra: mercado.muestra,
           fuentes: mercado.fuentes,
-          evidencia: mercado.evidencia
+          evidencia: mercado.evidencia,
+          configuracion: {
+            local: { condicion: grupo.condicionLocal, limite: grupo.limiteLocal, periodo: grupo.halfLocal },
+            visitante: { condicion: grupo.condicionVisitante, limite: grupo.limiteVisitante, periodo: grupo.halfVisitante }
+          }
         });
       }
     }

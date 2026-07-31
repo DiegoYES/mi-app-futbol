@@ -30,9 +30,8 @@ function casoParticular(partido, contexto, perspectiva, mercado) {
 }
 
 function frecuenciaMercado(registros, perspectiva, mercado, limite, detalle = 0) {
-  const utilizables = registros
-    .filter(({ partido }) => !mercado.requiereAvanzadas || partido.estadisticas_completas === true)
-    .slice(0, limite);
+  const disponibles = registros.filter(registro => !mercado.requiereAvanzadas || registro.coberturaAvanzada);
+  const utilizables = limite === null ? disponibles : disponibles.slice(0, limite);
   const evaluados = utilizables.map(({ partido, contexto }) => ({
     partido,
     contexto,
@@ -55,10 +54,20 @@ function frecuenciaMercado(registros, perspectiva, mercado, limite, detalle = 0)
   };
 }
 
-function frecuencia(partidos, teamId, perspectiva = 'local', limite = 10) {
-  const registros = partidos
-    .map(partido => ({ partido, contexto: contextoPartido(partido, teamId) }))
+function registrosPartidos(partidos, teamId, half = 0) {
+  return partidos
+    .map(partido => ({
+      partido,
+      contexto: contextoPartido(partido, teamId, half),
+      coberturaAvanzada: half === 0
+        ? partido.estadisticas_completas === true
+        : partido.tiempos_completos === true
+    }))
     .filter(item => item.contexto);
+}
+
+function frecuencia(partidos, teamId, perspectiva = 'local', limite = 10, half = 0) {
+  const registros = registrosPartidos(partidos, teamId, half);
   const resultado = {};
 
   for (const mercado of MERCADOS) {
@@ -74,6 +83,9 @@ function confianza(muestra) {
 }
 
 function partidosEnCondicion(partidos, teamId, condicion) {
+  if (condicion === 'general') {
+    return partidos.filter(partido => partido?.equipo_local?.id === teamId || partido?.equipo_visitante?.id === teamId);
+  }
   const campo = condicion === 'local' ? 'equipo_local' : 'equipo_visitante';
   return partidos.filter(partido => partido?.[campo]?.id === teamId);
 }
@@ -116,25 +128,31 @@ function combinar(mercado, a, b) {
   };
 }
 
-function explicarMercado({ partidosLocal, teamLocal, partidosVisitante, teamVisitante, mercadoId, limite = 10, detalle = 3 }) {
+function explicarMercado({
+  partidosLocal, teamLocal, partidosVisitante, teamVisitante, mercadoId,
+  limite = 10, limiteLocal = limite, limiteVisitante = limite,
+  condicionLocal = 'local', condicionVisitante = 'visitante',
+  halfLocal = 0, halfVisitante = 0, detalle = 3
+}) {
   const mercado = obtenerMercado(mercadoId);
   if (!mercado) return null;
-  const registrosLocal = partidosEnCondicion(partidosLocal, teamLocal, 'local')
-    .map(partido => ({ partido, contexto: contextoPartido(partido, teamLocal) }))
-    .filter(item => item.contexto);
-  const registrosVisitante = partidosEnCondicion(partidosVisitante, teamVisitante, 'visitante')
-    .map(partido => ({ partido, contexto: contextoPartido(partido, teamVisitante) }))
-    .filter(item => item.contexto);
+  const registrosLocal = registrosPartidos(partidosEnCondicion(partidosLocal, teamLocal, condicionLocal), teamLocal, halfLocal);
+  const registrosVisitante = registrosPartidos(partidosEnCondicion(partidosVisitante, teamVisitante, condicionVisitante), teamVisitante, halfVisitante);
   return combinar(
     mercado,
-    frecuenciaMercado(registrosLocal, 'local', mercado, limite, detalle),
-    frecuenciaMercado(registrosVisitante, 'visitante', mercado, limite, detalle)
+    frecuenciaMercado(registrosLocal, 'local', mercado, limiteLocal, detalle),
+    frecuenciaMercado(registrosVisitante, 'visitante', mercado, limiteVisitante, detalle)
   );
 }
 
-function generarPicks({ partidosLocal, teamLocal, partidosVisitante, teamVisitante, limite = 10 }) {
-  const local = frecuencia(partidosEnCondicion(partidosLocal, teamLocal, 'local'), teamLocal, 'local', limite);
-  const visitante = frecuencia(partidosEnCondicion(partidosVisitante, teamVisitante, 'visitante'), teamVisitante, 'visitante', limite);
+function generarPicks({
+  partidosLocal, teamLocal, partidosVisitante, teamVisitante,
+  limite = 10, limiteLocal = limite, limiteVisitante = limite,
+  condicionLocal = 'local', condicionVisitante = 'visitante',
+  halfLocal = 0, halfVisitante = 0
+}) {
+  const local = frecuencia(partidosEnCondicion(partidosLocal, teamLocal, condicionLocal), teamLocal, 'local', limiteLocal, halfLocal);
+  const visitante = frecuencia(partidosEnCondicion(partidosVisitante, teamVisitante, condicionVisitante), teamVisitante, 'visitante', limiteVisitante, halfVisitante);
   const mercados = MERCADOS
     .map(mercado => combinar(mercado, local[mercado.id], visitante[mercado.id]))
     .filter(Boolean)
@@ -147,7 +165,11 @@ function generarPicks({ partidosLocal, teamLocal, partidosVisitante, teamVisitan
     mercados,
     recomendados,
     categorias: [...new Set(mercados.map(item => item.categoria))],
-    metodologia: 'Frecuencia histórica suavizada: el local usa únicamente sus partidos en casa y el visitante únicamente sus partidos fuera; las estadísticas avanzadas excluyen partidos sin cobertura. Esto no es una probabilidad calibrada ni garantiza resultados.'
+    filtros: {
+      local: { condicion: condicionLocal, limite: limiteLocal, periodo: halfLocal },
+      visitante: { condicion: condicionVisitante, limite: limiteVisitante, periodo: halfVisitante }
+    },
+    metodologia: `Frecuencia histórica suavizada con la muestra elegida: local proyectado (${condicionLocal}, periodo ${halfLocal}) y visitante proyectado (${condicionVisitante}, periodo ${halfVisitante}); las estadísticas avanzadas excluyen partidos sin cobertura. Esto no es una probabilidad calibrada ni garantiza resultados.`
   };
 }
 

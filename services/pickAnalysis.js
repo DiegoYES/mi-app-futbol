@@ -22,6 +22,11 @@ function nombreEquipo(partidos, teamId) {
     : partido?.equipo_visitante?.nombre || `Equipo ${teamId}`;
 }
 
+function filtroEquipo(base, teamId, condicion) {
+  if (condicion === 'general') return { ...base, $or: [{ 'equipo_local.id': teamId }, { 'equipo_visitante.id': teamId }] };
+  return { ...base, [condicion === 'local' ? 'equipo_local.id' : 'equipo_visitante.id']: teamId };
+}
+
 async function analizarCruce({
   teamLocal,
   teamVisitante,
@@ -31,7 +36,13 @@ async function analizarCruce({
   temporada,
   temporadaLocal = temporada,
   temporadaVisitante = temporada,
-  limite = 10
+  limite = 10,
+  limiteLocal = limite,
+  limiteVisitante = limite,
+  condicionLocal = 'local',
+  condicionVisitante = 'visitante',
+  halfLocal = 0,
+  halfVisitante = 0
 }) {
   const [seasonLocal, seasonVisitante] = await Promise.all([
     resolverTemporadaPicks(leagueLocal, temporadaLocal),
@@ -41,15 +52,20 @@ async function analizarCruce({
   const filtroLocal = { 'liga.id': leagueLocal, 'liga.temporada': seasonLocal, estado: { $in: ['FT', 'AET', 'PEN'] } };
   const filtroVisitante = { 'liga.id': leagueVisitante, 'liga.temporada': seasonVisitante, estado: { $in: ['FT', 'AET', 'PEN'] } };
   const [partidosLocal, partidosVisitante] = await Promise.all([
-    Partido.find({ ...filtroLocal, 'equipo_local.id': teamLocal }).sort({ fecha: -1 }).lean(),
-    Partido.find({ ...filtroVisitante, 'equipo_visitante.id': teamVisitante }).sort({ fecha: -1 }).lean()
+    Partido.find(filtroEquipo(filtroLocal, teamLocal, condicionLocal)).sort({ fecha: -1 }).lean(),
+    Partido.find(filtroEquipo(filtroVisitante, teamVisitante, condicionVisitante)).sort({ fecha: -1 }).lean()
   ]);
   const resultado = generarPicks({
     partidosLocal,
     teamLocal,
     partidosVisitante,
     teamVisitante,
-    limite
+    limiteLocal,
+    limiteVisitante,
+    condicionLocal,
+    condicionVisitante,
+    halfLocal,
+    halfVisitante
   });
   const ligaLocal = { id: leagueLocal, nombre: config.ligas[leagueLocal]?.nombre || String(leagueLocal) };
   const ligaVisitante = { id: leagueVisitante, nombre: config.ligas[leagueVisitante]?.nombre || String(leagueVisitante) };

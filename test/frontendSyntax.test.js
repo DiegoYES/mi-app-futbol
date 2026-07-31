@@ -28,6 +28,27 @@ test('app.js contiene JavaScript válido', () => {
   assert.doesNotThrow(() => new Function(codigo));
 });
 
+test('el comparador permite buscar competiciones por país y equipos por nombre', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const estilos = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
+  assert.match(codigo, /Buscar liga o país/);
+  assert.match(codigo, /Buscar equipo/);
+  assert.match(codigo, /coincideBusqueda/);
+  assert.match(codigo, /league-picker-group/);
+  assert.doesNotMatch(codigo, />8 ligas disponibles</);
+  assert.match(estilos, /\.team-picker-list \{ position:static/);
+  assert.doesNotMatch(estilos, /\.compare-action\.is-ready \{ position:sticky/);
+});
+
+test('los picks del comparador reciben los filtros visibles de ambos equipos', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(codigo, /scope1: document\.getElementById\('scope-a'\)\.value/);
+  assert.match(codigo, /limit2: document\.getElementById\('limit-b'\)\.value/);
+  assert.match(codigo, /half1: document\.getElementById\('half-a'\)\.value/);
+  assert.match(html, /también se usan al generar los picks/);
+});
+
 test('auth-client.js contiene JavaScript válido y monta Mis picks globales', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-client.js'), 'utf8');
   assert.doesNotThrow(() => new Function(codigo));
@@ -35,11 +56,35 @@ test('auth-client.js contiene JavaScript válido y monta Mis picks globales', ()
   assert.match(codigo, /futbol:picks-actualizados/);
 });
 
+test('el panel de administración conecta sus controles sin eventos inline bloqueados por CSP', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.html'), 'utf8');
+  assert.doesNotMatch(html, /\son(?:click|change|input|submit)=/i);
+  assert.match(html, /function instalarEventos\(\)/);
+  assert.match(html, /data-accion="guardar-ticket"/);
+  assert.match(html, /data-accion="cortesia"/);
+  assert.match(html, /data-accion="extender"/);
+});
+
 test('los enfrentamientos del centro de partido exponen detalles desplegables', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
   assert.match(html, /data-h2h-details/);
   assert.match(html, /alternarDetalleH2H/);
   assert.match(html, /Ver estadísticas/);
+});
+
+test('la ficha ofrece las estadísticas como una opción propia del partido', () => {
+  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  assert.match(partido, /data-match-tab="estadisticas"/);
+  assert.doesNotMatch(partido, /data-match-tab="estadisticas" hidden/);
+  assert.match(partido, /id="estadisticasPartido"/);
+  assert.match(partido, /pintarEstadisticasPartido/);
+  assert.match(partido, /Las estadísticas estarán disponibles cuando finalice/);
+  assert.match(partido, /Jugador destacado/);
+  assert.match(partido, /tarjetaJugadorPartido/);
+  assert.match(partido, /Duelos ganados/);
+  assert.match(partido, /id="fAlcanceLocal"/);
+  assert.match(partido, /id="fAlcanceVisitante"/);
+  assert.doesNotMatch(partido, /id="fAlcance"/);
 });
 
 test('el directorio de competiciones agrupa temporadas y permite elegirlas', () => {
@@ -54,6 +99,9 @@ test('el directorio de equipos selecciona ligas y delega la temporada a la ficha
   const directorio = fs.readFileSync(path.join(__dirname, '..', 'public', 'equipos.html'), 'utf8');
   const ficha = fs.readFileSync(path.join(__dirname, '..', 'public', 'equipo.html'), 'utf8');
   assert.match(directorio, /allSeasons=true/);
+  assert.match(directorio, /Buscar país o liga/);
+  assert.match(directorio, /liga\.pais} \$\{liga\.nombre/);
+  assert.match(directorio, /league-picker-group/);
   assert.doesNotMatch(directorio, /value="\$\{c\.id\}:\$\{c\.temporada\}"/);
   assert.match(ficha, /id="season"/);
   assert.match(ficha, /Menos de 2\.5 goles/);
@@ -73,4 +121,11 @@ test('el directorio de jugadores separa competición y temporada', () => {
   assert.match(html, /pintarTemporadas/);
   assert.match(html, /&season=\$\{season\}/);
   assert.doesNotMatch(html, /const \[league,season\]=valor\.split/);
+});
+
+test('el formulario de tickets maneja respuestas HTML sin mostrar errores de JSON', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'sugerencias.html'), 'utf8');
+  assert.match(html, /function leerRespuesta/);
+  assert.match(html, /content-type/);
+  assert.match(html, /servicio de tickets no está disponible/);
 });

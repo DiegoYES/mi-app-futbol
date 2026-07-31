@@ -111,6 +111,10 @@ const partidoSchema = new mongoose.Schema({
   fecha_actualizacion: { type: Date, default: Date.now }
 });
 
+// El calendario consulta y ordena siempre por fecha. Sin este índice MongoDB
+// debe recorrer todos los partidos, independientemente del tamaño del rango.
+partidoSchema.index({ fecha: 1 }, { name: 'fecha' });
+partidoSchema.index({ 'liga.id': 1, fecha: 1 }, { name: 'liga_fecha' });
 partidoSchema.index(
   { 'liga.id': 1, 'liga.temporada': -1, estado: 1, fecha: -1 },
   { name: 'liga_temporada_estado_fecha' }

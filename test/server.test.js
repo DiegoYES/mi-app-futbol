@@ -46,6 +46,20 @@ test('rechaza escrituras web desde un origen ajeno', async t => {
   assert.equal(body.codigo, 'ORIGEN_NO_PERMITIDO');
 });
 
+test('acepta escrituras del mismo host cuando un proxy termina HTTPS', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const url = new URL(baseUrl);
+  const respuesta = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { origin: `https://${url.host}` }
+  });
+  const body = await respuesta.json();
+
+  // Superó la validación de origen y llegó al controlador de cierre de sesión.
+  assert.equal(respuesta.status, 200);
+  assert.equal(body.mensaje, 'Sesión cerrada');
+});
+
 test('rechaza cuerpos JSON demasiado grandes con una respuesta controlada', async t => {
   const baseUrl = await servidorTemporal(t);
   const respuesta = await fetch(`${baseUrl}/api/auth/login`, {

@@ -78,7 +78,7 @@
     <h2>Mercados de Playdoit</h2>
     <div class="mercados-panel">
       <div class="mercados-actions">
-        <button class="btn-mercados" id="actualizar-mercados" type="button" onclick="actualizarMercados()">Actualizar mercados</button>
+        <button class="btn-mercados" id="actualizar-mercados" type="button">Actualizar mercados</button>
         <span class="mercados-status" id="estado-mercados">Consultando diagnóstico…</span>
       </div>
       <div class="diag-grid" id="diagnostico-mercados"></div>
@@ -88,7 +88,7 @@
   <div class="seccion">
     <h2>💡 Sugerencias y tickets</h2>
     <div class="ticket-tools">
-      <select id="filtro-ticket-estado" onchange="cargarTickets()">
+      <select id="filtro-ticket-estado">
         <option value="">Todos los estados</option>
         <option value="nueva">Nuevos</option>
         <option value="en_revision">En revisión</option>
@@ -96,7 +96,7 @@
         <option value="resuelta">Resueltos</option>
         <option value="descartada">Descartados</option>
       </select>
-      <select id="filtro-ticket-tipo" onchange="cargarTickets()">
+      <select id="filtro-ticket-tipo">
         <option value="">Todos los tipos</option>
         <option value="idea">Ideas</option>
         <option value="mejora">Mejoras</option>
@@ -108,7 +108,7 @@
   </div>
 
   <div class="barra">
-    <input type="search" id="busqueda" placeholder="Buscar por email o nombre..." oninput="buscarConRetraso()">
+    <input type="search" id="busqueda" placeholder="Buscar por email o nombre...">
   </div>
 
   <div class="table-scroll"><table>
@@ -202,7 +202,7 @@ async function cargarTickets() {
         <div><label>Estado</label><select data-campo="estado">${opcionesTicket(ESTADOS_TICKET, ticket.estado)}</select></div>
         <div><label>Prioridad</label><select data-campo="prioridad">${opcionesTicket(PRIORIDADES_TICKET, ticket.prioridad)}</select></div>
         <div><label>Respuesta al usuario</label><textarea maxlength="2000" data-campo="respuesta">${escaparHtml(ticket.respuesta_admin || '')}</textarea></div>
-        <button class="btn-ticket" type="button" onclick="actualizarTicket('${ticket._id}', this)">Guardar</button>
+        <button class="btn-ticket" type="button" data-accion="guardar-ticket">Guardar</button>
       </div>
     </article>`).join('');
 }
@@ -266,14 +266,14 @@ async function cargarUsuarios() {
       <td>${fecha(u.fecha_registro)}</td>
       <td>${fecha(u.ultimo_acceso)}</td>
       <td class="acciones">
-        <button class="btn-mes" onclick="extender('${u.id}',1)">+1 mes</button>
-        <button class="btn-mes" onclick="extender('${u.id}',3)">+3 meses</button>
-        <button class="btn-cortesia" onclick="cortesia('${u.id}')">🎁 Cortesía</button>
+        <button type="button" class="btn-mes" data-accion="extender" data-usuario="${u.id}" data-meses="1">+1 mes</button>
+        <button type="button" class="btn-mes" data-accion="extender" data-usuario="${u.id}" data-meses="3">+3 meses</button>
+        <button type="button" class="btn-cortesia" data-accion="cortesia" data-usuario="${u.id}">🎁 Cortesía</button>
         ${esSuspendido
-          ? `<button class="btn-levantar" onclick="levantarSuspension('${u.id}')">✅ Levantar</button>`
-          : `<button class="btn-suspender" onclick="suspender('${u.id}')">⏸ Suspender</button>`}
-        ${esBloqIP ? `<button class="btn-desbloquear-ip" onclick="desbloquearIP('${u.id}')">🔓 Desbloquear IP</button>` : ''}
-        <button class="${u.activo ? 'btn-off' : 'btn-on'}" onclick="alternar('${u.id}',${!u.activo})">${u.activo ? 'Desactivar' : 'Activar'}</button>
+          ? `<button type="button" class="btn-levantar" data-accion="levantar" data-usuario="${u.id}">✅ Levantar</button>`
+          : `<button type="button" class="btn-suspender" data-accion="suspender" data-usuario="${u.id}">⏸ Suspender</button>`}
+        ${esBloqIP ? `<button type="button" class="btn-desbloquear-ip" data-accion="desbloquear-ip" data-usuario="${u.id}">🔓 Desbloquear IP</button>` : ''}
+        <button type="button" class="${u.activo ? 'btn-off' : 'btn-on'}" data-accion="alternar" data-usuario="${u.id}" data-activo="${!u.activo}">${u.activo ? 'Desactivar' : 'Activar'}</button>
       </td>
     </tr>`;
   }).join('');
@@ -397,7 +397,38 @@ function refrescar() {
   cargarTickets();
 }
 
-document.addEventListener('DOMContentLoaded', refrescar);
+function instalarEventos() {
+  document.getElementById('actualizar-mercados').addEventListener('click', actualizarMercados);
+  document.getElementById('filtro-ticket-estado').addEventListener('change', cargarTickets);
+  document.getElementById('filtro-ticket-tipo').addEventListener('change', cargarTickets);
+  document.getElementById('busqueda').addEventListener('input', buscarConRetraso);
+
+  document.getElementById('admin-tickets').addEventListener('click', evento => {
+    const boton = evento.target.closest('[data-accion="guardar-ticket"]');
+    if (!boton) return;
+    const tarjeta = boton.closest('[data-ticket]');
+    if (tarjeta) actualizarTicket(tarjeta.dataset.ticket, boton);
+  });
+
+  document.getElementById('tbody').addEventListener('click', evento => {
+    const boton = evento.target.closest('button[data-accion][data-usuario]');
+    if (!boton) return;
+    const id = boton.dataset.usuario;
+    switch (boton.dataset.accion) {
+      case 'extender': extender(id, Number(boton.dataset.meses)); break;
+      case 'cortesia': cortesia(id); break;
+      case 'suspender': suspender(id); break;
+      case 'levantar': levantarSuspension(id); break;
+      case 'desbloquear-ip': desbloquearIP(id); break;
+      case 'alternar': alternar(id, boton.dataset.activo === 'true'); break;
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  instalarEventos();
+  refrescar();
+});
 </script>
 </body>
 </html>

@@ -6,6 +6,7 @@ const mongoose = require('mongoose');
 const config = require('./config/leagues');
 const { etiquetaTemporada } = require('./services/seasonLabel');
 const Partido = require('./models/partido');
+const JugadorPartido = require('./models/JugadorPartido');
 const Equipo = require('./models/Equipo');
 const { cacheMiddleware } = require('./middleware/cache');
 const { calcularEstadisticas, detallarPartido } = require('./services/teamStats');
@@ -402,6 +403,29 @@ app.get('/api/equipos/:id/historial', cacheMiddleware, async (req, res) => {
   }
 });
 
+function alcancePicks(valor, predeterminado) {
+  const alcance = String(valor || predeterminado);
+  return ['general', 'local', 'visitante'].includes(alcance) ? alcance : null;
+}
+
+function limitePicks(valor) {
+  if (String(valor).toLowerCase() === 'all') return null;
+  const limite = Number.parseInt(valor, 10);
+  return [3, 5, 10, 20].includes(limite) ? limite : undefined;
+}
+
+function periodoPicks(valor) {
+  const periodo = Number.parseInt(valor || '0', 10);
+  return [0, 1, 2].includes(periodo) ? periodo : null;
+}
+
+function filtroEquipoPicks(base, teamId, alcance) {
+  if (alcance === 'general') {
+    return { ...base, $or: [{ 'equipo_local.id': teamId }, { 'equipo_visitante.id': teamId }] };
+  }
+  return { ...base, [alcance === 'local' ? 'equipo_local.id' : 'equipo_visitante.id']: teamId };
+}
+
 // Evidencia concreta de un solo mercado, cargada cuando el usuario abre "¿Por qué?".
 app.get('/api/picks/explicacion', cacheMiddleware, async (req, res) => {
   try {
@@ -409,13 +433,19 @@ app.get('/api/picks/explicacion', cacheMiddleware, async (req, res) => {
     const teamVisitante = Number.parseInt(req.query.team2, 10);
     const leagueLocal = Number.parseInt(req.query.league1 || req.query.league, 10);
     const leagueVisitante = Number.parseInt(req.query.league2 || req.query.league, 10);
-    const limite = Number.parseInt(req.query.limit || '10', 10);
+    const limiteComun = req.query.limit || '10';
+    const limiteLocal = limitePicks(req.query.limit1 || limiteComun);
+    const limiteVisitante = limitePicks(req.query.limit2 || limiteComun);
+    const condicionLocal = alcancePicks(req.query.scope1, 'local');
+    const condicionVisitante = alcancePicks(req.query.scope2, 'visitante');
+    const halfLocal = periodoPicks(req.query.half1);
+    const halfVisitante = periodoPicks(req.query.half2);
     const mercadoId = typeof req.query.market === 'string' ? req.query.market : '';
     if (![teamLocal, teamVisitante, leagueLocal, leagueVisitante].every(Number.isInteger) || !mercadoId) {
       return res.status(400).json({ error: 'Equipos, competición y mercado son obligatorios.' });
     }
-    if (![5, 10, 20].includes(limite)) {
-      return res.status(400).json({ error: 'La muestra debe ser de 5, 10 o 20 partidos.' });
+    if ([limiteLocal, limiteVisitante].includes(undefined) || !condicionLocal || !condicionVisitante || halfLocal === null || halfVisitante === null) {
+      return res.status(400).json({ error: 'Los filtros de muestra, condición o periodo no son válidos.' });
     }
     const [seasonLocal, seasonVisitante] = await Promise.all([
       resolverTemporada(leagueLocal, teamLocal, req.query.season1 || req.query.season, true),
@@ -425,8 +455,8 @@ app.get('/api/picks/explicacion', cacheMiddleware, async (req, res) => {
     const filtroLocal = { 'liga.id': leagueLocal, 'liga.temporada': seasonLocal, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const filtroVisitante = { 'liga.id': leagueVisitante, 'liga.temporada': seasonVisitante, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const [partidosLocal, partidosVisitante] = await Promise.all([
-      Partido.find({ ...filtroLocal, 'equipo_local.id': teamLocal }).sort({ fecha: -1 }).lean(),
-      Partido.find({ ...filtroVisitante, 'equipo_visitante.id': teamVisitante }).sort({ fecha: -1 }).lean()
+      Partido.find(filtroEquipoPicks(filtroLocal, teamLocal, condicionLocal)).sort({ fecha: -1 }).lean(),
+      Partido.find(filtroEquipoPicks(filtroVisitante, teamVisitante, condicionVisitante)).sort({ fecha: -1 }).lean()
     ]);
     const explicacion = explicarMercado({
       partidosLocal,
@@ -434,7 +464,12 @@ app.get('/api/picks/explicacion', cacheMiddleware, async (req, res) => {
       partidosVisitante,
       teamVisitante,
       mercadoId,
-      limite,
+      limiteLocal,
+      limiteVisitante,
+      condicionLocal,
+      condicionVisitante,
+      halfLocal,
+      halfVisitante,
       detalle: 3
     });
     if (!explicacion) return res.status(404).json({ error: 'Mercado no encontrado o sin cobertura.' });
@@ -444,20 +479,26 @@ app.get('/api/picks/explicacion', cacheMiddleware, async (req, res) => {
   }
 });
 
-// Estimaciones históricas: equipo 1 como local y equipo 2 como visitante.
+// Estimaciones históricas según la condición, muestra y periodo elegidos por el usuario.
 app.get('/api/picks', cacheMiddleware, async (req, res) => {
   try {
     const teamLocal = Number.parseInt(req.query.team1, 10);
     const teamVisitante = Number.parseInt(req.query.team2, 10);
     const leagueLocal = Number.parseInt(req.query.league1 || req.query.league, 10);
     const leagueVisitante = Number.parseInt(req.query.league2 || req.query.league, 10);
-    const limit = Number.parseInt(req.query.limit || '10', 10);
+    const limiteComun = req.query.limit || '10';
+    const limiteLocal = limitePicks(req.query.limit1 || limiteComun);
+    const limiteVisitante = limitePicks(req.query.limit2 || limiteComun);
+    const condicionLocal = alcancePicks(req.query.scope1, 'local');
+    const condicionVisitante = alcancePicks(req.query.scope2, 'visitante');
+    const halfLocal = periodoPicks(req.query.half1);
+    const halfVisitante = periodoPicks(req.query.half2);
 
     if (![teamLocal, teamVisitante, leagueLocal, leagueVisitante].every(Number.isInteger) || teamLocal === teamVisitante) {
       return res.status(400).json({ error: 'Selecciona dos equipos distintos y una competición válida para cada uno.' });
     }
-    if (![5, 10, 20].includes(limit)) {
-      return res.status(400).json({ error: 'La muestra debe ser de 5, 10 o 20 partidos.' });
+    if ([limiteLocal, limiteVisitante].includes(undefined) || !condicionLocal || !condicionVisitante || halfLocal === null || halfVisitante === null) {
+      return res.status(400).json({ error: 'Los filtros de muestra, condición o periodo no son válidos.' });
     }
 
     const [seasonLocal, seasonVisitante] = await Promise.all([
@@ -469,6 +510,10 @@ app.get('/api/picks', cacheMiddleware, async (req, res) => {
         temporadas: { local: seasonLocal, visitante: seasonVisitante },
         mercados: [],
         recomendados: [],
+        filtros: {
+          local: { condicion: condicionLocal, limite: limiteLocal, periodo: halfLocal },
+          visitante: { condicion: condicionVisitante, limite: limiteVisitante, periodo: halfVisitante }
+        },
         metodologia: 'No hay partidos finalizados para generar estimaciones.'
       });
     }
@@ -476,10 +521,21 @@ app.get('/api/picks', cacheMiddleware, async (req, res) => {
     const filtroLocal = { 'liga.id': leagueLocal, 'liga.temporada': seasonLocal, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const filtroVisitante = { 'liga.id': leagueVisitante, 'liga.temporada': seasonVisitante, estado: { $in: ['FT', 'AET', 'PEN'] } };
     const [partidosLocal, partidosVisitante] = await Promise.all([
-      Partido.find({ ...filtroLocal, 'equipo_local.id': teamLocal }).sort({ fecha: -1 }).lean(),
-      Partido.find({ ...filtroVisitante, 'equipo_visitante.id': teamVisitante }).sort({ fecha: -1 }).lean()
+      Partido.find(filtroEquipoPicks(filtroLocal, teamLocal, condicionLocal)).sort({ fecha: -1 }).lean(),
+      Partido.find(filtroEquipoPicks(filtroVisitante, teamVisitante, condicionVisitante)).sort({ fecha: -1 }).lean()
     ]);
-    const resultado = generarPicks({ partidosLocal, teamLocal, partidosVisitante, teamVisitante, limite: limit });
+    const resultado = generarPicks({
+      partidosLocal,
+      teamLocal,
+      partidosVisitante,
+      teamVisitante,
+      limiteLocal,
+      limiteVisitante,
+      condicionLocal,
+      condicionVisitante,
+      halfLocal,
+      halfVisitante
+    });
     const partidoNombreLocal = partidosLocal.find(p => (
       p.equipo_local.id === teamLocal || p.equipo_visitante.id === teamLocal
     ));
@@ -511,8 +567,8 @@ app.get('/api/picks', cacheMiddleware, async (req, res) => {
         local: { id: leagueLocal, nombre: config.ligas[leagueLocal]?.nombre || String(leagueLocal) },
         visitante: { id: leagueVisitante, nombre: config.ligas[leagueVisitante]?.nombre || String(leagueVisitante) }
       },
-      local: { id: teamLocal, nombre: nombreLocal, logo: datosLocal?.logo || null, muestra: Math.min(partidosLocal.length, limit) },
-      visitante: { id: teamVisitante, nombre: nombreVisitante, logo: datosVisitante?.logo || null, muestra: Math.min(partidosVisitante.length, limit) },
+      local: { id: teamLocal, nombre: nombreLocal, logo: datosLocal?.logo || null, muestra: limiteLocal === null ? partidosLocal.length : Math.min(partidosLocal.length, limiteLocal) },
+      visitante: { id: teamVisitante, nombre: nombreVisitante, logo: datosVisitante?.logo || null, muestra: limiteVisitante === null ? partidosVisitante.length : Math.min(partidosVisitante.length, limiteVisitante) },
       ...resultado
     });
   } catch (error) {
@@ -815,7 +871,12 @@ app.get('/api/equipos/:id/escudo', async (req, res) => {
 app.get('/api/partidos/:id/estadisticas', async (req, res) => {
   try {
     const partidoId = parseInt(req.params.id);
-    const partido = await Partido.findOne({ api_id: partidoId }).lean();
+    const [partido, registrosJugadores] = await Promise.all([
+      Partido.findOne({ api_id: partidoId }).lean(),
+      JugadorPartido.find({ partido_api_id: partidoId })
+        .select('-_id -creado_en -actualizado_en')
+        .lean()
+    ]);
     
     if (!partido) {
       return res.status(404).json({ error: 'Partido no encontrado' });
@@ -826,6 +887,44 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
     const totalGoles = golesLocal + golesVisitante;
     const tieneEstadisticas = partido.estadisticas_completas === true;
     const valorAvanzado = valor => tieneEstadisticas ? (valor ?? null) : null;
+    const jugadores = registrosJugadores.map(item => ({
+      id: item.jugador.id,
+      nombre: item.jugador.nombre,
+      foto: item.jugador.foto,
+      equipo: item.equipo,
+      posicion: item.posicion,
+      numero: item.numero,
+      titular: item.titular,
+      capitan: item.capitan,
+      minutos: item.minutos,
+      calificacion: item.calificacion > 0 ? item.calificacion : null,
+      tiros: item.tiros,
+      tiros_puerta: item.tiros_puerta,
+      goles: item.goles,
+      asistencias: item.asistencias,
+      pases: item.pases,
+      pases_clave: item.pases_clave,
+      precision_pases: item.precision_pases,
+      entradas: item.entradas,
+      intercepciones: item.intercepciones,
+      duelos: item.duelos,
+      duelos_ganados: item.duelos_ganados,
+      regates: item.regates,
+      regates_exitosos: item.regates_exitosos,
+      faltas_recibidas: item.faltas_recibidas,
+      faltas_cometidas: item.faltas_cometidas,
+      amarillas: item.amarillas,
+      rojas: item.rojas,
+      atajadas: item.atajadas,
+      offsides: item.offsides
+    })).sort((a, b) =>
+      (b.calificacion || 0) - (a.calificacion || 0) ||
+      (b.goles || 0) - (a.goles || 0) ||
+      (b.asistencias || 0) - (a.asistencias || 0) ||
+      (b.tiros_puerta || 0) - (a.tiros_puerta || 0) ||
+      (b.minutos || 0) - (a.minutos || 0)
+    );
+    const jugadorDestacado = jugadores[0] || null;
 
     // Mercados calculados
     const mercados = {
@@ -850,10 +949,17 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
 
     res.json({
       fecha: partido.fecha,
+      estado: partido.estado,
+      jornada: partido.liga.jornada,
+      arbitro: partido.arbitro,
       liga: partido.liga.nombre,
       liga_id: partido.liga.id,
       temporada: partido.liga.temporada,
-      cobertura: { estadisticas: tieneEstadisticas },
+      cobertura: {
+        estadisticas: tieneEstadisticas,
+        eventos: partido.eventos_completos === true,
+        alineaciones: Boolean(partido.equipo_local.formacion || partido.equipo_visitante.formacion)
+      },
       equipo_local: {
         id: partido.equipo_local.id,
         nombre: partido.equipo_local.nombre,
@@ -866,7 +972,9 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
         tarjetas_amarillas: valorAvanzado(partido.equipo_local.tarjetas_amarillas),
         tarjetas_rojas: valorAvanzado(partido.equipo_local.tarjetas_rojas),
         offsides: valorAvanzado(partido.equipo_local.offsides),
-        posesion: valorAvanzado(partido.equipo_local.posesion)
+        posesion: valorAvanzado(partido.equipo_local.posesion),
+        formacion: partido.equipo_local.formacion || null,
+        entrenador: partido.equipo_local.entrenador || null
       },
       equipo_visitante: {
         id: partido.equipo_visitante.id,
@@ -880,8 +988,33 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
         tarjetas_amarillas: valorAvanzado(partido.equipo_visitante.tarjetas_amarillas),
         tarjetas_rojas: valorAvanzado(partido.equipo_visitante.tarjetas_rojas),
         offsides: valorAvanzado(partido.equipo_visitante.offsides),
-        posesion: valorAvanzado(partido.equipo_visitante.posesion)
+        posesion: valorAvanzado(partido.equipo_visitante.posesion),
+        formacion: partido.equipo_visitante.formacion || null,
+        entrenador: partido.equipo_visitante.entrenador || null
       },
+      eventos: [
+        ...(partido.equipo_local.eventos || []).map(evento => ({
+          ...evento,
+          equipo_id: partido.equipo_local.id,
+          equipo: partido.equipo_local.nombre,
+          lado: 'local'
+        })),
+        ...(partido.equipo_visitante.eventos || []).map(evento => ({
+          ...evento,
+          equipo_id: partido.equipo_visitante.id,
+          equipo: partido.equipo_visitante.nombre,
+          lado: 'visitante'
+        }))
+      ].sort((a, b) => (a.minuto || 0) - (b.minuto || 0)),
+      jugadores,
+      jugador_destacado: jugadorDestacado ? {
+        ...jugadorDestacado,
+        criterio: jugadorDestacado.calificacion
+          ? 'Mejor calificación del proveedor'
+          : jugadorDestacado.goles || jugadorDestacado.asistencias
+            ? 'Mayor impacto directo en goles'
+            : 'Mayor participación registrada'
+      } : null,
       mercados
     });
   } catch (error) {

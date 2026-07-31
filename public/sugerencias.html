@@ -71,11 +71,21 @@ function fecha(valor) {
   return new Date(valor).toLocaleString('es-MX', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
 }
 
+async function leerRespuesta(respuesta) {
+  const tipo = respuesta.headers.get('content-type') || '';
+  if (tipo.includes('application/json')) return respuesta.json().catch(() => ({}));
+  return {
+    error: respuesta.status === 404
+      ? 'El servicio de tickets no está disponible en este momento. Recarga la página e intenta nuevamente.'
+      : 'El servidor devolvió una respuesta inesperada. Intenta nuevamente en unos minutos.'
+  };
+}
+
 async function cargarTickets() {
   const contenedor = document.getElementById('tickets');
   try {
     const respuesta = await fetch('/api/sugerencias');
-    const datos = await respuesta.json();
+    const datos = await leerRespuesta(respuesta);
     if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar los tickets.');
     document.getElementById('cantidad').textContent = datos.tickets.length;
     if (!datos.tickets.length) {
@@ -113,7 +123,7 @@ document.getElementById('ticket-form').addEventListener('submit', async evento =
         descripcion: document.getElementById('descripcion').value
       })
     });
-    const datos = await respuesta.json();
+    const datos = await leerRespuesta(respuesta);
     if (!respuesta.ok) throw new Error(datos.error || 'No se pudo enviar el ticket.');
     evento.target.reset();
     mensaje.className = 'mensaje ok';

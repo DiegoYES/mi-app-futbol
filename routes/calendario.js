@@ -6,6 +6,16 @@ const { analizarPartidosCalendario } = require('../services/calendarPicks');
 
 const router = express.Router();
 
+// El documento Partido también guarda eventos, alineaciones y estadísticas por
+// periodos. Traerlo completo para pintar una fila del calendario desperdicia
+// memoria y ancho de banda entre MongoDB y Node.
+const CAMPOS_CALENDARIO = [
+  'api_id', 'fecha', 'estado',
+  'liga.id', 'liga.nombre', 'liga.temporada', 'liga.jornada',
+  'equipo_local.id', 'equipo_local.nombre', 'equipo_local.logo', 'equipo_local.goles',
+  'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.logo', 'equipo_visitante.goles'
+].join(' ');
+
 // Convierte 'YYYY-MM-DD' al rango [00:00, 23:59:59.999] de ese día en hora local
 function rangoDelDia(textoFecha) {
   const [anio, mes, dia] = textoFecha.split('-').map(Number);
@@ -34,7 +44,7 @@ function etiquetaDia(fecha) {
 }
 
 // Partidos de una fecha concreta, agrupados por competición
-router.get('/dia', async (req, res) => {
+router.get('/dia', cacheMiddleware, async (req, res) => {
   try {
     const texto = req.query.fecha || new Date().toISOString().slice(0, 10);
     const rango = rangoDelDia(texto);
@@ -43,7 +53,7 @@ router.get('/dia', async (req, res) => {
     const filtro = { fecha: { $gte: rango.inicio, $lte: rango.fin } };
     if (req.query.league) filtro['liga.id'] = parseInt(req.query.league);
 
-    const partidos = await Partido.find(filtro).sort({ fecha: 1 }).lean();
+    const partidos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
 
     const porLiga = new Map();
     for (const p of partidos) {
@@ -91,7 +101,7 @@ router.get('/dia', async (req, res) => {
 });
 
 // Partidos de los próximos N días (por defecto 7), agrupados por día y competición
-router.get('/proximos', async (req, res) => {
+router.get('/proximos', cacheMiddleware, async (req, res) => {
   try {
     const dias = Math.min(Math.max(parseInt(req.query.dias) || 7, 1), 30);
     const desde = req.query.desde ? rangoDelDia(req.query.desde)?.inicio : null;
@@ -103,7 +113,7 @@ router.get('/proximos', async (req, res) => {
     const filtro = { fecha: { $gte: inicio, $lte: fin } };
     if (req.query.league) filtro['liga.id'] = parseInt(req.query.league);
 
-    const partidos = await Partido.find(filtro).sort({ fecha: 1 }).lean();
+    const partidos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
 
     // Prepara un contenedor por cada día del rango, aunque no tenga partidos
     const porDia = new Map();
@@ -158,6 +168,11 @@ router.get('/proximos', async (req, res) => {
       desde: `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-${String(inicio.getDate()).padStart(2, '0')}`,
       dias,
       total: partidos.length,
+      catalogo: Object.entries(config.ligas).map(([id, liga]) => ({
+        id: Number(id),
+        nombre: liga.nombre,
+        pais: liga.pais || ''
+      })),
       jornadas: Array.from(porDia.values()).map(d => ({
         ...d,
         competiciones: Array.from(d.competiciones.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
@@ -178,7 +193,10 @@ router.get('/picks', cacheMiddleware, async (req, res) => {
     const fin = new Date(rango.inicio);
     fin.setDate(fin.getDate() + dias - 1);
     fin.setHours(23, 59, 59, 999);
-    const partidos = await Partido.find({ fecha: { $gte: rango.inicio, $lte: fin } }).sort({ fecha: 1 }).lean();
+    const partidos = await Partido.find({ fecha: { $gte: rango.inicio, $lte: fin } })
+      .select(CAMPOS_CALENDARIO)
+      .sort({ fecha: 1 })
+      .lean();
     const analisis = await analizarPartidosCalendario(partidos);
     const porPartido = Object.fromEntries(analisis.map(item => [item.partido_id, item.picks]));
     const mejores = analisis
@@ -193,7 +211,7 @@ router.get('/picks', cacheMiddleware, async (req, res) => {
 });
 
 // Días con partidos dentro de un mes, para marcarlos en el navegador de fechas
-router.get('/mes', async (req, res) => {
+router.get('/mes', cacheMiddleware, async (req, res) => {
   try {
     const anio = parseInt(req.query.anio);
     const mes = parseInt(req.query.mes); // 1-12
@@ -221,18 +239,19 @@ router.get('/mes', async (req, res) => {
 });
 
 // Rango global de fechas disponibles, para limitar la navegación
-router.get('/rango', async (req, res) => {
+router.get('/rango', cacheMiddleware, async (req, res) => {
   try {
-    const [r] = await Partido.aggregate([
-      { $group: { _id: null, min: { $min: '$fecha' }, max: { $max: '$fecha' } } }
+    const [primero, ultimo, total] = await Promise.all([
+      Partido.findOne({}).sort({ fecha: 1 }).select('fecha').lean(),
+      Partido.findOne({}).sort({ fecha: -1 }).select('fecha').lean(),
+      Partido.estimatedDocumentCount()
     ]);
 
-    if (!r) return res.json({ desde: null, hasta: null, total: 0 });
+    if (!primero || !ultimo) return res.json({ desde: null, hasta: null, total: 0 });
 
-    const total = await Partido.countDocuments({});
     res.json({
-      desde: r.min?.toISOString().slice(0, 10),
-      hasta: r.max?.toISOString().slice(0, 10),
+      desde: primero.fecha?.toISOString().slice(0, 10),
+      hasta: ultimo.fecha?.toISOString().slice(0, 10),
       total
     });
   } catch (error) {

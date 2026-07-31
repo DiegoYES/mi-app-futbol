@@ -26,7 +26,11 @@ const seleccionSchema = new mongoose.Schema({
   confianza: { type: String, enum: ['alta', 'media', 'baja'], required: true },
   muestra: { type: Number, required: true, min: 0 },
   fuentes: { type: Number, min: 1, max: 2 },
-  evidencia: [String]
+  evidencia: [String],
+  configuracion: {
+    local: { condicion: String, limite: Number, periodo: Number },
+    visitante: { condicion: String, limite: Number, periodo: Number }
+  }
 }, { _id: false });
 
 const boletaSchema = new mongoose.Schema({

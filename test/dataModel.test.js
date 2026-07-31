@@ -7,6 +7,8 @@ const { porcentaje } = require('../scripts/auditarDatos');
 test('el modelo de partidos declara índices para las consultas principales', () => {
   const nombres = Partido.schema.indexes().map(([, opciones]) => opciones.name);
 
+  assert.ok(nombres.includes('fecha'));
+  assert.ok(nombres.includes('liga_fecha'));
   assert.ok(nombres.includes('liga_temporada_estado_fecha'));
   assert.ok(nombres.includes('local_liga_temporada_estado_fecha'));
   assert.ok(nombres.includes('visitante_liga_temporada_estado_fecha'));

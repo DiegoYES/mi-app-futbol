@@ -26,8 +26,18 @@ function asignarIdSolicitud(req, res, next) {
 function origenesPermitidos(env = process.env) {
   return new Set(String(env.APP_ORIGIN || '')
     .split(',')
-    .map(item => item.trim().replace(/\/$/, ''))
+    .map(item => normalizarOrigen(item)?.origin)
     .filter(Boolean));
+}
+
+function normalizarOrigen(valor) {
+  try {
+    const url = new URL(String(valor || '').trim());
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    return url;
+  } catch (_error) {
+    return null;
+  }
 }
 
 function validarOrigenNavegador(req, res, next) {
@@ -35,9 +45,15 @@ function validarOrigenNavegador(req, res, next) {
   const origin = req.get('origin');
   if (!origin) return next();
 
+  const origenNavegador = normalizarOrigen(origin);
   const permitidos = origenesPermitidos();
-  const origenActual = `${req.protocol}://${req.get('host')}`.replace(/\/$/, '');
-  if (origin.replace(/\/$/, '') === origenActual || permitidos.has(origin.replace(/\/$/, ''))) {
+  const hostSolicitud = String(req.get('host') || '').toLowerCase();
+
+  // Un proxy TLS (por ejemplo Cloudflare Tunnel) puede entregar la petición a
+  // Express por HTTP aunque el navegador haya abierto el mismo host por HTTPS.
+  // El host debe coincidir exactamente; un sitio externo conserva otro Origin.
+  const esMismoHost = origenNavegador?.host.toLowerCase() === hostSolicitud;
+  if (esMismoHost || permitidos.has(origenNavegador?.origin)) {
     return next();
   }
   return res.status(403).json({
