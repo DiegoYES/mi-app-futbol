@@ -22,9 +22,15 @@ if [ -f "$APP_DIR/.env" ]; then
   set -a; source "$APP_DIR/.env"; set +a
 fi
 
-# Con plan PRO (450 req/min) podemos usar 900ms entre peticiones.
-# Con plan gratuito sube a 7000ms para no exceder el límite por minuto.
-export SYNC_DELAY_MS="${SYNC_DELAY_MS:-900}"
+# Una sola instancia puede ejecutar cada batch. El lease vive en MongoDB, por
+# lo que también evita duplicados si mañana hay más de una VM.
+if [ "${SYNC_LOCK_HELD:-0}" != "1" ]; then
+  exec node scripts/ejecutarConBloqueo.js "cron:$BATCH" -- "$APP_DIR/scripts/cronSync.sh" "$BATCH"
+fi
+
+# El plan Pro permite 300/min y 5/s. El interceptor central serializa a 4/s;
+# esta pausa adicional mantiene los lotes secuenciales cerca de 3.3/s.
+export SYNC_DELAY_MS="${SYNC_DELAY_MS:-300}"
 
 # Reservar ~2400 req por batch (3 batches × 2400 = 7200 < 7450 disponibles con margen)
 export SYNC_MAX_REQUESTS="${SYNC_MAX_REQUESTS:-2400}"

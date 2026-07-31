@@ -1,4 +1,5 @@
 const UsoApiDiario = require('../models/UsoApiDiario');
+const { controlTraficoApi, crearControlTraficoApi } = require('./apiTrafficControl');
 
 const PROVEEDOR = 'api-football';
 const LIMITE_PREDETERMINADO = 100;
@@ -25,6 +26,15 @@ class ApiFootballProviderError extends Error {
     this.name = 'ApiFootballProviderError';
     this.code = 'API_FOOTBALL_PROVIDER_ERROR';
     this.errores = errores || {};
+  }
+}
+
+class ApiFootballRateLimitError extends Error {
+  constructor(retryAfterMs = 0) {
+    super('API-Football alcanzó su límite temporal. La solicitud podrá reintentarse más tarde.');
+    this.name = 'ApiFootballRateLimitError';
+    this.code = 'API_FOOTBALL_RATE_LIMITED';
+    this.retryAfterMs = retryAfterMs;
   }
 }
 
@@ -290,10 +300,48 @@ function extraerCuotaDiaria(respuesta) {
   return null;
 }
 
+function extraerCuotaMinuto(respuesta) {
+  const limite = enteroPositivo(leerHeader(respuesta?.headers, 'X-RateLimit-Limit'), 0);
+  const restantes = enteroNoNegativo(
+    leerHeader(respuesta?.headers, 'X-RateLimit-Remaining'),
+    -1
+  );
+  return limite && restantes >= 0 && restantes <= limite
+    ? { limite, restantes, origen: 'headers' }
+    : null;
+}
+
+function textoErrorLimite(respuesta) {
+  const errores = respuesta?.data?.errors || {};
+  return [errores.rateLimit, errores.requests].filter(Boolean).join(' ');
+}
+
+function esAgotamientoDiario(respuesta, cuota = extraerCuotaDiaria(respuesta)) {
+  const texto = textoErrorLimite(respuesta);
+  return cuota?.restantes === 0 || /(?:daily|day)[^.]*request|request[^.]*limit[^.]*day/i.test(texto);
+}
+
+function esLimiteTemporal(respuesta) {
+  if (esAgotamientoDiario(respuesta)) return false;
+  const cuotaMinuto = extraerCuotaMinuto(respuesta);
+  return respuesta?.status === 429 ||
+    cuotaMinuto?.restantes === 0 ||
+    Boolean(respuesta?.data?.errors?.rateLimit) ||
+    /request limit/i.test(textoErrorLimite(respuesta));
+}
+
+function esErrorTransitorio(error) {
+  const status = error?.response?.status;
+  return !error?.response || status === 429 || status === 408 || status >= 500;
+}
+
 function instalarControlCuotaAxios(
   instanciaAxios,
-  { control: controlExplicito, env = process.env } = {}
+  { control: controlExplicito, trafico: traficoExplicito, env = process.env } = {}
 ) {
+  const trafico = traficoExplicito || (env === process.env
+    ? controlTraficoApi
+    : crearControlTraficoApi({ env }));
   const clavesConfiguradas = obtenerApiKeys(env);
   const permitirFailover = esVerdadero(env.API_FOOTBALL_ALLOW_KEY_FAILOVER);
   const claves = permitirFailover ? clavesConfiguradas : clavesConfiguradas.slice(0, 1);
@@ -322,6 +370,16 @@ function instalarControlCuotaAxios(
     });
   }
 
+  async function reintentar(config, respuesta) {
+    if (typeof instanciaAxios.request !== 'function' || !trafico.puedeReintentar(config)) return null;
+    const { intento } = await trafico.esperarReintento(config, respuesta);
+    return instanciaAxios.request({
+      ...config,
+      __apiRetryCount: intento,
+      __apiQuotaReservada: false
+    });
+  }
+
   const request = instanciaAxios.interceptors.request.use(async config => {
     let url;
     try {
@@ -330,6 +388,8 @@ function instalarControlCuotaAxios(
       return config;
     }
     if (!url.hostname.endsWith('api-sports.io')) return config;
+
+    await trafico.antesDeSolicitar();
 
     const esStatus = url.pathname.replace(/\/$/, '').endsWith('/status');
     if (!esStatus && !config.__apiQuotaReservada) {
@@ -364,8 +424,7 @@ function instalarControlCuotaAxios(
     const indice = Number.isInteger(respuesta?.config?.__apiKeyIndex)
       ? respuesta.config.__apiKeyIndex : 0;
     await sincronizar(respuesta, indice);
-    const errorCuota = respuesta?.data?.errors?.requests;
-    if (errorCuota && /request limit/i.test(String(errorCuota))) {
+    if (esAgotamientoDiario(respuesta)) {
       const ctrl = controlParaIndice(indice);
       const estado = await ctrl.marcarAgotada({ endpoint: respuesta?.config?.url || null });
       // Con failover: si hay más keys disponibles, no lanzar error aún — el próximo request usará otra key
@@ -376,10 +435,18 @@ function instalarControlCuotaAxios(
       }
       throw new CuotaApiAgotadaError(estado);
     }
+    if (esLimiteTemporal(respuesta)) {
+      const error = new ApiFootballRateLimitError();
+      trafico.registrarFallo(error, { limitado: true });
+      const nuevoIntento = await reintentar(respuesta?.config || {}, respuesta);
+      if (nuevoIntento) return nuevoIntento;
+      throw error;
+    }
     const erroresProveedor = respuesta?.data?.errors;
     if (erroresProveedor && Object.keys(erroresProveedor).length > 0) {
       throw new ApiFootballProviderError(erroresProveedor);
     }
+    trafico.registrarExito();
     return respuesta;
   }, async error => {
     const respuesta = error?.response;
@@ -391,10 +458,7 @@ function instalarControlCuotaAxios(
 
     const cuota = extraerCuotaDiaria(respuesta);
     await sincronizar(respuesta, indiceActual);
-    const errorCuota = respuesta?.data?.errors?.requests;
-    const agotamientoDiario = cuota?.restantes === 0 || (
-      errorCuota && /request limit/i.test(String(errorCuota))
-    );
+    const agotamientoDiario = esAgotamientoDiario(respuesta, cuota);
     if (agotamientoDiario) {
       const ctrl = controlParaIndice(indiceActual);
       const estado = await ctrl.marcarAgotada({ endpoint: configError.url || null });
@@ -427,8 +491,15 @@ function instalarControlCuotaAxios(
       });
     }
 
-    // Un 429 también puede ser el límite por minuto. Sin evidencia de que la
-    // cuota diaria llegó a cero, no alteramos el contador ni cambiamos de key.
+    if (esErrorTransitorio(error)) {
+      const limitado = esLimiteTemporal(respuesta);
+      trafico.registrarFallo(error, { limitado });
+      const nuevoIntento = await reintentar(configError, respuesta);
+      if (nuevoIntento) return nuevoIntento;
+      if (limitado) {
+        throw new ApiFootballRateLimitError(trafico.estado().reintentar_en_ms);
+      }
+    }
     throw error;
   });
   return { request, response };
@@ -436,9 +507,13 @@ function instalarControlCuotaAxios(
 
 module.exports = {
   ApiFootballProviderError,
+  ApiFootballRateLimitError,
   CuotaApiAgotadaError,
   crearControlCuota,
   extraerCuotaDiaria,
+  extraerCuotaMinuto,
+  esAgotamientoDiario,
+  esLimiteTemporal,
   instalarControlCuotaAxios,
   obtenerApiKeys,
   obtenerConfiguracion,

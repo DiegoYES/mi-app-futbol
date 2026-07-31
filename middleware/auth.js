@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken');
 const Usuario = require('../models/Usuario');
+const { limiteUsuario } = require('./security');
 
 const JWT_SECRET = process.env.JWT_SECRET;
 const JWT_EXPIRA = process.env.JWT_EXPIRA || '30d';
@@ -63,6 +64,6 @@ function requireAdmin(req, res, next) {
 }
 
 // Atajo para proteger endpoints de datos: sesión válida + acceso vigente
-const protegido = [requireAuth, requireAcceso];
+const protegido = [requireAuth, limiteUsuario, requireAcceso];
 
 module.exports = { firmarToken, requireAuth, requireAcceso, requireAdmin, protegido };
