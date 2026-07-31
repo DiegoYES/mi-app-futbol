@@ -48,6 +48,7 @@ module.exports = {
     180: { nombre: 'Scottish Championship', pais: 'Escocia', codigo: 'GB', liga_principal: true },
     183: { nombre: 'Scottish League One', pais: 'Escocia', codigo: 'GB', liga_principal: true },
     184: { nombre: 'Scottish League Two', pais: 'Escocia', codigo: 'GB', liga_principal: true },
+    185: { nombre: 'Scottish League Cup', pais: 'Escocia', codigo: 'GB', liga_principal: false },
     218: { nombre: 'Bundesliga Austria', pais: 'Austria', codigo: 'AT', liga_principal: true },
     219: { nombre: '2. Liga Austria', pais: 'Austria', codigo: 'AT', liga_principal: true },
     119: { nombre: 'Superliga Dinamarca', pais: 'Dinamarca', codigo: 'DK', liga_principal: true },
@@ -72,6 +73,8 @@ module.exports = {
     333: { nombre: 'Premier League', pais: 'Ucrania', codigo: 'UA', liga_principal: true },
     318: { nombre: '1. Division', pais: 'Chipre', codigo: 'CY', liga_principal: true },
     383: { nombre: "Ligat Ha'al", pais: 'Israel', codigo: 'IL', liga_principal: true },
+    235: { nombre: 'Russian Premier League', pais: 'Rusia', codigo: 'RU', liga_principal: true },
+    236: { nombre: 'Russian First League', pais: 'Rusia', codigo: 'RU', liga_principal: true },
 
     // ----- Australia, Asia y Norteamérica -----
     188: { nombre: 'A-League', pais: 'Australia', codigo: 'AU', liga_principal: true },
@@ -84,12 +87,14 @@ module.exports = {
     305: { nombre: 'Stars League', pais: 'Catar', codigo: 'QA', liga_principal: true },
     99:  { nombre: 'J2 League', pais: 'Japón', codigo: 'JP', liga_principal: true },
     479: { nombre: 'Canadian Premier League', pais: 'Canadá', codigo: 'CA', liga_principal: true },
+    256: { nombre: 'USL League Two', pais: 'Estados Unidos', codigo: 'US', liga_principal: true },
 
     // ----- México -----
     263: { nombre: 'Liga de Expansión MX', pais: 'México', codigo: 'MX', liga_principal: true },
 
     // ----- Sudamérica -----
     128: { nombre: 'Argentina Primera División', pais: 'Argentina', codigo: 'AR', liga_principal: true },
+    134: { nombre: 'Torneo Federal A', pais: 'Argentina', codigo: 'AR', liga_principal: true },
     130: { nombre: 'Copa Argentina', pais: 'Argentina', codigo: 'AR', liga_principal: false },
     344: { nombre: 'Bolivia Primera División', pais: 'Bolivia', codigo: 'BO', liga_principal: true },
     265: { nombre: 'Chile Primera División', pais: 'Chile', codigo: 'CL', liga_principal: true },
@@ -102,6 +107,7 @@ module.exports = {
     129: { nombre: 'Argentina Primera Nacional', pais: 'Argentina', codigo: 'AR', liga_principal: true },
     240: { nombre: 'Colombia Primera B', pais: 'Colombia', codigo: 'CO', liga_principal: true },
     75:  { nombre: 'Brasileirão Serie C', pais: 'Brasil', codigo: 'BR', liga_principal: true },
+    73:  { nombre: 'Copa do Brasil', pais: 'Brasil', codigo: 'BR', liga_principal: false },
     13:  { nombre: 'CONMEBOL Libertadores', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
     11:  { nombre: 'CONMEBOL Sudamericana', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
 
