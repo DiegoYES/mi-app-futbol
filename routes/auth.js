@@ -32,16 +32,17 @@ function obtenerIP(req) {
 
 router.post('/registro', limiteIntentos, async (req, res) => {
   try {
-    const { email, password, nombre } = req.body;
+    const { email, password } = req.body || {};
+    const nombre = typeof req.body?.nombre === 'string' ? req.body.nombre.trim().slice(0, 80) : '';
 
     if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
     }
-    if (!validarEmail(email)) {
+    if (email.length > 254 || !validarEmail(email)) {
       return res.status(400).json({ error: 'El email no tiene un formato válido' });
     }
-    if (password.length < 8) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres' });
+    if (password.length < 8 || password.length > 200) {
+      return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 200 caracteres' });
     }
 
     const existente = await Usuario.findOne({ email: email.toLowerCase() });
@@ -74,10 +75,13 @@ router.post('/registro', limiteIntentos, async (req, res) => {
 
 router.post('/login', limiteIntentos, async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { email, password } = req.body || {};
 
     if (typeof email !== 'string' || typeof password !== 'string' || !email || !password) {
       return res.status(400).json({ error: 'Email y contraseña son obligatorios' });
+    }
+    if (email.length > 254 || password.length > 200) {
+      return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     }
 
     const usuario = await Usuario.findOne({ email: email.toLowerCase() });

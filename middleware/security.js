@@ -62,8 +62,51 @@ function validarOrigenNavegador(req, res, next) {
   });
 }
 
-function respuestaLimite(_req, res) {
-  return res.status(429).json({
+// Un parámetro repetido (?q=a&q=b) llega como arreglo; nos quedamos con el
+// último valor de texto para no romper con un TypeError ni pasar arreglos a Mongo.
+function textoDeConsulta(valor, maximo = 80) {
+  const bruto = Array.isArray(valor) ? valor[valor.length - 1] : valor;
+  if (typeof bruto !== 'string') return '';
+  return bruto.trim().slice(0, maximo);
+}
+
+// Neutraliza los metacaracteres para que una búsqueda de usuario nunca se
+// interprete como expresión regular (inyección de regex y ReDoS).
+function escaparRegex(valor) {
+  return String(valor).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// Avisos de arranque: detectan la configuración que deja la sesión sin
+// protección aunque la app parezca funcionar con normalidad.
+function revisarConfiguracionSegura(env = process.env) {
+  const avisos = [];
+  const produccion = env.NODE_ENV === 'production';
+
+  if (!produccion) {
+    avisos.push('NODE_ENV no es "production": la cookie de sesión sale sin el atributo Secure y no se envía HSTS. No expongas este proceso a Internet así.');
+  }
+  if (produccion && !String(env.TRUST_PROXY || '').trim()) {
+    avisos.push('TRUST_PROXY no está definido. Si hay un proxy o túnel delante (Nginx, Cloudflare), todas las peticiones comparten la misma IP: el límite de intentos de login deja de aislar atacantes y el control de cuentas duplicadas por IP no funciona.');
+  }
+  if (produccion && !origenesPermitidos(env).size) {
+    avisos.push('APP_ORIGIN está vacío: la validación de origen sólo puede comparar contra la cabecera Host. Define tu dominio público para reforzar la protección CSRF.');
+  }
+  return avisos;
+}
+
+// Respuesta 500 uniforme: el detalle real queda en el log del servidor y el
+// cliente sólo recibe un mensaje genérico más el id de solicitud para soporte.
+function errorServidor(res, error, mensaje = 'Ocurrió un error al procesar la solicitud.') {
+  const req = res.req || {};
+  console.error(`[${req.requestId || 'sin-id'}] ${req.method || ''} ${req.originalUrl || ''}`, error);
+  return res.status(500).json({
+    error: mensaje,
+    codigo: 'ERROR_INTERNO',
+    requestId: req.requestId || null
+  });
+}
+
+function respuestaLimite(_req, res) {  return res.status(429).json({
     error: 'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.',
     codigo: 'RATE_LIMIT'
   });
@@ -99,9 +142,12 @@ function manejarJsonInvalido(error, _req, res, next) {
 module.exports = {
   asignarIdSolicitud,
   configurarProxy,
-  limiteApi,
-  limiteUsuario,
+  errorServidor,
+  escaparRegex,
+  limiteApi,  limiteUsuario,
   manejarJsonInvalido,
   origenesPermitidos,
+  revisarConfiguracionSegura,
+  textoDeConsulta,
   validarOrigenNavegador
 };

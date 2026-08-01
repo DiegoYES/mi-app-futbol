@@ -1,6 +1,7 @@
 const express = require('express');
 const Usuario = require('../models/Usuario');
 const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { errorServidor, escaparRegex, textoDeConsulta } = require('../middleware/security');
 const { crearControlCuota } = require('../services/apiQuota');
 const MercadoCasa = require('../models/MercadoCasa');
 const ActualizacionMercados = require('../models/ActualizacionMercados');
@@ -21,12 +22,13 @@ router.get('/usuarios', async (req, res) => {
   try {
     const pagina = Math.max(parseInt(req.query.pagina) || 1, 1);
     const porPagina = Math.min(parseInt(req.query.limite) || 50, 200);
-    const busqueda = (req.query.q || '').trim();
+    const busqueda = textoDeConsulta(req.query.q, 80);
 
+    const patron = escaparRegex(busqueda);
     const filtro = busqueda
       ? { $or: [
-          { email: { $regex: busqueda, $options: 'i' } },
-          { nombre: { $regex: busqueda, $options: 'i' } }
+          { email: { $regex: patron, $options: 'i' } },
+          { nombre: { $regex: patron, $options: 'i' } }
         ] }
       : {};
 
@@ -48,7 +50,7 @@ router.get('/usuarios', async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -71,7 +73,7 @@ router.get('/resumen', async (req, res) => {
     const mesesCortesia = totalCortesia[0]?.total || 0;
     res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, mesesCortesia, cuotaApi, ticketsAbiertos });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -190,7 +192,7 @@ router.post('/usuarios/:id/suscripcion', async (req, res) => {
 
     res.json({ mensaje: `Suscripción extendida ${meses} mes(es)`, usuario: usuario.aJSON() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -213,7 +215,7 @@ router.post('/usuarios/:id/cortesia', async (req, res) => {
 
     res.json({ mensaje: 'Cortesía de 1 mes aplicada', usuario: usuario.aJSON() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -229,7 +231,7 @@ router.delete('/usuarios/:id/suscripcion', async (req, res) => {
 
     res.json({ mensaje: 'Suscripción cancelada', usuario: usuario.aJSON() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -248,7 +250,7 @@ router.get('/ips-duplicadas', async (req, res) => {
     ]);
     res.json({ duplicadas });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -270,7 +272,7 @@ router.post('/usuarios/:id/suspender', async (req, res) => {
     await usuario.save();
     res.json({ mensaje: `Cuenta suspendida por ${dias} día(s)`, usuario: usuario.aJSON() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -283,7 +285,7 @@ router.delete('/usuarios/:id/suspension', async (req, res) => {
     await usuario.save();
     res.json({ mensaje: 'Suspensión levantada', usuario: usuario.aJSON() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -296,7 +298,7 @@ router.delete('/usuarios/:id/bloqueo-ip', async (req, res) => {
     await usuario.save();
     res.json({ mensaje: 'Bloqueo por IP eliminado', usuario: usuario.aJSON() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -312,7 +314,7 @@ router.patch('/usuarios/:id/activo', async (req, res) => {
     await usuario.save();
     res.json({ mensaje: usuario.activo ? 'Cuenta activada' : 'Cuenta desactivada', usuario: usuario.aJSON() });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -322,7 +324,7 @@ router.post('/mercados/actualizar', async (_req, res) => {
     const resultado = await refrescarMercados();
     res.status(resultado.selecciones_guardadas ? 200 : 422).json({ resultado });
   } catch (error) {
-    res.status(502).json({ error: error.message });
+    errorServidor(res, error, "No se pudo contactar al proveedor de mercados.");
   }
 });
 
@@ -338,7 +340,7 @@ router.get('/mercados/diagnostico', async (_req, res) => {
     ]);
     res.json({ ultima_actualizacion: ultima, selecciones_vigentes: vigentes, categorias, estados, problemas_normalizacion: problemas });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -348,14 +350,15 @@ router.get('/mercados', async (req, res) => {
     const pagina = Math.max(Number.parseInt(req.query.pagina, 10) || 1, 1);
     const filtro = { proveedor: 'playdoit' };
     if (req.query.vigentes !== 'false') filtro.expira_en = { $gt: new Date() };
-    if (req.query.categoria) filtro.categoria = req.query.categoria;
+    const categoria = textoDeConsulta(req.query.categoria, 60);
+    if (categoria) filtro.categoria = categoria;
     const [selecciones, total] = await Promise.all([
       MercadoCasa.find(filtro).sort({ recolectado_en: -1 }).skip((pagina - 1) * limite).limit(limite).lean(),
       MercadoCasa.countDocuments(filtro)
     ]);
     res.json({ total, pagina, limite, selecciones });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 

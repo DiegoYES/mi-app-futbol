@@ -41,6 +41,23 @@ logs, capturas ni respuestas HTTP.
 - Límite HTTP por IP y por usuario, límite de body, validación de origen en
   escrituras, Helmet, cookies `HttpOnly`/`Secure`/`SameSite=Lax` e IP obtenida
   sólo mediante la configuración explícita de proxy.
+- `/admin.html` **no** se sirve como archivo estático: pasa por un control de
+  rol que responde `404` (no `403`) a cualquiera que no tenga sesión de
+  administrador, de modo que la ruta ni siquiera se anuncia. El control
+  normaliza la ruta, así que `//admin.html`, `/./admin.html` o `/%61dmin.html`
+  tampoco la esquivan. La API `/api/admin/*` mantiene su propio
+  `requireAuth + requireAdmin`.
+- Las búsquedas por texto que llegan a MongoDB escapan los metacaracteres antes
+  de construir un `$regex`, acotan la longitud y toleran parámetros repetidos,
+  de modo que un campo de búsqueda no puede inyectar una expresión regular ni
+  provocar retroceso catastrófico (ReDoS).
+- Los errores 500 devuelven un mensaje genérico más el `requestId`; el detalle
+  del fallo sólo queda en el log del servidor.
+- Al arrancar, la aplicación advierte si `NODE_ENV`, `TRUST_PROXY` o
+  `APP_ORIGIN` faltan. Sin `NODE_ENV=production` la cookie de sesión viaja sin
+  `Secure` y sin HSTS; sin `TRUST_PROXY` detrás de Nginx o Cloudflare todas las
+  peticiones comparten IP y el límite de intentos de login deja de aislar a un
+  atacante.
 - CSP en modo compatible bloquea scripts remotos, objetos, iframes y conexiones
   externas. Como la interfaz conserva JavaScript inline, el siguiente refuerzo
   será moverlo a archivos o nonces para retirar `'unsafe-inline'`.

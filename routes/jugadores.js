@@ -2,6 +2,7 @@ const express = require('express');
 const JugadorPartido = require('../models/JugadorPartido');
 const Partido = require('../models/partido');
 const { tokens } = require('../public/search-utils');
+const { errorServidor, escaparRegex, textoDeConsulta } = require('../middleware/security');
 
 const router = express.Router();
 
@@ -31,9 +32,10 @@ router.get('/', async (req, res) => {
       jornadas = [...porJornada.values()].map(item => ({ nombre: item.nombre, fecha: item.fecha, partidos: item.partidos.length }));
       if (jornada && porJornada.has(jornada)) match.partido_api_id = { $in: porJornada.get(jornada).partidos };
     }
-    const q = String(req.query.q || '').slice(0, 80);
+    const q = textoDeConsulta(req.query.q, 80);
     const acentos = { a: '[aáàäâã]', e: '[eéèëê]', i: '[iíìïî]', o: '[oóòöôõ]', u: '[uúùüû]', n: '[nñ]' };
-    const fragmentos = tokens(q).map(token => [...token].map(letra => acentos[letra] || letra.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join(''));
+    // Se acota el número de fragmentos para limitar el coste de la agregación.
+    const fragmentos = tokens(q).slice(0, 6).map(token => [...token].map(letra => acentos[letra] || escaparRegex(letra)).join(''));
     if (fragmentos.length) match.$and = fragmentos.map(patron => ({ 'jugador.nombre': { $regex: patron, $options: 'i' } }));
     const jugadores = await JugadorPartido.aggregate([
       { $match: match },
@@ -70,7 +72,7 @@ router.get('/', async (req, res) => {
     ]);
     res.json({ jugadores, jornadas, jornada: jornada || null });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -104,7 +106,7 @@ router.get('/:id', async (req, res) => {
       recientes
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 

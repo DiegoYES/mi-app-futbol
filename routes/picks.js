@@ -1,4 +1,5 @@
 const express = require('express');
+const { errorServidor } = require('../middleware/security');
 const Partido = require('../models/partido');
 const PickGuardado = require('../models/PickGuardado');
 const { explicarMercado, generarPicks } = require('../services/pickEngine');
@@ -56,7 +57,7 @@ router.get('/partido/:id/explicacion/:mercado', async (req, res) => {
     if (!explicacion) return res.status(404).json({ error: 'Mercado no disponible.' });
     res.json({ explicacion });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -121,7 +122,7 @@ router.get('/partido/:id', async (req, res) => {
       actualizado_en: null,
       resultados: [],
       resumen: { INTEGRATION_ERROR: 1 },
-      problema: error.message
+      problema: "No se pudo evaluar este partido."
     }));
     const guardados = await PickGuardado.find({
       usuario: req.usuario._id,
@@ -160,7 +161,7 @@ router.get('/partido/:id', async (req, res) => {
       metodologia: resultado.metodologia
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -207,7 +208,7 @@ router.post('/seguimiento', async (req, res) => {
     if (error?.code === 11000) {
       return res.status(409).json({ error: 'Ese pick ya está guardado para este partido.' });
     }
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -219,7 +220,7 @@ router.get('/seguimiento', async (req, res) => {
       .sort({ fecha_partido: -1, creado_en: -1 }).limit(200).lean();
     res.json({ resumen: resumirRendimiento(picks), picks });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 

@@ -22,11 +22,14 @@ const jugadoresRoutes = require('./routes/jugadores');
 const sugerenciasRoutes = require('./routes/sugerencias');
 const systemRoutes = require('./routes/system');
 const { protegido, requireAuth, requireAdmin } = require('./middleware/auth');
+const { paginasPrivadas } = require('./middleware/paginasPrivadas');
 const {
   asignarIdSolicitud,
   configurarProxy,
+  errorServidor,
   limiteApi,
   manejarJsonInvalido,
+  revisarConfiguracionSegura,
   validarOrigenNavegador
 } = require('./middleware/security');
 const { observarHttp } = require('./middleware/observability');
@@ -70,6 +73,7 @@ app.use('/api', validarOrigenNavegador, limiteApi);
 // / y /index.html son la portada; el comparador vive en una ruta explícita.
 app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(__dirname, 'public', 'inicio.html')));
 app.get('/comparador.html', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+app.use(paginasPrivadas({ '/admin.html': ['admin'] }, path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use('/api/auth', authRoutes);
@@ -160,7 +164,7 @@ app.get('/api/ligas', cacheMiddleware, async (req, res) => {
 
     res.json(ligasArray);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -254,7 +258,7 @@ app.get('/api/ligas/:id/equipos', cacheMiddleware, async (req, res) => {
 
     res.json(equiposArray);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -354,7 +358,7 @@ app.get('/api/equipos/:id/estadisticas-detalladas', cacheMiddleware, async (req,
     });
   } catch (error) {
     console.error(error);
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -399,7 +403,7 @@ app.get('/api/equipos/:id/historial', cacheMiddleware, async (req, res) => {
     }).filter(Boolean).sort((a, b) => b.temporada - a.temporada);
     res.json({ equipo: teamId, liga: leagueId, temporadas });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -475,7 +479,7 @@ app.get('/api/picks/explicacion', cacheMiddleware, async (req, res) => {
     if (!explicacion) return res.status(404).json({ error: 'Mercado no encontrado o sin cobertura.' });
     res.json({ temporadas: { local: seasonLocal, visitante: seasonVisitante }, explicacion });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -572,7 +576,7 @@ app.get('/api/picks', cacheMiddleware, async (req, res) => {
       ...resultado
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -633,7 +637,7 @@ app.get('/api/arbitros', cacheMiddleware, async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -661,7 +665,7 @@ app.get('/api/equipos/h2h', cacheMiddleware, async (req, res) => {
 
     const stats = {
       total: partidos.length,
-      victoriasTeam1: partidos.filter(p => 
+      victoriasTeam1: partidos.filter(p =>
         (p.equipo_local.id === team1 && p.equipo_local.goles > p.equipo_visitante.goles) ||
         (p.equipo_visitante.id === team1 && p.equipo_visitante.goles > p.equipo_local.goles)
       ).length,
@@ -684,7 +688,7 @@ app.get('/api/equipos/h2h', cacheMiddleware, async (req, res) => {
 
     res.json(stats);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -710,7 +714,7 @@ app.get('/api/equipos/:id/competiciones', cacheMiddleware, async (req, res) => {
     ligas.forEach(l => { resultado[l._id] = l.nombre; });
     res.json(resultado);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -809,7 +813,7 @@ app.get('/api/analisis/rangos', async (req, res) => {
       promedios
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -833,7 +837,7 @@ app.get('/api/equipos/:id/logo', async (req, res) => {
       : partido?.equipo_visitante;
     res.json({ logo: datosEquipo?.logo || null });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -877,7 +881,7 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
         .select('-_id -creado_en -actualizado_en')
         .lean()
     ]);
-    
+
     if (!partido) {
       return res.status(404).json({ error: 'Partido no encontrado' });
     }
@@ -1018,7 +1022,7 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
       mercados
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -1032,6 +1036,7 @@ async function iniciarServidor() {
   if (process.env.NODE_ENV === 'production' && process.env.JWT_SECRET.length < 32) {
     throw new Error('JWT_SECRET debe tener al menos 32 caracteres en producción.');
   }
+  revisarConfiguracionSegura().forEach(aviso => console.warn(`⚠️  ${aviso}`));
 
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('✅ Conectado a MongoDB');

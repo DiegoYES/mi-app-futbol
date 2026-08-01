@@ -20,6 +20,23 @@ function extraerToken(req) {
   return null;
 }
 
+// Resuelve el usuario de la cookie/cabecera sin escribir en la respuesta.
+// Devuelve null cuando no hay sesión utilizable, para que quien llama decida
+// si responde 401 (API) o 404 (páginas privadas).
+async function usuarioDeSesion(req) {
+  const token = extraerToken(req);
+  if (!token || !JWT_SECRET) return null;
+
+  try {
+    const payload = jwt.verify(token, JWT_SECRET);
+    const usuario = await Usuario.findById(payload.id);
+    if (!usuario || !usuario.activo) return null;
+    return usuario;
+  } catch (_error) {
+    return null;
+  }
+}
+
 // Verifica que haya sesión válida y carga req.usuario
 async function requireAuth(req, res, next) {
   try {
@@ -66,4 +83,11 @@ function requireAdmin(req, res, next) {
 // Atajo para proteger endpoints de datos: sesión válida + acceso vigente
 const protegido = [requireAuth, limiteUsuario, requireAcceso];
 
-module.exports = { firmarToken, requireAuth, requireAcceso, requireAdmin, protegido };
+module.exports = {
+  firmarToken,
+  requireAuth,
+  requireAcceso,
+  requireAdmin,
+  usuarioDeSesion,
+  protegido
+};

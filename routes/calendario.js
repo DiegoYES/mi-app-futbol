@@ -1,4 +1,5 @@
 const express = require('express');
+const { errorServidor } = require('../middleware/security');
 const Partido = require('../models/partido');
 const config = require('../config/leagues');
 const { cacheMiddleware } = require('../middleware/cache');
@@ -96,7 +97,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
       competiciones: Array.from(porLiga.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -179,7 +180,7 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -206,7 +207,7 @@ router.get('/picks', cacheMiddleware, async (req, res) => {
       .slice(0, 5);
     res.json({ desde: texto, dias, partidos: analisis.length, por_partido: porPartido, mejores });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -234,7 +235,7 @@ router.get('/mes', cacheMiddleware, async (req, res) => {
       dias: dias.map(d => ({ dia: d._id, partidos: d.total }))
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -255,7 +256,7 @@ router.get('/rango', cacheMiddleware, async (req, res) => {
       total
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 

@@ -19,10 +19,10 @@ module.exports = {
     // ----- Inglaterra (divisiones inferiores) -----
     41:  { nombre: 'League One', pais: 'Inglaterra', codigo: 'GB', liga_principal: true },
     42:  { nombre: 'League Two', pais: 'Inglaterra', codigo: 'GB', liga_principal: true },
-    43:  { nombre: 'National League', pais: 'Inglaterra', codigo: 'GB', liga_principal: true },
+    // 43: National League — API no provee estadísticas
 
     // ----- Francia (tercera división) -----
-    63:  { nombre: 'National 1', pais: 'Francia', codigo: 'FR', liga_principal: true },
+    // 63: National 1 — API no provee estadísticas
 
     // ----- Alemania -----
     80:  { nombre: '3. Liga', pais: 'Alemania', codigo: 'DE', liga_principal: true },
@@ -45,26 +45,26 @@ module.exports = {
 
     // ----- Europa (mercados activos en casas de apuestas) -----
     179: { nombre: 'Scottish Premiership', pais: 'Escocia', codigo: 'GB', liga_principal: true },
-    180: { nombre: 'Scottish Championship', pais: 'Escocia', codigo: 'GB', liga_principal: true },
-    183: { nombre: 'Scottish League One', pais: 'Escocia', codigo: 'GB', liga_principal: true },
-    184: { nombre: 'Scottish League Two', pais: 'Escocia', codigo: 'GB', liga_principal: true },
+    // 180: Scottish Championship — API no provee estadísticas
+    // 183: Scottish League One — API no provee estadísticas
+    // 184: Scottish League Two — API no provee estadísticas
     185: { nombre: 'Scottish League Cup', pais: 'Escocia', codigo: 'GB', liga_principal: false },
     218: { nombre: 'Bundesliga Austria', pais: 'Austria', codigo: 'AT', liga_principal: true },
     219: { nombre: '2. Liga Austria', pais: 'Austria', codigo: 'AT', liga_principal: true },
     119: { nombre: 'Superliga Dinamarca', pais: 'Dinamarca', codigo: 'DK', liga_principal: true },
-    120: { nombre: '1st Division Dinamarca', pais: 'Dinamarca', codigo: 'DK', liga_principal: true },
+    // 120: 1st Division Dinamarca — API no provee estadísticas
     207: { nombre: 'Swiss Super League', pais: 'Suiza', codigo: 'CH', liga_principal: true },
-    208: { nombre: 'Swiss Challenge League', pais: 'Suiza', codigo: 'CH', liga_principal: true },
+    // 208: Swiss Challenge League — API no provee estadísticas
     106: { nombre: 'Ekstraklasa', pais: 'Polonia', codigo: 'PL', liga_principal: true },
-    107: { nombre: 'I Liga Polonia', pais: 'Polonia', codigo: 'PL', liga_principal: true },
+    // 107: I Liga Polonia — API no provee estadísticas
     113: { nombre: 'Allsvenskan', pais: 'Suecia', codigo: 'SE', liga_principal: true },
     114: { nombre: 'Superettan', pais: 'Suecia', codigo: 'SE', liga_principal: true },
     345: { nombre: 'Czech Liga', pais: 'República Checa', codigo: 'CZ', liga_principal: true },
     283: { nombre: 'Liga I', pais: 'Rumania', codigo: 'RO', liga_principal: true },
     244: { nombre: 'Veikkausliiga', pais: 'Finlandia', codigo: 'FI', liga_principal: true },
     357: { nombre: 'Premier Division', pais: 'Irlanda', codigo: 'IE', liga_principal: true },
-    104: { nombre: '1. Division', pais: 'Noruega', codigo: 'NO', liga_principal: true },
-    164: { nombre: 'Urvalsdeild', pais: 'Islandia', codigo: 'IS', liga_principal: true },
+    // 104: 1. Division Noruega — API no provee estadísticas
+    // 164: Urvalsdeild Islandia — API no provee estadísticas
     172: { nombre: 'First League', pais: 'Bulgaria', codigo: 'BG', liga_principal: true },
     197: { nombre: 'Super League 1', pais: 'Grecia', codigo: 'GR', liga_principal: true },
     210: { nombre: 'HNL', pais: 'Croacia', codigo: 'HR', liga_principal: true },
@@ -81,11 +81,11 @@ module.exports = {
     292: { nombre: 'K League 1', pais: 'Corea del Sur', codigo: 'KR', liga_principal: true },
     293: { nombre: 'K League 2', pais: 'Corea del Sur', codigo: 'KR', liga_principal: true },
     307: { nombre: 'Saudi Pro League', pais: 'Arabia Saudita', codigo: 'SA', liga_principal: true },
-    308: { nombre: 'Saudi First Division', pais: 'Arabia Saudita', codigo: 'SA', liga_principal: true },
+    // 308: Saudi First Division — API no provee estadísticas
     288: { nombre: 'Premier Soccer League', pais: 'Sudáfrica', codigo: 'ZA', liga_principal: true },
     301: { nombre: 'Pro League', pais: 'Emiratos Árabes Unidos', codigo: 'AE', liga_principal: true },
     305: { nombre: 'Stars League', pais: 'Catar', codigo: 'QA', liga_principal: true },
-    99:  { nombre: 'J2 League', pais: 'Japón', codigo: 'JP', liga_principal: true },
+    // 99: J2 League — API no provee estadísticas
     479: { nombre: 'Canadian Premier League', pais: 'Canadá', codigo: 'CA', liga_principal: true },
     256: { nombre: 'USL League Two', pais: 'Estados Unidos', codigo: 'US', liga_principal: true },
 
@@ -104,8 +104,8 @@ module.exports = {
     239: { nombre: 'Colombia Primera A', pais: 'Colombia', codigo: 'CO', liga_principal: true },
     242: { nombre: 'Ecuador Liga Pro', pais: 'Ecuador', codigo: 'EC', liga_principal: true },
     268: { nombre: 'Uruguay Primera División', pais: 'Uruguay', codigo: 'UY', liga_principal: true },
-    129: { nombre: 'Argentina Primera Nacional', pais: 'Argentina', codigo: 'AR', liga_principal: true },
-    240: { nombre: 'Colombia Primera B', pais: 'Colombia', codigo: 'CO', liga_principal: true },
+    // 129: Argentina Primera Nacional — API no provee estadísticas
+    // 240: Colombia Primera B — API no provee estadísticas
     75:  { nombre: 'Brasileirão Serie C', pais: 'Brasil', codigo: 'BR', liga_principal: true },
     73:  { nombre: 'Copa do Brasil', pais: 'Brasil', codigo: 'BR', liga_principal: false },
     13:  { nombre: 'CONMEBOL Libertadores', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
@@ -123,11 +123,31 @@ module.exports = {
     64:  { nombre: 'Première Ligue Femenina', pais: 'Francia', codigo: 'FR', liga_principal: true },
     82:  { nombre: 'Frauen-Bundesliga', pais: 'Alemania', codigo: 'DE', liga_principal: true },
     139: { nombre: 'Serie A Women', pais: 'Italia', codigo: 'IT', liga_principal: true },
-    190: { nombre: 'A-League Women', pais: 'Australia', codigo: 'AU', liga_principal: true },
+    // 190: A-League Women — API no provee estadísticas
     254: { nombre: 'NWSL', pais: 'Estados Unidos', codigo: 'US', liga_principal: true },
     549: { nombre: 'Damallsvenskan', pais: 'Suecia', codigo: 'SE', liga_principal: true },
-    673: { nombre: 'Liga MX Femenil', pais: 'México', codigo: 'MX', liga_principal: true },
-    74:  { nombre: 'Brasileirão Femenino', pais: 'Brasil', codigo: 'BR', liga_principal: true },
+    // 673: Liga MX Femenil — API no provee estadísticas
+    // 74: Brasileirão Femenino — API no provee estadísticas
+
+    // ----- Torneos internacionales -----
+    1:   { nombre: 'FIFA World Cup', pais: 'Mundo', codigo: 'WW', liga_principal: false },
+    4:   { nombre: 'UEFA Euro', pais: 'Europa', codigo: 'EU', liga_principal: false },
+    9:   { nombre: 'Copa América', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
+    536: { nombre: 'CONCACAF Nations League', pais: 'CONCACAF', codigo: 'MX', liga_principal: false },
+
+    // ----- Ecosistema Norteamérica -----
+    772: { nombre: 'Leagues Cup', pais: 'CONCACAF', codigo: 'MX', liga_principal: false },
+    16:  { nombre: 'CONCACAF Champions League', pais: 'CONCACAF', codigo: 'MX', liga_principal: false },
+    // 885: Campeones Cup — API no provee estadísticas
+    // 255: USL Championship — API no provee estadísticas
+
+    // ----- Copas domésticas de élite -----
+    81:  { nombre: 'DFB-Pokal', pais: 'Alemania', codigo: 'DE', liga_principal: false },
+    137: { nombre: 'Coppa Italia', pais: 'Italia', codigo: 'IT', liga_principal: false },
+    66:  { nombre: 'Coupe de France', pais: 'Francia', codigo: 'FR', liga_principal: false },
+
+    // ----- Ligas regionales América -----
+    // 339: Liga Nacional Guatemala — API no provee estadísticas
 
     // ----- Competiciones de copa / Europa (no principales) -----
     2:   { nombre: 'UEFA Champions League', pais: 'Europa', codigo: 'EU', liga_principal: false },

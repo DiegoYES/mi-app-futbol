@@ -93,7 +93,7 @@ function prepararSelectorLiga(select) {
         });
         resultados.innerHTML = [...porPais.entries()].map(([pais, ligas]) => `<section class="league-picker-group">
             <h4>${escaparHtml(pais)} <span>${ligas.length}</span></h4>
-            ${ligas.map(datos => `<button type="button" role="option" data-league-value="${datos.id}" aria-selected="${select.value === String(datos.id)}"><img src="/api/ligas/${datos.id}/logo" alt=""><span><strong>${escaparHtml(datos.nombre)}</strong><small>${escaparHtml(datos.pais)} · ${datos.temporada_analisis ? `análisis ${datos.temporadas_analisis?.find(t => t.temporada === datos.temporada_analisis)?.etiqueta || datos.temporada_analisis}` : 'archivo histórico'}</small></span></button>`).join('')}
+            ${ligas.map(datos => `<button type="button" role="option" data-league-value="${datos.id}" aria-selected="${select.value === String(datos.id)}"><img src="/api/ligas/${datos.id}/logo" alt=""><span><strong>${escaparHtml(datos.nombre)}</strong><small>${escaparHtml(datos.pais)} · ${datos.temporada_analisis ? `análisis ${escaparHtml(datos.temporadas_analisis?.find(t => t.temporada === datos.temporada_analisis)?.etiqueta || datos.temporada_analisis)}` : 'archivo histórico'}</small></span></button>`).join('')}
         </section>`).join('') || '<p class="league-picker-empty">No encontramos ligas con esa búsqueda.</p>';
     };
     const render = () => {
@@ -264,7 +264,7 @@ function pintarAdvertenciasCorrelacion(items) {
         if ([...familias.values()].some(total => total > 1)) avisos.push(`${partido}: hay líneas relacionadas; una puede contener a la otra.`);
     }
     panel.hidden = avisos.length === 0;
-    panel.innerHTML = avisos.length ? `<strong>Atención a la correlación</strong><ul>${avisos.map(aviso => `<li>${aviso}</li>`).join('')}</ul><p>No multipliques estos porcentajes como si fueran eventos independientes.</p>` : '';
+    panel.innerHTML = avisos.length ? `<strong>Atención a la correlación</strong><ul>${avisos.map(aviso => `<li>${escaparHtml(aviso)}</li>`).join('')}</ul><p>No multipliques estos porcentajes como si fueran eventos independientes.</p>` : '';
 }
 
 function alternarSeleccionBoleta(mercadoId) {

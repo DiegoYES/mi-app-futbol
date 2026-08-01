@@ -1,4 +1,5 @@
 const express = require('express');
+const { errorServidor } = require('../middleware/security');
 const Partido = require('../models/partido');
 const JugadorPartido = require('../models/JugadorPartido');
 const PickGuardado = require('../models/PickGuardado');
@@ -50,7 +51,7 @@ router.get('/resumen', async (req, res) => {
       temporadas: [...new Set(competiciones.map(item => item._id.temporada))].sort((a, b) => b - a)
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -64,7 +65,7 @@ router.get('/competiciones', async (_req, res) => {
       temporadas_guardadas: filas.length
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -187,7 +188,7 @@ router.get('/competiciones/:id', async (req, res) => {
       }))
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 

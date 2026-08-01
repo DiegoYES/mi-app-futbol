@@ -1,4 +1,5 @@
 const express = require('express');
+const { errorServidor } = require('../middleware/security');
 const Boleta = require('../models/Boleta');
 const { obtenerMercado } = require('../services/marketCatalog');
 const { analizarCruce } = require('../services/pickAnalysis');
@@ -115,7 +116,7 @@ router.post('/', async (req, res) => {
     });
     res.status(201).json({ boleta });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
@@ -125,7 +126,7 @@ router.get('/', async (req, res) => {
       .sort({ creada_en: -1 }).limit(100).lean();
     res.json({ boletas });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    errorServidor(res, error);
   }
 });
 
