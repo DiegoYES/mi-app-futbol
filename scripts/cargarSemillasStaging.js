@@ -3,6 +3,8 @@
 //
 // SEGURIDAD:
 //  - Se niega a ejecutarse si el nombre de la base no termina en "-staging".
+//  - Se niega a ejecutarse si APP_ENVIRONMENT no es "staging".
+//  - Exige confirmación explícita: STAGING_SEED_CONFIRM=SEMILLAS.
 //  - Nunca borra nada: sólo inserta si los documentos no existen (upsert-safe).
 //  - No consume API-Football ni ejecuta sincronizaciones.
 //  - NO se ejecuta automáticamente desde ningún script de despliegue; el
@@ -10,6 +12,8 @@
 //
 // Variables:
 //  MONGODB_URI                 URI de la base de staging (obligatoria).
+//  APP_ENVIRONMENT             debe ser exactamente "staging".
+//  STAGING_SEED_CONFIRM        debe ser exactamente "SEMILLAS" (confirmación).
 //  STAGING_SEED_EMAIL          Email de la cuenta de prueba (obligatoria).
 //  STAGING_SEED_PASSWORD       Contraseña de la cuenta de prueba (obligatoria,
 //                              mínimo 12 caracteres; nunca la de producción).
@@ -47,6 +51,12 @@ async function main() {
       `BLOQUEADO: la base "${base || '(desconocida)'}" no termina en "-staging". ` +
       'Este script sólo puede escribir en una base de staging, nunca en producción.'
     );
+  }
+  if (String(process.env.APP_ENVIRONMENT || '').trim().toLowerCase() !== 'staging') {
+    throw new Error('BLOQUEADO: APP_ENVIRONMENT debe ser "staging" para cargar semillas.');
+  }
+  if (process.env.STAGING_SEED_CONFIRM !== 'SEMILLAS') {
+    throw new Error('Confirmación requerida: vuelve a ejecutar con STAGING_SEED_CONFIRM=SEMILLAS.');
   }
   if (!SEED_EMAIL || !SEED_PASSWORD) {
     throw new Error('Define STAGING_SEED_EMAIL y STAGING_SEED_PASSWORD (nunca credenciales de producción).');

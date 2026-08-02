@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 // Smoke test Playwright para STAGING: navegación real en escritorio y móvil,
-// captura de errores JavaScript, respuestas 4xx/5xx inesperadas y búsqueda sin
-// resultados duplicados. Sólo lecturas (el login es la única escritura HTTP y
-// usa una cuenta exclusiva de staging).
+// captura de errores JavaScript, respuestas 4xx/5xx inesperadas, centro de
+// partido real y búsqueda del calendario sin resultados duplicados. No toca
+// MongoDB directamente; el login y /api/picks/seguimiento producen escrituras
+// acotadas a la cuenta de staging en la base -staging.
 //
 // Uso: STAGING_SMOKE_EMAIL=... STAGING_SMOKE_PASSWORD=... \
 //      STAGING_BASE_URL=https://staging.data-fut.com node deploy/smoke-staging.playwright.js
@@ -24,7 +25,8 @@ if (!EMAIL || !PASSWORD) {
   process.exit(1);
 }
 
-const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/partido.html', '/picks.html', '/boletas.html'];
+// /partido.html se prueba aparte con identificadores reales del calendario.
+const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/boletas.html'];
 
 async function recorrer(nombre, opcionesContexto) {
   const errores = [];
@@ -60,22 +62,57 @@ async function recorrer(nombre, opcionesContexto) {
     }
   }
 
+  // Centro de partido REAL: obtiene un encuentro del calendario y lo abre con
+  // sus identificadores, igual que haría un usuario.
+  const respProximos = await pagina.request.get('/api/calendario/proximos?dias=30');
+  if (!respProximos.ok()) {
+    errores.push(`[${nombre}] /api/calendario/proximos respondió ${respProximos.status()}`);
+  } else {
+    const datos = await respProximos.json();
+    let partidoReal = null;
+    for (const dia of datos.jornadas || []) {
+      for (const comp of dia.competiciones || []) {
+        for (const p of comp.partidos || []) {
+          if (p.local?.id && p.visitante?.id && comp.liga_id) {
+            partidoReal = { ...p, liga_id: comp.liga_id };
+            break;
+          }
+        }
+        if (partidoReal) break;
+      }
+      if (partidoReal) break;
+    }
+    if (!partidoReal) {
+      errores.push(`[${nombre}] no hay partidos en el calendario para probar el centro de partido (¿semillas cargadas?).`);
+    } else {
+      const urlPartido = `/partido.html?local=${partidoReal.local.id}&visitante=${partidoReal.visitante.id}&liga=${partidoReal.liga_id}&partido=${partidoReal.api_id}`;
+      const respuesta = await pagina.goto(urlPartido, { waitUntil: 'networkidle' });
+      if (!respuesta || respuesta.status() >= 400) {
+        errores.push(`[${nombre}] el centro de partido ${urlPartido} respondió ${respuesta ? respuesta.status() : 'sin respuesta'}`);
+      }
+    }
+  }
+
   // Banner de entorno visible en la portada.
   await pagina.goto('/', { waitUntil: 'networkidle' });
   const banner = await pagina.locator('#banner-entorno-prueba').count();
   if (banner !== 1) errores.push(`[${nombre}] banner ENTORNO DE PRUEBA ausente o duplicado (${banner}).`);
 
-  // Búsqueda sin resultados duplicados (usa el buscador de la portada si existe).
-  const buscador = pagina.locator('input[type="search"], input[placeholder*="usca" i]').first();
+  // Búsqueda del calendario sin resultados duplicados (reproduce la búsqueda
+  // "Argentina" en #busquedaCalendario).
+  await pagina.goto('/calendario.html', { waitUntil: 'networkidle' });
+  const buscador = pagina.locator('#busquedaCalendario');
   if (await buscador.count()) {
-    await buscador.fill('a');
+    await buscador.fill('Argentina');
     await pagina.waitForTimeout(1500);
-    const textos = await pagina.locator('[class*="resultado"] a, [class*="result"] a').allInnerTexts();
+    const textos = await pagina.locator('#resultadosBusqueda .search-option').allInnerTexts();
     const vistos = new Set();
-    for (const texto of textos.map((t) => t.trim()).filter(Boolean)) {
+    for (const texto of textos.map((t) => t.trim().replace(/\s+/g, ' ')).filter(Boolean)) {
       if (vistos.has(texto)) errores.push(`[${nombre}] resultado de búsqueda duplicado: "${texto}"`);
       vistos.add(texto);
     }
+  } else {
+    errores.push(`[${nombre}] no se encontró el buscador #busquedaCalendario en el calendario.`);
   }
 
   await navegador.close();

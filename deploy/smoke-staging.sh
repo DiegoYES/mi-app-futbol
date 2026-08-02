@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Smoke test del entorno de staging. Sólo realiza LECTURAS HTTP (además del
-# login, que es la única operación POST y usa una cuenta exclusiva de staging).
-# Nunca toca MongoDB directamente ni ejecuta sincronizaciones.
+# Smoke test del entorno de staging. No toca MongoDB directamente ni ejecuta
+# sincronizaciones. OJO: no es 100% de sólo lectura a nivel de aplicación —
+# el login actualiza ultimo_acceso/ip del usuario de staging y
+# GET /api/picks/seguimiento puede liquidar picks pendientes de esa cuenta.
+# Ambas escrituras ocurren únicamente en la base de staging.
 #
 # Uso:   deploy/smoke-staging.sh [commit]
 #        Si no se pasa commit, se lee ${STAGING_DIR}/DEPLOYED_COMMIT.
@@ -30,10 +32,16 @@ esac
 [ -n "${PASSWORD}" ] || fallo "define STAGING_SMOKE_PASSWORD."
 
 COMMIT="${1:-}"
-if [ -z "${COMMIT}" ] && [ -f "${STAGING_DIR}/DEPLOYED_COMMIT" ]; then
-  COMMIT="$(cat "${STAGING_DIR}/DEPLOYED_COMMIT")"
+DESPLEGADO=""
+[ -f "${STAGING_DIR}/DEPLOYED_COMMIT" ] && DESPLEGADO="$(cat "${STAGING_DIR}/DEPLOYED_COMMIT")"
+if [ -z "${COMMIT}" ]; then
+  COMMIT="${DESPLEGADO}"
 fi
 [ -n "${COMMIT}" ] || fallo "no sé qué commit validar: pásalo como argumento o despliega antes con deploy-staging.sh."
+# Sólo puede validarse el commit que staging está sirviendo AHORA. Impide
+# probar la versión A y registrar la B como validada.
+[ -n "${DESPLEGADO}" ] || fallo "no existe ${STAGING_DIR}/DEPLOYED_COMMIT: despliega primero con deploy-staging.sh."
+[ "${COMMIT}" = "${DESPLEGADO}" ] || fallo "el commit indicado (${COMMIT}) no coincide con el desplegado en staging (${DESPLEGADO}); no se valida."
 
 COOKIES="$(mktemp)"
 CUERPO="$(mktemp)"
@@ -85,7 +93,9 @@ CODIGO_LOGIN="$(curl -sS -o "${CUERPO}" -w '%{http_code}' -c "${COOKIES}" \
   "${BASE_URL}/api/auth/login")"
 comprobar "POST /api/auth/login" 200 "${CODIGO_LOGIN}"
 
-echo "-- Páginas y API autenticadas (sólo lectura) --"
+echo "-- Páginas y API autenticadas --"
+# Nota: /api/picks/seguimiento puede liquidar picks pendientes de la cuenta de
+# staging (escritura acotada a la base -staging).
 comprobar "portada autenticada /"            200 "$(http_get /)"
 comprobar "calendario /calendario.html"      200 "$(http_get /calendario.html)"
 comprobar "comparador /comparador.html"      200 "$(http_get /comparador.html)"

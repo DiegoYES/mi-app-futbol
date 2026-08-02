@@ -138,11 +138,14 @@ Jamás ejecutes ese comando con la URI de producción.
 `scripts/cargarSemillasStaging.js` crea una cuenta de prueba, dos equipos y un
 partido sintéticos (con `api_id` negativos, imposibles de confundir con datos
 reales). El script **se niega a ejecutarse** si el nombre de la base no termina
-en `-staging`, nunca borra nada y no consume API-Football. No se ejecuta
-automáticamente; lánzalo a mano cuando lo decidas:
+en `-staging`, exige `APP_ENVIRONMENT=staging` más la confirmación explícita
+`STAGING_SEED_CONFIRM=SEMILLAS`, nunca borra nada y no consume API-Football.
+No se ejecuta automáticamente; lánzalo a mano cuando lo decidas:
 
 ```bash
 MONGODB_URI='mongodb://127.0.0.1:27017/mi-app-futbol-staging' \
+APP_ENVIRONMENT=staging \
+STAGING_SEED_CONFIRM=SEMILLAS \
 STAGING_SEED_EMAIL='smoke@staging.local' \
 STAGING_SEED_PASSWORD='<contraseña nueva de al menos 12 caracteres>' \
 npm run seed:staging
@@ -153,31 +156,48 @@ Usa siempre credenciales inventadas para staging, nunca las de una cuenta real.
 ## Flujo commit → staging → smoke test → producción
 
 Todos los scripts usan `set -euo pipefail`, validan rutas y variables, no
-contienen secretos, no usan `rm -rf` y **jamás tocan MongoDB**. El despliegue
-siempre recibe un commit explícito; nunca "lo último" implícito.
+contienen secretos, no usan `rm -rf` y **jamás tocan MongoDB directamente**.
+El despliegue siempre recibe un commit explícito; nunca "lo último" implícito.
+
+> **Migración previa en producción (una sola vez).** El flujo de releases
+> requiere que el servicio productivo ejecute desde
+> `/opt/mi-app-futbol/current` (symlink a `releases/<sha>`), como en la
+> plantilla actualizada `deploy/mi-app-futbol.service`. `promote-production.sh`
+> y `rollback-production.sh` verifican el `WorkingDirectory` real del unit con
+> `systemctl show` y **abortan** si el servicio sigue ejecutando desde el
+> directorio plano, porque cambiar el symlink no tendría efecto. Migrar el
+> unit real requiere autorización y una ventana de reinicio.
 
 ```bash
 # 1. Despliega un commit concreto en staging (releases/<sha> + symlink current).
 deploy/deploy-staging.sh <sha>
 
-# 2. Ejecuta el smoke test. Si todo pasa, registra <sha> como VALIDADO.
+# 2. Ejecuta el smoke test. Sólo acepta el commit que staging sirve AHORA
+#    (debe coincidir con DEPLOYED_COMMIT); si todo pasa, lo registra como VALIDADO.
 STAGING_SMOKE_EMAIL='smoke@staging.local' \
 STAGING_SMOKE_PASSWORD='...' \
 RUN_PLAYWRIGHT=1 \
 deploy/smoke-staging.sh
 
-# 3. Promueve a producción. Sólo acepta el commit registrado como validado y
-#    exige teclear PROMOVER.
+# 3. Promueve a producción. Sólo acepta el commit registrado como validado,
+#    exige teclear PROMOVER y, si el proceso nuevo no queda saludable,
+#    revierte automáticamente al release anterior.
 deploy/promote-production.sh <sha>
 ```
 
 El smoke test comprueba: `/health/live`, `/health/ready`, cabeceras
 CSP/HSTS/X-Content-Type-Options, banner de entorno, login con cuenta de
-staging, portada autenticada, calendario, comparador, centro de partido, picks
-y boletas en lectura, y con `RUN_PLAYWRIGHT=1` añade navegación real en
-escritorio y móvil, errores JavaScript, respuestas 4xx/5xx inesperadas y
-búsqueda sin resultados duplicados. Las credenciales llegan sólo por variables
-de entorno.
+staging, portada autenticada, calendario, comparador, picks y boletas, y con
+`RUN_PLAYWRIGHT=1` añade navegación real en escritorio y móvil, un centro de
+partido abierto con identificadores reales del calendario, errores JavaScript,
+respuestas 4xx/5xx inesperadas y la búsqueda "Argentina" del calendario sin
+resultados duplicados. Las credenciales llegan sólo por variables de entorno.
+
+> **Nota sobre escrituras.** El smoke test no toca MongoDB directamente, pero
+> a nivel de aplicación no es 100% de sólo lectura: el login actualiza
+> `ultimo_acceso`/IP de la cuenta de staging y `GET /api/picks/seguimiento`
+> puede liquidar picks pendientes de esa cuenta. Ambas escrituras ocurren
+> exclusivamente en la base `-staging`.
 
 ## Rollback
 
@@ -191,9 +211,12 @@ deploy/rollback-production.sh <sha>    # o uno concreto del historial
 ```
 
 El rollback sólo activa releases ya instaladas y registradas, exige teclear
-`ROLLBACK` y verifica `/health/ready` al terminar. No toca MongoDB: si un
-despliegue incluyó cambios de esquema, evalúa su compatibilidad hacia atrás
-antes de promover (los cambios de datos requieren su propio plan autorizado).
+`ROLLBACK`, verifica que el servicio ejecuta desde `current` y comprueba
+`/health/ready` al terminar. Además, `promote-production.sh` hace un
+auto-rollback al release anterior si el proceso nuevo no queda saludable.
+No toca MongoDB: si un despliegue incluyó cambios de esquema, evalúa su
+compatibilidad hacia atrás antes de promover (los cambios de datos requieren
+su propio plan autorizado).
 
 ## Qué NO hace ningún script de este flujo
 

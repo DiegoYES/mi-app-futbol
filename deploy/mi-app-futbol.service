@@ -7,7 +7,11 @@ Wants=network-online.target
 Type=simple
 User=miappfutbol
 Group=miappfutbol
-WorkingDirectory=/opt/mi-app-futbol
+# El flujo de despliegue por releases (deploy/promote-production.sh) exige
+# ejecutar desde el symlink current: /opt/mi-app-futbol/current -> releases/<sha>.
+# Si tu instalación aún usa /opt/mi-app-futbol plano, migra el unit real a
+# esta plantilla antes de usar promote/rollback (ver docs/STAGING.md).
+WorkingDirectory=/opt/mi-app-futbol/current
 EnvironmentFile=/etc/mi-app-futbol/app.env
 ExecStart=/usr/bin/node server.js
 Restart=on-failure
@@ -17,7 +21,7 @@ NoNewPrivileges=true
 PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/mi-app-futbol/var
+ReadWritePaths=/opt/mi-app-futbol/current/var
 UMask=0077
 LimitNOFILE=65535
 

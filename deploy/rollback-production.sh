@@ -10,6 +10,8 @@
 # Garantías:
 #  - Sólo activa releases que ya existen en ${PROD_DIR}/releases (instaladas y
 #    verificadas en su momento); no reconstruye ni descarga nada.
+#  - Verifica que el servicio ejecuta desde ${PROD_DIR}/current (si no, cambiar
+#    el symlink no tendría efecto y el éxito sería falso).
 #  - Exige confirmación explícita. No toca MongoDB. No borra nada.
 set -euo pipefail
 
@@ -20,6 +22,11 @@ PROD_PORT="${PROD_PORT:-3000}"
 fallo() { echo "ERROR: $*" >&2; exit 1; }
 
 [ -d "${PROD_DIR}" ] || fallo "no existe PROD_DIR: ${PROD_DIR}"
+
+WD_SERVICIO="$(systemctl show -p WorkingDirectory --value "${PROD_SERVICE}" 2>/dev/null || true)"
+[ "${WD_SERVICIO}" = "${PROD_DIR}/current" ] \
+  || fallo "el servicio ${PROD_SERVICE} ejecuta desde '${WD_SERVICIO:-desconocido}', no desde ${PROD_DIR}/current; el rollback por symlink no tendría efecto. Migra el servicio según deploy/mi-app-futbol.service."
+
 HISTORIAL="${PROD_DIR}/RELEASE_HISTORY"
 [ -f "${HISTORIAL}" ] || fallo "no existe ${HISTORIAL}: no hay despliegues registrados a los que volver."
 
