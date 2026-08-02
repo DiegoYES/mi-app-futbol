@@ -82,6 +82,15 @@ logs, capturas ni respuestas HTTP.
    cron. El propio script adquiere el lease distribuido. No ejecutes workers de
    sincronización dentro de cada réplica web.
 
+## Flujo de despliegue con staging
+
+Ningún commit debería llegar a producción sin pasar por el entorno de prueba
+`staging.data-fut.com` (servicio, puerto, base de datos y secretos separados;
+sin cron ni API-Football). El flujo commit → staging → smoke test → promoción,
+junto con el rollback, está documentado en [`STAGING.md`](STAGING.md). La
+promoción (`deploy/promote-production.sh`) sólo acepta el commit registrado
+como validado por el smoke test y exige confirmación explícita.
+
 ## Alertas mínimas
 
 - Sondea `/health/ready` cada minuto y alerta tras tres fallos.

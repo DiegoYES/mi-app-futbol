@@ -34,6 +34,7 @@ const {
   validarOrigenNavegador
 } = require('./middleware/security');
 const { observarHttp } = require('./middleware/observability');
+const { crearEnviadorHtml, bannerEstatico } = require('./middleware/entornoBanner');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -86,9 +87,12 @@ app.use('/api', validarOrigenNavegador, (req, res, next) =>
   RUTA_IMAGEN.test(req.path) ? limiteEscudos(req, res, next) : limiteApi(req, res, next));
 
 // / y /index.html son la portada; el comparador vive en una ruta explícita.
-app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(__dirname, 'public', 'inicio.html')));
-app.get('/comparador.html', (_req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+// enviarHtml añade el banner "ENTORNO DE PRUEBA" sólo si APP_ENVIRONMENT=staging.
+const enviarHtml = crearEnviadorHtml(path.join(__dirname, 'public'));
+app.get(['/', '/index.html'], (_req, res) => enviarHtml(res, 'inicio.html'));
+app.get('/comparador.html', (_req, res) => enviarHtml(res, 'index.html'));
 app.use(paginasPrivadas({ '/admin.html': ['admin'] }, path.join(__dirname, 'public')));
+app.use(bannerEstatico(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use('/api/auth', authRoutes);

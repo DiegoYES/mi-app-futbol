@@ -24,6 +24,20 @@ npm run sync:events
 La lista de seguridad, variables, alertas y plantilla de VM está en
 [`docs/PRODUCCION.md`](docs/PRODUCCION.md).
 
+## Staging y despliegue
+
+Cada commit se valida en https://staging.data-fut.com antes de llegar a
+producción. El flujo completo (instalación del segundo servicio, semillas
+sintéticas, smoke test, promoción y rollback) está en
+[`docs/STAGING.md`](docs/STAGING.md):
+
+```bash
+deploy/deploy-staging.sh <sha>      # instala un commit concreto en staging
+deploy/smoke-staging.sh             # valida y registra el commit
+deploy/promote-production.sh <sha>  # promueve sólo un commit validado
+deploy/rollback-production.sh       # vuelve a un commit registrado
+```
+
 ## Datos y sincronización
 
 La sincronización se controla desde `.env`:

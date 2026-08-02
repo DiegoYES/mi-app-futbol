@@ -1,0 +1,99 @@
+#!/usr/bin/env node
+// Smoke test Playwright para STAGING: navegación real en escritorio y móvil,
+// captura de errores JavaScript, respuestas 4xx/5xx inesperadas y búsqueda sin
+// resultados duplicados. Sólo lecturas (el login es la única escritura HTTP y
+// usa una cuenta exclusiva de staging).
+//
+// Uso: STAGING_SMOKE_EMAIL=... STAGING_SMOKE_PASSWORD=... \
+//      STAGING_BASE_URL=https://staging.data-fut.com node deploy/smoke-staging.playwright.js
+
+const { chromium, devices } = require('playwright');
+
+const BASE_URL = process.env.STAGING_BASE_URL || 'https://staging.data-fut.com';
+const EMAIL = process.env.STAGING_SMOKE_EMAIL || '';
+const PASSWORD = process.env.STAGING_SMOKE_PASSWORD || '';
+// Recursos que pueden faltar sin que sea un fallo (imágenes de escudos, etc.).
+const RUTAS_TOLERADAS_404 = [/\/api\/(equipos|ligas)\/-?\d+\/(escudo|logo)/];
+
+if (/\/\/(www\.)?data-fut\.com/.test(BASE_URL)) {
+  console.error(`BLOQUEADO: STAGING_BASE_URL apunta a producción (${BASE_URL}).`);
+  process.exit(1);
+}
+if (!EMAIL || !PASSWORD) {
+  console.error('Define STAGING_SMOKE_EMAIL y STAGING_SMOKE_PASSWORD (cuenta exclusiva de staging).');
+  process.exit(1);
+}
+
+const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/partido.html', '/picks.html', '/boletas.html'];
+
+async function recorrer(nombre, opcionesContexto) {
+  const errores = [];
+  const navegador = await chromium.launch();
+  const contexto = await navegador.newContext({ baseURL: BASE_URL, ...opcionesContexto });
+  const pagina = await contexto.newPage();
+
+  pagina.on('pageerror', (err) => errores.push(`[${nombre}] error JS: ${err.message}`));
+  pagina.on('console', (msg) => {
+    if (msg.type() === 'error') errores.push(`[${nombre}] console.error: ${msg.text()}`);
+  });
+  pagina.on('response', (resp) => {
+    const estado = resp.status();
+    if (estado < 400) return;
+    const url = resp.url();
+    if (RUTAS_TOLERADAS_404.some((re) => re.test(url)) && estado === 404) return;
+    errores.push(`[${nombre}] HTTP ${estado} en ${url}`);
+  });
+
+  // Login mediante el formulario real.
+  await pagina.goto('/login.html', { waitUntil: 'networkidle' });
+  await pagina.fill('input[type="email"], input[name="email"], #email', EMAIL);
+  await pagina.fill('input[type="password"], input[name="password"], #password', PASSWORD);
+  await Promise.all([
+    pagina.waitForResponse((r) => r.url().includes('/api/auth/login')),
+    pagina.click('button[type="submit"]')
+  ]);
+
+  for (const ruta of PAGINAS) {
+    const respuesta = await pagina.goto(ruta, { waitUntil: 'networkidle' });
+    if (!respuesta || respuesta.status() >= 400) {
+      errores.push(`[${nombre}] la página ${ruta} respondió ${respuesta ? respuesta.status() : 'sin respuesta'}`);
+    }
+  }
+
+  // Banner de entorno visible en la portada.
+  await pagina.goto('/', { waitUntil: 'networkidle' });
+  const banner = await pagina.locator('#banner-entorno-prueba').count();
+  if (banner !== 1) errores.push(`[${nombre}] banner ENTORNO DE PRUEBA ausente o duplicado (${banner}).`);
+
+  // Búsqueda sin resultados duplicados (usa el buscador de la portada si existe).
+  const buscador = pagina.locator('input[type="search"], input[placeholder*="usca" i]').first();
+  if (await buscador.count()) {
+    await buscador.fill('a');
+    await pagina.waitForTimeout(1500);
+    const textos = await pagina.locator('[class*="resultado"] a, [class*="result"] a').allInnerTexts();
+    const vistos = new Set();
+    for (const texto of textos.map((t) => t.trim()).filter(Boolean)) {
+      if (vistos.has(texto)) errores.push(`[${nombre}] resultado de búsqueda duplicado: "${texto}"`);
+      vistos.add(texto);
+    }
+  }
+
+  await navegador.close();
+  return errores;
+}
+
+(async () => {
+  const errores = [
+    ...(await recorrer('escritorio', { viewport: { width: 1366, height: 900 } })),
+    ...(await recorrer('móvil', { ...devices['iPhone 13'] }))
+  ];
+  if (errores.length) {
+    console.error(`Smoke Playwright FALLÓ con ${errores.length} problema(s):`);
+    for (const e of errores) console.error(`  - ${e}`);
+    process.exit(1);
+  }
+  console.log('Smoke Playwright OK: escritorio y móvil sin errores JS, sin HTTP inesperados y sin duplicados.');
+})().catch((err) => {
+  console.error(`Smoke Playwright abortado: ${err.message}`);
+  process.exit(1);
+});

@@ -1,0 +1,34 @@
+# Servicio systemd para el entorno de STAGING (staging.data-fut.com).
+# Instalación manual (requiere autorización; no lo hace ningún script del repo):
+#   sudo cp deploy/mi-app-futbol-staging.service /etc/systemd/system/
+#   sudo systemctl daemon-reload && sudo systemctl enable --now mi-app-futbol-staging
+# Staging usa usuario, directorio, EnvironmentFile, puerto y base de datos
+# separados de producción. No ejecuta cron, workers ni sincronizaciones.
+
+[Unit]
+Description=Mi App Futbol (STAGING)
+After=network-online.target mongod.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+# Usuario no privilegiado y distinto al de producción.
+User=miappfutbol-stg
+Group=miappfutbol-stg
+WorkingDirectory=/opt/mi-app-futbol-staging/current
+# Variables exclusivas de staging (basadas en .env.staging.example).
+EnvironmentFile=/etc/mi-app-futbol-staging/app.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/opt/mi-app-futbol-staging/current/var
+UMask=0077
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target
