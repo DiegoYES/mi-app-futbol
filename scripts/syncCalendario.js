@@ -108,8 +108,15 @@ async function completarEstadisticasDePartidos(finalizados) {
   // Filtra los que ya tienen estadísticas o están marcados como no disponibles
   const apiIds = finalizados.map(f => f.api_id);
   const sinStats = await Partido.find(
-    { api_id: { $in: apiIds }, estadisticas_completas: { $ne: true }, estadisticas_no_disponibles: { $ne: true } },
-    { api_id: 1 }
+    {
+      api_id: { $in: apiIds },
+      estadisticas_completas: { $ne: true },
+      $or: [
+        { estadisticas_no_disponibles: { $ne: true } },
+        { estadisticas_intentos: { $lt: 3 } }
+      ]
+    },
+    { api_id: 1, estadisticas_intentos: 1 }
   ).lean();
 
   if (!sinStats.length) {
@@ -167,7 +174,11 @@ async function completarEstadisticasDePartidos(finalizados) {
         completados++;
         console.log(`   ✅ ${p.api_id} con estadísticas.`);
       } else {
-        await Partido.updateOne({ api_id: p.api_id }, { $set: { estadisticas_no_disponibles: true }, $inc: { estadisticas_intentos: 1 } });
+        const intentos = (p.estadisticas_intentos || 0) + 1;
+        await Partido.updateOne(
+          { api_id: p.api_id },
+          { $set: { estadisticas_no_disponibles: intentos >= 3 }, $inc: { estadisticas_intentos: 1 } }
+        );
         sinDisponibles++;
       }
     } catch (err) {
@@ -195,8 +206,17 @@ function obtenerValor(stats, tipo, valorNulo = 0) {
 
 async function completarTiemposDePartidos(finalizados) {
   const apiIds = finalizados.map(f => f.api_id);
+  const reintentarAntesDe = new Date(Date.now() - (4 * 60 * 60 * 1000));
   const sinTiempos = await Partido.find(
-    { api_id: { $in: apiIds }, estadisticas_completas: true, tiempos_completos: { $ne: true }, tiempos_disponibles: { $ne: false } },
+    {
+      api_id: { $in: apiIds },
+      estadisticas_completas: true,
+      tiempos_completos: { $ne: true },
+      $or: [
+        { tiempos_disponibles: { $ne: false } },
+        { tiempos_consultados_en: { $lt: reintentarAntesDe } }
+      ]
+    },
     { api_id: 1, equipo_local: 1, equipo_visitante: 1 }
   ).lean();
 

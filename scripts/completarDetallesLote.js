@@ -24,6 +24,7 @@ const MAXIMO = Number.isInteger(Number(process.env.SYNC_MAX_REQUESTS))
   : Infinity;
 const VERBOSE = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_VERBOSE || ''));
 const REINTENTAR_HUECOS = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_RETRY_GAPS || ''));
+const TODAS_LAS_LIGAS_CARGADAS = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_ALL_LOADED_LEAGUES || ''));
 const DIAS_RECIENTES = Number.isInteger(Number(process.env.SYNC_RECENT_DAYS))
   && Number(process.env.SYNC_RECENT_DAYS) > 0
   ? Number(process.env.SYNC_RECENT_DAYS)
@@ -104,12 +105,16 @@ async function main() {
   if (!process.env.MONGODB_URI) throw new Error('Falta MONGODB_URI.');
   if (!process.env.API_FOOTBALL_KEY) throw new Error('Falta API_FOOTBALL_KEY.');
   const season = Number(process.env.FOOTBALL_SEASON || config.seasonDefault);
-  const ligas = (process.env.SYNC_LEAGUES || '39')
+  let ligas = (process.env.SYNC_LEAGUES || '39')
     .split(',').map(Number).filter(Number.isInteger);
 
   await mongoose.connect(process.env.MONGODB_URI);
   try {
-  console.log(`📦 Sincronización por lotes · temporada ${season} · ${DIAS_RECIENTES ? `últimos ${DIAS_RECIENTES} días` : 'todo el histórico'} · máximo ${MAXIMO === Infinity ? 'cuota disponible' : MAXIMO + ' llamadas'}\n`);
+    if (TODAS_LAS_LIGAS_CARGADAS) {
+      ligas = (await Partido.distinct('liga.id', { 'liga.temporada': season }))
+        .map(Number).filter(id => Number.isInteger(id) && id > 0);
+    }
+    console.log(`📦 Sincronización por lotes · temporada ${season} · ${DIAS_RECIENTES ? `últimos ${DIAS_RECIENTES} días` : 'todo el histórico'} · máximo ${MAXIMO === Infinity ? 'cuota disponible' : MAXIMO + ' llamadas'}\n`);
     for (const liga of ligas) {
       if (solicitudesUsadas >= MAXIMO) {
         console.log(`🛑 Tope global de ${MAXIMO} llamadas alcanzado.`);
