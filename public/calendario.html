@@ -46,7 +46,18 @@
   .chip.active .badge-n { color: #fff; }
 
   .liga-group { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 14px; margin-bottom: 16px; overflow: hidden; }
-  .liga-head { background: var(--surface-soft); padding: 11px 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center; }
+  .league-list-tools { display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 0 10px;padding:0 2px;color:var(--muted);font-size:.7rem; }
+  .league-list-actions { display:flex;gap:7px; }
+  .league-list-actions button { min-height:34px;padding:0 11px;border:1px solid var(--line);border-radius:9px;background:var(--surface-raised);color:var(--ink);font:inherit;font-weight:750;cursor:pointer; }
+  .league-list-actions button:hover,.league-list-actions button:focus-visible { border-color:var(--green);outline:0; }
+  .liga-head { background: var(--surface-soft); padding: 11px 18px; font-weight: 600; display: flex; justify-content: space-between; align-items: center;cursor:pointer;list-style:none; }
+  .liga-head::-webkit-details-marker { display:none; }
+  .liga-title { display:flex;align-items:center;gap:9px;min-width:0; }
+  .liga-title::before { content:'\203A';color:var(--green);font-size:1.3rem;line-height:1;transition:transform .15s; }
+  .liga-group[open] .liga-title::before { transform:rotate(90deg); }
+  .liga-name { overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+  .liga-meta { display:flex;align-items:center;gap:12px;flex:0 0 auto; }
+  .liga-count { min-width:28px;padding:3px 7px;border:1px solid var(--line);border-radius:999px;color:var(--ink);font-size:.65rem;text-align:center; }
   .liga-head .pais { font-size: .78rem; color: var(--muted); font-weight: 400; }
 
   .match { display: grid; grid-template-columns: 62px 1fr auto 1fr; align-items: center; gap: 12px; padding: 13px 18px; border-top: 1px solid var(--line); cursor: pointer; transition: background .15s; }
@@ -83,6 +94,10 @@
     .equipo,.equipo.der { grid-column:2;flex-direction:row;text-align:left; }
     .marcador { grid-column:3;grid-row:1 / span 2; }
     .liga-head { padding-inline:12px;gap:8px; }
+    .league-list-tools { align-items:flex-start;flex-direction:column; }
+    .league-list-actions { width:100%; }
+    .league-list-actions button { flex:1; }
+    .liga-meta { gap:7px; }.liga-head .pais { display:none; }
     .match-picks{padding:0 12px 12px}.daily-grid{display:flex;overflow:auto;scroll-snap-type:x proximity}.daily-card{flex:0 0 210px;scroll-snap-align:start}.pick-row{grid-template-columns:20px minmax(0,1fr) auto}.save-calendar-pick{grid-column:2/-1;width:100%}
   }
   @media(max-width:380px) {
@@ -263,9 +278,8 @@ function pintarResultadosBusqueda() {
   if (paises.length) html += `<div class="search-heading">Países</div>${paises.map(p => {
     const total = p.ligas.size;
     const principal = opcionBusqueda('🌎', p.nombre, `${total} liga${total === 1 ? '' : 's'}`, 'pais', p.nombre);
-    const susLigas = [...p.ligas.values()].map(l => opcionBusqueda('🏆', l.nombre, 'Liga', 'liga', l.id)).join('');
     const selecciones = [...p.selecciones.values()].map(e => opcionBusqueda('🏳️', `Selección de ${p.nombre}`, 'Selección nacional', 'equipo', e.id)).join('');
-    return principal + susLigas + selecciones;
+    return principal + selecciones;
   }).join('')}`;
   if (ligas.length) html += `<div class="search-heading">Ligas</div>${ligas.map(l => opcionBusqueda('🏆', l.nombre, l.pais || 'Competición', 'liga', l.id)).join('')}`;
   if (equipos.length) html += `<div class="search-heading">Equipos y selecciones</div>${equipos.map(e => opcionBusqueda('⚽', e.nombre, 'Equipo', 'equipo', e.id)).join('')}`;
@@ -326,12 +340,13 @@ function pintarCompeticiones(competiciones, fechaRef) {
     ET: 'Prórroga',
     BT: 'Pausa'
   };
-  return competiciones.map(c => `
-    <div class="liga-group">
-      <div class="liga-head">
-        <span>${esc(c.liga)}</span>
-        <span class="pais">${esc(c.pais)}</span>
-      </div>
+  const abrirTodas = Boolean(filtroActivo) || competiciones.length <= 4;
+  const grupos = competiciones.map((c, indice) => `
+    <details class="liga-group" data-league-group="${c.liga_id}" ${abrirTodas || indice < 3 ? 'open' : ''}>
+      <summary class="liga-head">
+        <span class="liga-title"><span class="liga-name">${esc(c.liga)}</span></span>
+        <span class="liga-meta"><span class="pais">${esc(c.pais)}</span><span class="liga-count" aria-label="${c.partidos.length} partido${c.partidos.length === 1 ? '' : 's'}">${c.partidos.length}</span></span>
+      </summary>
       ${c.partidos.map(p => {
         const estadoVisible = p.finalizado ? 'Final' : (etiquetasEstado[p.estado] || p.hora);
         const marcador = p.finalizado
@@ -341,17 +356,18 @@ function pintarCompeticiones(competiciones, fechaRef) {
         return `<div class="match-shell"><div class="match" role="link" tabindex="0" data-match-open="${esc(url)}">
           <div class="hora">${esc(estadoVisible)}</div>
           <div class="equipo">
-            <img src="/api/equipos/${p.local.id}/escudo" alt="">
+            <img src="/api/equipos/${p.local.id}/escudo" alt="" loading="lazy" decoding="async">
             <span>${esc(p.local.nombre)}</span>
           </div>
           ${marcador}
           <div class="equipo der">
-            <img src="/api/equipos/${p.visitante.id}/escudo" alt="">
+            <img src="/api/equipos/${p.visitante.id}/escudo" alt="" loading="lazy" decoding="async">
             <span>${esc(p.visitante.nombre)}</span>
           </div>
         </div>${p.finalizado?'':`<div class="match-picks" data-pick-match="${p.api_id}" data-match-url="${url}"><span class="pick-loading">Calculando candidatos…</span></div>`}</div>`;
       }).join('')}
-    </div>`).join('');
+    </details>`).join('');
+  return `<div class="league-list-tools"><span>${competiciones.length} ${competiciones.length === 1 ? 'competición' : 'competiciones'} en esta vista</span><div class="league-list-actions"><button type="button" data-leagues-action="expandir">Expandir todo</button><button type="button" data-leagues-action="contraer">Contraer todo</button></div></div>${grupos}`;
 }
 
 function pintarPick(pick,indice,partidoId){return `<div class="pick-row"><span class="pick-rank">${indice+1}</span><div class="pick-copy"><strong>${esc(pick.mercado)}</strong><small>${esc(pick.confianza)} · muestra ${pick.muestra} · ${esc((pick.evidencia||[]).join(' + '))}</small></div><b class="pick-percent">${pick.estimacion}%</b><button class="save-calendar-pick" type="button" data-save-pick="${partidoId}" data-market="${esc(pick.id)}">Guardar</button></div>`}
@@ -370,7 +386,7 @@ function pintarCalendario() {
   const total = competiciones.reduce((suma, liga) => suma + liga.partidos.length, 0);
   const fecha = aDate(fechaActual).toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' });
   document.getElementById('subtitulo').textContent = total
-    ? `${total} partido${total === 1 ? '' : 's'} en ${competiciones.length} competición${competiciones.length === 1 ? '' : 'es'} · ${fecha}`
+    ? `${total} partido${total === 1 ? '' : 's'} en ${competiciones.length} ${competiciones.length === 1 ? 'competición' : 'competiciones'} · ${fecha}`
     : `Sin partidos programados · ${fecha}`;
   const filtro = document.getElementById('filtroActivo');
   filtro.classList.toggle('visible', Boolean(filtroActivo));
@@ -414,6 +430,12 @@ function abrirPartido(local, visitante, liga, apiId, fechaRef) {
 }
 
 document.addEventListener('click', event => {
+  const accionLigas = event.target.closest('[data-leagues-action]');
+  if (accionLigas) {
+    const abrir = accionLigas.dataset.leaguesAction === 'expandir';
+    document.querySelectorAll('[data-league-group]').forEach(grupo => { grupo.open = abrir; });
+    return;
+  }
   const tarjeta = event.target.closest('[data-match-open]');
   if (tarjeta) window.location.href = tarjeta.dataset.matchOpen;
 });

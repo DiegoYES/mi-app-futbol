@@ -40,6 +40,21 @@ test('el comparador permite buscar competiciones por país y equipos por nombre'
   assert.doesNotMatch(estilos, /\.compare-action\.is-ready \{ position:sticky/);
 });
 
+test('el calendario pluraliza correctamente la palabra competición', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  assert.doesNotMatch(html, /competición\$\{competiciones\.length === 1 \? '' : 'es'\}/);
+  assert.match(html, /\? 'competición' : 'competiciones'/);
+});
+
+test('el calendario evita ligas duplicadas y permite contraer sus grupos', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  assert.doesNotMatch(html, /const susLigas =/);
+  assert.match(html, /data-league-group/);
+  assert.match(html, /data-leagues-action="expandir"/);
+  assert.match(html, /data-leagues-action="contraer"/);
+  assert.match(html, /loading="lazy" decoding="async"/);
+});
+
 test('los picks del comparador reciben los filtros visibles de ambos equipos', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
