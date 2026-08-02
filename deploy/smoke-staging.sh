@@ -46,6 +46,13 @@ if [ -z "${COMMIT}" ]; then
   COMMIT="${DESPLEGADO}"
 fi
 [ -n "${COMMIT}" ] || fallo "no sé qué commit validar: pásalo como argumento o despliega antes con deploy-staging.sh."
+# Acepta un SHA abreviado, pero resuélvelo siempre contra el clon local para
+# comparar y registrar la identidad completa del commit desplegado.
+if [ -d "${STAGING_DIR}/.git" ]; then
+  git -C "${STAGING_DIR}" cat-file -e "${COMMIT}^{commit}" 2>/dev/null \
+    || fallo "el commit indicado (${COMMIT}) no existe en el clon de staging."
+  COMMIT="$(git -C "${STAGING_DIR}" rev-parse "${COMMIT}^{commit}")"
+fi
 # Sólo puede validarse el commit que staging está sirviendo AHORA. Impide
 # probar la versión A y registrar la B como validada.
 [ -n "${DESPLEGADO}" ] || fallo "no existe ${STAGING_DIR}/DEPLOYED_COMMIT: despliega primero con deploy-staging.sh."
@@ -74,6 +81,12 @@ if [ "${SMOKE_REMOTE:-0}" != "1" ]; then
   [ "${HEAD_CLON}" = "${COMMIT}" ] \
     || fallo "el clon de staging tiene HEAD ${HEAD_CLON}, no el commit a validar (${COMMIT}); vuelve a desplegar."
 fi
+
+# Una repetición del smoke debe revalidar desde cero. Si cualquier comprobación
+# posterior falla o el proceso se interrumpe, no puede sobrevivir un marcador
+# exitoso de una ejecución anterior.
+[ -w "${STAGING_DIR}" ] || fallo "no puedo actualizar la validación en ${STAGING_DIR}."
+rm -f "${STAGING_DIR}/VALIDATED_COMMIT"
 
 COOKIES="$(mktemp)"
 CUERPO="$(mktemp)"
