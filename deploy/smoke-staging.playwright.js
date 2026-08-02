@@ -13,8 +13,19 @@ const { chromium, devices } = require('playwright');
 const BASE_URL = process.env.STAGING_BASE_URL || 'https://staging.data-fut.com';
 const EMAIL = process.env.STAGING_SMOKE_EMAIL || '';
 const PASSWORD = process.env.STAGING_SMOKE_PASSWORD || '';
-// Recursos que pueden faltar sin que sea un fallo (imágenes de escudos, etc.).
-const RUTAS_TOLERADAS_404 = [/\/api\/(equipos|ligas)\/-?\d+\/(escudo|logo)/];
+// Opcional: credenciales HTTP si Nginx protege staging con auth_basic.
+const BASIC_USER = process.env.STAGING_BASIC_AUTH_USER || '';
+const BASIC_PASSWORD = process.env.STAGING_BASIC_AUTH_PASSWORD || '';
+// Respuestas de imágenes toleradas: 404 de escudos/logos que faltan y 400 de
+// IDs negativos (los datos semilla sintéticos usan api_id negativos a
+// propósito y el proxy de escudos rechaza IDs <= 0).
+const RUTAS_IMAGEN = /\/api\/(equipos|ligas)\/(-?\d+)\/(escudo|logo)/;
+function respuestaImagenTolerada(url, estado) {
+  const coincide = url.match(RUTAS_IMAGEN);
+  if (!coincide) return false;
+  if (estado === 404) return true;
+  return estado === 400 && Number(coincide[2]) < 0;
+}
 
 if (/\/\/(www\.)?data-fut\.com/.test(BASE_URL)) {
   console.error(`BLOQUEADO: STAGING_BASE_URL apunta a producción (${BASE_URL}).`);
@@ -31,7 +42,11 @@ const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/b
 async function recorrer(nombre, opcionesContexto) {
   const errores = [];
   const navegador = await chromium.launch();
-  const contexto = await navegador.newContext({ baseURL: BASE_URL, ...opcionesContexto });
+  const contexto = await navegador.newContext({
+    baseURL: BASE_URL,
+    ...(BASIC_USER ? { httpCredentials: { username: BASIC_USER, password: BASIC_PASSWORD } } : {}),
+    ...opcionesContexto
+  });
   const pagina = await contexto.newPage();
 
   pagina.on('pageerror', (err) => errores.push(`[${nombre}] error JS: ${err.message}`));
@@ -42,7 +57,7 @@ async function recorrer(nombre, opcionesContexto) {
     const estado = resp.status();
     if (estado < 400) return;
     const url = resp.url();
-    if (RUTAS_TOLERADAS_404.some((re) => re.test(url)) && estado === 404) return;
+    if (respuestaImagenTolerada(url, estado)) return;
     errores.push(`[${nombre}] HTTP ${estado} en ${url}`);
   });
 
@@ -105,11 +120,15 @@ async function recorrer(nombre, opcionesContexto) {
   if (await buscador.count()) {
     await buscador.fill('Argentina');
     await pagina.waitForTimeout(1500);
-    const textos = await pagina.locator('#resultadosBusqueda .search-option').allInnerTexts();
+    // Compara la IDENTIDAD (tipo:id) de cada resultado, no su texto: la misma
+    // liga puede pintarse con textos secundarios distintos ("Liga", "Argentina").
+    const identidades = await pagina
+      .locator('#resultadosBusqueda .search-option')
+      .evaluateAll((opciones) => opciones.map((o) => `${o.dataset.filterType}:${o.dataset.filterId}`));
     const vistos = new Set();
-    for (const texto of textos.map((t) => t.trim().replace(/\s+/g, ' ')).filter(Boolean)) {
-      if (vistos.has(texto)) errores.push(`[${nombre}] resultado de búsqueda duplicado: "${texto}"`);
-      vistos.add(texto);
+    for (const identidad of identidades) {
+      if (vistos.has(identidad)) errores.push(`[${nombre}] resultado de búsqueda duplicado: ${identidad}`);
+      vistos.add(identidad);
     }
   } else {
     errores.push(`[${nombre}] no se encontró el buscador #busquedaCalendario en el calendario.`);

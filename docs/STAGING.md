@@ -100,7 +100,10 @@ sudo nginx -t && sudo systemctl reload nginx
 
 La plantilla incluye (comentadas) dos protecciones adicionales recomendadas:
 `auth_basic` con `htpasswd`, o restricción por IP con `allow`/`deny`. Activa al
-menos una para que el entorno de prueba no sea público.
+menos una para que el entorno de prueba no sea público. Si activas
+`auth_basic`, pasa las credenciales HTTP a los smoke tests mediante
+`STAGING_BASIC_AUTH_USER` y `STAGING_BASIC_AUTH_PASSWORD` (variables de
+entorno; nunca hardcodeadas).
 
 ### 7. Base de datos separada (creación manual y segura)
 
@@ -137,7 +140,9 @@ Jamás ejecutes ese comando con la URI de producción.
 
 `scripts/cargarSemillasStaging.js` crea una cuenta de prueba, dos equipos y un
 partido sintéticos (con `api_id` negativos, imposibles de confundir con datos
-reales). El script **se niega a ejecutarse** si el nombre de la base no termina
+reales). El proxy de escudos responde HTTP 400 a los IDs negativos; el smoke
+test de Playwright tolera exactamente esos 400 (además de los 404 de imágenes
+ausentes), así que las semillas no lo hacen fallar. El script **se niega a ejecutarse** si el nombre de la base no termina
 en `-staging`, exige `APP_ENVIRONMENT=staging` más la confirmación explícita
 `STAGING_SEED_CONFIRM=SEMILLAS`, nunca borra nada y no consume API-Football.
 No se ejecuta automáticamente; lánzalo a mano cuando lo decidas:
@@ -165,8 +170,14 @@ El despliegue siempre recibe un commit explícito; nunca "lo último" implícito
 > plantilla actualizada `deploy/mi-app-futbol.service`. `promote-production.sh`
 > y `rollback-production.sh` verifican el `WorkingDirectory` real del unit con
 > `systemctl show` y **abortan** si el servicio sigue ejecutando desde el
-> directorio plano, porque cambiar el symlink no tendría efecto. Migrar el
-> unit real requiere autorización y una ventana de reinicio.
+> directorio plano. La migración inicial se hace con
+> `deploy/bootstrap-production-releases.sh`, que: detecta el commit actual de
+> producción, lo instala como release inicial, crea `current` y
+> `DEPLOYED_COMMIT`, verifica propietario/permisos, respalda el unit actual,
+> instala el nuevo sólo cuando `current/server.js` existe, ejecuta
+> `daemon-reload` + reinicio + health check y **restaura el unit anterior
+> automáticamente** si el health check falla. Requiere autorización, una
+> ventana de reinicio y teclear `BOOTSTRAP`.
 
 ```bash
 # 1. Despliega un commit concreto en staging (releases/<sha> + symlink current).

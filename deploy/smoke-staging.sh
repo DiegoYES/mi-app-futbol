@@ -11,6 +11,9 @@
 #        STAGING_SMOKE_EMAIL     cuenta de staging (obligatoria; jamás una de producción)
 #        STAGING_SMOKE_PASSWORD  contraseña de esa cuenta (obligatoria)
 #        STAGING_DIR             (por defecto /opt/mi-app-futbol-staging)
+#        STAGING_BASIC_AUTH_USER / STAGING_BASIC_AUTH_PASSWORD
+#                                credenciales HTTP opcionales si Nginx protege
+#                                staging con auth_basic (nunca hardcodeadas)
 #        RUN_PLAYWRIGHT=1        además ejecuta deploy/smoke-staging.playwright.js
 #
 # Si todo pasa, registra el commit como VALIDADO en:
@@ -57,7 +60,18 @@ comprobar() { # comprobar <descripcion> <esperado> <obtenido>
   fi
 }
 
-http_get() { curl -sS -o "${CUERPO}" -w '%{http_code}' -b "${COOKIES}" "${BASE_URL}$1"; }
+# Autenticación básica opcional de Nginx. La credencial se pasa mediante un
+# archivo de configuración temporal de curl (-K), nunca en la línea de comandos.
+CURL_AUTH=()
+if [ -n "${STAGING_BASIC_AUTH_USER:-}" ]; then
+  CURL_CFG="$(mktemp)"
+  chmod 600 "${CURL_CFG}"
+  printf 'user = "%s:%s"\n' "${STAGING_BASIC_AUTH_USER}" "${STAGING_BASIC_AUTH_PASSWORD:-}" > "${CURL_CFG}"
+  CURL_AUTH=(-K "${CURL_CFG}")
+  trap 'rm -f "${COOKIES}" "${CUERPO}" "${CURL_CFG}"' EXIT
+fi
+
+http_get() { curl -sS "${CURL_AUTH[@]+"${CURL_AUTH[@]}"}" -o "${CUERPO}" -w '%{http_code}' -b "${COOKIES}" "${BASE_URL}$1"; }
 
 echo "== Smoke test contra ${BASE_URL} (commit ${COMMIT}) =="
 
@@ -66,7 +80,7 @@ comprobar "/health/live"  200 "$(http_get /health/live)"
 comprobar "/health/ready" 200 "$(http_get /health/ready)"
 
 echo "-- Cabeceras de seguridad en / --"
-HEADERS="$(curl -sSI "${BASE_URL}/")"
+HEADERS="$(curl -sSI "${CURL_AUTH[@]+"${CURL_AUTH[@]}"}" "${BASE_URL}/")"
 for cabecera in 'content-security-policy' 'strict-transport-security' 'x-content-type-options'; do
   if printf '%s' "${HEADERS}" | grep -qi "^${cabecera}:"; then
     echo "  OK    ${cabecera}"
@@ -86,7 +100,7 @@ else
 fi
 
 echo "-- Login (cuenta de staging) --"
-CODIGO_LOGIN="$(curl -sS -o "${CUERPO}" -w '%{http_code}' -c "${COOKIES}" \
+CODIGO_LOGIN="$(curl -sS "${CURL_AUTH[@]+"${CURL_AUTH[@]}"}" -o "${CUERPO}" -w '%{http_code}' -c "${COOKIES}" \
   -H 'Content-Type: application/json' \
   -H "Origin: ${BASE_URL}" \
   --data "{\"email\":\"${EMAIL}\",\"password\":\"${PASSWORD}\"}" \

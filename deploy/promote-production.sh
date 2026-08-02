@@ -44,12 +44,11 @@ SHA="$(git -C "${REPO_DIR}" rev-parse "$1^{commit}")"
 WD_SERVICIO="$(systemctl show -p WorkingDirectory --value "${PROD_SERVICE}" 2>/dev/null || true)"
 if [ "${WD_SERVICIO}" != "${PROD_DIR}/current" ]; then
   fallo "el servicio ${PROD_SERVICE} ejecuta desde '${WD_SERVICIO:-desconocido}', no desde ${PROD_DIR}/current.
-Migra primero (una sola vez, con autorización):
-  1. Actualiza WorkingDirectory y ReadWritePaths en /etc/systemd/system/${PROD_SERVICE}.service
-     según la plantilla deploy/mi-app-futbol.service del repositorio.
-  2. Instala el commit actual como release inicial:
-     PROD_DIR=${PROD_DIR} deploy/promote-production.sh <commit_actual>  (tras la migración)
-  3. sudo systemctl daemon-reload && sudo systemctl restart ${PROD_SERVICE}"
+Migra primero (una sola vez, con autorización) usando el procedimiento seguro:
+  deploy/bootstrap-production-releases.sh
+Ese script instala el commit actual como release inicial, crea current,
+respalda el unit, lo actualiza y lo restaura automáticamente si el health
+check falla. Después vuelve a ejecutar este script."
 fi
 
 VALIDADO_ARCHIVO="${STAGING_DIR}/VALIDATED_COMMIT"

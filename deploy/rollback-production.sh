@@ -25,7 +25,7 @@ fallo() { echo "ERROR: $*" >&2; exit 1; }
 
 WD_SERVICIO="$(systemctl show -p WorkingDirectory --value "${PROD_SERVICE}" 2>/dev/null || true)"
 [ "${WD_SERVICIO}" = "${PROD_DIR}/current" ] \
-  || fallo "el servicio ${PROD_SERVICE} ejecuta desde '${WD_SERVICIO:-desconocido}', no desde ${PROD_DIR}/current; el rollback por symlink no tendría efecto. Migra el servicio según deploy/mi-app-futbol.service."
+  || fallo "el servicio ${PROD_SERVICE} ejecuta desde '${WD_SERVICIO:-desconocido}', no desde ${PROD_DIR}/current; el rollback por symlink no tendría efecto. Migra primero con deploy/bootstrap-production-releases.sh."
 
 HISTORIAL="${PROD_DIR}/RELEASE_HISTORY"
 [ -f "${HISTORIAL}" ] || fallo "no existe ${HISTORIAL}: no hay despliegues registrados a los que volver."
