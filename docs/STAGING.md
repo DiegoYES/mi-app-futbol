@@ -203,21 +203,27 @@ smoke corre desde otra máquina.
 
 ## Rollback
 
-`promote-production.sh` registra cada cambio en
-`/var/www/mi-app-futbol/RELEASE_HISTORY` (formato `fecha anterior -> nuevo`).
-Para volver atrás:
+`promote-production.sh` registra cada activación **saludable** en
+`/var/www/mi-app-futbol/RELEASE_HISTORY` (una línea por activación, campos
+exactos `fecha commit etiqueta`, con etiqueta `baseline`, `promote`,
+`rollback` o `auto-rollback`). Un commit que falló su health check nunca se
+registra, así el rollback sin argumento jamás lo seleccionará. Para volver
+atrás:
 
 ```bash
-deploy/rollback-production.sh          # vuelve al commit anterior registrado
-deploy/rollback-production.sh <sha>    # o a uno concreto del historial
+deploy/rollback-production.sh          # vuelve a la última activación saludable distinta de la actual
+deploy/rollback-production.sh <sha>    # o a una concreta del historial
 ```
 
-El rollback valida el proceso PM2, sólo acepta commits registrados en el
-historial, exige teclear `ROLLBACK`, hace checkout + `npm ci` y verifica
-`/health/ready`. Además, `promote-production.sh` hace un auto-rollback al
-commit anterior si el proceso no queda saludable. No toca MongoDB: si un
-despliegue incluyó cambios de esquema, evalúa su compatibilidad hacia atrás
-antes de promover (los cambios de datos requieren su propio plan autorizado).
+El rollback valida el proceso PM2, sólo acepta commits registrados como
+activaciones saludables, exige teclear `ROLLBACK`, hace checkout + `npm ci`,
+reinicia y verifica `/health/ready`. Tanto la promoción como el rollback son
+**transaccionales**: si fallan el checkout, `npm ci`, `pm2 restart` o el
+health check, restauran automáticamente el commit anterior, sus dependencias
+y `DEPLOYED_COMMIT`, y verifican que PM2 quede saludable. No tocan MongoDB:
+si un despliegue incluyó cambios de esquema, evalúa su compatibilidad hacia
+atrás antes de promover (los cambios de datos requieren su propio plan
+autorizado).
 
 ## Fase 2: migración a systemd con usuario restringido
 

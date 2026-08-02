@@ -50,11 +50,23 @@ git -C "${REPO_DIR}" cat-file -e "${COMMIT_PEDIDO}^{commit}" 2>/dev/null \
 SHA="$(git -C "${REPO_DIR}" rev-parse "${COMMIT_PEDIDO}^{commit}")"
 
 # --- Clon independiente de staging -------------------------------------------
+# Orden de instalación soportado: puedes crear ${STAGING_DIR} y colocar el
+# .env ANTES del primer despliegue (es el flujo documentado). Si el directorio
+# ya existe sin .git, sólo se acepta si contiene exclusivamente artefactos
+# esperados de aprovisionamiento (.env, var/, marcadores de despliegue).
 if [ ! -d "${STAGING_DIR}/.git" ]; then
-  [ -e "${STAGING_DIR}" ] && [ -n "$(ls -A "${STAGING_DIR}" 2>/dev/null)" ] \
-    && fallo "${STAGING_DIR} existe y no es un clon git; resuélvelo manualmente."
-  echo "Creando clon de staging en ${STAGING_DIR}..."
-  git clone --no-hardlinks "${REPO_DIR}" "${STAGING_DIR}"
+  if [ -d "${STAGING_DIR}" ]; then
+    while IFS= read -r ENTRADA; do
+      case "${ENTRADA}" in
+        .env|DEPLOYED_COMMIT|VALIDATED_COMMIT|var) : ;;
+        *) fallo "${STAGING_DIR} contiene '${ENTRADA}', que no es un artefacto esperado de staging; resuélvelo manualmente antes de desplegar." ;;
+      esac
+    done < <(ls -A "${STAGING_DIR}")
+  else
+    mkdir -p "${STAGING_DIR}"
+  fi
+  echo "Inicializando clon de staging en ${STAGING_DIR} (se conserva el .env existente)..."
+  git -C "${STAGING_DIR}" init --quiet
 fi
 
 # Nunca pisar cambios locales del clon (los archivos sin seguimiento, como
@@ -62,7 +74,7 @@ fi
 [ -z "$(git -C "${STAGING_DIR}" status --porcelain --untracked-files=no)" ] \
   || fallo "el clon de staging tiene cambios locales en archivos versionados; resuélvelos antes de desplegar."
 
-git -C "${STAGING_DIR}" fetch --quiet "${REPO_DIR}" 2>/dev/null || true
+git -C "${STAGING_DIR}" fetch --quiet "${REPO_DIR}" '+refs/heads/*:refs/remotes/origen/*' 2>/dev/null || true
 git -C "${STAGING_DIR}" cat-file -e "${SHA}^{commit}" 2>/dev/null \
   || fallo "el commit ${SHA} no llegó al clon de staging; revisa el fetch."
 
