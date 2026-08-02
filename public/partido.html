@@ -252,12 +252,12 @@
   <section class="match-tab-panel" data-match-panel="comparacion">
     <div class="filtros">
       <div class="condition-filters">
-        <div class="condition-filter"><label for="fAlcanceLocal" id="labelAlcanceLocal">Condición del equipo local</label><select id="fAlcanceLocal" onchange="cargarTodo()"><option value="general">Todos sus partidos</option><option value="local" selected>Solo cuando juega de local</option><option value="visitante">Solo cuando juega de visitante</option></select></div>
-        <div class="condition-filter"><label for="fAlcanceVisitante" id="labelAlcanceVisitante">Condición del equipo visitante</label><select id="fAlcanceVisitante" onchange="cargarTodo()"><option value="general">Todos sus partidos</option><option value="local">Solo cuando juega de local</option><option value="visitante" selected>Solo cuando juega de visitante</option></select></div>
+        <div class="condition-filter"><label for="fAlcanceLocal" id="labelAlcanceLocal">Condición del equipo local</label><select id="fAlcanceLocal"><option value="general">Todos sus partidos</option><option value="local" selected>Solo cuando juega de local</option><option value="visitante">Solo cuando juega de visitante</option></select></div>
+        <div class="condition-filter"><label for="fAlcanceVisitante" id="labelAlcanceVisitante">Condición del equipo visitante</label><select id="fAlcanceVisitante"><option value="general">Todos sus partidos</option><option value="local">Solo cuando juega de local</option><option value="visitante" selected>Solo cuando juega de visitante</option></select></div>
       </div>
-      <label for="fLimite">Muestra</label><select id="fLimite" onchange="cargarTodo()"><option value="all">Toda la temporada</option><option value="5">Últimos 5</option><option value="3">Últimos 3</option></select>
-      <label for="fPeriodo">Periodo</label><select id="fPeriodo" onchange="cargarTodo()"><option value="0">Partido completo</option><option value="1">1.º tiempo</option><option value="2">2.º tiempo</option></select>
-      <label for="fFormato">Mostrar</label><select id="fFormato" onchange="cambiarFormatoFrecuencia(this.value)"><option value="percent">Porcentaje</option><option value="count">Veces cumplidas</option></select>
+      <label for="fLimite">Muestra</label><select id="fLimite"><option value="all">Toda la temporada</option><option value="5">Últimos 5</option><option value="3">Últimos 3</option></select>
+      <label for="fPeriodo">Periodo</label><select id="fPeriodo"><option value="0">Partido completo</option><option value="1">1.º tiempo</option><option value="2">2.º tiempo</option></select>
+      <label for="fFormato">Mostrar</label><select id="fFormato"><option value="percent">Porcentaje</option><option value="count">Veces cumplidas</option></select>
     </div>
     <div class="panel"><div class="panel-title"><h3>Comparación directa</h3><span>Misma muestra para ambos equipos</span></div><div class="panel-body" id="tablaComparacion"><div class="aviso">Cargando...</div></div></div>
   </section>
@@ -881,6 +881,10 @@ async function cargarTodo() {
 
 document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('fFormato').value = formatoFrecuencia;
+  ['fAlcanceLocal', 'fAlcanceVisitante', 'fLimite', 'fPeriodo'].forEach(id => {
+    document.getElementById(id).addEventListener('change', () => cargarTodo());
+  });
+  document.getElementById('fFormato').addEventListener('change', event => cambiarFormatoFrecuencia(event.target.value));
   document.getElementById('share-match').addEventListener('click',async event=>{try{await navigator.clipboard.writeText(location.href);event.currentTarget.textContent='Enlace copiado ✓'}catch{window.prompt('Copia este enlace de análisis:',location.href)}});
   if (!ID_LOCAL || !ID_VISITANTE) {
     document.getElementById('cabecera').innerHTML =

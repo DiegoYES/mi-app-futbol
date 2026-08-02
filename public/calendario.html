@@ -338,7 +338,7 @@ function pintarCompeticiones(competiciones, fechaRef) {
           ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
           : `<div class="marcador vs">vs</div>`;
         const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
-        return `<div class="match-shell"><div class="match" onclick="abrirPartido(${p.local.id},${p.visitante.id},${c.liga_id},${p.api_id},'${fechaRef}')">
+        return `<div class="match-shell"><div class="match" role="link" tabindex="0" data-match-open="${esc(url)}">
           <div class="hora">${esc(estadoVisible)}</div>
           <div class="equipo">
             <img src="/api/equipos/${p.local.id}/escudo" alt="">
@@ -412,6 +412,19 @@ async function cargarCalendario() {
 function abrirPartido(local, visitante, liga, apiId, fechaRef) {
   window.location.href = `/partido.html?local=${local}&visitante=${visitante}&liga=${liga}&partido=${apiId}&fecha=${fechaRef || fechaActual}`;
 }
+
+document.addEventListener('click', event => {
+  const tarjeta = event.target.closest('[data-match-open]');
+  if (tarjeta) window.location.href = tarjeta.dataset.matchOpen;
+});
+
+document.addEventListener('keydown', event => {
+  if (event.key !== 'Enter' && event.key !== ' ') return;
+  const tarjeta = event.target.closest('[data-match-open]');
+  if (!tarjeta) return;
+  event.preventDefault();
+  window.location.href = tarjeta.dataset.matchOpen;
+});
 
 document.addEventListener('click',async event=>{const boton=event.target.closest('[data-save-pick]');if(!boton)return;event.preventDefault();event.stopPropagation();boton.disabled=true;try{const r=await fetch('/api/picks/seguimiento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({partido_id:Number(boton.dataset.savePick),mercado_id:boton.dataset.market})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'No se pudo guardar');boton.textContent='✓ Guardado';boton.classList.add('saved')}catch(error){boton.textContent=error.message;setTimeout(()=>{boton.textContent='Guardar';boton.disabled=false},2200)}});
 

@@ -28,6 +28,7 @@ const {
   configurarProxy,
   errorServidor,
   limiteApi,
+  limiteEscudos,
   manejarJsonInvalido,
   revisarConfiguracionSegura,
   validarOrigenNavegador
@@ -36,7 +37,14 @@ const { observarHttp } = require('./middleware/observability');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+// Por defecto solo loopback: Nginx hace de frontal con TLS. Exponer Node
+// directo permitiría saltarse HTTPS (la cookie Secure no viajaría). Define
+// HOST=0.0.0.0 solo si de verdad quieres exponerlo sin proxy.
+const HOST = process.env.HOST || '127.0.0.1';
 const cacheEscudos = new Map();
+// Tope de escudos en memoria: ~2000 imágenes (~30KB c/u ≈ 60MB máx). Al
+// llenarse se descarta el más antiguo; el navegador igual cachea 7 días.
+const MAX_ESCUDOS_CACHE = 2000;
 const TEMPORADA_MIN_ANALISIS = Number.parseInt(process.env.ANALYSIS_MIN_SEASON || '2025', 10);
 
 app.disable('x-powered-by');
@@ -46,9 +54,12 @@ app.use(observarHttp);
 app.use(helmet({
   // Compatibilidad temporal con scripts/estilos inline existentes. Aun así se
   // bloquean scripts remotos, iframes, objetos y conexiones a otros orígenes.
+  // Ojo: scriptSrcAttr sigue en 'none', así que los manejadores inline
+  // (onclick="...", onsubmit="...") NO se ejecutan. Usa addEventListener.
   contentSecurityPolicy: { directives: {
     defaultSrc: ["'self'"],
     scriptSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrcAttr: ["'none'"],
     styleSrc: ["'self'", "'unsafe-inline'"],
     imgSrc: ["'self'", 'data:', 'https://media.api-sports.io'],
     connectSrc: ["'self'"],
@@ -68,7 +79,11 @@ app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '32kb' }));
 app.use(cookieParser());
 
 app.use('/health', systemRoutes);
-app.use('/api', validarOrigenNavegador, limiteApi);
+// Las imágenes (escudos y logos) quedan fuera del límite general de /api: son
+// cacheables y una página puede pedir cientos en una sola carga. Tienen su propio límite.
+const RUTA_IMAGEN = /^\/(equipos\/\d+\/escudo|ligas\/\d+\/logo)\/?$/;
+app.use('/api', validarOrigenNavegador, (req, res, next) =>
+  RUTA_IMAGEN.test(req.path) ? limiteEscudos(req, res, next) : limiteApi(req, res, next));
 
 // / y /index.html son la portada; el comparador vive en una ruta explícita.
 app.get(['/', '/index.html'], (_req, res) => res.sendFile(path.join(__dirname, 'public', 'inicio.html')));
@@ -82,6 +97,11 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/sugerencias', requireAuth, sugerenciasRoutes);
 
 // Todos los endpoints de datos requieren sesión válida y acceso vigente
+// Las imágenes exigen sesión pero se registran antes de `protegido` para no
+// pasar por el límite por usuario (120/min): una sola página llena de partidos
+// o competiciones lo agotaría y dejaría las imágenes rotas. Usan limiteEscudos.
+app.get('/api/equipos/:id/escudo', requireAuth, servirEscudo);
+app.get('/api/ligas/:id/logo', requireAuth, servirLogoLiga);
 app.use('/api/ligas', protegido);
 app.use('/api/equipos', protegido);
 app.use('/api/partidos', protegido);
@@ -169,7 +189,8 @@ app.get('/api/ligas', cacheMiddleware, async (req, res) => {
 });
 
 // Logos de competición para los selectores visuales. No consume cuota de API.
-app.get('/api/ligas/:id/logo', async (req, res) => {
+// Se monta arriba (antes de `protegido`) con requireAuth + limiteEscudos.
+async function servirLogoLiga(req, res) {
   const leagueId = Number.parseInt(req.params.id, 10);
   if (!Number.isInteger(leagueId) || leagueId <= 0) return res.status(400).end();
   const clave = `liga:${leagueId}`;
@@ -187,6 +208,9 @@ app.get('/api/ligas/:id/logo', async (req, res) => {
     if (!tipo.startsWith('image/')) throw new Error('El CDN no devolvió una imagen');
     const buffer = Buffer.from(await respuesta.arrayBuffer());
     if (buffer.length < 100) throw new Error('Imagen vacía');
+    if (cacheEscudos.size >= MAX_ESCUDOS_CACHE) {
+      cacheEscudos.delete(cacheEscudos.keys().next().value);
+    }
     cacheEscudos.set(clave, { tipo, buffer });
     res.set({ 'Content-Type': tipo, 'Cache-Control': 'public, max-age=604800, immutable' });
     return res.send(buffer);
@@ -195,7 +219,7 @@ app.get('/api/ligas/:id/logo', async (req, res) => {
     res.set({ 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' });
     return res.send(svg);
   }
-});
+}
 
 // Equipos de una competición (league ID) – orden alfabético
 app.get('/api/ligas/:id/equipos', cacheMiddleware, async (req, res) => {
@@ -843,7 +867,8 @@ app.get('/api/equipos/:id/logo', async (req, res) => {
 
 // Proxy local de escudos: evita bloqueos de hotlink/CORS del CDN en el navegador.
 // No consume cuota de API-Football; sólo descarga la imagen pública y la conserva en memoria.
-app.get('/api/equipos/:id/escudo', async (req, res) => {
+// Se monta arriba (antes de `protegido`) con requireAuth + limiteEscudos.
+async function servirEscudo(req, res) {
   const teamId = Number.parseInt(req.params.id, 10);
   if (!Number.isInteger(teamId) || teamId <= 0) return res.status(400).end();
   const guardado = cacheEscudos.get(teamId);
@@ -860,6 +885,9 @@ app.get('/api/equipos/:id/escudo', async (req, res) => {
     if (!tipo.startsWith('image/')) throw new Error('El CDN no devolvió una imagen');
     const buffer = Buffer.from(await respuesta.arrayBuffer());
     if (buffer.length < 100) throw new Error('Imagen vacía');
+    if (cacheEscudos.size >= MAX_ESCUDOS_CACHE) {
+      cacheEscudos.delete(cacheEscudos.keys().next().value);
+    }
     cacheEscudos.set(teamId, { tipo, buffer });
     res.set({ 'Content-Type': tipo, 'Cache-Control': 'public, max-age=604800, immutable' });
     return res.send(buffer);
@@ -869,7 +897,7 @@ app.get('/api/equipos/:id/escudo', async (req, res) => {
     res.set({ 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=3600' });
     return res.send(svg);
   }
-});
+}
 
 // ----- ENDPOINT: estadísticas completas de un partido (incluye mercados) -----
 app.get('/api/partidos/:id/estadisticas', async (req, res) => {
@@ -1041,8 +1069,8 @@ async function iniciarServidor() {
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('✅ Conectado a MongoDB');
 
-  const servidor = app.listen(PORT, () => {
-    console.log(`🚀 Servidor listo en http://localhost:${PORT}`);
+  const servidor = app.listen(PORT, HOST, () => {
+    console.log(`🚀 Servidor listo en http://${HOST}:${PORT}`);
   });
   servidor.keepAliveTimeout = 65_000;
   servidor.headersTimeout = 66_000;

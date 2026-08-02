@@ -129,6 +129,17 @@ const limiteUsuario = rateLimit({
   handler: respuestaLimite
 });
 
+// Los escudos son imágenes: una sola página de calendario pide cientos y el
+// navegador solo las vuelve a pedir cuando expira su caché. Van con un límite
+// propio y holgado para no agotar la cuota general de la API por IP.
+const limiteEscudos = rateLimit({
+  windowMs: 60_000,
+  limit: enteroEnRango(process.env.BADGE_RATE_LIMIT_PER_MINUTE, 1200, 100, 10000),
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: respuestaLimite
+});
+
 function manejarJsonInvalido(error, _req, res, next) {
   if (error?.type === 'entity.too.large') {
     return res.status(413).json({ error: 'La solicitud es demasiado grande.', codigo: 'BODY_MUY_GRANDE' });
@@ -145,6 +156,7 @@ module.exports = {
   errorServidor,
   escaparRegex,
   limiteApi,  limiteUsuario,
+  limiteEscudos,
   manejarJsonInvalido,
   origenesPermitidos,
   revisarConfiguracionSegura,

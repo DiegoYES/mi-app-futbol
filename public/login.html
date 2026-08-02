@@ -38,13 +38,13 @@
   </div>
 
   <div class="tabs">
-    <button id="tabLogin" class="active" onclick="cambiarTab('login')">Iniciar sesión</button>
-    <button id="tabRegistro" onclick="cambiarTab('registro')">Crear cuenta</button>
+    <button id="tabLogin" type="button" class="active" data-tab="login">Iniciar sesión</button>
+    <button id="tabRegistro" type="button" data-tab="registro">Crear cuenta</button>
   </div>
 
   <div id="msg" class="msg"></div>
 
-  <form id="formLogin" onsubmit="enviar(event,'login')">
+  <form id="formLogin" data-tipo="login">
     <label for="loginEmail">Email</label>
     <input id="loginEmail" type="email" required autocomplete="email">
     <label for="loginPassword">Contraseña</label>
@@ -52,7 +52,7 @@
     <button class="submit" type="submit">Entrar</button>
   </form>
 
-  <form id="formRegistro" style="display:none" onsubmit="enviar(event,'registro')">
+  <form id="formRegistro" style="display:none" data-tipo="registro">
     <label for="regNombre">Nombre</label>
     <input id="regNombre" type="text" autocomplete="name">
     <label for="regEmail">Email</label>
@@ -112,6 +112,15 @@ async function enviar(evento, tipo) {
     boton.disabled = false;
   }
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+  document.querySelectorAll('.tabs button[data-tab]').forEach(boton => {
+    boton.addEventListener('click', () => cambiarTab(boton.dataset.tab));
+  });
+  document.querySelectorAll('form[data-tipo]').forEach(formulario => {
+    formulario.addEventListener('submit', evento => enviar(evento, formulario.dataset.tipo));
+  });
+});
 </script>
 </body>
 </html>
