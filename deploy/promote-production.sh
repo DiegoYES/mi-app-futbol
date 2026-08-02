@@ -9,6 +9,9 @@
 #        PROD_PORT      (por defecto 3000)
 #        STAGING_DIR    (por defecto /var/www/mi-app-futbol-staging) — de aquí
 #                       se lee VALIDATED_COMMIT.
+#        CURRENT_RUNNING_COMMIT  sólo para el PRIMER uso (bootstrap): commit
+#                       que PM2 ejecuta ahora mismo, cuando no existe
+#                       DEPLOYED_COMMIT. Git HEAD no se asume equivalente.
 #
 # Garantías:
 #  - Rechaza cualquier commit que no coincida con el registrado como validado
@@ -63,13 +66,41 @@ VALIDADO="$(cat "${VALIDADO_ARCHIVO}")"
 # --- Estado actual de producción ----------------------------------------------
 [ -z "$(git -C "${PROD_DIR}" status --porcelain --untracked-files=no)" ] \
   || fallo "el árbol de producción tiene cambios locales en archivos versionados; guárdalos o descártalos antes de promover."
-ACTUAL="$(git -C "${PROD_DIR}" rev-parse HEAD)"
-[ "${ACTUAL}" != "${SHA}" ] || fallo "producción ya ejecuta el commit ${SHA}; nada que promover."
+HEAD_GIT="$(git -C "${PROD_DIR}" rev-parse HEAD)"
+
+# Git HEAD NO equivale al código cargado por PM2: HEAD puede haber avanzado
+# mientras el proceso sigue ejecutando un commit anterior. El commit base
+# (destino de restauración) se determina así:
+#   - Si existe DEPLOYED_COMMIT, debe ser un SHA válido y es el commit
+#     realmente desplegado.
+#   - Primer uso (bootstrap, sin DEPLOYED_COMMIT): exige CURRENT_RUNNING_COMMIT
+#     con el commit que PM2 ejecuta ahora mismo.
+BOOTSTRAP=0
+if [ -f "${PROD_DIR}/DEPLOYED_COMMIT" ]; then
+  BASE="$(cat "${PROD_DIR}/DEPLOYED_COMMIT")"
+  git -C "${PROD_DIR}" cat-file -e "${BASE}^{commit}" 2>/dev/null \
+    || fallo "DEPLOYED_COMMIT contiene '${BASE}', que no es un commit válido de ${PROD_DIR}; corrígelo antes de promover."
+  BASE="$(git -C "${PROD_DIR}" rev-parse "${BASE}^{commit}")"
+else
+  BOOTSTRAP=1
+  [ -n "${CURRENT_RUNNING_COMMIT:-}" ] \
+    || fallo "primer uso sin DEPLOYED_COMMIT: define CURRENT_RUNNING_COMMIT con el commit que PM2 ejecuta AHORA (no se asume Git HEAD; compruébalo con pm2 describe/logs antes de promover)."
+  git -C "${PROD_DIR}" cat-file -e "${CURRENT_RUNNING_COMMIT}^{commit}" 2>/dev/null \
+    || fallo "CURRENT_RUNNING_COMMIT ('${CURRENT_RUNNING_COMMIT}') no es un commit válido de ${PROD_DIR}."
+  BASE="$(git -C "${PROD_DIR}" rev-parse "${CURRENT_RUNNING_COMMIT}^{commit}")"
+fi
+[ "${BASE}" != "${SHA}" ] || fallo "producción ya ejecuta el commit ${SHA}; nada que promover."
 
 echo "Vas a promover a PRODUCCIÓN (PM2):"
 echo "  Proceso        : ${PROD_PM2_APP} (online, cwd ${CWD_PM2})"
-echo "  Commit actual  : ${ACTUAL}"
+if [ "${BOOTSTRAP}" = "1" ]; then
+  echo "  Commit en PM2  : ${BASE} (bootstrap: indicado por CURRENT_RUNNING_COMMIT)"
+else
+  echo "  Commit en PM2  : ${BASE} (según DEPLOYED_COMMIT)"
+fi
+[ "${HEAD_GIT}" = "${BASE}" ] || echo "  Git HEAD       : ${HEAD_GIT} (difiere del código en ejecución)"
 echo "  Commit nuevo   : ${SHA}"
+echo "Si la promoción falla, se restaurará el commit ${BASE}."
 echo "Este script NO toca MongoDB, ni índices, ni sincronizaciones."
 printf 'Escribe exactamente PROMOVER para continuar: '
 read -r CONFIRMACION
@@ -83,17 +114,10 @@ HISTORIAL="${PROD_DIR}/RELEASE_HISTORY"
 registrar() { # registrar <commit> <etiqueta>
   printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" >> "${HISTORIAL}"
 }
-# El commit actual está online y validado por PM2: es un destino legítimo de
-# rollback. Regístralo como base si el historial no lo tiene como última entrada.
-if [ ! -f "${HISTORIAL}" ] || [ "$(awk 'END{print $2}' "${HISTORIAL}")" != "${ACTUAL}" ]; then
-  registrar "${ACTUAL}" "baseline"
-fi
-
-DEPLOYED_PREVIO=""
-DEPLOYED_EXISTIA=0
-if [ -f "${PROD_DIR}/DEPLOYED_COMMIT" ]; then
-  DEPLOYED_EXISTIA=1
-  DEPLOYED_PREVIO="$(cat "${PROD_DIR}/DEPLOYED_COMMIT")"
+# El commit base está en ejecución bajo PM2: es un destino legítimo de
+# rollback. Se registra SÓLO tras la confirmación, como última entrada.
+if [ ! -f "${HISTORIAL}" ] || [ "$(awk 'END{print $2}' "${HISTORIAL}")" != "${BASE}" ]; then
+  registrar "${BASE}" "baseline"
 fi
 
 reiniciar_y_verificar() { # -> 0 si pm2 restart funciona y /health/ready responde
@@ -115,17 +139,15 @@ restaurar_produccion() {
   [ "${RESTAURADO}" = "1" ] && return 0
   RESTAURADO=1
   set +e
-  echo "RESTAURANDO producción al commit ${ACTUAL}..." >&2
-  git -C "${PROD_DIR}" checkout --detach --quiet "${ACTUAL}"
+  echo "RESTAURANDO producción al commit base ${BASE}..." >&2
+  git -C "${PROD_DIR}" checkout --detach --quiet "${BASE}"
   (cd "${PROD_DIR}" && npm ci --omit=dev --no-audit --no-fund)
   if reiniciar_y_verificar; then
-    if [ "${DEPLOYED_EXISTIA}" = "1" ]; then
-      printf '%s\n' "${DEPLOYED_PREVIO}" > "${PROD_DIR}/DEPLOYED_COMMIT"
-    else
-      rm -f "${PROD_DIR}/DEPLOYED_COMMIT"
-    fi
-    registrar "${ACTUAL}" "auto-rollback"
-    echo "Producción quedó revertida y saludable con ${ACTUAL}. Revisa pm2 logs ${PROD_PM2_APP}." >&2
+    # La restauración quedó saludable: BASE es ahora, con certeza, el commit
+    # desplegado (también en el bootstrap, donde DEPLOYED_COMMIT no existía).
+    printf '%s\n' "${BASE}" > "${PROD_DIR}/DEPLOYED_COMMIT"
+    registrar "${BASE}" "auto-rollback"
+    echo "Producción quedó revertida y saludable con ${BASE}. Revisa pm2 logs ${PROD_PM2_APP}." >&2
   else
     echo "INTERVENCIÓN MANUAL URGENTE: la restauración tampoco respondió /health/ready. Revisa pm2 logs ${PROD_PM2_APP}." >&2
   fi

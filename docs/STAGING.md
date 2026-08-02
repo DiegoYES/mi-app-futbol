@@ -185,6 +185,14 @@ deploy/smoke-staging.sh
 deploy/promote-production.sh <sha>
 ```
 
+**Primera promoción (bootstrap):** si aún no existen `DEPLOYED_COMMIT` ni
+`RELEASE_HISTORY`, el script no asume que Git HEAD sea el código que PM2 tiene
+cargado (HEAD puede haber avanzado con el proceso ejecutando código anterior).
+Exige `CURRENT_RUNNING_COMMIT=<sha>` con el commit realmente en ejecución, lo
+muestra antes de pedir confirmación, lo usa como destino de restauración y lo
+registra como `baseline` sólo tras confirmar. En promociones posteriores el
+commit base se toma de `DEPLOYED_COMMIT` y esa variable ya no es necesaria.
+
 El smoke test comprueba: `/health/live`, `/health/ready`, cabeceras
 CSP/HSTS/X-Content-Type-Options, banner de entorno, login con cuenta de
 staging, portada autenticada, calendario, comparador, picks y boletas, y con
