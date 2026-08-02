@@ -55,7 +55,13 @@ async function recorrer(nombre, opcionesContexto) {
 
   pagina.on('pageerror', (err) => errores.push(`[${nombre}] error JS: ${err.message}`));
   pagina.on('console', (msg) => {
-    if (msg.type() === 'error') errores.push(`[${nombre}] console.error: ${msg.text()}`);
+    if (msg.type() !== 'error') return;
+    // Chromium duplica cada respuesta HTTP fallida con este mensaje genérico,
+    // sin incluir URL ni estado. El listener `response` de abajo conserva el
+    // diagnóstico preciso y aplica la excepción estrecha para imágenes
+    // sintéticas; omitir este duplicado no oculta ningún HTTP inesperado.
+    if (msg.text().startsWith('Failed to load resource: the server responded with a status of')) return;
+    errores.push(`[${nombre}] console.error: ${msg.text()}`);
   });
   pagina.on('response', (resp) => {
     const estado = resp.status();
