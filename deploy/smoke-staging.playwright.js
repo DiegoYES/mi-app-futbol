@@ -23,6 +23,10 @@ const RUTAS_IMAGEN = /\/api\/(equipos|ligas)\/(-?\d+)\/(escudo|logo)/;
 function respuestaImagenTolerada(url, estado) {
   const coincide = url.match(RUTAS_IMAGEN);
   if (!coincide) return false;
+  // El calendario puede disparar cientos de imágenes en paralelo y superar el
+  // burst perimetral de Nginx. Es una degradación visual recuperable; nunca se
+  // tolera el mismo estado en HTML ni en endpoints de datos.
+  if (estado === 429 || estado === 503) return true;
   if (estado === 404) return true;
   return estado === 400 && Number(coincide[2]) < 0;
 }

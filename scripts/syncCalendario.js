@@ -8,8 +8,6 @@ const { instalarControlCuotaAxios, obtenerApiKeys } = require('../services/apiQu
 instalarControlCuotaAxios(axios);
 
 const httpsAgent = new https.Agent({ family: 4 });
-const LIGAS_SEGUIDAS = new Set(Object.keys(config.ligas).map(Number));
-
 function esperar(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -18,8 +16,8 @@ function formatearFecha(fecha) {
   return fecha.toISOString().slice(0, 10);
 }
 
-// Construye la lista de fechas UTC a consultar. Por defecto se incluyen ayer y
-// hoy porque un día de México/Sudamérica cruza la medianoche UTC.
+// Construye la lista de fechas UTC a consultar. Por defecto se incluyen hoy y
+// mañana: la tarde/noche de México ya puede pertenecer al día siguiente UTC.
 function resolverFechas(args = process.argv.slice(2), hoy = new Date()) {
 
   const argFecha = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
@@ -35,14 +33,14 @@ function resolverFechas(args = process.argv.slice(2), hoy = new Date()) {
     });
   }
 
-  return [-1, 0].map(desplazamiento => {
+  return [0, 1].map(desplazamiento => {
     const f = new Date(hoy);
     f.setUTCDate(hoy.getUTCDate() + desplazamiento);
     return formatearFecha(f);
   });
 }
 
-async function sincronizarFecha(fecha) {
+async function sincronizarFecha(fecha, ligasSeguidas = new Set(Object.keys(config.ligas).map(Number))) {
   console.log(`\n📅 Consultando partidos del ${fecha}...`);
 
   const { data } = await axios.get('https://v3.football.api-sports.io/fixtures', {
@@ -52,7 +50,7 @@ async function sincronizarFecha(fecha) {
   });
 
   const todos = data.response || [];
-  const relevantes = todos.filter(f => LIGAS_SEGUIDAS.has(f.league?.id));
+  const relevantes = todos.filter(f => ligasSeguidas.has(f.league?.id));
 
   console.log(`   🌍 ${todos.length} partidos en el mundo, ${relevantes.length} de tus ligas.`);
 
@@ -302,13 +300,19 @@ async function main() {
   await mongoose.connect(process.env.MONGODB_URI);
   console.log('✅ Conectado a MongoDB');
 
+  // La base es la fuente de verdad. Así también se actualizan ligas ya
+  // cargadas que no estén activas en config/leagues.js.
+  const idsLigasCargadas = await Partido.distinct('liga.id');
+  const ligasSeguidas = new Set(idsLigasCargadas.map(Number).filter(id => Number.isInteger(id) && id > 0));
+  console.log(`🏆 ${ligasSeguidas.size} ligas cargadas se actualizarán.`);
+
   const fechas = resolverFechas();
   console.log(`🗓️ Se consultarán ${fechas.length} fecha(s) → ${fechas.length} petición(es) a la API.`);
 
   const todosFinalizados = [];
   for (const fecha of fechas) {
     try {
-      const { finalizados } = await sincronizarFecha(fecha);
+      const { finalizados } = await sincronizarFecha(fecha, ligasSeguidas);
       todosFinalizados.push(...finalizados);
     } catch (err) {
       if (err.code === 'API_FOOTBALL_DAILY_QUOTA_EXHAUSTED') {

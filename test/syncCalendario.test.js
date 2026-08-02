@@ -2,9 +2,9 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { resolverFechas } = require('../scripts/syncCalendario');
 
-test('resolverFechas consulta ayer y hoy UTC por defecto', () => {
+test('resolverFechas consulta hoy y mañana UTC por defecto', () => {
   const ahora = new Date('2026-07-29T03:30:00.000Z');
-  assert.deepEqual(resolverFechas([], ahora), ['2026-07-28', '2026-07-29']);
+  assert.deepEqual(resolverFechas([], ahora), ['2026-07-29', '2026-07-30']);
 });
 
 test('resolverFechas conserva una fecha explícita', () => {
