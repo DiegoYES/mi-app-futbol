@@ -233,6 +233,32 @@ si un despliegue incluyó cambios de esquema, evalúa su compatibilidad hacia
 atrás antes de promover (los cambios de datos requieren su propio plan
 autorizado).
 
+## Snapshot sanitizado de datos reales
+
+Para probar variedad y volumen reales sin conectar staging a producción, usa
+`npm run snapshot:staging`. El script lee producción mediante una lista blanca
+fija y escribe únicamente en una base **nueva** cuyo nombre contenga `snapshot`
+y termine en `-staging`. Se niega a continuar si el destino ya tiene cualquier
+colección: nunca sobrescribe ni borra datos.
+
+Colecciones copiadas: `equipos`, `partidos`, `jugadorpartidos`,
+`mercadocasas` y `actualizacionmercados`. Quedan fuera `usuarios`, `boletas`,
+`pickguardados`, `sugerencias`, `usoapidiarios` y `bloqueotrabajos`; por tanto,
+el snapshot no contiene cuentas, hashes, correos, IP, actividad personal ni
+estado operativo. Las cuentas de prueba se añaden después mediante semillas
+sintéticas.
+
+```bash
+TARGET_MONGODB_URI='mongodb://127.0.0.1:27017/mi-app-futbol-snapshot-staging' \
+SNAPSHOT_CONFIRM=COPIAR \
+npm run snapshot:staging
+```
+
+La URI de origen se toma de `MONGODB_URI` y nunca se imprime. Si la copia se
+interrumpe, el destino parcial se conserva para diagnóstico y el script se
+negará a reutilizarlo. Eliminar una copia parcial requiere una autorización
+separada.
+
 ## Fase 2: migración a systemd con usuario restringido
 
 **No ejecutar en la fase actual.** Producción corre como root bajo PM2; el
@@ -270,7 +296,9 @@ exclusivamente sobre PM2.
 
 - No ejecuta `npm run db:indexes` ni migraciones.
 - No ejecuta `sync:*`, cron, workers ni Playdoit.
-- No lee ni escribe la base de producción.
+- Los scripts de deploy/smoke/promoción no leen ni escriben producción. La
+  única excepción es `snapshot:staging`, que la lee por lista blanca y jamás
+  escribe en ella.
 - No copia `.env` ni secretos.
 - No borra releases, datos ni configuración.
 - No reinicia procesos sin validar antes su nombre, script y cwd vía PM2.

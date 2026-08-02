@@ -21,6 +21,7 @@
     "sync:events": "node scripts/guardarEventos.js",
     "admin:create": "node scripts/crearAdmin.js",
     "seed:staging": "node scripts/cargarSemillasStaging.js",
+    "snapshot:staging": "node scripts/crearSnapshotStaging.js",
     "quota:status": "node scripts/estadoCuota.js",
     "quota:keys": "node scripts/estadoClavesApi.js",
     "quota:sync": "node scripts/sincronizarCuota.js",
