@@ -10,7 +10,10 @@
 # Vars:  STAGING_BASE_URL        (por defecto https://staging.data-fut.com)
 #        STAGING_SMOKE_EMAIL     cuenta de staging (obligatoria; jamás una de producción)
 #        STAGING_SMOKE_PASSWORD  contraseña de esa cuenta (obligatoria)
-#        STAGING_DIR             (por defecto /opt/mi-app-futbol-staging)
+#        STAGING_DIR             (por defecto /var/www/mi-app-futbol-staging)
+#        STAGING_PM2_APP         proceso PM2 de staging (por defecto futbol-staging)
+#        SMOKE_REMOTE=1          omite la verificación local de PM2/clon (para
+#                                ejecutar el smoke desde otra máquina)
 #        STAGING_BASIC_AUTH_USER / STAGING_BASIC_AUTH_PASSWORD
 #                                credenciales HTTP opcionales si Nginx protege
 #                                staging con auth_basic (nunca hardcodeadas)
@@ -22,7 +25,9 @@
 set -euo pipefail
 
 BASE_URL="${STAGING_BASE_URL:-https://staging.data-fut.com}"
-STAGING_DIR="${STAGING_DIR:-/opt/mi-app-futbol-staging}"
+STAGING_DIR="${STAGING_DIR:-/var/www/mi-app-futbol-staging}"
+STAGING_PM2_APP="${STAGING_PM2_APP:-futbol-staging}"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EMAIL="${STAGING_SMOKE_EMAIL:-}"
 PASSWORD="${STAGING_SMOKE_PASSWORD:-}"
 
@@ -45,6 +50,30 @@ fi
 # probar la versión A y registrar la B como validada.
 [ -n "${DESPLEGADO}" ] || fallo "no existe ${STAGING_DIR}/DEPLOYED_COMMIT: despliega primero con deploy-staging.sh."
 [ "${COMMIT}" = "${DESPLEGADO}" ] || fallo "el commit indicado (${COMMIT}) no coincide con el desplegado en staging (${DESPLEGADO}); no se valida."
+
+# --- Coherencia con PM2 y el clon de staging ----------------------------------
+# Verifica que el proceso PM2 correcto (nombre, script, cwd, estado) sirve
+# exactamente el commit a validar. SMOKE_REMOTE=1 lo omite si el smoke corre
+# desde otra máquina sin acceso a PM2 ni al clon.
+if [ "${SMOKE_REMOTE:-0}" != "1" ]; then
+  command -v pm2 >/dev/null || fallo "pm2 no está disponible (usa SMOKE_REMOTE=1 sólo desde otra máquina)."
+  JLIST="$(pm2 jlist)"
+  ESTADO_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" status)" \
+    || fallo "no existe el proceso PM2 '${STAGING_PM2_APP}'; despliega antes con deploy-staging.sh."
+  [ "${ESTADO_PM2}" = "online" ] || fallo "el proceso ${STAGING_PM2_APP} no está online (estado: ${ESTADO_PM2})."
+  CWD_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" cwd)"
+  [ "${CWD_PM2}" = "${STAGING_DIR}" ] \
+    || fallo "el proceso ${STAGING_PM2_APP} ejecuta desde '${CWD_PM2}', no desde ${STAGING_DIR}."
+  SCRIPT_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" script)"
+  case "${SCRIPT_PM2}" in
+    */server.js) : ;;
+    *) fallo "el proceso ${STAGING_PM2_APP} ejecuta '${SCRIPT_PM2}', no server.js." ;;
+  esac
+  [ -d "${STAGING_DIR}/.git" ] || fallo "${STAGING_DIR} no es un clon git."
+  HEAD_CLON="$(git -C "${STAGING_DIR}" rev-parse HEAD)"
+  [ "${HEAD_CLON}" = "${COMMIT}" ] \
+    || fallo "el clon de staging tiene HEAD ${HEAD_CLON}, no el commit a validar (${COMMIT}); vuelve a desplegar."
+fi
 
 COOKIES="$(mktemp)"
 CUERPO="$(mktemp)"

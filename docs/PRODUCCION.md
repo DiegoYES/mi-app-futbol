@@ -69,6 +69,11 @@ logs, capturas ni respuestas HTTP.
 
 ## VM recomendada
 
+> Estado actual: producción corre bajo PM2 (proceso `futbol-app`, cwd
+> `/var/www/mi-app-futbol`). Los puntos 1 y 2 describen el objetivo de la
+> fase 2 (migración a systemd con usuario restringido), documentada en
+> [`STAGING.md`](STAGING.md#fase-2-migración-a-systemd-con-usuario-restringido).
+
 1. Crea un usuario sin shell administrativo, por ejemplo `miappfutbol`, y copia
    el proyecto en `/opt/mi-app-futbol`. El proceso no debe ejecutarse como root.
 2. Usa el servicio de ejemplo `deploy/mi-app-futbol.service`. Ajusta rutas y

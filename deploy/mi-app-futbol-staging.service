@@ -1,4 +1,8 @@
 # Servicio systemd para el entorno de STAGING (staging.data-fut.com).
+# FASE 2: en la fase actual staging corre bajo PM2 (proceso futbol-staging,
+# ver docs/STAGING.md). Esta plantilla queda preparada para cuando staging
+# migre a systemd junto con producción; requiere adaptar WorkingDirectory al
+# directorio real (/var/www/mi-app-futbol-staging) si no se usa /opt.
 # Instalación manual (requiere autorización; no lo hace ningún script del repo):
 #   sudo cp deploy/mi-app-futbol-staging.service /etc/systemd/system/
 #   sudo systemctl daemon-reload && sudo systemctl enable --now mi-app-futbol-staging

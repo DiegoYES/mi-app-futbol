@@ -1,3 +1,8 @@
+# Servicio systemd de producción — FASE 2 (migración PM2 -> systemd).
+# En la fase actual producción corre bajo PM2 (proceso futbol-app). Esta
+# plantilla la instala deploy/migrate-production-systemd.sh durante la
+# ventana de mantenimiento autorizada; no la instales a mano.
+
 [Unit]
 Description=Mi App Futbol
 After=network-online.target mongod.service
@@ -7,10 +12,8 @@ Wants=network-online.target
 Type=simple
 User=miappfutbol
 Group=miappfutbol
-# El flujo de despliegue por releases (deploy/promote-production.sh) exige
-# ejecutar desde el symlink current: /opt/mi-app-futbol/current -> releases/<sha>.
-# Si tu instalación aún usa /opt/mi-app-futbol plano, migra el unit real a
-# esta plantilla antes de usar promote/rollback (ver docs/STAGING.md).
+# Ejecuta desde el symlink current: /opt/mi-app-futbol/current -> releases/<sha>,
+# creado por deploy/migrate-production-systemd.sh durante la migración.
 WorkingDirectory=/opt/mi-app-futbol/current
 EnvironmentFile=/etc/mi-app-futbol/app.env
 ExecStart=/usr/bin/node server.js

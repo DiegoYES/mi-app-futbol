@@ -1,24 +1,32 @@
 #!/usr/bin/env bash
-# Despliega UN COMMIT EXPLÍCITO en el entorno de staging.
+# Despliega UN COMMIT EXPLÍCITO en el entorno de staging gestionado por PM2.
+#
+# Infraestructura (fase 1, PM2):
+#   Producción: proceso PM2 "futbol-app", cwd /var/www/mi-app-futbol, puerto 3000.
+#   Staging:    proceso PM2 "futbol-staging", cwd /var/www/mi-app-futbol-staging,
+#               puerto 3100, clon git independiente y base -staging.
 #
 # Uso:   deploy/deploy-staging.sh <commit>
 # Vars:  REPO_DIR         repositorio git de origen (por defecto, la raíz del repo del script)
-#        STAGING_DIR      destino (por defecto /opt/mi-app-futbol-staging)
-#        STAGING_SERVICE  servicio systemd (por defecto mi-app-futbol-staging)
+#        STAGING_DIR      destino (por defecto /var/www/mi-app-futbol-staging)
+#        STAGING_PM2_APP  nombre del proceso PM2 (por defecto futbol-staging)
 #        STAGING_PORT     puerto interno (por defecto 3100)
-#        SKIP_RESTART=1   sólo instala la release, no reinicia el servicio
+#        SKIP_RESTART=1   sólo instala el commit, no toca PM2
 #
 # Garantías:
 #  - No toca MongoDB ni ejecuta sincronizaciones ni npm run db:indexes.
-#  - No contiene secretos: la configuración vive en /etc/mi-app-futbol-staging/app.env.
-#  - No usa rm -rf: cada commit se instala en releases/<sha> y "current" es un symlink.
+#  - No contiene secretos: la configuración vive en ${STAGING_DIR}/.env
+#    (basada en .env.staging.example, nunca versionada).
+#  - Valida por PM2 el nombre, script y cwd del proceso antes de reiniciarlo:
+#    jamás reinicia futbol-app ni un proceso con otro directorio.
+#  - No usa rm -rf ni borra datos; se niega si el clon tiene cambios locales.
 #  - Falla si el commit no existe o las rutas no son las esperadas.
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
-STAGING_DIR="${STAGING_DIR:-/opt/mi-app-futbol-staging}"
-STAGING_SERVICE="${STAGING_SERVICE:-mi-app-futbol-staging}"
+STAGING_DIR="${STAGING_DIR:-/var/www/mi-app-futbol-staging}"
+STAGING_PM2_APP="${STAGING_PM2_APP:-futbol-staging}"
 STAGING_PORT="${STAGING_PORT:-3100}"
 
 fallo() { echo "ERROR: $*" >&2; exit 1; }
@@ -31,40 +39,75 @@ case "${STAGING_DIR}" in
   *staging*) : ;;
   *) fallo "STAGING_DIR (${STAGING_DIR}) no contiene 'staging'; me niego a desplegar ahí." ;;
 esac
+[ "${STAGING_DIR}" != "${REPO_DIR}" ] || fallo "STAGING_DIR no puede ser el propio repositorio de origen."
+case "${STAGING_PM2_APP}" in
+  futbol-app) fallo "STAGING_PM2_APP no puede ser el proceso de producción (futbol-app)." ;;
+esac
+command -v pm2 >/dev/null || fallo "pm2 no está disponible."
 
 git -C "${REPO_DIR}" cat-file -e "${COMMIT_PEDIDO}^{commit}" 2>/dev/null \
   || fallo "el commit '${COMMIT_PEDIDO}' no existe en ${REPO_DIR}"
 SHA="$(git -C "${REPO_DIR}" rev-parse "${COMMIT_PEDIDO}^{commit}")"
 
-RELEASE_DIR="${STAGING_DIR}/releases/${SHA}"
-mkdir -p "${STAGING_DIR}/releases"
-
-if [ -f "${RELEASE_DIR}/.release-ok" ]; then
-  echo "La release ${SHA} ya está instalada; se reutiliza."
-else
-  mkdir -p "${RELEASE_DIR}"
-  echo "Exportando commit ${SHA} a ${RELEASE_DIR}..."
-  git -C "${REPO_DIR}" archive "${SHA}" | tar -x -C "${RELEASE_DIR}"
-  [ -f "${RELEASE_DIR}/server.js" ] || fallo "la exportación no contiene server.js; abortando."
-  echo "Instalando dependencias de producción (npm ci --omit=dev)..."
-  (cd "${RELEASE_DIR}" && npm ci --omit=dev --no-audit --no-fund)
-  mkdir -p "${RELEASE_DIR}/var"
-  touch "${RELEASE_DIR}/.release-ok"
+# --- Clon independiente de staging -------------------------------------------
+if [ ! -d "${STAGING_DIR}/.git" ]; then
+  [ -e "${STAGING_DIR}" ] && [ -n "$(ls -A "${STAGING_DIR}" 2>/dev/null)" ] \
+    && fallo "${STAGING_DIR} existe y no es un clon git; resuélvelo manualmente."
+  echo "Creando clon de staging en ${STAGING_DIR}..."
+  git clone --no-hardlinks "${REPO_DIR}" "${STAGING_DIR}"
 fi
 
-# Activación atómica mediante symlink; la release anterior queda intacta.
-ln -sfn "${RELEASE_DIR}" "${STAGING_DIR}/current"
+# Nunca pisar cambios locales del clon (los archivos sin seguimiento, como
+# .env o DEPLOYED_COMMIT, no cuentan).
+[ -z "$(git -C "${STAGING_DIR}" status --porcelain --untracked-files=no)" ] \
+  || fallo "el clon de staging tiene cambios locales en archivos versionados; resuélvelos antes de desplegar."
+
+git -C "${STAGING_DIR}" fetch --quiet "${REPO_DIR}" 2>/dev/null || true
+git -C "${STAGING_DIR}" cat-file -e "${SHA}^{commit}" 2>/dev/null \
+  || fallo "el commit ${SHA} no llegó al clon de staging; revisa el fetch."
+
+# --- Configuración de staging -------------------------------------------------
+ENV_STAGING="${STAGING_DIR}/.env"
+[ -f "${ENV_STAGING}" ] || fallo "falta ${ENV_STAGING}. Créalo a partir de .env.staging.example (permisos 600, secretos propios)."
+grep -Eq '^MONGODB_URI=.*-staging([?/]|$)' "${ENV_STAGING}" \
+  || fallo "MONGODB_URI de ${ENV_STAGING} no apunta a una base terminada en -staging; me niego a arrancar."
+grep -Eq "^PORT=${STAGING_PORT}$" "${ENV_STAGING}" \
+  || fallo "PORT de ${ENV_STAGING} no es ${STAGING_PORT}."
+grep -Eq '^APP_ENVIRONMENT=staging$' "${ENV_STAGING}" \
+  || fallo "APP_ENVIRONMENT de ${ENV_STAGING} debe ser 'staging' (activa el banner de prueba)."
+
+# --- Checkout del commit exacto ------------------------------------------------
+echo "Desplegando commit ${SHA} en ${STAGING_DIR}..."
+git -C "${STAGING_DIR}" checkout --detach --quiet "${SHA}"
+[ -f "${STAGING_DIR}/server.js" ] || fallo "el checkout no contiene server.js; abortando."
+echo "Instalando dependencias de producción (npm ci --omit=dev)..."
+(cd "${STAGING_DIR}" && npm ci --omit=dev --no-audit --no-fund)
+mkdir -p "${STAGING_DIR}/var"
 printf '%s\n' "${SHA}" > "${STAGING_DIR}/DEPLOYED_COMMIT"
-echo "current -> ${RELEASE_DIR}"
 
 if [ "${SKIP_RESTART:-0}" = "1" ]; then
-  echo "SKIP_RESTART=1: no se reinicia el servicio."
+  echo "SKIP_RESTART=1: no se toca PM2."
   exit 0
 fi
 
-command -v systemctl >/dev/null || fallo "systemctl no disponible; reinicia el servicio manualmente."
-echo "Reiniciando ${STAGING_SERVICE}..."
-sudo systemctl restart "${STAGING_SERVICE}"
+# --- Proceso PM2 de staging (validado por nombre, script y cwd) ---------------
+JLIST="$(pm2 jlist)"
+if ESTADO="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" status)"; then
+  CWD_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" cwd)"
+  SCRIPT_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" script)"
+  [ "${CWD_PM2}" = "${STAGING_DIR}" ] \
+    || fallo "el proceso PM2 ${STAGING_PM2_APP} tiene cwd '${CWD_PM2}', no ${STAGING_DIR}; no lo reinicio."
+  case "${SCRIPT_PM2}" in
+    */server.js) : ;;
+    *) fallo "el proceso PM2 ${STAGING_PM2_APP} ejecuta '${SCRIPT_PM2}', no server.js; no lo reinicio." ;;
+  esac
+  echo "Reiniciando proceso PM2 ${STAGING_PM2_APP} (estado previo: ${ESTADO})..."
+  pm2 restart "${STAGING_PM2_APP}" --update-env
+else
+  echo "Creando proceso PM2 ${STAGING_PM2_APP}..."
+  pm2 start "${STAGING_DIR}/server.js" --name "${STAGING_PM2_APP}" --cwd "${STAGING_DIR}" --time
+fi
+pm2 save >/dev/null 2>&1 || true
 
 echo "Esperando a que /health/ready responda en 127.0.0.1:${STAGING_PORT}..."
 for intento in $(seq 1 20); do
@@ -75,4 +118,4 @@ for intento in $(seq 1 20); do
   fi
   sleep 2
 done
-fallo "el servicio no respondió /health/ready tras el despliegue; revisa: journalctl -u ${STAGING_SERVICE}"
+fallo "el servicio no respondió /health/ready tras el despliegue; revisa: pm2 logs ${STAGING_PM2_APP}"
