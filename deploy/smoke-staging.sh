@@ -60,13 +60,28 @@ comprobar() { # comprobar <descripcion> <esperado> <obtenido>
   fi
 }
 
-# Autenticación básica opcional de Nginx. La credencial se pasa mediante un
-# archivo de configuración temporal de curl (-K), nunca en la línea de comandos.
+# Autenticación básica opcional de Nginx. Usuario y contraseña deben llegar
+# JUNTOS. La credencial se pasa mediante un archivo de configuración temporal
+# de curl (-K) con permisos 600, nunca en la línea de comandos.
 CURL_AUTH=()
-if [ -n "${STAGING_BASIC_AUTH_USER:-}" ]; then
+if [ -n "${STAGING_BASIC_AUTH_USER:-}" ] || [ -n "${STAGING_BASIC_AUTH_PASSWORD:-}" ]; then
+  [ -n "${STAGING_BASIC_AUTH_USER:-}" ] && [ -n "${STAGING_BASIC_AUTH_PASSWORD:-}" ] \
+    || fallo "define STAGING_BASIC_AUTH_USER y STAGING_BASIC_AUTH_PASSWORD juntos, o ninguno."
+  # El formato de curl -K usa comillas dobles y barra invertida como escape;
+  # además el usuario no puede contener ':'. Rechazamos esos caracteres y los
+  # de control en lugar de intentar escaparlos.
+  case "${STAGING_BASIC_AUTH_USER}" in
+    *[\"\\:]*) fallo 'STAGING_BASIC_AUTH_USER no puede contener comillas dobles, barras invertidas ni ":".' ;;
+  esac
+  case "${STAGING_BASIC_AUTH_PASSWORD}" in
+    *[\"\\]*) fallo 'STAGING_BASIC_AUTH_PASSWORD no puede contener comillas dobles ni barras invertidas.' ;;
+  esac
+  case "${STAGING_BASIC_AUTH_USER}${STAGING_BASIC_AUTH_PASSWORD}" in
+    *[$'\n\r\t']*) fallo 'las credenciales de auth_basic no pueden contener caracteres de control.' ;;
+  esac
   CURL_CFG="$(mktemp)"
   chmod 600 "${CURL_CFG}"
-  printf 'user = "%s:%s"\n' "${STAGING_BASIC_AUTH_USER}" "${STAGING_BASIC_AUTH_PASSWORD:-}" > "${CURL_CFG}"
+  printf 'user = "%s:%s"\n' "${STAGING_BASIC_AUTH_USER}" "${STAGING_BASIC_AUTH_PASSWORD}" > "${CURL_CFG}"
   CURL_AUTH=(-K "${CURL_CFG}")
   trap 'rm -f "${COOKIES}" "${CUERPO}" "${CURL_CFG}"' EXIT
 fi

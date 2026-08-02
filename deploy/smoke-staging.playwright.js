@@ -31,6 +31,10 @@ if (/\/\/(www\.)?data-fut\.com/.test(BASE_URL)) {
   console.error(`BLOQUEADO: STAGING_BASE_URL apunta a producción (${BASE_URL}).`);
   process.exit(1);
 }
+if ((BASIC_USER && !BASIC_PASSWORD) || (!BASIC_USER && BASIC_PASSWORD)) {
+  console.error('Define STAGING_BASIC_AUTH_USER y STAGING_BASIC_AUTH_PASSWORD juntos, o ninguno.');
+  process.exit(1);
+}
 if (!EMAIL || !PASSWORD) {
   console.error('Define STAGING_SMOKE_EMAIL y STAGING_SMOKE_PASSWORD (cuenta exclusiva de staging).');
   process.exit(1);
