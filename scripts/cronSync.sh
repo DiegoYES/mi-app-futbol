@@ -2,10 +2,8 @@
 # =============================================================================
 # cronSync.sh — Sincronización automática programada
 #
-# Uso desde crontab:
-#   10 0  * * *  /home/diego/mi-app-futbol/scripts/cronSync.sh batch1 >> /tmp/futbol-batch1.log 2>&1
-#   0  6  * * *  /home/diego/mi-app-futbol/scripts/cronSync.sh batch2 >> /tmp/futbol-batch2.log 2>&1
-#   0  18 * * *  /home/diego/mi-app-futbol/scripts/cronSync.sh batch3 >> /tmp/futbol-batch3.log 2>&1
+# Uso recomendado desde crontab (una vez por hora):
+#   7 * * * * /var/www/mi-app-futbol/scripts/cronSync.sh hourly >> /var/log/mi-app-futbol-sync.log 2>&1
 #
 # Horario del sistema (CST, UTC-6):
 #   batch1: 00:10 → cierre de los partidos americanos de la noche
@@ -13,7 +11,7 @@
 #   batch3: 18:00 → inicia el nuevo día UTC/cuota y recoge detalles con jugadores
 # =============================================================================
 set -u
-BATCH="${1:-batch1}"
+BATCH="${1:-hourly}"
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$APP_DIR"
 
@@ -32,8 +30,10 @@ fi
 # esta pausa adicional mantiene los lotes secuenciales cerca de 3.3/s.
 export SYNC_DELAY_MS="${SYNC_DELAY_MS:-300}"
 
-# Reservar ~2400 req por batch (3 batches × 2400 = 7200 < 7450 disponibles con margen)
-export SYNC_MAX_REQUESTS="${SYNC_MAX_REQUESTS:-2400}"
+# Los batches heredados conservan su tope; el modo horario define uno menor abajo.
+if [ "$BATCH" != "hourly" ]; then
+  export SYNC_MAX_REQUESTS="${SYNC_MAX_REQUESTS:-2400}"
+fi
 
 # Todas las competiciones configuradas. La carga de detalles es idempotente y
 # solo consulta partidos finalizados que todavía no tengan detalle completo.
@@ -46,12 +46,32 @@ echo "  CRON $BATCH — $TS"
 echo "========================================================="
 
 # ------------------------------------------------------------------
+# HOURLY: actualización operativa, sin cargas históricas
+#   - Refresca marcadores/estados del día
+#   - Completa estadísticas totales y 1T/2T
+#   - Trae eventos, alineaciones y estadísticas individuales de jugadores
+# ------------------------------------------------------------------
+if [ "$BATCH" = "hourly" ]; then
+  # Tope voluntario por proceso. El control central conserva además el margen
+  # diario configurado en API_FOOTBALL_DAILY_LIMIT.
+  export SYNC_MAX_REQUESTS="${SYNC_MAX_REQUESTS:-250}"
+
+  echo ""
+  echo "▸ Actualizar calendario, marcadores, estadísticas y 1T/2T"
+  node scripts/syncCalendario.js
+
+  echo ""
+  echo "▸ Completar eventos, alineaciones y jugadores pendientes"
+  SYNC_RETRY_GAPS=true SYNC_RECENT_DAYS=3 FOOTBALL_SEASON=2026 SYNC_LEAGUES="$ALL_LEAGUES" \
+    node scripts/completarDetallesLote.js
+
+# ------------------------------------------------------------------
 # BATCH 1 (00:10 CST): cierre nocturno
 #   - Completar stats de partidos finalizados sin estadísticas
 #   - Sincronizar fixtures futuros de ligas top (el calendario puede cambiar)
 #   - Cargar segundas divisiones pendientes si quedan peticiones
 # ------------------------------------------------------------------
-if [ "$BATCH" = "batch1" ]; then
+elif [ "$BATCH" = "batch1" ]; then
   echo ""
   echo "▸ Calendario de ayer/hoy UTC (cubre el día completo de América)"
   node scripts/syncCalendario.js
@@ -115,7 +135,7 @@ elif [ "$BATCH" = "batch3" ]; then
   done
 
 else
-  echo "❌ Batch desconocido: $BATCH (usa batch1, batch2 o batch3)"
+  echo "❌ Batch desconocido: $BATCH (usa hourly, batch1, batch2 o batch3)"
   exit 1
 fi
 

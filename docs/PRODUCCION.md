@@ -83,8 +83,9 @@ logs, capturas ni respuestas HTTP.
    timeouts. Sustituye dominio y certificados; después conserva `TRUST_PROXY=1`.
 4. Expón sólo 80/443. Restringe SSH por IP/llave, deshabilita contraseña y root,
    activa actualizaciones automáticas de seguridad y sincronización NTP.
-5. Programa `scripts/cronSync.sh batch1|batch2|batch3` desde systemd timers o
-   cron. El propio script adquiere el lease distribuido. No ejecutes workers de
+5. Programa `scripts/cronSync.sh hourly` una vez por hora (por ejemplo, al minuto
+   7) desde systemd timers o cron. El propio script adquiere el lease distribuido.
+   No ejecutes workers de
    sincronización dentro de cada réplica web.
 
 ## Flujo de despliegue con staging

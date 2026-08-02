@@ -144,6 +144,7 @@ let cargaCalendarioId = 0;
 let calendario = null;
 let filtroActivo = null;
 let controladorCalendario = null;
+const zonaHorariaVisitante = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Mexico_City';
 
 function hoyISO() {
   const d = new Date();
@@ -348,7 +349,8 @@ function pintarCompeticiones(competiciones, fechaRef) {
         <span class="liga-meta"><span class="pais">${esc(c.pais)}</span><span class="liga-count" aria-label="${c.partidos.length} partido${c.partidos.length === 1 ? '' : 's'}">${c.partidos.length}</span></span>
       </summary>
       ${c.partidos.map(p => {
-        const estadoVisible = p.finalizado ? 'Final' : (etiquetasEstado[p.estado] || p.hora);
+        const horaLocal = new Date(p.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
+        const estadoVisible = p.finalizado ? 'Final' : (etiquetasEstado[p.estado] || horaLocal || p.hora);
         const marcador = p.finalizado
           ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
           : `<div class="marcador vs">vs</div>`;
@@ -397,7 +399,7 @@ function pintarCalendario() {
     return;
   }
   cont.innerHTML = pintarCompeticiones(competiciones, fechaActual);
-  cargarPicksCalendario('fecha='+encodeURIComponent(fechaActual),'del día');
+  cargarPicksCalendario('fecha='+encodeURIComponent(fechaActual)+'&tz='+encodeURIComponent(zonaHorariaVisitante),'del día');
 }
 
 async function cargarCalendario() {
@@ -411,7 +413,7 @@ async function cargarCalendario() {
   const inicio = aDate(fechaActual);
   inicio.setDate(inicio.getDate() - 3);
   try {
-    const resp = await fetch(`/api/calendario/proximos?desde=${aISO(inicio)}&dias=7`, { signal: controladorCalendario.signal });
+    const resp = await fetch(`/api/calendario/proximos?desde=${aISO(inicio)}&dias=7&tz=${encodeURIComponent(zonaHorariaVisitante)}`, { signal: controladorCalendario.signal });
     if (!resp.ok) throw new Error('respuesta no válida');
     const datos = await resp.json();
     if (carga !== cargaCalendarioId) return;

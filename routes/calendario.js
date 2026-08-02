@@ -4,6 +4,7 @@ const Partido = require('../models/partido');
 const config = require('../config/leagues');
 const { cacheMiddleware } = require('../middleware/cache');
 const { analizarPartidosCalendario } = require('../services/calendarPicks');
+const { fechaISOEnZona, horaEnZona, zonaHorariaValida } = require('../services/timeZone');
 
 const router = express.Router();
 
@@ -47,14 +48,16 @@ function etiquetaDia(fecha) {
 // Partidos de una fecha concreta, agrupados por competición
 router.get('/dia', cacheMiddleware, async (req, res) => {
   try {
-    const texto = req.query.fecha || new Date().toISOString().slice(0, 10);
+    const zonaHoraria = zonaHorariaValida(req.query.tz);
+    const texto = req.query.fecha || fechaISOEnZona(new Date(), zonaHoraria);
     const rango = rangoDelDia(texto);
     if (!rango) return res.status(400).json({ error: 'Fecha inválida. Usa el formato YYYY-MM-DD' });
 
-    const filtro = { fecha: { $gte: rango.inicio, $lte: rango.fin } };
+    const filtro = { fecha: { $gte: new Date(rango.inicio.getTime() - 86400000), $lte: new Date(rango.fin.getTime() + 86400000) } };
     if (req.query.league) filtro['liga.id'] = parseInt(req.query.league);
 
-    const partidos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
+    const candidatos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
+    const partidos = candidatos.filter(p => fechaISOEnZona(p.fecha, zonaHoraria) === texto);
 
     const porLiga = new Map();
     for (const p of partidos) {
@@ -72,7 +75,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
       porLiga.get(idLiga).partidos.push({
         api_id: p.api_id,
         fecha: p.fecha,
-        hora: new Date(p.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+        hora: horaEnZona(p.fecha, zonaHoraria),
         estado: p.estado,
         finalizado,
         jornada: p.liga?.jornada || '',
@@ -93,6 +96,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
 
     res.json({
       fecha: texto,
+      zona_horaria: zonaHoraria,
       total: partidos.length,
       competiciones: Array.from(porLiga.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
     });
@@ -104,6 +108,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
 // Partidos de los próximos N días (por defecto 7), agrupados por día y competición
 router.get('/proximos', cacheMiddleware, async (req, res) => {
   try {
+    const zonaHoraria = zonaHorariaValida(req.query.tz);
     const dias = Math.min(Math.max(parseInt(req.query.dias) || 7, 1), 30);
     const desde = req.query.desde ? rangoDelDia(req.query.desde)?.inicio : null;
     const inicio = desde || new Date(new Date().setHours(0, 0, 0, 0));
@@ -111,10 +116,10 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
     fin.setDate(fin.getDate() + dias - 1);
     fin.setHours(23, 59, 59, 999);
 
-    const filtro = { fecha: { $gte: inicio, $lte: fin } };
+    const filtro = { fecha: { $gte: new Date(inicio.getTime() - 86400000), $lte: new Date(fin.getTime() + 86400000) } };
     if (req.query.league) filtro['liga.id'] = parseInt(req.query.league);
 
-    const partidos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
+    const candidatos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
 
     // Prepara un contenedor por cada día del rango, aunque no tenga partidos
     const porDia = new Map();
@@ -125,9 +130,10 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
       porDia.set(clave, { fecha: clave, etiqueta: etiquetaDia(d), total: 0, competiciones: new Map() });
     }
 
+    const partidos = candidatos.filter(p => porDia.has(fechaISOEnZona(p.fecha, zonaHoraria)));
+
     for (const p of partidos) {
-      const f = new Date(p.fecha);
-      const clave = `${f.getFullYear()}-${String(f.getMonth() + 1).padStart(2, '0')}-${String(f.getDate()).padStart(2, '0')}`;
+      const clave = fechaISOEnZona(p.fecha, zonaHoraria);
       const dia = porDia.get(clave);
       if (!dia) continue;
 
@@ -145,7 +151,7 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
       dia.competiciones.get(idLiga).partidos.push({
         api_id: p.api_id,
         fecha: p.fecha,
-        hora: new Date(p.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+        hora: horaEnZona(p.fecha, zonaHoraria),
         estado: p.estado,
         finalizado,
         jornada: p.liga?.jornada || '',
@@ -168,6 +174,7 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
     res.json({
       desde: `${inicio.getFullYear()}-${String(inicio.getMonth() + 1).padStart(2, '0')}-${String(inicio.getDate()).padStart(2, '0')}`,
       dias,
+      zona_horaria: zonaHoraria,
       total: partidos.length,
       catalogo: Object.entries(config.ligas).map(([id, liga]) => ({
         id: Number(id),
@@ -187,17 +194,23 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
 // Picks compactos para el calendario. Se calculan en lote y se cachean 10 minutos.
 router.get('/picks', cacheMiddleware, async (req, res) => {
   try {
-    const texto = req.query.fecha || req.query.desde || new Date().toISOString().slice(0, 10);
+    const zonaHoraria = zonaHorariaValida(req.query.tz);
+    const texto = req.query.fecha || req.query.desde || fechaISOEnZona(new Date(), zonaHoraria);
     const rango = rangoDelDia(texto);
     if (!rango) return res.status(400).json({ error: 'Fecha inválida. Usa el formato YYYY-MM-DD' });
     const dias = req.query.fecha ? 1 : Math.min(Math.max(Number.parseInt(req.query.dias || '7', 10), 1), 7);
     const fin = new Date(rango.inicio);
     fin.setDate(fin.getDate() + dias - 1);
     fin.setHours(23, 59, 59, 999);
-    const partidos = await Partido.find({ fecha: { $gte: rango.inicio, $lte: fin } })
+    const candidatos = await Partido.find({ fecha: { $gte: new Date(rango.inicio.getTime() - 86400000), $lte: new Date(fin.getTime() + 86400000) } })
       .select(CAMPOS_CALENDARIO)
       .sort({ fecha: 1 })
       .lean();
+    const hasta = fechaISOEnZona(fin, zonaHoraria);
+    const partidos = candidatos.filter(p => {
+      const dia = fechaISOEnZona(p.fecha, zonaHoraria);
+      return dia >= texto && dia <= hasta;
+    });
     const analisis = await analizarPartidosCalendario(partidos);
     const porPartido = Object.fromEntries(analisis.map(item => [item.partido_id, item.picks]));
     const mejores = analisis
@@ -214,6 +227,7 @@ router.get('/picks', cacheMiddleware, async (req, res) => {
 // Días con partidos dentro de un mes, para marcarlos en el navegador de fechas
 router.get('/mes', cacheMiddleware, async (req, res) => {
   try {
+    const zonaHoraria = zonaHorariaValida(req.query.tz);
     const anio = parseInt(req.query.anio);
     const mes = parseInt(req.query.mes); // 1-12
     if (!anio || !mes || mes < 1 || mes > 12) {
@@ -222,17 +236,22 @@ router.get('/mes', cacheMiddleware, async (req, res) => {
 
     const inicio = new Date(anio, mes - 1, 1, 0, 0, 0, 0);
     const fin = new Date(anio, mes, 0, 23, 59, 59, 999);
+    inicio.setDate(inicio.getDate() - 1);
+    fin.setDate(fin.getDate() + 1);
 
     const dias = await Partido.aggregate([
       { $match: { fecha: { $gte: inicio, $lte: fin } } },
-      { $group: { _id: { $dayOfMonth: { date: '$fecha', timezone: 'America/Mexico_City' } }, total: { $sum: 1 } } },
+      { $group: { _id: { $dateToString: { date: '$fecha', format: '%Y-%m-%d', timezone: zonaHoraria } }, total: { $sum: 1 } } },
       { $sort: { _id: 1 } }
     ]);
 
     res.json({
       anio,
       mes,
-      dias: dias.map(d => ({ dia: d._id, partidos: d.total }))
+      zona_horaria: zonaHoraria,
+      dias: dias
+        .filter(d => d._id.startsWith(`${anio}-${String(mes).padStart(2, '0')}-`))
+        .map(d => ({ dia: Number(d._id.slice(-2)), partidos: d.total }))
     });
   } catch (error) {
     errorServidor(res, error);

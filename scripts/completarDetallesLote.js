@@ -24,6 +24,11 @@ const MAXIMO = Number.isInteger(Number(process.env.SYNC_MAX_REQUESTS))
   : Infinity;
 const VERBOSE = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_VERBOSE || ''));
 const REINTENTAR_HUECOS = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_RETRY_GAPS || ''));
+const DIAS_RECIENTES = Number.isInteger(Number(process.env.SYNC_RECENT_DAYS))
+  && Number(process.env.SYNC_RECENT_DAYS) > 0
+  ? Number(process.env.SYNC_RECENT_DAYS)
+  : null;
+let solicitudesUsadas = 0;
 
 function partir(items, tamano = TAMANO_LOTE) {
   const lotes = [];
@@ -36,23 +41,34 @@ function esperar(ms) {
 }
 
 async function completarLiga(leagueId, season) {
+  const reintentarAntesDe = new Date(Date.now() - (4 * 60 * 60 * 1000));
   const coberturaPendiente = REINTENTAR_HUECOS
     ? {
         $or: [
           { detalle_completo: { $ne: true } },
-          { estadisticas_completas: { $ne: true } },
-          { eventos_completos: { $ne: true } },
-          { jugadores_completos: { $ne: true } }
+          {
+            $and: [
+              { detalle_consultado_en: { $lt: reintentarAntesDe } },
+              { $or: [
+                { estadisticas_completas: { $ne: true } },
+                { eventos_completos: { $ne: true } },
+                { jugadores_completos: { $ne: true } }
+              ] }
+            ]
+          }
         ]
       }
     : { detalle_completo: { $ne: true } };
-  const pendientes = await Partido.find({
+  const filtro = {
     'liga.id': leagueId,
     'liga.temporada': season,
     estado: { $in: ['FT', 'AET', 'PEN'] },
     ...coberturaPendiente
-  }).sort({ fecha: -1 }).lean();
-  const lotes = partir(pendientes).slice(0, MAXIMO);
+  };
+  if (DIAS_RECIENTES) filtro.fecha = { $gte: new Date(Date.now() - (DIAS_RECIENTES * 86400000)) };
+  const pendientes = await Partido.find(filtro).sort({ fecha: -1 }).lean();
+  const disponibles = MAXIMO === Infinity ? Infinity : Math.max(0, MAXIMO - solicitudesUsadas);
+  const lotes = partir(pendientes).slice(0, disponibles);
   console.log(`⚽ ${config.ligas[leagueId]?.nombre || leagueId}: ${pendientes.length} partidos pendientes, ${lotes.length} llamada(s) de hasta ${TAMANO_LOTE}.`);
 
   let procesados = 0;
@@ -66,6 +82,7 @@ async function completarLiga(leagueId, season) {
     const { data } = await cliente.get('/fixtures', {
       params: { ids: lote.map(partido => partido.api_id).join('-') }
     });
+    solicitudesUsadas += 1;
     for (const detalle of data.response || []) {
       const partido = porId.get(detalle.fixture?.id);
       if (!partido) continue;
@@ -92,8 +109,14 @@ async function main() {
 
   await mongoose.connect(process.env.MONGODB_URI);
   try {
-    console.log(`📦 Sincronización por lotes · temporada ${season} · máximo ${MAXIMO === Infinity ? 'cuota disponible' : MAXIMO + ' llamadas'}\n`);
-    for (const liga of ligas) await completarLiga(liga, season);
+  console.log(`📦 Sincronización por lotes · temporada ${season} · ${DIAS_RECIENTES ? `últimos ${DIAS_RECIENTES} días` : 'todo el histórico'} · máximo ${MAXIMO === Infinity ? 'cuota disponible' : MAXIMO + ' llamadas'}\n`);
+    for (const liga of ligas) {
+      if (solicitudesUsadas >= MAXIMO) {
+        console.log(`🛑 Tope global de ${MAXIMO} llamadas alcanzado.`);
+        break;
+      }
+      await completarLiga(liga, season);
+    }
   } finally {
     await mongoose.disconnect();
   }
