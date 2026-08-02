@@ -162,10 +162,10 @@ git -C "${PROD_DIR}" checkout --detach --quiet "${SHA}"
 reiniciar_y_verificar \
   || fallo "producción no respondió /health/ready con el commit ${SHA}; se restaura el commit anterior."
 
-TRANSACCION_OK=1
-trap - EXIT
 printf '%s\n' "${SHA}" > "${PROD_DIR}/DEPLOYED_COMMIT"
 registrar "${SHA}" "promote"
+TRANSACCION_OK=1
+trap - EXIT
 echo "Producción actualizada al commit ${SHA}."
 echo "Si algo falla: deploy/rollback-production.sh"
 exit 0

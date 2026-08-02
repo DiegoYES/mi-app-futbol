@@ -127,9 +127,9 @@ echo "Reiniciando ${PROD_PM2_APP}..."
 reiniciar_y_verificar \
   || fallo "producción no respondió /health/ready tras el rollback; se restaura el commit actual."
 
-TRANSACCION_OK=1
-trap - EXIT
 printf '%s\n' "${OBJETIVO}" > "${PROD_DIR}/DEPLOYED_COMMIT"
 registrar "${OBJETIVO}" "rollback"
+TRANSACCION_OK=1
+trap - EXIT
 echo "Rollback completado: producción sirve el commit ${OBJETIVO}."
 exit 0
