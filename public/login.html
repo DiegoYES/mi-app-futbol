@@ -114,6 +114,7 @@ async function enviar(evento, tipo) {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  if (window.location.hash === '#registro') cambiarTab('registro');
   document.querySelectorAll('.tabs button[data-tab]').forEach(boton => {
     boton.addEventListener('click', () => cambiarTab(boton.dataset.tab));
   });

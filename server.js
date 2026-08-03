@@ -21,7 +21,7 @@ const homeRoutes = require('./routes/home');
 const jugadoresRoutes = require('./routes/jugadores');
 const sugerenciasRoutes = require('./routes/sugerencias');
 const systemRoutes = require('./routes/system');
-const { protegido, requireAuth, requireAdmin } = require('./middleware/auth');
+const { protegido, requireAuth, requireAdmin, usuarioDeSesion } = require('./middleware/auth');
 const { paginasPrivadas } = require('./middleware/paginasPrivadas');
 const {
   asignarIdSolicitud,
@@ -86,10 +86,15 @@ const RUTA_IMAGEN = /^\/(equipos\/\d+\/escudo|ligas\/\d+\/logo)\/?$/;
 app.use('/api', validarOrigenNavegador, (req, res, next) =>
   RUTA_IMAGEN.test(req.path) ? limiteEscudos(req, res, next) : limiteApi(req, res, next));
 
-// / y /index.html son la portada; el comparador vive en una ruta explícita.
+// La raíz es pública para visitantes y conserva el panel como inicio de quien
+// ya tiene sesión. El comparador vive en una ruta explícita.
 // enviarHtml añade el banner "ENTORNO DE PRUEBA" sólo si APP_ENVIRONMENT=staging.
 const enviarHtml = crearEnviadorHtml(path.join(__dirname, 'public'));
-app.get(['/', '/index.html'], (_req, res) => enviarHtml(res, 'inicio.html'));
+app.get(['/', '/index.html'], async (req, res) => {
+  const usuario = await usuarioDeSesion(req);
+  res.set('Cache-Control', 'no-store');
+  return enviarHtml(res, usuario ? 'inicio.html' : 'landing.html');
+});
 app.get('/comparador.html', (_req, res) => enviarHtml(res, 'index.html'));
 app.use(paginasPrivadas({ '/admin.html': ['admin'] }, path.join(__dirname, 'public')));
 app.use(bannerEstatico(path.join(__dirname, 'public')));

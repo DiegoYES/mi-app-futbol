@@ -53,7 +53,7 @@
         <h2 style="color:#0a2540;margin:0 0 12px">Tu acceso terminó</h2>
         <p style="color:#475569;line-height:1.6;margin:0 0 22px">
           Tu prueba gratuita de 7 días ha finalizado. Continúa con acceso completo
-          a todas las ligas y estadísticas por <strong>$50 MXN al mes</strong>.
+          a todas las ligas y estadísticas por <strong>$70 MXN al mes</strong>.
         </p>
         <button id="btnSalirPaywall" style="padding:11px 22px;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;cursor:pointer">Cerrar sesión</button>
       </div>`;

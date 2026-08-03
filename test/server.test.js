@@ -73,14 +73,15 @@ test('rechaza cuerpos JSON demasiado grandes con una respuesta controlada', asyn
   assert.equal(body.codigo, 'BODY_MUY_GRANDE');
 });
 
-test('index.html muestra la portada y el comparador conserva su propia ruta', async t => {
+test('index.html muestra la landing pública y el comparador conserva su propia ruta', async t => {
   const baseUrl = await servidorTemporal(t);
   const [inicio, comparador] = await Promise.all([
     fetch(`${baseUrl}/index.html`).then(respuesta => respuesta.text()),
     fetch(`${baseUrl}/comparador.html`).then(respuesta => respuesta.text())
   ]);
 
-  assert.match(inicio, /Encuentra el partido/);
+  assert.match(inicio, /Todo el contexto del partido/);
+  assert.match(inicio, /\$70/);
   assert.doesNotMatch(inicio, /Selecciona el local/);
   assert.match(comparador, /Selecciona el local/);
 });
