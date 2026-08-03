@@ -16,8 +16,9 @@ function formatearFecha(fecha) {
   return fecha.toISOString().slice(0, 10);
 }
 
-// Construye la lista de fechas UTC a consultar. Por defecto se incluyen hoy y
-// mañana: la tarde/noche de México ya puede pertenecer al día siguiente UTC.
+// Construye la lista de fechas UTC a consultar. Se incluyen ayer, hoy y mañana:
+// la tarde/noche de México puede pertenecer al día siguiente UTC y, después de
+// medianoche UTC, aún deben cerrarse encuentros iniciados en la fecha anterior.
 function resolverFechas(args = process.argv.slice(2), hoy = new Date()) {
 
   const argFecha = args.find(a => /^\d{4}-\d{2}-\d{2}$/.test(a));
@@ -33,7 +34,7 @@ function resolverFechas(args = process.argv.slice(2), hoy = new Date()) {
     });
   }
 
-  return [0, 1].map(desplazamiento => {
+  return [-1, 0, 1].map(desplazamiento => {
     const f = new Date(hoy);
     f.setUTCDate(hoy.getUTCDate() + desplazamiento);
     return formatearFecha(f);

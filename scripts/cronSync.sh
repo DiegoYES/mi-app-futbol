@@ -57,7 +57,7 @@ if [ "$BATCH" = "hourly" ]; then
   export SYNC_MAX_REQUESTS="${SYNC_MAX_REQUESTS:-250}"
 
   echo ""
-  echo "▸ Actualizar hoy/mañana UTC para todas las ligas cargadas: marcadores, estadísticas y 1T/2T"
+  echo "▸ Actualizar ayer/hoy/mañana UTC para todas las ligas cargadas: marcadores, estadísticas y 1T/2T"
   node scripts/syncCalendario.js
 
   echo ""
