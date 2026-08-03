@@ -83,13 +83,13 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
           id: p.equipo_local?.id,
           nombre: p.equipo_local?.nombre,
           logo: p.equipo_local?.logo,
-          goles: finalizado ? p.equipo_local?.goles : null
+          goles: p.equipo_local?.goles ?? null
         },
         visitante: {
           id: p.equipo_visitante?.id,
           nombre: p.equipo_visitante?.nombre,
           logo: p.equipo_visitante?.logo,
-          goles: finalizado ? p.equipo_visitante?.goles : null
+          goles: p.equipo_visitante?.goles ?? null
         }
       });
     }
@@ -159,13 +159,13 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
           id: p.equipo_local?.id,
           nombre: p.equipo_local?.nombre,
           logo: p.equipo_local?.logo,
-          goles: finalizado ? p.equipo_local?.goles : null
+          goles: p.equipo_local?.goles ?? null
         },
         visitante: {
           id: p.equipo_visitante?.id,
           nombre: p.equipo_visitante?.nombre,
           logo: p.equipo_visitante?.logo,
-          goles: finalizado ? p.equipo_visitante?.goles : null
+          goles: p.equipo_visitante?.goles ?? null
         }
       });
       dia.total++;

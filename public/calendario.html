@@ -80,6 +80,7 @@
   .equipo img { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
   .equipo span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .marcador { font-weight: 700; font-size: 1.05rem; background: var(--surface-soft); border-radius: 8px; padding: 4px 12px; min-width: 58px; text-align: center; }
+  .marcador.live { border:1px solid rgba(84,227,142,.35);background:rgba(84,227,142,.1);color:var(--green); }
   .marcador.vs { color: var(--muted); font-weight: 400; font-size: .8rem; background: transparent; }
   .match-shell { border-top:1px solid var(--line); }.match-shell .match { border-top:0; }
   .match-picks { padding:0 18px 12px 92px; }.pick-loading { color:var(--muted);font-size:.65rem; }
@@ -425,8 +426,9 @@ function pintarCompeticiones(competiciones, fechaRef) {
       ${c.partidos.map(p => {
         const horaLocal = new Date(p.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
         const estadoVisible = p.finalizado ? 'Final' : (etiquetasEstado[p.estado] || horaLocal || p.hora);
-        const marcador = p.finalizado
-          ? `<div class="marcador">${p.local.goles} - ${p.visitante.goles}</div>`
+        const enJuego = categoriaEstado(p) === 'en_juego';
+        const marcador = p.finalizado || enJuego
+          ? `<div class="marcador ${enJuego ? 'live' : ''}">${p.local.goles ?? 0} - ${p.visitante.goles ?? 0}</div>`
           : `<div class="marcador vs">vs</div>`;
         const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
         return `<div class="match-shell"><div class="match" role="link" tabindex="0" data-match-open="${esc(url)}">

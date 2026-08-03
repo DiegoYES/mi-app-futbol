@@ -63,6 +63,8 @@ test('el calendario permite filtrar por estado y rango de hora local', () => {
   assert.match(html, /id="horaDesde"/);
   assert.match(html, /id="horaHasta"/);
   assert.match(html, /function coincideEstadoYHora/);
+  assert.match(html, /p\.finalizado \|\| enJuego/);
+  assert.match(html, /marcador \$\{enJuego \? 'live'/);
 });
 
 test('los picks del comparador reciben los filtros visibles de ambos equipos', () => {
