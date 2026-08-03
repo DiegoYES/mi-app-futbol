@@ -30,6 +30,17 @@
   .search-empty { padding:15px 10px;color:var(--muted);font-size:.78rem; }
   .date-picker { display:flex;align-items:center;gap:9px;min-height:48px;padding:0 12px;background:var(--surface-raised);border:1px solid var(--line);border-radius:12px;color:var(--muted); }
   .date-picker input { border:0;outline:0;background:transparent;color:var(--ink);font:inherit;color-scheme:dark; }
+  .calendar-filters { display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin:0 0 14px; }
+  .calendar-filter-group { display:flex;align-items:center;gap:6px;padding:5px;border:1px solid var(--line);border-radius:12px;background:rgba(16,26,23,.76); }
+  .calendar-filter-group > span { padding:0 7px;color:var(--muted);font-size:.65rem;font-weight:850;text-transform:uppercase;letter-spacing:.07em; }
+  .status-filter { min-height:35px;padding:0 11px;border:1px solid transparent;border-radius:8px;background:transparent;color:var(--muted);font-size:.7rem;font-weight:800;cursor:pointer; }
+  .status-filter:hover,.status-filter:focus-visible { color:var(--ink);outline:0; }
+  .status-filter.active { border-color:rgba(84,227,142,.35);background:rgba(84,227,142,.12);color:var(--green); }
+  .hour-filter label { display:flex;align-items:center;gap:6px;color:var(--muted);font-size:.67rem; }
+  .hour-filter input { width:88px;min-height:35px;padding:0 8px;border:1px solid var(--line);border-radius:8px;background:var(--surface-soft);color:var(--ink);color-scheme:dark; }
+  .clear-display-filters { min-height:35px;padding:0 11px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--muted);font-size:.67rem;font-weight:800;cursor:pointer; }
+  .clear-display-filters:hover { border-color:var(--green);color:var(--green); }
+  .clear-display-filters[hidden] { display:none; }
   .active-filter { display:none;align-items:center;gap:8px;margin:-2px 0 12px;color:var(--muted);font-size:.75rem; }
   .active-filter.visible { display:flex; }
   .active-filter strong { color:var(--ink); }
@@ -85,6 +96,10 @@
   @media(max-width:700px) {
     .cal-top { align-items:flex-start;flex-direction:column;gap:12px; }
     .calendar-tools { grid-template-columns:1fr; }
+    .calendar-filters,.calendar-filter-group { width:100%; }
+    .calendar-filter-group { overflow-x:auto; }
+    .status-filter { flex:1;white-space:nowrap; }
+    .hour-filter { justify-content:space-between;overflow:visible; }
     .date-picker { width:100%; }
     .date-picker input { width:100%;min-height:44px; }
     .quick-dates { scroll-snap-type:x proximity; }
@@ -131,6 +146,21 @@
     <label class="date-picker" for="selectorFecha"><span aria-hidden="true">📅</span><input type="date" id="selectorFecha"></label>
   </div>
   <div id="filtroActivo" class="active-filter"></div>
+  <div class="calendar-filters" aria-label="Filtros de partidos">
+    <div class="calendar-filter-group" aria-label="Estado del partido">
+      <span>Estado</span>
+      <button class="status-filter active" type="button" data-status-filter="todos">Todos</button>
+      <button class="status-filter" type="button" data-status-filter="terminado">Terminados</button>
+      <button class="status-filter" type="button" data-status-filter="en_juego">En juego</button>
+      <button class="status-filter" type="button" data-status-filter="no_iniciado">No empezados</button>
+    </div>
+    <div class="calendar-filter-group hour-filter" aria-label="Rango de hora local">
+      <span>Hora local</span>
+      <label>Desde <input id="horaDesde" type="time" step="1800" aria-label="Hora desde"></label>
+      <label>Hasta <input id="horaHasta" type="time" step="1800" aria-label="Hora hasta"></label>
+    </div>
+    <button id="limpiarFiltrosVisuales" class="clear-display-filters" type="button" hidden>Restablecer estado y hora</button>
+  </div>
   <div class="quick-dates" id="chips" aria-label="Días del calendario"></div>
 
   <section id="daily-picks" class="daily-picks" aria-live="polite"></section>
@@ -143,6 +173,9 @@ let cargaPicksId = 0;
 let cargaCalendarioId = 0;
 let calendario = null;
 let filtroActivo = null;
+let filtroEstado = 'todos';
+let horaDesde = '';
+let horaHasta = '';
 let controladorCalendario = null;
 const zonaHorariaVisitante = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Mexico_City';
 
@@ -312,11 +345,52 @@ function limpiarFiltro() {
   pintarCalendario();
 }
 
+const ESTADOS_EN_JUEGO = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'INT']);
+
+function categoriaEstado(partido) {
+  if (partido.finalizado) return 'terminado';
+  if (ESTADOS_EN_JUEGO.has(String(partido.estado || '').toUpperCase())) return 'en_juego';
+  return 'no_iniciado';
+}
+
+function minutosHoraLocal(fecha) {
+  const fechaLocal = new Date(fecha);
+  return fechaLocal.getHours() * 60 + fechaLocal.getMinutes();
+}
+
+function minutosFiltro(valor) {
+  if (!/^\d{2}:\d{2}$/.test(valor)) return null;
+  const [horas, minutos] = valor.split(':').map(Number);
+  return horas * 60 + minutos;
+}
+
+function coincideEstadoYHora(partido) {
+  if (filtroEstado !== 'todos' && categoriaEstado(partido) !== filtroEstado) return false;
+  const desde = minutosFiltro(horaDesde);
+  const hasta = minutosFiltro(horaHasta);
+  if (desde === null && hasta === null) return true;
+  const hora = minutosHoraLocal(partido.fecha);
+  if (desde !== null && hasta !== null && desde > hasta) return hora >= desde || hora <= hasta;
+  if (desde !== null && hora < desde) return false;
+  if (hasta !== null && hora > hasta) return false;
+  return true;
+}
+
+function actualizarControlesFiltros() {
+  document.querySelectorAll('[data-status-filter]').forEach(boton => {
+    const activo = boton.dataset.statusFilter === filtroEstado;
+    boton.classList.toggle('active', activo);
+    boton.setAttribute('aria-pressed', String(activo));
+  });
+  document.getElementById('limpiarFiltrosVisuales').hidden = filtroEstado === 'todos' && !horaDesde && !horaHasta;
+}
+
 function partidosFiltrados(jornada) {
   if (!jornada) return [];
   return jornada.competiciones.map(liga => ({
     ...liga,
     partidos: liga.partidos.filter(partido => {
+      if (!coincideEstadoYHora(partido)) return false;
       if (!filtroActivo) return true;
       if (filtroActivo.tipo === 'liga') return liga.liga_id === filtroActivo.id;
       if (filtroActivo.tipo === 'pais') return liga.pais === filtroActivo.id;
@@ -341,7 +415,7 @@ function pintarCompeticiones(competiciones, fechaRef) {
     ET: 'Prórroga',
     BT: 'Pausa'
   };
-  const abrirTodas = Boolean(filtroActivo) || competiciones.length <= 4;
+  const abrirTodas = Boolean(filtroActivo) || filtroEstado !== 'todos' || horaDesde || horaHasta || competiciones.length <= 4;
   const grupos = competiciones.map((c, indice) => `
     <details class="liga-group" data-league-group="${c.liga_id}" ${abrirTodas || indice < 3 ? 'open' : ''}>
       <summary class="liga-head">
@@ -394,8 +468,10 @@ function pintarCalendario() {
   filtro.classList.toggle('visible', Boolean(filtroActivo));
   filtro.innerHTML = filtroActivo ? `Mostrando <strong>${esc(filtroActivo.etiqueta)}</strong><button type="button" data-clear-calendar-filter>Quitar filtro</button>` : '';
   document.getElementById('limpiarBusqueda').classList.toggle('visible', Boolean(filtroActivo));
+  actualizarControlesFiltros();
   if (!total) {
-    cont.innerHTML = `<div class="vacio"><strong>${filtroActivo ? 'No hay coincidencias en este día' : 'No hay partidos en esta fecha'}</strong>${filtroActivo ? 'Elige otro día de la semana o quita el filtro.' : 'Elige otro día del calendario.'}</div>`;
+    const hayFiltro = Boolean(filtroActivo) || filtroEstado !== 'todos' || Boolean(horaDesde) || Boolean(horaHasta);
+    cont.innerHTML = `<div class="vacio"><strong>${hayFiltro ? 'No hay coincidencias en este día' : 'No hay partidos en esta fecha'}</strong>${hayFiltro ? 'Cambia el estado, la hora o el filtro de búsqueda.' : 'Elige otro día del calendario.'}</div>`;
     return;
   }
   cont.innerHTML = pintarCompeticiones(competiciones, fechaActual);
@@ -468,6 +544,20 @@ document.addEventListener('DOMContentLoaded', () => {
   input.addEventListener('input', pintarResultadosBusqueda);
   input.addEventListener('focus', pintarResultadosBusqueda);
   document.getElementById('limpiarBusqueda').addEventListener('click', limpiarFiltro);
+  document.querySelectorAll('[data-status-filter]').forEach(boton => {
+    boton.addEventListener('click', () => {
+      filtroEstado = boton.dataset.statusFilter;
+      pintarCalendario();
+    });
+  });
+  document.getElementById('horaDesde').addEventListener('change', event => { horaDesde = event.target.value; pintarCalendario(); });
+  document.getElementById('horaHasta').addEventListener('change', event => { horaHasta = event.target.value; pintarCalendario(); });
+  document.getElementById('limpiarFiltrosVisuales').addEventListener('click', () => {
+    filtroEstado = 'todos'; horaDesde = ''; horaHasta = '';
+    document.getElementById('horaDesde').value = '';
+    document.getElementById('horaHasta').value = '';
+    pintarCalendario();
+  });
   document.getElementById('resultadosBusqueda').addEventListener('click', event => {
     const opcion = event.target.closest('[data-filter-type]');
     if (!opcion) return;

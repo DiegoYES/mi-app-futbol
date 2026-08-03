@@ -55,6 +55,16 @@ test('el calendario evita ligas duplicadas y permite contraer sus grupos', () =>
   assert.match(html, /loading="lazy" decoding="async"/);
 });
 
+test('el calendario permite filtrar por estado y rango de hora local', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  assert.match(html, /data-status-filter="terminado"/);
+  assert.match(html, /data-status-filter="en_juego"/);
+  assert.match(html, /data-status-filter="no_iniciado"/);
+  assert.match(html, /id="horaDesde"/);
+  assert.match(html, /id="horaHasta"/);
+  assert.match(html, /function coincideEstadoYHora/);
+});
+
 test('los picks del comparador reciben los filtros visibles de ambos equipos', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
