@@ -82,6 +82,8 @@ test('index.html muestra la landing pública y el comparador conserva su propia 
 
   assert.match(inicio, /Todo el contexto del partido/);
   assert.match(inicio, /\$70/);
+  assert.match(inicio, /Ya tengo cuenta · Iniciar sesión/);
+  assert.match(inicio, /¿Ya eres miembro\? Inicia sesión/);
   assert.doesNotMatch(inicio, /Selecciona el local/);
   assert.match(comparador, /Selecciona el local/);
 });
