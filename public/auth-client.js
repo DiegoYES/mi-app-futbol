@@ -5,6 +5,7 @@
  */
 (function () {
   const fetchOriginal = window.fetch.bind(window);
+  const esPaginaSuscripcion = window.location.pathname === '/suscripcion.html';
 
   function escaparHtml(valor) {
     return String(valor ?? '')
@@ -44,6 +45,9 @@
   };
 
   function mostrarPaywall() {
+    // Una cuenta sin acceso debe poder llegar al formulario de pago. Mostrar el
+    // paywall en esta ruta la dejaría atrapada en un enlace hacia la misma página.
+    if (esPaginaSuscripcion) return;
     if (document.getElementById('paywall')) return;
     const capa = document.createElement('div');
     capa.id = 'paywall';
