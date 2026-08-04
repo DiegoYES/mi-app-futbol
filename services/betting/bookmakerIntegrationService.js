@@ -1,6 +1,6 @@
 const { vigentes } = require('./marketRepository');
 const { resolverEvento } = require('./marketMatchingService');
-const { evaluarSelecciones } = require('./predictionEvaluationService');
+const { evaluarSelecciones, mercadoInterno } = require('./predictionEvaluationService');
 
 function resumir(resultados) {
   return resultados.reduce((salida, item) => {
@@ -9,8 +9,8 @@ function resumir(resultados) {
   }, {});
 }
 
-async function evaluarPartidoEnCasa(partido, resultadoModelo, proveedor = 'playdoit') {
-  const selecciones = await vigentes(proveedor);
+async function evaluarPartidoEnCasa(partido, resultadoModelo, proveedor = 'playdoit', opciones = {}) {
+  const selecciones = opciones.selecciones || await vigentes(proveedor);
   if (!selecciones.length) {
     return { proveedor, estado: 'CACHE_EMPTY_OR_EXPIRED', actualizado_en: null, resultados: [], resumen: {} };
   }
@@ -24,9 +24,13 @@ async function evaluarPartidoEnCasa(partido, resultadoModelo, proveedor = 'playd
       resumen: { [coincidencia.estado]: 1 }
     };
   }
+  const mercadoIds = opciones.mercadoIds ? new Set(opciones.mercadoIds) : null;
+  const seleccionesEvaluables = mercadoIds
+    ? coincidencia.evento.selecciones.filter(item => mercadoIds.has(mercadoInterno(item, partido)))
+    : coincidencia.evento.selecciones;
   const resultados = await evaluarSelecciones({
     partido,
-    selecciones: coincidencia.evento.selecciones,
+    selecciones: seleccionesEvaluables,
     resultadoModelo
   });
   return {

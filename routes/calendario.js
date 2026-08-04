@@ -4,6 +4,8 @@ const Partido = require('../models/partido');
 const config = require('../config/leagues');
 const { cacheMiddleware } = require('../middleware/cache');
 const { analizarPartidosCalendario } = require('../services/calendarPicks');
+const { evaluarPartidoEnCasa } = require('../services/betting/bookmakerIntegrationService');
+const { vigentes: mercadosVigentes } = require('../services/betting/marketRepository');
 const { fechaISOEnZona, horaEnZona, zonaHorariaValida } = require('../services/timeZone');
 
 const router = express.Router();
@@ -211,14 +213,28 @@ router.get('/picks', cacheMiddleware, async (req, res) => {
       const dia = fechaISOEnZona(p.fecha, zonaHoraria);
       return dia >= texto && dia <= hasta;
     });
-    const analisis = await analizarPartidosCalendario(partidos);
+    const analisisModelo = await analizarPartidosCalendario(partidos);
+    const seleccionesCasa = await mercadosVigentes('playdoit');
+    const partidosPorId = new Map(partidos.map(item => [item.api_id, item]));
+    const analisis = await Promise.all(analisisModelo.map(async item => {
+      if (!item.picks.length || !seleccionesCasa.length) return { ...item, picks: [] };
+      const partido = partidosPorId.get(item.partido_id);
+      const casa = await evaluarPartidoEnCasa(
+        partido,
+        { mercados: item.picks },
+        'playdoit',
+        { selecciones: seleccionesCasa, mercadoIds: item.picks.map(pick => pick.id) }
+      );
+      const apostables = new Set(casa.picks_apostables.map(resultado => resultado.modelo?.mercado_id).filter(Boolean));
+      return { ...item, picks: item.picks.filter(pick => apostables.has(pick.id)) };
+    }));
     const porPartido = Object.fromEntries(analisis.map(item => [item.partido_id, item.picks]));
     const mejores = analisis
       .filter(item => item.picks.length)
       .map(item => ({ ...item, pick: item.picks[0] }))
       .sort((a, b) => b.pick.estimacion - a.pick.estimacion || b.pick.muestra - a.pick.muestra)
       .slice(0, 5);
-    res.json({ desde: texto, dias, partidos: analisis.length, por_partido: porPartido, mejores });
+    res.json({ desde: texto, dias, partidos: analisis.length, fuente_picks: 'playdoit', por_partido: porPartido, mejores });
   } catch (error) {
     errorServidor(res, error);
   }

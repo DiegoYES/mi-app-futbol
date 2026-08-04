@@ -3,6 +3,7 @@ const assert = require('node:assert/strict');
 const MercadoCasa = require('../../models/MercadoCasa');
 const { resolverEvento } = require('../../services/betting/marketMatchingService');
 const { evaluarSelecciones, mercadoInterno } = require('../../services/betting/predictionEvaluationService');
+const { evaluarPartidoEnCasa } = require('../../services/betting/bookmakerIntegrationService');
 
 const partido = { api_id: 10, fecha: new Date('2030-01-20T20:00:00Z'), liga: { id: 1, temporada: 2029 }, equipo_local: { id: 1, nombre: 'Club América' }, equipo_visitante: { id: 2, nombre: 'Cruz Azul' } };
 function seleccion(extra = {}) { return { evento_externo_id: 'e1', evento_nombre: 'Club América vs Cruz Azul', local: 'Club America', visitante: 'Cruz Azul', inicio: partido.fecha, categoria: 'goals', lado: 'OVER', linea: 2.5, cuota: 1.9, estado: 'OPEN', problemas: [], ...extra }; }
@@ -32,4 +33,29 @@ test('evaluación clasifica cuotas suspendidas y líneas incompletas', async () 
   const [sinLinea] = await evaluarSelecciones({ partido, selecciones: [seleccion({ linea: null, problemas: ['LINE_NOT_AVAILABLE'] })], resultadoModelo });
   assert.equal(suspendida.estado, 'MARKET_SUSPENDED');
   assert.equal(sinLinea.estado, 'LINE_NOT_AVAILABLE');
+});
+
+test('modo estricto publica sólo la misma línea abierta con cuota y valor', async () => {
+  const modelo = { mercados: [{ id: 'over_1_5', estimacion: 80, muestra: 10 }] };
+  const exacta = seleccion({ linea: 1.5, cuota: 2 });
+  const otraLinea = seleccion({ linea: 3.5, cuota: 2 });
+
+  const disponible = await evaluarPartidoEnCasa(partido, modelo, 'playdoit', {
+    selecciones: [exacta, otraLinea],
+    mercadoIds: ['over_1_5']
+  });
+  assert.deepEqual(disponible.picks_apostables.map(item => item.modelo.mercado_id), ['over_1_5']);
+  assert.equal(disponible.picks_apostables[0].seleccion.linea, 1.5);
+
+  const inexistente = await evaluarPartidoEnCasa(partido, modelo, 'playdoit', {
+    selecciones: [otraLinea],
+    mercadoIds: ['over_1_5']
+  });
+  assert.equal(inexistente.picks_apostables.length, 0);
+
+  const suspendida = await evaluarPartidoEnCasa(partido, modelo, 'playdoit', {
+    selecciones: [seleccion({ linea: 1.5, cuota: 2, estado: 'SUSPENDED' })],
+    mercadoIds: ['over_1_5']
+  });
+  assert.equal(suspendida.picks_apostables.length, 0);
 });
