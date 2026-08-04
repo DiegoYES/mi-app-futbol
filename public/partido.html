@@ -295,7 +295,7 @@ const ID_PARTIDO = params.get('partido');
 let datosLocal = null;
 let datosVisitante = null;
 let datosPicksPartido = null;
-const filtrosMercado = { categoria: 'goles', familia: 'goles', alcance: 'total', tipo: 'over', linea: 1.5 };
+const filtrosMercado = { categoria: 'goles', familia: 'todas', alcance: 'total', tipo: 'over', linea: 1.5, periodo: 0 };
 let temporadaPartido = null;
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
@@ -683,8 +683,6 @@ function filtrarMercados(datos) {
 }
 
 function prepararFiltrosMercado(datos) {
-  const familias = window.FutbolMarketSearch.familias(datos.mercados, filtrosMercado.categoria);
-  if (!familias.includes(filtrosMercado.familia)) filtrosMercado.familia = familias[0];
   let lineas = window.FutbolMarketSearch.lineas(datos.mercados, filtrosMercado);
   if (!lineas.length && filtrosMercado.alcance !== 'total') {
     filtrosMercado.alcance = 'total';
@@ -693,14 +691,8 @@ function prepararFiltrosMercado(datos) {
   if (!lineas.includes(Number(filtrosMercado.linea))) {
     filtrosMercado.linea = lineas.includes(1.5) ? 1.5 : lineas[0];
   }
-  return { familias, lineas };
+  return { lineas };
 }
-
-const NOMBRES_FAMILIAS = {
-  amarillas: 'Tarjetas amarillas', rojas: 'Tarjetas rojas', registradas: 'Tarjetas registradas',
-  goles: 'Goles', corners: 'Córners', tiros: 'Tiros', tiros_puerta: 'Tiros a puerta',
-  faltas: 'Faltas', offsides: 'Fueras de juego'
-};
 
 function pintarPicksPartido() {
   const cont = document.getElementById('bloquePicks');
@@ -718,8 +710,10 @@ function pintarPicksPartido() {
         <label>Categoría<select id="categoriaPicksPartido" aria-label="Categoría de mercado">
           ${categoriasExplorables.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.categoria ? 'selected' : ''}>${esc(NOMBRES_CATEGORIAS[item] || item)}</option>`).join('')}
         </select></label>
-        <label>Métrica<select id="familiaMercadoPartido">
-          ${opciones.familias.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.familia ? 'selected' : ''}>${esc(NOMBRES_FAMILIAS[item] || item)}</option>`).join('')}
+        <label>Periodo<select id="periodoMercadoPartido">
+          <option value="0" ${filtrosMercado.periodo === 0 ? 'selected' : ''}>Partido completo</option>
+          <option value="1" ${filtrosMercado.periodo === 1 ? 'selected' : ''}>Primer tiempo</option>
+          <option value="2" ${filtrosMercado.periodo === 2 ? 'selected' : ''}>Segundo tiempo</option>
         </select></label>
         <label>Alcance<select id="alcanceMercadoPartido">
           <option value="total" ${filtrosMercado.alcance === 'total' ? 'selected' : ''}>Partido completo</option>
@@ -803,7 +797,7 @@ async function cargarCasosPickPartido(mercadoId, contenedor) {
   if (contenedor.dataset.loaded === 'true') return;
   contenedor.innerHTML = '<span class="pick-cases-hint">Cargando partidos concretos...</span>';
   try {
-    const respuesta = await fetch(`/api/picks/partido/${ID_PARTIDO}/explicacion/${encodeURIComponent(mercadoId)}`);
+    const respuesta = await fetch(`/api/picks/partido/${ID_PARTIDO}/explicacion/${encodeURIComponent(mercadoId)}?periodo=${filtrosMercado.periodo}`);
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) throw new Error(datos.error || `HTTP ${respuesta.status}`);
     contenedor.innerHTML = pintarCasosPickPartido(datos.explicacion);
@@ -820,14 +814,14 @@ async function cargarPicks() {
     cont.innerHTML = '<div class="aviso">Abre un partido desde el calendario para generar picks auditables.</div>';
     return;
   }
-  const datos = await pedir(`/api/picks/partido/${ID_PARTIDO}`);
+  const datos = await pedir(`/api/picks/partido/${ID_PARTIDO}?periodo=${filtrosMercado.periodo}`);
   if (!datos || !datos.mercados?.length) {
     cont.innerHTML = '<div class="aviso">No hay muestra histórica anterior suficiente para este partido.</div>';
     return;
   }
   datosPicksPartido = datos;
   filtrosMercado.categoria = datos.categorias.includes('goles') ? 'goles' : datos.categorias[0];
-  filtrosMercado.familia = filtrosMercado.categoria;
+  filtrosMercado.familia = 'todas';
   filtrosMercado.alcance = 'total';
   filtrosMercado.tipo = 'over';
   filtrosMercado.linea = filtrosMercado.categoria === 'goles' ? 1.5 : null;
@@ -838,7 +832,7 @@ async function guardarPick(mercadoId) {
   const respuesta = await fetch('/api/picks/seguimiento', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ partido_id: Number(ID_PARTIDO), mercado_id: mercadoId })
+    body: JSON.stringify({ partido_id: Number(ID_PARTIDO), mercado_id: mercadoId, periodo: filtrosMercado.periodo })
   });
   const datos = await respuesta.json().catch(() => ({}));
   if (!respuesta.ok) {
@@ -912,13 +906,15 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('bloquePicks').addEventListener('change', event => {
     if (event.target.id === 'categoriaPicksPartido') {
       filtrosMercado.categoria = event.target.value;
-      filtrosMercado.familia = event.target.value;
+      filtrosMercado.familia = 'todas';
       filtrosMercado.alcance = 'total';
       filtrosMercado.tipo = 'over';
       filtrosMercado.linea = null;
-    } else if (event.target.id === 'familiaMercadoPartido') {
-      filtrosMercado.familia = event.target.value;
+    } else if (event.target.id === 'periodoMercadoPartido') {
+      filtrosMercado.periodo = Number(event.target.value);
       filtrosMercado.linea = null;
+      cargarPicks();
+      return;
     } else if (event.target.id === 'alcanceMercadoPartido') {
       filtrosMercado.alcance = event.target.value;
       filtrosMercado.linea = null;

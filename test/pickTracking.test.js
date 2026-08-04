@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const PickGuardado = require('../models/PickGuardado');
-const { evaluarMercado, resumirRendimiento } = require('../services/pickTracking');
+const { evaluarMercado, idMercadoPeriodo, resumirRendimiento } = require('../services/pickTracking');
 
 test('evalúa los mercados contra un marcador final', () => {
   assert.equal(evaluarMercado('over_1_5', 1, 1), true);
@@ -22,6 +22,18 @@ test('liquida córners y tiros únicamente con estadísticas confirmadas', () =>
 
   partido.estadisticas_completas = false;
   assert.equal(evaluarMercado('corners_total_over_9_5', partido), null);
+});
+
+test('distingue y liquida el mismo mercado para partido completo, 1T y 2T', () => {
+  const partido = {
+    tiempos_completos: true,
+    equipo_local: { goles: 2, goles_primer_tiempo: 0 },
+    equipo_visitante: { goles: 1, goles_primer_tiempo: 1 }
+  };
+  assert.equal(evaluarMercado('over_1_5', partido), true);
+  assert.equal(evaluarMercado(idMercadoPeriodo('over_1_5', 1), partido), false);
+  assert.equal(evaluarMercado(idMercadoPeriodo('over_1_5', 2), partido), true);
+  assert.notEqual(idMercadoPeriodo('over_1_5', 1), idMercadoPeriodo('over_1_5', 2));
 });
 
 test('resume efectividad y calibración sin contar pendientes', () => {

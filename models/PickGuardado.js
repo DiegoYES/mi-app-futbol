@@ -21,11 +21,13 @@ const pickGuardadoSchema = new mongoose.Schema({
   },
   mercado: {
     id: { type: String, required: true },
+    base_id: String,
     nombre: { type: String, required: true },
     categoria: String,
     tipo: String,
     linea: Number,
-    alcance: String
+    alcance: String,
+    periodo: { type: Number, enum: [0, 1, 2], default: 0 }
   },
   estimacion: { type: Number, required: true, min: 0, max: 100 },
   confianza: { type: String, enum: ['alta', 'media', 'baja'], required: true },

@@ -3,7 +3,7 @@ const { errorServidor } = require('../middleware/security');
 const Partido = require('../models/partido');
 const PickGuardado = require('../models/PickGuardado');
 const { explicarMercado, generarPicks } = require('../services/pickEngine');
-const { evaluarMercado, resumirRendimiento } = require('../services/pickTracking');
+const { evaluarMercado, idMercadoPeriodo, resumirRendimiento } = require('../services/pickTracking');
 
 const router = express.Router();
 const ESTADOS_FINALIZADOS = new Set(['FT', 'AET', 'PEN']);
@@ -26,14 +26,21 @@ async function obtenerHistoricos(partido) {
   ]);
 }
 
-async function analizarPartido(partido, limite = 10) {
+function periodoValido(valor) {
+  const periodo = Number.parseInt(valor ?? '0', 10);
+  return [0, 1, 2].includes(periodo) ? periodo : null;
+}
+
+async function analizarPartido(partido, limite = 10, periodo = 0) {
   const [partidosLocal, partidosVisitante] = await obtenerHistoricos(partido);
   return generarPicks({
     partidosLocal,
     teamLocal: partido.equipo_local.id,
     partidosVisitante,
     teamVisitante: partido.equipo_visitante.id,
-    limite
+    limite,
+    halfLocal: periodo,
+    halfVisitante: periodo
   });
 }
 
@@ -43,6 +50,8 @@ router.get('/partido/:id/explicacion/:mercado', async (req, res) => {
     if (!Number.isInteger(partidoId)) return res.status(400).json({ error: 'Partido inválido.' });
     const partido = await Partido.findOne({ api_id: partidoId }).lean();
     if (!partido) return res.status(404).json({ error: 'Partido no encontrado.' });
+    const periodo = periodoValido(req.query.periodo);
+    if (periodo === null) return res.status(400).json({ error: 'El periodo debe ser 0, 1 o 2.' });
     const [partidosLocal, partidosVisitante] = await obtenerHistoricos(partido);
     const explicacion = explicarMercado({
       partidosLocal,
@@ -51,6 +60,8 @@ router.get('/partido/:id/explicacion/:mercado', async (req, res) => {
       teamVisitante: partido.equipo_visitante.id,
       mercadoId: req.params.mercado,
       limite: 10,
+      halfLocal: periodo,
+      halfVisitante: periodo,
       detalle: 3
     });
     if (!explicacion) return res.status(404).json({ error: 'Mercado no disponible.' });
@@ -112,8 +123,10 @@ router.get('/partido/:id', async (req, res) => {
     }
     const partido = await Partido.findOne({ api_id: partidoId }).lean();
     if (!partido) return res.status(404).json({ error: 'Partido no encontrado.' });
+    const periodo = periodoValido(req.query.periodo);
+    if (periodo === null) return res.status(400).json({ error: 'El periodo debe ser 0, 1 o 2.' });
 
-    const resultado = await analizarPartido(partido);
+    const resultado = await analizarPartido(partido, 10, periodo);
     const finalizado = esFinalizado(partido);
     const guardados = await PickGuardado.find({
       usuario: req.usuario._id,
@@ -128,10 +141,11 @@ router.get('/partido/:id', async (req, res) => {
         : partido.fecha <= new Date()
           ? 'El partido ya comenzó; los picks solo se guardan antes del inicio.'
           : null,
+      periodo,
       mercados: resultado.mercados.map(mercado => ({
           ...mercado,
-          guardado: guardados.some(item => item.mercado.id === mercado.id),
-          resultado_historico: finalizado ? evaluarMercado(mercado.id, partido) : null
+          guardado: guardados.some(item => item.mercado.id === idMercadoPeriodo(mercado.id, periodo)),
+          resultado_historico: finalizado ? evaluarMercado(idMercadoPeriodo(mercado.id, periodo), partido) : null
       })),
       recomendados: resultado.recomendados.map(item => item.id),
       categorias: resultado.categorias,
@@ -147,7 +161,8 @@ router.post('/seguimiento', async (req, res) => {
     res.set('Cache-Control', 'no-store');
     const partidoId = Number.parseInt(req.body?.partido_id, 10);
     const mercadoId = typeof req.body?.mercado_id === 'string' ? req.body.mercado_id : '';
-    if (!Number.isInteger(partidoId) || !mercadoId) {
+    const periodo = periodoValido(req.body?.periodo);
+    if (!Number.isInteger(partidoId) || !mercadoId || periodo === null) {
       return res.status(400).json({ error: 'Partido y mercado son obligatorios.' });
     }
     const partido = await Partido.findOne({ api_id: partidoId }).lean();
@@ -156,7 +171,7 @@ router.post('/seguimiento', async (req, res) => {
       return res.status(409).json({ error: 'Solo puedes guardar picks antes del inicio del partido.' });
     }
 
-    const resultado = await analizarPartido(partido);
+    const resultado = await analizarPartido(partido, 10, periodo);
     const mercado = resultado.mercados.find(item => item.id === mercadoId);
     if (!mercado) return res.status(400).json({ error: 'Ese mercado no se puede evaluar.' });
     const pick = await PickGuardado.create({
@@ -167,12 +182,14 @@ router.post('/seguimiento', async (req, res) => {
       local: partido.equipo_local,
       visitante: partido.equipo_visitante,
       mercado: {
-        id: mercado.id,
-        nombre: mercado.mercado,
+        id: idMercadoPeriodo(mercado.id, periodo),
+        base_id: mercado.id,
+        nombre: `${mercado.mercado} · ${periodo === 0 ? 'Partido completo' : `${periodo}T`}`,
         categoria: mercado.categoria,
         tipo: mercado.tipo,
         linea: mercado.linea,
-        alcance: mercado.alcance
+        alcance: mercado.alcance,
+        periodo
       },
       estimacion: mercado.estimacion,
       confianza: mercado.confianza,

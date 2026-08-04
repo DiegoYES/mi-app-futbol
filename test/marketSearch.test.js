@@ -25,3 +25,12 @@ test('separa familias y ofrece sólo líneas válidas para cada combinación', (
   assert.deepEqual(familias(mercados, 'tarjetas'), ['amarillas', 'registradas']);
   assert.deepEqual(lineas(mercados, { categoria: 'tarjetas', familia: 'registradas', tipo: 'over', alcance: 'total' }), [2.5]);
 });
+
+test('tarjetas generales mezcla amarillas y registradas en la misma escalera', () => {
+  const resultado = filtrar(mercados, { categoria: 'tarjetas', familia: 'todas', tipo: 'over', linea: 2.5, alcance: 'total' });
+  assert.deepEqual(resultado.map(item => item.mercado), [
+    'Más de 2.5 tarjetas amarillas totales',
+    'Más de 2.5 tarjetas registradas totales',
+    'Más de 3.5 tarjetas amarillas totales'
+  ]);
+});

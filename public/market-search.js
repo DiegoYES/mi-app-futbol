@@ -21,7 +21,7 @@
   function lineas(mercados, filtros) {
     return [...new Set(mercados.filter(item => (
       item.categoria === filtros.categoria &&
-      familia(item) === filtros.familia &&
+      (filtros.familia === 'todas' || familia(item) === filtros.familia) &&
       item.alcance === filtros.alcance &&
       item.tipo === filtros.tipo &&
       Number.isFinite(item.linea)
@@ -32,7 +32,7 @@
     const lineaInicial = Number(filtros.linea);
     return mercados.filter(item => {
       if (item.categoria !== filtros.categoria) return false;
-      if (familia(item) !== filtros.familia) return false;
+      if (filtros.familia !== 'todas' && familia(item) !== filtros.familia) return false;
       if (item.alcance !== filtros.alcance || item.tipo !== filtros.tipo) return false;
       if (!Number.isFinite(item.linea) || !Number.isFinite(lineaInicial)) return false;
       return filtros.tipo === 'under' ? item.linea <= lineaInicial : item.linea >= lineaInicial;

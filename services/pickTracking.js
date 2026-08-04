@@ -3,17 +3,30 @@ const { estadisticasPeriodo } = require('./teamStats');
 
 const MERCADOS_EVALUABLES = new Set(MERCADOS.map(mercado => mercado.id));
 
+function separarPeriodo(mercadoId) {
+  const coincidencia = String(mercadoId).match(/^(.*)__(1|2)t$/);
+  return coincidencia
+    ? { mercadoId: coincidencia[1], periodo: Number(coincidencia[2]) }
+    : { mercadoId, periodo: 0 };
+}
+
+function idMercadoPeriodo(mercadoId, periodo = 0) {
+  return periodo === 1 || periodo === 2 ? `${mercadoId}__${periodo}t` : mercadoId;
+}
+
 function evaluarMercado(mercadoId, partidoOGolesLocal, golesVisitante) {
-  const mercado = obtenerMercado(mercadoId);
+  const separado = separarPeriodo(mercadoId);
+  const mercado = obtenerMercado(separado.mercadoId);
   if (!mercado) return null;
 
   if (typeof partidoOGolesLocal === 'object' && partidoOGolesLocal !== null) {
     const partido = partidoOGolesLocal;
-    if (mercado.requiereAvanzadas && partido.estadisticas_completas !== true) return null;
+    if (separado.periodo > 0 && partido.tiempos_completos !== true) return null;
+    if (separado.periodo === 0 && mercado.requiereAvanzadas && partido.estadisticas_completas !== true) return null;
     if (![partido.equipo_local?.goles, partido.equipo_visitante?.goles].every(Number.isFinite)) return null;
     return mercado.cumple(
-      estadisticasPeriodo(partido.equipo_local, 0),
-      estadisticasPeriodo(partido.equipo_visitante, 0)
+      estadisticasPeriodo(partido.equipo_local, separado.periodo),
+      estadisticasPeriodo(partido.equipo_visitante, separado.periodo)
     );
   }
 
@@ -49,4 +62,4 @@ function resumirRendimiento(picks) {
   };
 }
 
-module.exports = { MERCADOS_EVALUABLES, evaluarMercado, resumirRendimiento };
+module.exports = { MERCADOS_EVALUABLES, evaluarMercado, idMercadoPeriodo, resumirRendimiento, separarPeriodo };
