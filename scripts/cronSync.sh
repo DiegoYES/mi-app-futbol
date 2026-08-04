@@ -73,6 +73,17 @@ if [ "$BATCH" = "hourly" ]; then
 # ------------------------------------------------------------------
 elif [ "$BATCH" = "batch1" ]; then
   echo ""
+  echo "▸ Reparar estados atrasados de los últimos 7 días (máximo 15 llamadas)"
+  node scripts/repararDetalles.js \
+    --dias=7 \
+    --horas-gracia=3 \
+    --max-partidos=300 \
+    --max-llamadas=15 \
+    --execute \
+    --allow-prod \
+    --confirm-production=REPARAR_ESTADOS_PRODUCCION
+
+  echo ""
   echo "▸ Calendario de ayer/hoy UTC (cubre el día completo de América)"
   node scripts/syncCalendario.js
 

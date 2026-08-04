@@ -135,7 +135,11 @@ async function main() {
 
     if (!args.execute) {
       console.log('\n🛑 Dry-run: no se llamó a la API ni se modificó la base.');
-      console.log('   Añade --execute para aplicar en staging.');
+      console.log(
+        esBaseStaging()
+          ? '   Añade --execute para aplicar en staging.'
+          : `   Producción requiere --execute --allow-prod --confirm-production=${CONFIRMACION_PRODUCCION}`
+      );
       return;
     }
 
