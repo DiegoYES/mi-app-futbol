@@ -55,7 +55,8 @@
           Tu prueba gratuita de 7 días ha finalizado. Continúa con acceso completo
           a todas las ligas y estadísticas por <strong>$70 MXN al mes</strong>.
         </p>
-        <button id="btnSalirPaywall" style="padding:11px 22px;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;cursor:pointer">Cerrar sesión</button>
+        <a href="/suscripcion.html" style="display:inline-block;padding:11px 22px;background:#54e38e;color:#07100d;border-radius:8px;text-decoration:none;font-weight:800">Suscribirme</a>
+        <button id="btnSalirPaywall" style="padding:11px 22px;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;cursor:pointer;margin-left:8px">Cerrar sesión</button>
       </div>`;
     document.body.appendChild(capa);
     document.getElementById('btnSalirPaywall').onclick = cerrarSesion;

@@ -21,6 +21,8 @@ const homeRoutes = require('./routes/home');
 const jugadoresRoutes = require('./routes/jugadores');
 const sugerenciasRoutes = require('./routes/sugerencias');
 const systemRoutes = require('./routes/system');
+const billingRoutes = require('./routes/billing');
+const mercadoPagoWebhookRoutes = require('./routes/mercadoPagoWebhook');
 const { protegido, requireAuth, requireAdmin, usuarioDeSesion } = require('./middleware/auth');
 const { paginasPrivadas } = require('./middleware/paginasPrivadas');
 const {
@@ -80,6 +82,9 @@ app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '32kb' }));
 app.use(cookieParser());
 
 app.use('/health', systemRoutes);
+// Mercado Pago no envía Origin; este endpoint autentica cada aviso mediante
+// la firma x-signature antes de consultar o modificar datos.
+app.use('/webhooks', mercadoPagoWebhookRoutes);
 // Las imágenes (escudos y logos) quedan fuera del límite general de /api: son
 // cacheables y una página puede pedir cientos en una sola carga. Tienen su propio límite.
 const RUTA_IMAGEN = /^\/(equipos\/\d+\/escudo|ligas\/\d+\/logo)\/?$/;
@@ -101,6 +106,8 @@ app.use(bannerEstatico(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use('/api/auth', authRoutes);
+// Billing sólo exige sesión: una prueba vencida también debe poder pagar.
+app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
 // El buzón solo exige sesión: también sirve para reportar problemas de acceso.
 app.use('/api/sugerencias', requireAuth, sugerenciasRoutes);

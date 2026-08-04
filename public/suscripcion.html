@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Membresía Data Fut</title>
+  <meta name="theme-color" content="#07100d">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/auth-client.js"></script>
+  <style>
+    .billing-shell{width:min(760px,calc(100% - 32px));margin:58px auto;padding:30px;border:1px solid var(--line);border-radius:22px;background:var(--surface);box-shadow:var(--shadow)}
+    .billing-shell h1{margin:0 0 10px}.billing-price{margin:24px 0;font-size:2.2rem;font-weight:900;color:var(--green)}
+    .billing-price small{font-size:.85rem;color:var(--muted)}.billing-list{display:grid;gap:9px;padding:0;list-style:none;color:var(--muted)}
+    .billing-consent{display:flex;gap:10px;align-items:flex-start;margin:24px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft);font-size:.82rem;line-height:1.5}
+    .billing-actions{display:flex;gap:10px;flex-wrap:wrap}.billing-actions button{min-height:46px;padding:0 20px}.billing-primary{border-color:var(--green);background:var(--green);color:#07100d;font-weight:900}
+    .billing-status{margin:18px 0 0;color:var(--muted);font-size:.8rem}.billing-error{color:#ff8d8d}.billing-note{font-size:.75rem;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main class="billing-shell">
+    <p class="eyebrow">Membresía</p>
+    <h1>Acceso completo a Data Fut</h1>
+    <p class="billing-note">El análisis informa; no garantiza resultados y Data Fut no recibe ni ejecuta apuestas.</p>
+    <div class="billing-price">$70 MXN <small>al mes · IVA incluido</small></div>
+    <ul class="billing-list">
+      <li>✓ Todas las ligas, estadísticas y herramientas disponibles.</li>
+      <li>✓ Renovación mensual automática.</li>
+      <li>✓ Aviso por correo cinco días antes de cada renovación.</li>
+      <li>✓ Cancelación inmediata, sin penalización.</li>
+    </ul>
+    <label class="billing-consent">
+      <input id="billing-consent" type="checkbox">
+      <span>Acepto el cargo recurrente de $70 MXN al mes, IVA incluido, y confirmo que leí los términos y la política de cancelación.</span>
+    </label>
+    <div class="billing-actions">
+      <button id="billing-subscribe" class="billing-primary" type="button" disabled>Continuar con Mercado Pago</button>
+      <button id="billing-cancel" type="button" hidden>Cancelar renovación</button>
+      <a href="/">Volver al inicio</a>
+    </div>
+    <p id="billing-status" class="billing-status" aria-live="polite">Consultando tu membresía…</p>
+  </main>
+  <script src="/suscripcion.js"></script>
+</body>
+</html>

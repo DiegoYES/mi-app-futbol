@@ -11,6 +11,8 @@ const MercadoCasa = require('../models/MercadoCasa');
 const ActualizacionMercados = require('../models/ActualizacionMercados');
 const Sugerencia = require('../models/Sugerencia');
 const BloqueoTrabajo = require('../models/BloqueoTrabajo');
+const Suscripcion = require('../models/Suscripcion');
+const EventoPago = require('../models/EventoPago');
 
 async function main() {
   if (!process.env.MONGODB_URI) throw new Error('Falta MONGODB_URI.');
@@ -28,9 +30,11 @@ async function main() {
       MercadoCasa.createIndexes(),
       ActualizacionMercados.createIndexes(),
       Sugerencia.createIndexes(),
-      BloqueoTrabajo.createIndexes()
+      BloqueoTrabajo.createIndexes(),
+      Suscripcion.createIndexes(),
+      EventoPago.createIndexes()
     ]);
-    console.log('✅ Índices verificados: datos deportivos, jugadores, usuarios, cuota API, bloqueos, picks, boletas, mercados y sugerencias.');
+    console.log('✅ Índices verificados: datos deportivos, usuarios, pagos, cuota API, picks, boletas, mercados y sugerencias.');
   } finally {
     await mongoose.disconnect();
   }
