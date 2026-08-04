@@ -48,10 +48,6 @@ usuarioSchema.methods.estadoAcceso = function () {
     return { tieneAcceso: false, motivo: 'cuenta_desactivada', plan: this.plan };
   }
 
-  if (this.bloqueado_ip_duplicada) {
-    return { tieneAcceso: false, motivo: 'ip_duplicada', plan: this.plan };
-  }
-
   if (this.suspendido_hasta && this.suspendido_hasta > ahora) {
     return { tieneAcceso: false, motivo: 'suspendido', plan: this.plan, suspendido_hasta: this.suspendido_hasta };
   }
@@ -68,6 +64,12 @@ usuarioSchema.methods.estadoAcceso = function () {
       diasRestantes: Math.ceil((this.suscripcion_termina - ahora) / 86400000),
       vence: this.suscripcion_termina
     };
+  }
+
+  // La IP duplicada limita el abuso de pruebas gratuitas, no debe bloquear a
+  // una cuenta que ya tiene una suscripción pagada y vigente.
+  if (this.bloqueado_ip_duplicada) {
+    return { tieneAcceso: false, motivo: 'ip_duplicada', plan: this.plan };
   }
 
   if (this.prueba_termina && this.prueba_termina > ahora) {
