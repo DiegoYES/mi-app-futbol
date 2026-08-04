@@ -56,6 +56,22 @@ if [ "$BATCH" = "hourly" ]; then
   # diario configurado en API_FOOTBALL_DAILY_LIMIT.
   export SYNC_MAX_REQUESTS="${SYNC_MAX_REQUESTS:-250}"
 
+  # El cron real del servidor sólo invoca este modo al minuto 7 de cada hora.
+  # Una vez al día recuperamos partidos que ya salieron de la ventana normal
+  # de ayer/hoy/mañana. El propio script aplica además límites y cooldown.
+  if [ "$(date -u +%H)" = "06" ]; then
+    echo ""
+    echo "▸ Reparar estados atrasados de los últimos 7 días (máximo 15 llamadas)"
+    node scripts/repararDetalles.js \
+      --dias=7 \
+      --horas-gracia=3 \
+      --max-partidos=300 \
+      --max-llamadas=15 \
+      --execute \
+      --allow-prod \
+      --confirm-production=REPARAR_ESTADOS_PRODUCCION
+  fi
+
   echo ""
   echo "▸ Actualizar ayer/hoy/mañana UTC para todas las ligas cargadas: marcadores, estadísticas y 1T/2T"
   node scripts/syncCalendario.js
