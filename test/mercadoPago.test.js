@@ -31,9 +31,35 @@ test('crea la solicitud de suscripción con precio fijo del servidor', async () 
   assert.equal(peticion.body.auto_recurring.currency_id, 'MXN');
   assert.equal(peticion.body.status, 'pending');
   assert.equal(peticion.body.external_reference, 'usuario-123');
+  assert.equal(peticion.body.payer_email, 'comprador@example.com');
   assert.equal(peticion.body.notification_url, 'https://staging.example.com/webhooks/mercadopago');
   assert.match(peticion.opciones.headers.Authorization, /^Bearer /);
   assert.ok(peticion.opciones.headers['X-Idempotency-Key']);
+});
+
+test('usa el comprador TESTUSER sólo en el ambiente de prueba', async () => {
+  let body;
+  const fetchImpl = async (_url, opciones) => {
+    body = JSON.parse(opciones.body);
+    return { ok: true, status: 201, json: async () => ({ id: 'preapproval-test' }) };
+  };
+  const baseEnv = {
+    MERCADOPAGO_ACCESS_TOKEN: 'TEST-token',
+    MERCADOPAGO_TEST_PAYER_EMAIL: 'test_user_123@testuser.com',
+    APP_ORIGIN: 'https://staging.example.com'
+  };
+
+  await crearSuscripcionPendiente(
+    { usuarioId: 'usuario-123', email: 'cliente@example.com' },
+    { fetchImpl, env: { ...baseEnv, MERCADOPAGO_ENVIRONMENT: 'test' } }
+  );
+  assert.equal(body.payer_email, 'test_user_123@testuser.com');
+
+  await crearSuscripcionPendiente(
+    { usuarioId: 'usuario-123', email: 'cliente@example.com' },
+    { fetchImpl, env: { ...baseEnv, MERCADOPAGO_ENVIRONMENT: 'production' } }
+  );
+  assert.equal(body.payer_email, 'cliente@example.com');
 });
 
 test('valida la firma HMAC de Mercado Pago y rechaza alteraciones', () => {

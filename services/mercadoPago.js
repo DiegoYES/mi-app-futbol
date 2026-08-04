@@ -50,7 +50,12 @@ function origenPublico(env = process.env) {
 }
 
 function crearSuscripcionPendiente({ usuarioId, email }, dependencias = {}) {
-  const origen = origenPublico(dependencias.env);
+  const env = dependencias.env || process.env;
+  const origen = origenPublico(env);
+  const emailPrueba = String(env.MERCADOPAGO_TEST_PAYER_EMAIL || '').trim();
+  const payerEmail = env.MERCADOPAGO_ENVIRONMENT === 'test' && emailPrueba
+    ? emailPrueba
+    : email;
   const idempotencyKey = crypto.randomUUID();
   return solicitar('/preapproval', {
     method: 'POST',
@@ -58,7 +63,7 @@ function crearSuscripcionPendiente({ usuarioId, email }, dependencias = {}) {
     body: JSON.stringify({
       reason: 'Membresía Data Fut',
       external_reference: String(usuarioId),
-      payer_email: email,
+      payer_email: payerEmail,
       back_url: `${origen}/suscripcion.html`,
       notification_url: `${origen}/webhooks/mercadopago`,
       auto_recurring: {
