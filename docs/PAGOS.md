@@ -7,21 +7,30 @@
 - Acceso completo; no habrá niveles ni funciones premium separadas.
 - La landing comunica el precio, pero no cobra hasta terminar la integración.
 
-## Decisiones necesarias antes de programar
+## Decisiones implementadas
 
-1. Elegir proveedor. Para México conviene evaluar Stripe y Mercado Pago según comisión, pagos recurrentes, conciliación y soporte de tarjetas locales.
-2. Definir si la prueba exige tarjeta. La recomendación inicial es no pedirla: reduce fricción, aunque baja la conversión automática.
-3. Confirmar razón social, datos fiscales, descriptor bancario, políticas de cancelación, privacidad y términos.
-4. Definir impuestos y comprobantes. El precio público debe aclarar si incluye IVA.
+1. Proveedor: Mercado Pago Suscripciones, mediante checkout alojado.
+2. La prueba de siete días no exige tarjeta; al vencer, el usuario acepta expresamente el cobro recurrente.
+3. Precio público: $70 MXN mensuales, IVA incluido.
+4. La cancelación detiene renovaciones y conserva el acceso hasta terminar el periodo pagado.
 
-## Arquitectura propuesta
+## Arquitectura implementada
 
-1. Crear el precio recurrente de $70 MXN en el panel del proveedor; el importe nunca se acepta desde el navegador.
+1. El servidor crea cada suscripción recurrente por $70 MXN; el importe nunca se acepta desde el navegador.
 2. Añadir una tabla/colección de suscripción con `usuario`, `proveedor`, `customer_id`, `subscription_id`, `estado`, `periodo_inicio`, `periodo_fin` y marcas de auditoría.
 3. Crear un checkout alojado por el proveedor. La aplicación sólo inicia la sesión de pago y redirige.
 4. Implementar un webhook firmado e idempotente. Éste será la fuente de verdad para activar, renovar, cancelar o suspender el acceso.
-5. Añadir un portal de cliente para actualizar tarjeta, consultar pagos y cancelar sin intervención manual.
-6. Mantener un periodo de gracia corto ante fallos de cobro y avisar al usuario antes de retirar acceso.
+5. `Mi suscripción` permite consultar estado, próxima renovación y cancelar sin intervención manual.
+6. Una reconciliación contra la API recupera suscripciones pendientes si un webhook se retrasa.
+
+## Paso a producción
+
+1. Configurar en la aplicación productiva el webhook `https://data-fut.com/webhooks/mercadopago` para Pagos y Planes y suscripciones.
+2. Instalar en producción el Public Key, Access Token y secreto de webhook productivos; eliminar cualquier `MERCADOPAGO_TEST_PAYER_EMAIL`.
+3. Establecer `MERCADOPAGO_ENVIRONMENT=production` y `APP_ORIGIN=https://data-fut.com`.
+4. Simular una notificación productiva y exigir `200 OK` antes de habilitar cobros.
+5. Promover exactamente el commit validado en staging y realizar un pago real controlado de $70 MXN.
+6. Verificar alta, acceso, cancelación, conservación del periodo pagado y estado remoto antes de abrir al público.
 
 ## Seguridad y operación
 

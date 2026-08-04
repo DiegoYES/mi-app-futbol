@@ -9,6 +9,19 @@
     estado.classList.toggle('billing-error', error);
   }
 
+  function fechaLocal(valor) {
+    return valor ? new Date(valor).toLocaleDateString('es-MX') : 'la fecha indicada';
+  }
+
+  function mostrarCancelada(accesoHasta) {
+    cancelar.hidden = true;
+    consentimiento.parentElement.hidden = false;
+    suscribir.hidden = false;
+    suscribir.textContent = 'Suscribirme de nuevo';
+    suscribir.disabled = !consentimiento.checked;
+    mensaje(`Renovación cancelada. Conservarás tu acceso Premium hasta ${fechaLocal(accesoHasta)}.`);
+  }
+
   consentimiento.addEventListener('change', () => {
     suscribir.disabled = !consentimiento.checked;
   });
@@ -36,8 +49,7 @@
       const respuesta = await fetch('/api/billing/cancel', { method: 'POST' });
       const datos = await respuesta.json();
       if (!respuesta.ok) throw new Error(datos.error || 'No se pudo cancelar.');
-      mensaje(datos.mensaje);
-      cancelar.hidden = true;
+      mostrarCancelada(datos.acceso_hasta);
     } catch (error) {
       mensaje(error.message, true);
       cancelar.disabled = false;
@@ -59,6 +71,7 @@
         return mensaje(`Membresía activa. Próxima renovación: ${proximo}.`);
       }
       if (actual.estado === 'pendiente') return mensaje('Tienes un checkout pendiente; puedes continuar cuando estés listo.');
+      if (actual.estado === 'cancelada') return mostrarCancelada(actual.periodo_fin);
       mensaje(`Estado actual: ${actual.estado}.`);
     } catch (error) {
       mensaje(error.message, true);
