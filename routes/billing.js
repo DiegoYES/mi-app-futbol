@@ -23,19 +23,23 @@ router.get('/status', requireAuth, async (req, res) => {
   if (suscripcion?.estado === 'pendiente' && suscripcion.proveedor_suscripcion_id) {
     try {
       const remota = await obtenerSuscripcion(suscripcion.proveedor_suscripcion_id);
-      if (remota.status === 'authorized') {
+      if (['authorized', 'cancelled', 'paused'].includes(remota.status)) {
         const proximoCobro = remota.next_payment_date ? new Date(remota.next_payment_date) : null;
-        suscripcion.estado = 'autorizada';
+        const estado = ({ authorized: 'autorizada', cancelled: 'cancelada', paused: 'pausada' })[remota.status];
+        suscripcion.estado = estado;
         suscripcion.periodo_inicio = remota.date_created ? new Date(remota.date_created) : new Date();
-        suscripcion.periodo_fin = proximoCobro;
-        suscripcion.proximo_cobro = proximoCobro;
+        suscripcion.periodo_fin = estado === 'autorizada' ? proximoCobro : null;
+        suscripcion.proximo_cobro = estado === 'autorizada' ? proximoCobro : null;
+        if (estado === 'cancelada') suscripcion.cancelada_en = new Date();
         suscripcion.ultimo_evento_en = new Date();
         suscripcion.ultimo_error = null;
         await suscripcion.save();
 
-        req.usuario.plan = 'premium';
-        req.usuario.suscripcion_termina = proximoCobro;
-        await req.usuario.save();
+        if (estado === 'autorizada') {
+          req.usuario.plan = 'premium';
+          req.usuario.suscripcion_termina = proximoCobro;
+          await req.usuario.save();
+        }
       }
     } catch (error) {
       // El estado local continúa pendiente y podrá reconciliarse en la siguiente
