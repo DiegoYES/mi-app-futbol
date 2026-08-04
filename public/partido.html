@@ -102,7 +102,7 @@
   .market-explorer { margin-bottom:16px;padding:15px;border:1px solid rgba(84,227,142,.25);border-radius:14px;background:rgba(84,227,142,.045); }
   .market-explorer h4 { margin:0 0 5px;font-size:.92rem; }
   .market-explorer > p { margin:0 0 13px;color:var(--muted);font-size:.7rem;line-height:1.5; }
-  .market-explorer-controls { display:grid;grid-template-columns:minmax(150px,.8fr) minmax(220px,1.5fr) minmax(140px,.7fr);gap:9px; }
+  .market-explorer-controls { display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:9px; }
   .market-explorer label { display:grid;gap:5px;color:var(--muted);font-size:.65rem;font-weight:750; }
   .market-explorer input,.market-explorer select { width:100%;min-height:42px;border:1px solid var(--line);border-radius:9px;background:var(--surface-soft);color:var(--ink);padding:8px 11px; }
   .market-explorer-summary { display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:11px;color:var(--muted);font-size:.66rem; }
@@ -295,7 +295,7 @@ const ID_PARTIDO = params.get('partido');
 let datosLocal = null;
 let datosVisitante = null;
 let datosPicksPartido = null;
-const filtrosMercado = { categoria: 'goles', busqueda: '', alcance: 'todos' };
+const filtrosMercado = { categoria: 'goles', familia: 'goles', alcance: 'total', tipo: 'over', linea: 1.5 };
 let temporadaPartido = null;
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
@@ -682,29 +682,59 @@ function filtrarMercados(datos) {
   return window.FutbolMarketSearch.filtrar(datos.mercados, filtrosMercado);
 }
 
+function prepararFiltrosMercado(datos) {
+  const familias = window.FutbolMarketSearch.familias(datos.mercados, filtrosMercado.categoria);
+  if (!familias.includes(filtrosMercado.familia)) filtrosMercado.familia = familias[0];
+  let lineas = window.FutbolMarketSearch.lineas(datos.mercados, filtrosMercado);
+  if (!lineas.length && filtrosMercado.alcance !== 'total') {
+    filtrosMercado.alcance = 'total';
+    lineas = window.FutbolMarketSearch.lineas(datos.mercados, filtrosMercado);
+  }
+  if (!lineas.includes(Number(filtrosMercado.linea))) {
+    filtrosMercado.linea = lineas.includes(1.5) ? 1.5 : lineas[0];
+  }
+  return { familias, lineas };
+}
+
+const NOMBRES_FAMILIAS = {
+  amarillas: 'Tarjetas amarillas', rojas: 'Tarjetas rojas', registradas: 'Tarjetas registradas',
+  goles: 'Goles', corners: 'Córners', tiros: 'Tiros', tiros_puerta: 'Tiros a puerta',
+  faltas: 'Faltas', offsides: 'Fueras de juego'
+};
+
 function pintarPicksPartido() {
   const cont = document.getElementById('bloquePicks');
   const datos = datosPicksPartido;
+  const categoriasExplorables = datos.categorias.filter(categoria => datos.mercados.some(item => item.categoria === categoria && Number.isFinite(item.linea) && item.tipo));
   const recomendados = new Set(datos.recomendados || []);
+  const opciones = prepararFiltrosMercado(datos);
   const mercados = filtrarMercados(datos);
   cont.innerHTML = `
     ${datos.motivo_no_guardable ? `<div class="warning">${esc(datos.motivo_no_guardable)}</div>` : ''}
     <section class="market-explorer">
       <h4>Busca la línea que viste en tu casa</h4>
-      <p>Ejemplo: selecciona Tarjetas y escribe <b>over 2.5</b>. Data Fut muestra la probabilidad histórica; confirma en tu casino cómo contabiliza cada mercado.</p>
+      <p>Selecciona una línea inicial. Mostramos también las líneas siguientes en la misma dirección para que compares probabilidades.</p>
       <div class="market-explorer-controls">
         <label>Categoría<select id="categoriaPicksPartido" aria-label="Categoría de mercado">
-          ${datos.categorias.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.categoria ? 'selected' : ''}>${esc(NOMBRES_CATEGORIAS[item] || item)}</option>`).join('')}
+          ${categoriasExplorables.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.categoria ? 'selected' : ''}>${esc(NOMBRES_CATEGORIAS[item] || item)}</option>`).join('')}
         </select></label>
-        <label>Mercado o línea<input id="buscarMercadoPartido" type="search" value="${esc(filtrosMercado.busqueda)}" placeholder="Ej. over 2.5, menos 9.5, amarillas" autocomplete="off"></label>
+        <label>Métrica<select id="familiaMercadoPartido">
+          ${opciones.familias.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.familia ? 'selected' : ''}>${esc(NOMBRES_FAMILIAS[item] || item)}</option>`).join('')}
+        </select></label>
         <label>Alcance<select id="alcanceMercadoPartido">
-          <option value="todos" ${filtrosMercado.alcance === 'todos' ? 'selected' : ''}>Todos</option>
           <option value="total" ${filtrosMercado.alcance === 'total' ? 'selected' : ''}>Partido completo</option>
           <option value="local" ${filtrosMercado.alcance === 'local' ? 'selected' : ''}>Equipo local</option>
           <option value="visitante" ${filtrosMercado.alcance === 'visitante' ? 'selected' : ''}>Equipo visitante</option>
         </select></label>
+        <label>Dirección<select id="tipoMercadoPartido">
+          <option value="over" ${filtrosMercado.tipo === 'over' ? 'selected' : ''}>Over · Más de</option>
+          <option value="under" ${filtrosMercado.tipo === 'under' ? 'selected' : ''}>Under · Menos de</option>
+        </select></label>
+        <label>Línea inicial<select id="lineaMercadoPartido">
+          ${opciones.lineas.map(item => `<option value="${item}" ${item === Number(filtrosMercado.linea) ? 'selected' : ''}>${filtrosMercado.tipo === 'over' ? 'Over' : 'Under'} ${item}</option>`).join('')}
+        </select></label>
       </div>
-      <div class="market-explorer-summary"><span>${mercados.length} coincidencia${mercados.length === 1 ? '' : 's'}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>Las rojas y amarillas se calculan por separado.</span>' : ''}</div>
+      <div class="market-explorer-summary"><span>${mercados.length} línea${mercados.length === 1 ? '' : 's'} desde ${filtrosMercado.tipo === 'over' ? 'Over' : 'Under'} ${filtrosMercado.linea}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>“Registradas” suma amarillas + rojas simples; confirma las reglas de tu casino.</span>' : ''}</div>
     </section>
     <div class="pick-grid" style="margin-top:12px">
       ${mercados.length ? mercados.map(item => {
@@ -797,6 +827,10 @@ async function cargarPicks() {
   }
   datosPicksPartido = datos;
   filtrosMercado.categoria = datos.categorias.includes('goles') ? 'goles' : datos.categorias[0];
+  filtrosMercado.familia = filtrosMercado.categoria;
+  filtrosMercado.alcance = 'total';
+  filtrosMercado.tipo = 'over';
+  filtrosMercado.linea = filtrosMercado.categoria === 'goles' ? 1.5 : null;
   pintarPicksPartido();
 }
 
@@ -876,18 +910,24 @@ document.addEventListener('DOMContentLoaded', () => {
     if (boton) guardarPick(boton.dataset.guardarPick);
   });
   document.getElementById('bloquePicks').addEventListener('change', event => {
-    if (event.target.id === 'categoriaPicksPartido') filtrosMercado.categoria = event.target.value;
-    else if (event.target.id === 'buscarMercadoPartido') filtrosMercado.busqueda = event.target.value;
-    else if (event.target.id === 'alcanceMercadoPartido') filtrosMercado.alcance = event.target.value;
+    if (event.target.id === 'categoriaPicksPartido') {
+      filtrosMercado.categoria = event.target.value;
+      filtrosMercado.familia = event.target.value;
+      filtrosMercado.alcance = 'total';
+      filtrosMercado.tipo = 'over';
+      filtrosMercado.linea = null;
+    } else if (event.target.id === 'familiaMercadoPartido') {
+      filtrosMercado.familia = event.target.value;
+      filtrosMercado.linea = null;
+    } else if (event.target.id === 'alcanceMercadoPartido') {
+      filtrosMercado.alcance = event.target.value;
+      filtrosMercado.linea = null;
+    } else if (event.target.id === 'tipoMercadoPartido') {
+      filtrosMercado.tipo = event.target.value;
+      filtrosMercado.linea = null;
+    } else if (event.target.id === 'lineaMercadoPartido') filtrosMercado.linea = Number(event.target.value);
     else return;
     pintarPicksPartido();
-  });
-  document.getElementById('bloquePicks').addEventListener('keydown', event => {
-    if (event.target.id === 'buscarMercadoPartido' && event.key === 'Enter') {
-      event.preventDefault();
-      filtrosMercado.busqueda = event.target.value;
-      pintarPicksPartido();
-    }
   });
   document.getElementById('bloqueH2H').addEventListener('click', event => {
     const boton = event.target.closest('[data-h2h-details]');

@@ -7,25 +7,37 @@
     return String(valor || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
   }
 
-  function filtrar(mercados, filtros) {
-    const consulta = normalizar(filtros.busqueda);
-    const numero = consulta.match(/\d+(?:[.,]\d+)?/)?.[0]?.replace(',', '.');
-    const pideOver = /\b(over|mas)\b/.test(consulta);
-    const pideUnder = /\b(under|menos)\b/.test(consulta);
-    const terminos = consulta
-      .replace(/\b(over|under|mas|menos|de|del|la|el)\b/g, ' ')
-      .replace(/\d+(?:[.,]\d+)?/g, ' ')
-      .split(/\s+/).filter(Boolean);
-    return mercados.filter(item => {
-      if (item.categoria !== filtros.categoria) return false;
-      if (filtros.alcance !== 'todos' && item.alcance !== filtros.alcance) return false;
-      if (pideOver && item.tipo !== 'over') return false;
-      if (pideUnder && item.tipo !== 'under') return false;
-      if (numero && Number(item.linea) !== Number(numero)) return false;
-      const nombre = normalizar(item.mercado);
-      return terminos.every(termino => nombre.includes(termino));
-    });
+  function familia(item) {
+    if (item.categoria !== 'tarjetas') return item.categoria;
+    if (item.id?.startsWith('tarjetas_registradas_')) return 'registradas';
+    if (item.id?.startsWith('rojas_')) return 'rojas';
+    return 'amarillas';
   }
 
-  return { filtrar, normalizar };
+  function familias(mercados, categoria) {
+    return [...new Set(mercados.filter(item => item.categoria === categoria && Number.isFinite(item.linea)).map(familia))];
+  }
+
+  function lineas(mercados, filtros) {
+    return [...new Set(mercados.filter(item => (
+      item.categoria === filtros.categoria &&
+      familia(item) === filtros.familia &&
+      item.alcance === filtros.alcance &&
+      item.tipo === filtros.tipo &&
+      Number.isFinite(item.linea)
+    )).map(item => item.linea))].sort((a, b) => a - b);
+  }
+
+  function filtrar(mercados, filtros) {
+    const lineaInicial = Number(filtros.linea);
+    return mercados.filter(item => {
+      if (item.categoria !== filtros.categoria) return false;
+      if (familia(item) !== filtros.familia) return false;
+      if (item.alcance !== filtros.alcance || item.tipo !== filtros.tipo) return false;
+      if (!Number.isFinite(item.linea) || !Number.isFinite(lineaInicial)) return false;
+      return filtros.tipo === 'under' ? item.linea <= lineaInicial : item.linea >= lineaInicial;
+    }).sort((a, b) => filtros.tipo === 'under' ? b.linea - a.linea : a.linea - b.linea);
+  }
+
+  return { familia, familias, filtrar, lineas, normalizar };
 });

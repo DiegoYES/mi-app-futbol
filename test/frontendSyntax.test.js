@@ -121,9 +121,11 @@ test('la ficha ofrece las estadísticas como una opción propia del partido', ()
 
 test('la ficha permite buscar manualmente líneas sin depender de una casa', () => {
   const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
-  assert.match(partido, /id="buscarMercadoPartido"/);
-  assert.match(partido, /Ej\. over 2\.5/);
+  assert.match(partido, /id="familiaMercadoPartido"/);
+  assert.match(partido, /id="tipoMercadoPartido"/);
+  assert.match(partido, /id="lineaMercadoPartido"/);
   assert.match(partido, /function filtrarMercados/);
+  assert.doesNotMatch(partido, /id="buscarMercadoPartido"/);
   assert.doesNotMatch(partido, /Playdoit · picks apostables/);
 });
 
