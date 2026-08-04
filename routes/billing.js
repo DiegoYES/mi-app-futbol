@@ -7,14 +7,43 @@ const {
   ErrorMercadoPago,
   PRECIO_MENSUAL,
   cancelarSuscripcion,
-  crearSuscripcionPendiente
+  crearSuscripcionPendiente,
+  obtenerSuscripcion
 } = require('../services/mercadoPago');
 
 const router = express.Router();
 const limiteBilling = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false });
 
 router.get('/status', requireAuth, async (req, res) => {
-  const suscripcion = await Suscripcion.findOne({ usuario: req.usuario._id }).lean();
+  let suscripcion = await Suscripcion.findOne({ usuario: req.usuario._id });
+
+  // El webhook sigue siendo la vía principal, pero Mercado Pago puede tardar o
+  // no entregar alguna notificación. Reconciliamos sólo estados pendientes para
+  // no depender del navegador ni otorgar acceso sin verificarlo con la API.
+  if (suscripcion?.estado === 'pendiente' && suscripcion.proveedor_suscripcion_id) {
+    try {
+      const remota = await obtenerSuscripcion(suscripcion.proveedor_suscripcion_id);
+      if (remota.status === 'authorized') {
+        const proximoCobro = remota.next_payment_date ? new Date(remota.next_payment_date) : null;
+        suscripcion.estado = 'autorizada';
+        suscripcion.periodo_inicio = remota.date_created ? new Date(remota.date_created) : new Date();
+        suscripcion.periodo_fin = proximoCobro;
+        suscripcion.proximo_cobro = proximoCobro;
+        suscripcion.ultimo_evento_en = new Date();
+        suscripcion.ultimo_error = null;
+        await suscripcion.save();
+
+        req.usuario.plan = 'premium';
+        req.usuario.suscripcion_termina = proximoCobro;
+        await req.usuario.save();
+      }
+    } catch (error) {
+      // El estado local continúa pendiente y podrá reconciliarse en la siguiente
+      // consulta; no convertimos una indisponibilidad temporal en un rechazo.
+      console.error('[billing reconcile]', error);
+    }
+  }
+
   res.json({
     precio: PRECIO_MENSUAL,
     moneda: 'MXN',
