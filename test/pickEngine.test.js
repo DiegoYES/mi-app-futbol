@@ -154,3 +154,14 @@ test('explica un mercado con los partidos y valores concretos de cada fuente', (
   assert.equal(explicacion.detalle_fuentes[1].partidos[0].sujeto, 'Equipo 50');
   assert.ok(explicacion.detalle_fuentes.flatMap(item => item.partidos).every(item => item.cumplio));
 });
+
+test('calcula tarjetas registradas como amarillas más rojas simples', () => {
+  const completo = partido(22, 10, 1, 20, 0);
+  completo.estadisticas_completas = true;
+  Object.assign(completo.equipo_local, { tarjetas_amarillas: 1, tarjetas_rojas: 1 });
+  Object.assign(completo.equipo_visitante, { tarjetas_amarillas: 1, tarjetas_rojas: 0 });
+
+  const datos = frecuencia([completo], 10);
+  assert.equal(datos.tarjetas_registradas_total_over_2_5.aciertos, 1);
+  assert.equal(datos.tarjetas_registradas_total_under_3_5.aciertos, 1);
+});

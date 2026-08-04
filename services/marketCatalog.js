@@ -68,7 +68,33 @@ function crearMercadosNumericos() {
   return mercados;
 }
 
-const MERCADOS = [...MERCADOS_GOLES, ...crearMercadosNumericos()];
+function crearMercadosTarjetasRegistradas() {
+  const mercados = [];
+  const tarjetas = equipo => (Number(equipo?.amarillas) || 0) + (Number(equipo?.rojas) || 0);
+  const alcances = [
+    { id: 'total', nombre: 'totales', lineas: [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5], valor: (l, v) => tarjetas(l) + tarjetas(v) },
+    { id: 'local', nombre: 'del local', lineas: [0.5, 1.5, 2.5, 3.5, 4.5], valor: l => tarjetas(l) },
+    { id: 'visitante', nombre: 'del visitante', lineas: [0.5, 1.5, 2.5, 3.5, 4.5], valor: (l, v) => tarjetas(v) }
+  ];
+  for (const alcance of alcances) {
+    for (const linea of alcance.lineas) {
+      for (const tipo of ['over', 'under']) {
+        const mas = tipo === 'over';
+        mercados.push(crearMercado({
+          id: `tarjetas_registradas_${alcance.id}_${tipo}_${idLinea(linea)}`,
+          nombre: `${mas ? 'Más' : 'Menos'} de ${linea} tarjetas registradas ${alcance.nombre}`,
+          categoria: 'tarjetas', tipo, linea, alcance: alcance.id,
+          unidad: 'tarjetas registradas', requiereAvanzadas: true,
+          medir: alcance.valor,
+          cumple: (local, visitante) => mas ? alcance.valor(local, visitante) > linea : alcance.valor(local, visitante) < linea
+        }));
+      }
+    }
+  }
+  return mercados;
+}
+
+const MERCADOS = [...MERCADOS_GOLES, ...crearMercadosNumericos(), ...crearMercadosTarjetasRegistradas()];
 const MERCADOS_POR_ID = new Map(MERCADOS.map(mercado => [mercado.id, mercado]));
 
 function obtenerMercado(id) {

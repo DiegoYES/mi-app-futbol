@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#07100d">
 <link rel="stylesheet" href="/styles.css">
 <script src="/auth-client.js"></script>
+<script src="/market-search.js"></script>
 <style>
   .volver { display: inline-block; color: var(--green); text-decoration: none; margin-bottom: 18px; font-size: .9rem; }
 
@@ -98,6 +99,14 @@
   .bookmaker-status { display:inline-block;margin-top:9px;color:var(--muted);font-size:.62rem;font-weight:850; }
   .bookmaker-status.value { color:var(--green); }
   .bookmaker-availability { display:block;margin-top:8px;padding-top:8px;border-top:1px solid var(--line);color:var(--muted);font-size:.64rem; }
+  .market-explorer { margin-bottom:16px;padding:15px;border:1px solid rgba(84,227,142,.25);border-radius:14px;background:rgba(84,227,142,.045); }
+  .market-explorer h4 { margin:0 0 5px;font-size:.92rem; }
+  .market-explorer > p { margin:0 0 13px;color:var(--muted);font-size:.7rem;line-height:1.5; }
+  .market-explorer-controls { display:grid;grid-template-columns:minmax(150px,.8fr) minmax(220px,1.5fr) minmax(140px,.7fr);gap:9px; }
+  .market-explorer label { display:grid;gap:5px;color:var(--muted);font-size:.65rem;font-weight:750; }
+  .market-explorer input,.market-explorer select { width:100%;min-height:42px;border:1px solid var(--line);border-radius:9px;background:var(--surface-soft);color:var(--ink);padding:8px 11px; }
+  .market-explorer-summary { display:flex;justify-content:space-between;gap:10px;align-items:center;margin-top:11px;color:var(--muted);font-size:.66rem; }
+  @media (max-width:720px) { .market-explorer-controls { grid-template-columns:1fr; } }
   .match-center { width:min(1280px,calc(100% - 32px)); }
   .match-topbar { display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:18px; }
   .match-topbar .volver { margin:0; }
@@ -286,7 +295,7 @@ const ID_PARTIDO = params.get('partido');
 let datosLocal = null;
 let datosVisitante = null;
 let datosPicksPartido = null;
-let filtroCasaPicks = 'valor';
+const filtrosMercado = { categoria: 'goles', busqueda: '', alcance: 'todos' };
 let temporadaPartido = null;
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
@@ -669,80 +678,36 @@ async function alternarDetalleH2H(boton) {
   panel.dataset.loaded = 'true';
 }
 
-const ETIQUETAS_CASA = {
-  AVAILABLE_WITH_VALUE: 'Disponible con valor', AVAILABLE_NO_VALUE: 'Disponible sin valor',
-  MARKET_NOT_FOUND: 'Mercado no encontrado', LINE_NOT_AVAILABLE: 'Línea no disponible',
-  PLAYER_NOT_MATCHED: 'Jugador no emparejado', EVENT_NOT_MATCHED: 'Evento no emparejado',
-  ODDS_NOT_AVAILABLE: 'Sin cuota', MODEL_PROBABILITY_NOT_AVAILABLE: 'Sin probabilidad válida',
-  AMBIGUOUS_MATCH: 'Emparejamiento ambiguo', MARKET_SUSPENDED: 'Mercado suspendido'
-};
-
-function porcentajeCasa(valor, signo = false) {
-  if (!Number.isFinite(valor)) return '—';
-  const numero = valor * 100;
-  return `${signo && numero > 0 ? '+' : ''}${numero.toFixed(1)}%`;
+function filtrarMercados(datos) {
+  return window.FutbolMarketSearch.filtrar(datos.mercados, filtrosMercado);
 }
 
-function pintarMercadosCasa(datos) {
-  const casa = datos.casa;
-  if (!casa || casa.estado !== 'MATCHED') {
-    const mensajes = {
-      CACHE_EMPTY_OR_EXPIRED: 'No hay una captura vigente. Un administrador debe actualizar los mercados.',
-      EVENT_NOT_MATCHED: 'Playdoit no contiene este evento en la última captura.',
-      AMBIGUOUS_MATCH: 'El evento coincide con más de un partido y se descartó por seguridad.',
-      INTEGRATION_ERROR: 'No se pudo consultar el caché de mercados.'
-    };
-    return `<section class="bookmaker-block"><div class="bookmaker-head"><div><h4>Playdoit · picks apostables</h4><p>${esc(mensajes[casa?.estado] || 'Mercados de la casa no disponibles.')}</p></div></div></section>`;
-  }
-  const todos = casa.resultados || [];
-  const filtrados = todos.filter(item => {
-    if (filtroCasaPicks === 'valor') return item.estado === 'AVAILABLE_WITH_VALUE';
-    if (filtroCasaPicks === 'disponibles') return item.estado.startsWith('AVAILABLE_');
-    if (filtroCasaPicks === 'sin_valor') return item.estado === 'AVAILABLE_NO_VALUE';
-    if (filtroCasaPicks === 'descartados') return !item.estado.startsWith('AVAILABLE_');
-    return true;
-  });
-  const actualizado = casa.actualizado_en ? new Date(casa.actualizado_en).toLocaleString('es-MX') : '—';
-  return `<section class="bookmaker-block">
-    <div class="bookmaker-head"><div><h4>Playdoit · picks apostables</h4><p>Línea y cuota de la última captura · actualizado ${esc(actualizado)}</p></div><span class="model-badge">${casa.picks_apostables?.length || 0} con valor</span></div>
-    <div class="pick-filter-controls">
-      <select id="filtroCasaPicks" aria-label="Estado en Playdoit">
-        <option value="valor" ${filtroCasaPicks === 'valor' ? 'selected' : ''}>Con valor</option>
-        <option value="disponibles" ${filtroCasaPicks === 'disponibles' ? 'selected' : ''}>Todos los disponibles</option>
-        <option value="sin_valor" ${filtroCasaPicks === 'sin_valor' ? 'selected' : ''}>Sin valor</option>
-        <option value="descartados" ${filtroCasaPicks === 'descartados' ? 'selected' : ''}>Descartados</option>
-        <option value="todos" ${filtroCasaPicks === 'todos' ? 'selected' : ''}>Todos (diagnóstico)</option>
-      </select><span class="model-badge">${filtrados.length} resultados</span>
-    </div>
-    ${filtrados.length ? `<div class="bookmaker-grid">${filtrados.slice(0, 100).map(item => {
-      const s = item.seleccion || {};
-      const lado = ({ OVER: 'Más de', UNDER: 'Menos de', YES: 'Sí', NO: 'No' })[s.lado] || s.lado;
-      return `<article class="bookmaker-card ${item.estado === 'AVAILABLE_WITH_VALUE' ? 'value' : ''}">
-        ${s.jugador ? `<span class="bookmaker-player">${esc(s.jugador)}</span>` : ''}
-        <h5>${esc(s.mercado)} · ${esc(lado)} ${Number.isFinite(s.linea) ? s.linea : ''}</h5>
-        <div class="bookmaker-numbers"><span>Cuota Playdoit<b>${Number.isFinite(s.cuota) ? s.cuota.toFixed(2) : '—'}</b></span><span>Modelo<b>${porcentajeCasa(item.modelo?.probabilidad)}</b></span><span>Implícita${item.probabilidad_sin_vig != null ? ' sin vig' : ''}<b>${porcentajeCasa(item.probabilidad_sin_vig ?? item.probabilidad_implicita)}</b></span><span>Edge / EV<b>${porcentajeCasa(item.edge, true)} · ${porcentajeCasa(item.valor_esperado, true)}</b></span></div>
-        <span class="bookmaker-status ${item.estado === 'AVAILABLE_WITH_VALUE' ? 'value' : ''}">${esc(ETIQUETAS_CASA[item.estado] || item.estado)}</span>
-      </article>`;
-    }).join('')}</div>` : '<div class="aviso">No hay selecciones en este filtro.</div>'}
-  </section>`;
-}
-
-function pintarPicksPartido(categoria = 'goles') {
+function pintarPicksPartido() {
   const cont = document.getElementById('bloquePicks');
   const datos = datosPicksPartido;
   const recomendados = new Set(datos.recomendados || []);
-  const mercados = datos.mercados.filter(item => item.categoria === categoria);
+  const mercados = filtrarMercados(datos);
   cont.innerHTML = `
     ${datos.motivo_no_guardable ? `<div class="warning">${esc(datos.motivo_no_guardable)}</div>` : ''}
-    ${pintarMercadosCasa(datos)}
-    <div class="pick-filter-controls" style="margin-top:12px">
-      <select id="categoriaPicksPartido" aria-label="Categoría de mercado">
-        ${datos.categorias.map(item => `<option value="${esc(item)}" ${item === categoria ? 'selected' : ''}>${esc(NOMBRES_CATEGORIAS[item] || item)}</option>`).join('')}
-      </select>
-      <span class="model-badge">${mercados.length} mercados</span>
-    </div>
+    <section class="market-explorer">
+      <h4>Busca la línea que viste en tu casa</h4>
+      <p>Ejemplo: selecciona Tarjetas y escribe <b>over 2.5</b>. Data Fut muestra la probabilidad histórica; confirma en tu casino cómo contabiliza cada mercado.</p>
+      <div class="market-explorer-controls">
+        <label>Categoría<select id="categoriaPicksPartido" aria-label="Categoría de mercado">
+          ${datos.categorias.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.categoria ? 'selected' : ''}>${esc(NOMBRES_CATEGORIAS[item] || item)}</option>`).join('')}
+        </select></label>
+        <label>Mercado o línea<input id="buscarMercadoPartido" type="search" value="${esc(filtrosMercado.busqueda)}" placeholder="Ej. over 2.5, menos 9.5, amarillas" autocomplete="off"></label>
+        <label>Alcance<select id="alcanceMercadoPartido">
+          <option value="todos" ${filtrosMercado.alcance === 'todos' ? 'selected' : ''}>Todos</option>
+          <option value="total" ${filtrosMercado.alcance === 'total' ? 'selected' : ''}>Partido completo</option>
+          <option value="local" ${filtrosMercado.alcance === 'local' ? 'selected' : ''}>Equipo local</option>
+          <option value="visitante" ${filtrosMercado.alcance === 'visitante' ? 'selected' : ''}>Equipo visitante</option>
+        </select></label>
+      </div>
+      <div class="market-explorer-summary"><span>${mercados.length} coincidencia${mercados.length === 1 ? '' : 's'}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>Las rojas y amarillas se calculan por separado.</span>' : ''}</div>
+    </section>
     <div class="pick-grid" style="margin-top:12px">
-      ${mercados.map(item => {
+      ${mercados.length ? mercados.map(item => {
         const nombreLocal = datos.partido?.local?.nombre || 'Equipo local';
         const nombreVisitante = datos.partido?.visitante?.nombre || 'Equipo visitante';
         const detalle = (item.detalle_fuentes || []).map(fuente => {
@@ -767,17 +732,10 @@ function pintarPicksPartido(categoria = 'goles') {
         } else if (item.requiere_avanzadas) {
           accion = '<span class="pick-result">Sin dato final</span>';
         }
-        const casa = item.disponibilidad_casa || {};
-        const estadoCasa = casa.estado === 'AVAILABLE_WITH_VALUE' || casa.estado === 'AVAILABLE_NO_VALUE'
-          ? `Playdoit ${casa.seleccion?.linea ?? item.linea} · cuota ${casa.seleccion?.cuota?.toFixed?.(2) || '—'} · ${ETIQUETAS_CASA[casa.estado]}`
-          : casa.lineas_alternativas?.length
-            ? `Esta línea no está; Playdoit ofrece ${casa.lineas_alternativas.join(', ')}. No reutilizamos el porcentaje.`
-            : (ETIQUETAS_CASA[casa.estado] || 'No disponible en Playdoit');
         return `<article class="pick-card ${recomendados.has(item.id) ? 'recomendado' : ''} ${item.guardado ? 'guardado' : ''}">
           <div class="pick-market">${esc(item.mercado)}</div>
           <div class="pick-estimate">${item.estimacion}%</div>
           <div class="pick-meta"><span class="confidence-${esc(item.confianza)}">${esc(item.confianza)}</span><span>muestra ${item.muestra} · ${item.fuentes}/2 fuentes</span></div>
-          <span class="bookmaker-availability">${esc(estadoCasa)}</span>
           <button type="button" class="pick-why" data-explicar-pick="${esc(item.id)}" aria-haspopup="dialog">¿Por qué ${item.estimacion}%?</button>
           <div class="pick-reason" data-razon-pick="${esc(item.id)}" hidden>
             <strong>De dónde sale</strong>
@@ -787,7 +745,7 @@ function pintarPicksPartido(categoria = 'goles') {
           </div>
           <div class="pick-actions">${recomendados.has(item.id) ? '<span class="model-badge">Candidato</span>' : '<span></span>'}${accion}</div>
         </article>`;
-      }).join('')}
+      }).join('') : '<div class="aviso">No encontramos esa línea en esta categoría. Prueba otra línea o elimina parte de la búsqueda.</div>'}
     </div>
     <p class="method-note">${esc(datos.metodologia)} La muestra utiliza únicamente partidos anteriores a este encuentro.</p>`;
 }
@@ -838,7 +796,8 @@ async function cargarPicks() {
     return;
   }
   datosPicksPartido = datos;
-  pintarPicksPartido(datos.categorias.includes('goles') ? 'goles' : datos.categorias[0]);
+  filtrosMercado.categoria = datos.categorias.includes('goles') ? 'goles' : datos.categorias[0];
+  pintarPicksPartido();
 }
 
 async function guardarPick(mercadoId) {
@@ -917,10 +876,17 @@ document.addEventListener('DOMContentLoaded', () => {
     if (boton) guardarPick(boton.dataset.guardarPick);
   });
   document.getElementById('bloquePicks').addEventListener('change', event => {
-    if (event.target.id === 'categoriaPicksPartido') pintarPicksPartido(event.target.value);
-    if (event.target.id === 'filtroCasaPicks') {
-      filtroCasaPicks = event.target.value;
-      pintarPicksPartido(document.getElementById('categoriaPicksPartido')?.value || 'goles');
+    if (event.target.id === 'categoriaPicksPartido') filtrosMercado.categoria = event.target.value;
+    else if (event.target.id === 'buscarMercadoPartido') filtrosMercado.busqueda = event.target.value;
+    else if (event.target.id === 'alcanceMercadoPartido') filtrosMercado.alcance = event.target.value;
+    else return;
+    pintarPicksPartido();
+  });
+  document.getElementById('bloquePicks').addEventListener('keydown', event => {
+    if (event.target.id === 'buscarMercadoPartido' && event.key === 'Enter') {
+      event.preventDefault();
+      filtrosMercado.busqueda = event.target.value;
+      pintarPicksPartido();
     }
   });
   document.getElementById('bloqueH2H').addEventListener('click', event => {

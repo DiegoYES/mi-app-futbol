@@ -28,6 +28,11 @@ test('app.js contiene JavaScript válido', () => {
   assert.doesNotThrow(() => new Function(codigo));
 });
 
+test('market-search.js contiene JavaScript válido', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'market-search.js'), 'utf8');
+  assert.doesNotThrow(() => new Function(codigo));
+});
+
 test('el comparador permite buscar competiciones por país y equipos por nombre', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
   const estilos = fs.readFileSync(path.join(__dirname, '..', 'public', 'styles.css'), 'utf8');
@@ -112,6 +117,14 @@ test('la ficha ofrece las estadísticas como una opción propia del partido', ()
   assert.match(partido, /id="fAlcanceLocal"/);
   assert.match(partido, /id="fAlcanceVisitante"/);
   assert.doesNotMatch(partido, /id="fAlcance"/);
+});
+
+test('la ficha permite buscar manualmente líneas sin depender de una casa', () => {
+  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  assert.match(partido, /id="buscarMercadoPartido"/);
+  assert.match(partido, /Ej\. over 2\.5/);
+  assert.match(partido, /function filtrarMercados/);
+  assert.doesNotMatch(partido, /Playdoit · picks apostables/);
 });
 
 test('el directorio de competiciones agrupa temporadas y permite elegirlas', () => {

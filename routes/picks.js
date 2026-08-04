@@ -4,7 +4,6 @@ const Partido = require('../models/partido');
 const PickGuardado = require('../models/PickGuardado');
 const { explicarMercado, generarPicks } = require('../services/pickEngine');
 const { evaluarMercado, resumirRendimiento } = require('../services/pickTracking');
-const { evaluarPartidoEnCasa } = require('../services/betting/bookmakerIntegrationService');
 
 const router = express.Router();
 const ESTADOS_FINALIZADOS = new Set(['FT', 'AET', 'PEN']);
@@ -116,23 +115,10 @@ router.get('/partido/:id', async (req, res) => {
 
     const resultado = await analizarPartido(partido);
     const finalizado = esFinalizado(partido);
-    const casa = await evaluarPartidoEnCasa(partido, resultado).catch(error => ({
-      proveedor: 'playdoit',
-      estado: 'INTEGRATION_ERROR',
-      actualizado_en: null,
-      resultados: [],
-      picks_apostables: [],
-      resumen: { INTEGRATION_ERROR: 1 },
-      problema: "No se pudo evaluar este partido."
-    }));
     const guardados = await PickGuardado.find({
       usuario: req.usuario._id,
       partido_api_id: partido.api_id
     }).select('mercado.id estado').lean();
-
-    const mercadosApostables = new Set(casa.picks_apostables.map(item => item.modelo?.mercado_id).filter(Boolean));
-    const mercadosVisibles = resultado.mercados.filter(mercado => mercadosApostables.has(mercado.id));
-    const categoriasVisibles = [...new Set(mercadosVisibles.map(mercado => mercado.categoria))];
 
     res.json({
       partido: datosPartido(partido),
@@ -142,27 +128,13 @@ router.get('/partido/:id', async (req, res) => {
         : partido.fecha <= new Date()
           ? 'El partido ya comenzó; los picks solo se guardan antes del inicio.'
           : null,
-      mercados: mercadosVisibles.map(mercado => {
-        const disponible = casa.resultados.find(item => item.modelo?.mercado_id === mercado.id);
-        const alternativas = casa.resultados.filter(item => (
-          !item.modelo?.mercado_id &&
-          item.seleccion?.categoria === ({ goles: 'goals', tarjetas: 'cards', tiros: 'shots', tiros_puerta: 'shots_on_target', faltas: 'fouls', corners: 'corners' })[mercado.categoria] &&
-          item.seleccion?.lado?.toLowerCase() === mercado.tipo &&
-          item.modelo?.alcance === mercado.alcance
-        )).map(item => item.seleccion.linea).filter(Number.isFinite);
-        return {
+      mercados: resultado.mercados.map(mercado => ({
           ...mercado,
           guardado: guardados.some(item => item.mercado.id === mercado.id),
-          resultado_historico: finalizado ? evaluarMercado(mercado.id, partido) : null,
-          disponibilidad_casa: disponible || {
-            estado: casa.estado === 'MATCHED' ? 'MARKET_NOT_FOUND' : casa.estado,
-            lineas_alternativas: [...new Set(alternativas)]
-          }
-        };
-      }),
-      casa,
-      recomendados: resultado.recomendados.map(item => item.id).filter(id => mercadosApostables.has(id)),
-      categorias: categoriasVisibles,
+          resultado_historico: finalizado ? evaluarMercado(mercado.id, partido) : null
+      })),
+      recomendados: resultado.recomendados.map(item => item.id),
+      categorias: resultado.categorias,
       metodologia: resultado.metodologia
     });
   } catch (error) {
@@ -187,20 +159,6 @@ router.post('/seguimiento', async (req, res) => {
     const resultado = await analizarPartido(partido);
     const mercado = resultado.mercados.find(item => item.id === mercadoId);
     if (!mercado) return res.status(400).json({ error: 'Ese mercado no se puede evaluar.' });
-    const casa = await evaluarPartidoEnCasa(
-      partido,
-      { mercados: [mercado] },
-      'playdoit',
-      { mercadoIds: [mercado.id] }
-    );
-    const apostable = casa.picks_apostables.some(item => item.modelo?.mercado_id === mercado.id);
-    if (!apostable) {
-      return res.status(409).json({
-        error: 'Este pick no tiene una línea abierta, cuota vigente y valor suficiente en Playdoit.',
-        codigo: 'PICK_NO_APOSTABLE'
-      });
-    }
-
     const pick = await PickGuardado.create({
       usuario: req.usuario._id,
       partido_api_id: partido.api_id,
