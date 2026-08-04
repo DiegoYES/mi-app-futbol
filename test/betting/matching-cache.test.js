@@ -59,3 +59,12 @@ test('modo estricto publica sólo la misma línea abierta con cuota y valor', as
   });
   assert.equal(suspendida.picks_apostables.length, 0);
 });
+
+test('sin cache de mercados responde cerrado y sin picks apostables', async () => {
+  const resultado = await evaluarPartidoEnCasa(partido, { mercados: [] }, 'playdoit', {
+    selecciones: []
+  });
+
+  assert.equal(resultado.estado, 'CACHE_EMPTY_OR_EXPIRED');
+  assert.deepEqual(resultado.picks_apostables, []);
+});

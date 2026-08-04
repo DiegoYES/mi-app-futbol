@@ -121,6 +121,7 @@ router.get('/partido/:id', async (req, res) => {
       estado: 'INTEGRATION_ERROR',
       actualizado_en: null,
       resultados: [],
+      picks_apostables: [],
       resumen: { INTEGRATION_ERROR: 1 },
       problema: "No se pudo evaluar este partido."
     }));

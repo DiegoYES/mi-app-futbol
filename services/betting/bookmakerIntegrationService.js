@@ -12,7 +12,14 @@ function resumir(resultados) {
 async function evaluarPartidoEnCasa(partido, resultadoModelo, proveedor = 'playdoit', opciones = {}) {
   const selecciones = opciones.selecciones || await vigentes(proveedor);
   if (!selecciones.length) {
-    return { proveedor, estado: 'CACHE_EMPTY_OR_EXPIRED', actualizado_en: null, resultados: [], resumen: {} };
+    return {
+      proveedor,
+      estado: 'CACHE_EMPTY_OR_EXPIRED',
+      actualizado_en: null,
+      resultados: [],
+      picks_apostables: [],
+      resumen: {}
+    };
   }
   const coincidencia = resolverEvento(partido, selecciones);
   if (coincidencia.estado !== 'MATCHED') {
@@ -21,6 +28,7 @@ async function evaluarPartidoEnCasa(partido, resultadoModelo, proveedor = 'playd
       estado: coincidencia.estado,
       actualizado_en: selecciones[0]?.recolectado_en || null,
       resultados: [],
+      picks_apostables: [],
       resumen: { [coincidencia.estado]: 1 }
     };
   }
