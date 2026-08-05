@@ -655,6 +655,18 @@ app.get('/api/arbitros', cacheMiddleware, async (req, res) => {
         faltas: { $sum: { $cond: ['$estadisticas_completas', { $add: [
           { $ifNull: ['$equipo_local.faltas', 0] },
           { $ifNull: ['$equipo_visitante.faltas', 0] }
+        ] }, 0] } },
+        corners: { $sum: { $cond: ['$estadisticas_completas', { $add: [
+          { $ifNull: ['$equipo_local.corners', 0] },
+          { $ifNull: ['$equipo_visitante.corners', 0] }
+        ] }, 0] } },
+        tiros: { $sum: { $cond: ['$estadisticas_completas', { $add: [
+          { $ifNull: ['$equipo_local.tiros_total', 0] },
+          { $ifNull: ['$equipo_visitante.tiros_total', 0] }
+        ] }, 0] } },
+        tiros_puerta: { $sum: { $cond: ['$estadisticas_completas', { $add: [
+          { $ifNull: ['$equipo_local.tiros_puerta', 0] },
+          { $ifNull: ['$equipo_visitante.tiros_puerta', 0] }
         ] }, 0] } }
       } },
       { $sort: { partidos: -1, _id: 1 } }
@@ -672,7 +684,64 @@ app.get('/api/arbitros', cacheMiddleware, async (req, res) => {
           goles: promedio(item.goles, item.partidos),
           amarillas: promedio(item.amarillas, item.con_estadisticas),
           rojas: promedio(item.rojas, item.con_estadisticas),
-          faltas: promedio(item.faltas, item.con_estadisticas)
+          faltas: promedio(item.faltas, item.con_estadisticas),
+          corners: promedio(item.corners, item.con_estadisticas),
+          tiros: promedio(item.tiros, item.con_estadisticas),
+          tiros_puerta: promedio(item.tiros_puerta, item.con_estadisticas)
+        }
+      }))
+    });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+app.get('/api/arbitros/detalle', cacheMiddleware, async (req, res) => {
+  try {
+    const leagueId = Number.parseInt(req.query.league, 10);
+    const season = Number.parseInt(req.query.season, 10);
+    const nombre = String(req.query.nombre || '').trim();
+    if (!Number.isInteger(leagueId) || !Number.isInteger(season) || !nombre) {
+      return res.status(400).json({ error: 'Faltan árbitro, competición o temporada.' });
+    }
+    const partidos = await Partido.find({
+      'liga.id': leagueId,
+      'liga.temporada': season,
+      estado: { $in: ['FT', 'AET', 'PEN'] },
+      arbitro: nombre
+    }).sort({ fecha: -1 }).limit(20).select([
+      'api_id', 'fecha', 'estado', 'liga', 'estadisticas_completas',
+      'equipo_local.id', 'equipo_local.nombre', 'equipo_local.goles',
+      'equipo_local.tarjetas_amarillas', 'equipo_local.tarjetas_rojas',
+      'equipo_local.faltas', 'equipo_local.corners', 'equipo_local.tiros_total',
+      'equipo_local.tiros_puerta', 'equipo_local.offsides',
+      'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.goles',
+      'equipo_visitante.tarjetas_amarillas', 'equipo_visitante.tarjetas_rojas',
+      'equipo_visitante.faltas', 'equipo_visitante.corners', 'equipo_visitante.tiros_total',
+      'equipo_visitante.tiros_puerta', 'equipo_visitante.offsides'
+    ].join(' ')).lean();
+    const suma = (partido, campo) => partido.estadisticas_completas
+      ? (Number(partido.equipo_local?.[campo]) || 0) + (Number(partido.equipo_visitante?.[campo]) || 0)
+      : null;
+    res.json({
+      arbitro: nombre,
+      liga: config.ligas[leagueId]?.nombre || partidos[0]?.liga?.nombre || leagueId,
+      temporada: season,
+      partidos: partidos.map(partido => ({
+        id: partido.api_id,
+        fecha: partido.fecha,
+        jornada: partido.liga?.jornada || null,
+        cobertura_avanzada: Boolean(partido.estadisticas_completas),
+        local: { id: partido.equipo_local?.id, nombre: partido.equipo_local?.nombre, goles: partido.equipo_local?.goles },
+        visitante: { id: partido.equipo_visitante?.id, nombre: partido.equipo_visitante?.nombre, goles: partido.equipo_visitante?.goles },
+        estadisticas: {
+          amarillas: suma(partido, 'tarjetas_amarillas'),
+          rojas: suma(partido, 'tarjetas_rojas'),
+          faltas: suma(partido, 'faltas'),
+          corners: suma(partido, 'corners'),
+          tiros: suma(partido, 'tiros_total'),
+          tiros_puerta: suma(partido, 'tiros_puerta'),
+          offsides: suma(partido, 'offsides')
         }
       }))
     });

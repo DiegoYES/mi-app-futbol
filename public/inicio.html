@@ -4,13 +4,15 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Centro de análisis de fútbol</title>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
   <meta name="theme-color" content="#07100d">
   <link rel="stylesheet" href="/styles.css">
   <script src="/auth-client.js"></script>
   <script src="/search-utils.js"></script>
   <script src="/user-library.js"></script>
   <style>
-    .home { width:min(1280px,calc(100% - 32px));margin:auto;padding:54px 0 70px; }
+    .home { width:min(1280px,calc(100% - 32px));margin:auto;padding:32px 0 70px; }
+    .home-brand { margin-bottom:22px; }
     .home-hero { display:grid;grid-template-columns:minmax(0,1.35fr) minmax(310px,.65fr);gap:26px;align-items:stretch;margin-bottom:24px; }
     .hero-copy,.snapshot { border:1px solid var(--line);border-radius:24px;background:rgba(16,26,23,.88);box-shadow:var(--shadow); }
     .hero-copy { position:relative;overflow:hidden;padding:clamp(30px,5vw,62px); }
@@ -98,6 +100,7 @@
 </head>
 <body>
 <main class="home">
+  <a class="home-brand brand-logo-link" href="/" aria-label="Data-Fut · Inicio"><img class="brand-logo" src="/brand-logo.svg" alt="Data-Fut"></a>
   <section class="home-hero">
     <div class="hero-copy">
       <p class="eyebrow">Datos de hoy · archivo histórico</p>

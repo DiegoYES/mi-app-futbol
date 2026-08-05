@@ -30,15 +30,20 @@ function casoParticular(partido, contexto, perspectiva, mercado) {
 }
 
 function frecuenciaMercado(registros, perspectiva, mercado, limite, detalle = 0) {
-  const disponibles = registros.filter(registro => !mercado.requiereAvanzadas || registro.coberturaAvanzada);
+  const stats = contexto => perspectiva === 'local'
+    ? [contexto.statsEquipo, contexto.statsRival]
+    : [contexto.statsRival, contexto.statsEquipo];
+  const disponibles = registros.filter(registro => {
+    if (!mercado.requiereAvanzadas) return true;
+    if (!registro.coberturaAvanzada || typeof mercado.medir !== 'function') return false;
+    const valor = mercado.medir(...stats(registro.contexto));
+    return valor !== null && valor !== undefined && (typeof valor !== 'number' || Number.isFinite(valor));
+  });
   const utilizables = limite === null ? disponibles : disponibles.slice(0, limite);
   const evaluados = utilizables.map(({ partido, contexto }) => ({
     partido,
     contexto,
-    cumplio: mercado.cumple(
-      perspectiva === 'local' ? contexto.statsEquipo : contexto.statsRival,
-      perspectiva === 'local' ? contexto.statsRival : contexto.statsEquipo
-    )
+    cumplio: mercado.cumple(...stats(contexto))
   }));
   const aciertos = evaluados.filter(item => item.cumplio).length;
   const total = utilizables.length;

@@ -72,6 +72,7 @@
     { href: '/comparador.html', texto: 'Comparador', icono: '⚽' },
     { href: '/picks.html', texto: 'Mis picks', icono: '🎯' },
     { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' },
+    { href: '/guia.html', texto: 'Guía', icono: '📖' },
     { href: '/sugerencias.html', texto: 'Sugerencias', icono: '💡' },
     { href: '/suscripcion.html', texto: 'Mi suscripción', icono: '💳' }
   ];

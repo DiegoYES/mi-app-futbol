@@ -34,10 +34,15 @@ const FAMILIAS_AVANZADAS = [
 
 function crearMercadosNumericos() {
   const mercados = [];
+  const dato = (equipo, campo) => Number.isFinite(equipo?.[campo]) ? equipo[campo] : null;
   const alcances = [
-    { id: 'total', nombre: 'totales', valor: (l, v, campo) => l[campo] + v[campo] },
-    { id: 'local', nombre: 'del local', valor: (l, v, campo) => l[campo] },
-    { id: 'visitante', nombre: 'del visitante', valor: (l, v, campo) => v[campo] }
+    { id: 'total', nombre: 'totales', valor: (l, v, campo) => {
+      const local = dato(l, campo);
+      const visitante = dato(v, campo);
+      return local === null || visitante === null ? null : local + visitante;
+    } },
+    { id: 'local', nombre: 'del local', valor: (l, v, campo) => dato(l, campo) },
+    { id: 'visitante', nombre: 'del visitante', valor: (l, v, campo) => dato(v, campo) }
   ];
 
   for (const familia of FAMILIAS_AVANZADAS) {
@@ -58,7 +63,7 @@ function crearMercadosNumericos() {
             medir: (local, visitante) => alcance.valor(local, visitante, familia.estadistica),
             cumple: (local, visitante) => {
               const valor = alcance.valor(local, visitante, familia.estadistica);
-              return mas ? valor > linea : valor < linea;
+              return valor === null ? false : mas ? valor > linea : valor < linea;
             }
           }));
         }
@@ -70,9 +75,12 @@ function crearMercadosNumericos() {
 
 function crearMercadosTarjetasRegistradas() {
   const mercados = [];
-  const tarjetas = equipo => (Number(equipo?.amarillas) || 0) + (Number(equipo?.rojas) || 0);
+  const tarjetas = equipo => Number.isFinite(equipo?.amarillas) && Number.isFinite(equipo?.rojas)
+    ? equipo.amarillas + equipo.rojas
+    : null;
+  const total = (a, b) => a === null || b === null ? null : a + b;
   const alcances = [
-    { id: 'total', nombre: 'totales', lineas: [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5], valor: (l, v) => tarjetas(l) + tarjetas(v) },
+    { id: 'total', nombre: 'totales', lineas: [1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5], valor: (l, v) => total(tarjetas(l), tarjetas(v)) },
     { id: 'local', nombre: 'del local', lineas: [0.5, 1.5, 2.5, 3.5, 4.5], valor: l => tarjetas(l) },
     { id: 'visitante', nombre: 'del visitante', lineas: [0.5, 1.5, 2.5, 3.5, 4.5], valor: (l, v) => tarjetas(v) }
   ];
@@ -86,7 +94,10 @@ function crearMercadosTarjetasRegistradas() {
           categoria: 'tarjetas', tipo, linea, alcance: alcance.id,
           unidad: 'tarjetas registradas', requiereAvanzadas: true,
           medir: alcance.valor,
-          cumple: (local, visitante) => mas ? alcance.valor(local, visitante) > linea : alcance.valor(local, visitante) < linea
+          cumple: (local, visitante) => {
+            const valor = alcance.valor(local, visitante);
+            return valor === null ? false : mas ? valor > linea : valor < linea;
+          }
         }));
       }
     }

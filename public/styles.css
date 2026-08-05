@@ -37,6 +37,9 @@ body {
 button, select, input { font: inherit; }
 button, a, select, input { -webkit-tap-highlight-color: transparent; }
 
+.brand-logo { display:block;width:auto;height:42px; }
+.brand-logo-link { display:inline-flex;align-items:center;text-decoration:none; }
+
 .container {
   width: min(1480px, calc(100% - 32px));
   margin: 0 auto;

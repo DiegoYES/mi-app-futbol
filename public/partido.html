@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Análisis del partido</title>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
 <meta name="theme-color" content="#07100d">
 <link rel="stylesheet" href="/styles.css">
 <script src="/auth-client.js"></script>
@@ -725,7 +726,7 @@ function pintarPicksPartido() {
           <option value="under" ${filtrosMercado.tipo === 'under' ? 'selected' : ''}>Under · Menos de</option>
         </select></label>
         <label>Línea inicial<select id="lineaMercadoPartido">
-          ${opciones.lineas.map(item => `<option value="${item}" ${item === Number(filtrosMercado.linea) ? 'selected' : ''}>${filtrosMercado.tipo === 'over' ? 'Over' : 'Under'} ${item}</option>`).join('')}
+          ${opciones.lineas.map(item => `<option value="${item}" ${item === Number(filtrosMercado.linea) ? 'selected' : ''}>${item}</option>`).join('')}
         </select></label>
       </div>
       <div class="market-explorer-summary"><span>${mercados.length} línea${mercados.length === 1 ? '' : 's'} desde ${filtrosMercado.tipo === 'over' ? 'Over' : 'Under'} ${filtrosMercado.linea}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>“Registradas” suma amarillas + rojas simples; confirma las reglas de tu casino.</span>' : ''}</div>

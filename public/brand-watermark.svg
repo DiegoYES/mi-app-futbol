@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 330 64" role="img" aria-labelledby="title">
+  <title id="title">Data-Fut · marca para publicidad</title>
+  <path d="M6 6h24v48H6V6Zm9 12v24h7V18h-7Z" fill="#fff" fill-rule="evenodd"/>
+  <path d="M32 6h24v11H42v8h12v10H42v19H32V6Z" fill="#fff"/>
+  <circle cx="31" cy="30" r="6" fill="none" stroke="#fff" stroke-width="2"/>
+  <text x="72" y="43" fill="#fff" font-family="Inter,ui-sans-serif,system-ui,sans-serif" font-size="38" font-weight="850" letter-spacing="-1.8">Data-Fut</text>
+</svg>

@@ -127,5 +127,9 @@ partidoSchema.index(
   { 'equipo_visitante.id': 1, 'liga.id': 1, 'liga.temporada': -1, estado: 1, fecha: -1 },
   { name: 'visitante_liga_temporada_estado_fecha' }
 );
+partidoSchema.index(
+  { arbitro: 1, 'liga.id': 1, 'liga.temporada': -1, estado: 1, fecha: -1 },
+  { name: 'arbitro_liga_temporada_estado_fecha' }
+);
 
 module.exports = mongoose.model('Partido', partidoSchema);

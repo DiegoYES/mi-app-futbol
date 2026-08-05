@@ -4,13 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Acceso · Comparador Estadístico</title>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
 <style>
   :root { --primary: #0a2540; --accent: #00d4ff; --bg: #f3f4f6; --card: #fff; --text: #334155; }
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: linear-gradient(135deg, #0a2540, #123a5e); color: var(--text); margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
   .card { background: var(--card); border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.3); width: 100%; max-width: 420px; overflow: hidden; }
   .card-head { background: var(--primary); color: #fff; padding: 24px; text-align: center; }
-  .card-head h1 { margin: 0 0 6px; font-size: 1.5rem; }
+  .card-head img { display:block;width:210px;max-width:80%;height:auto;margin:0 auto 12px; }
+  .card-head h1 { margin: 0 0 6px; font-size: 1.2rem; }
   .card-head p { margin: 0; opacity: .8; font-size: .9rem; }
   .tabs { display: flex; border-bottom: 1px solid #e5e7eb; }
   .tabs button { flex: 1; padding: 14px; background: #fff; color: var(--text); border: none; border-bottom: 3px solid transparent; cursor: pointer; font-size: .95rem; font-weight: 600; }
@@ -33,8 +35,9 @@
 <body>
 <div class="card">
   <div class="card-head">
-    <h1>⚽ Comparador Estadístico</h1>
-    <p>Análisis de datos para tus apuestas</p>
+    <a href="/" aria-label="Data-Fut · Inicio"><img src="/brand-logo.svg" alt="Data-Fut"></a>
+    <h1>Análisis estadístico de fútbol</h1>
+    <p>Datos y contexto para leer mejor cada partido</p>
   </div>
 
   <div class="tabs">

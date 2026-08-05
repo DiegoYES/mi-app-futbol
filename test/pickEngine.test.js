@@ -104,6 +104,37 @@ test('no convierte estadísticas avanzadas faltantes en ceros', () => {
   assert.equal(datos.corners_total_over_8_5.tasa, null);
 });
 
+test('excluye campos nulos aunque el partido esté marcado con cobertura avanzada', () => {
+  const incompleto = partido(1, 10, 1, 20, 0);
+  incompleto.estadisticas_completas = true;
+  incompleto.equipo_local.faltas = null;
+  incompleto.equipo_visitante.faltas = null;
+  const datos = frecuencia([incompleto], 10);
+
+  assert.equal(datos.faltas_total_under_19_5.total, 0);
+  assert.equal(datos.faltas_local_under_8_5.total, 0);
+  assert.equal(datos.faltas_visitante_under_8_5.total, 0);
+});
+
+test('la explicación salta partidos con el campo requerido ausente', () => {
+  const incompleto = partido(3, 30, 1, 20, 1);
+  incompleto.estadisticas_completas = true;
+  incompleto.equipo_local.faltas = 12;
+  incompleto.equipo_visitante.faltas = null;
+  const completo = partido(2, 40, 1, 20, 1);
+  completo.estadisticas_completas = true;
+  completo.equipo_local.faltas = 14;
+  completo.equipo_visitante.faltas = 7;
+  const explicacion = explicarMercado({
+    partidosLocal: [], teamLocal: 10,
+    partidosVisitante: [incompleto, completo], teamVisitante: 20,
+    mercadoId: 'faltas_visitante_under_8_5', detalle: 3
+  });
+
+  assert.deepEqual(explicacion.detalle_fuentes[0].partidos.map(item => item.api_id), [2]);
+  assert.equal(explicacion.detalle_fuentes[0].partidos[0].valor, 7);
+});
+
 test('calcula líneas avanzadas cuando el partido sí tiene cobertura', () => {
   const completo = partido(1, 10, 1, 20, 0);
   completo.estadisticas_completas = true;

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Guía de usuario · Data-Fut</title>
+  <link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#07100d">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/auth-client.js"></script>
+  <style>
+    .guide{width:min(1180px,calc(100% - 32px));margin:auto;padding:46px 0 80px}.guide-hero{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(280px,.75fr);gap:24px;align-items:end;margin-bottom:24px}.guide-hero h1{max-width:780px;margin:0;font-size:clamp(2.7rem,7vw,5.8rem);line-height:.9;letter-spacing:-.065em}.guide-hero h1 span{color:var(--green)}.guide-hero p:not(.eyebrow){max-width:690px;margin:20px 0 0;color:var(--muted);font-size:.95rem;line-height:1.7}.guide-start{padding:20px;border:1px solid rgba(84,227,142,.25);border-radius:18px;background:linear-gradient(145deg,rgba(84,227,142,.1),var(--surface))}.guide-start strong,.guide-start span{display:block}.guide-start strong{font-size:.92rem}.guide-start span{margin-top:6px;color:var(--muted);font-size:.7rem}.guide-start a{display:inline-flex;margin-top:14px;color:var(--green);font-size:.72rem;font-weight:900;text-decoration:none}
+    .guide-layout{display:grid;grid-template-columns:250px minmax(0,1fr);gap:20px;align-items:start}.guide-index{position:sticky;top:82px;padding:15px;border:1px solid var(--line);border-radius:16px;background:rgba(16,26,23,.94)}.guide-index strong{display:block;margin:2px 7px 9px;color:var(--muted);font-size:.6rem;letter-spacing:.1em;text-transform:uppercase}.guide-index a{display:block;padding:8px;border-radius:8px;color:var(--muted);font-size:.69rem;font-weight:800;text-decoration:none}.guide-index a:hover{background:var(--surface-soft);color:var(--ink)}.guide-content{display:grid;gap:14px}.guide-section{scroll-margin-top:84px;padding:24px;border:1px solid var(--line);border-radius:19px;background:rgba(16,26,23,.82)}.guide-section h2{margin:0;font-size:1.5rem;letter-spacing:-.035em}.guide-section h3{margin:24px 0 8px;font-size:.9rem}.guide-section p,.guide-section li{color:var(--muted);font-size:.74rem;line-height:1.72}.guide-section p{margin:9px 0}.guide-section ul,.guide-section ol{display:grid;gap:6px;margin:10px 0 0;padding-left:20px}.guide-section a{color:var(--cyan)}.guide-section code{padding:2px 5px;border-radius:5px;background:#07100d;color:var(--cyan);font-size:.68rem}.guide-callout{margin:15px 0;padding:15px;border-left:3px solid var(--green);border-radius:0 11px 11px 0;background:rgba(84,227,142,.075)}.guide-callout.warning{border-left-color:var(--amber);background:rgba(245,190,91,.07)}.guide-callout strong{display:block;color:var(--ink);font-size:.76rem}.guide-callout p{margin:5px 0 0}.guide-flow{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:14px}.guide-flow div{padding:14px;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft)}.guide-flow b,.guide-flow span{display:block}.guide-flow b{color:var(--green);font-size:.72rem}.guide-flow span{margin-top:5px;color:var(--muted);font-size:.64rem;line-height:1.55}.guide-table{width:100%;margin-top:12px;border-collapse:collapse}.guide-table th,.guide-table td{padding:10px 9px;border-bottom:1px solid var(--line);font-size:.68rem;text-align:left;vertical-align:top}.guide-table th{color:var(--muted);font-size:.57rem;text-transform:uppercase}.guide-table td:first-child{color:var(--ink);font-weight:850;white-space:nowrap}.guide-links{display:flex;flex-wrap:wrap;gap:8px;margin-top:15px}.guide-links a{display:inline-flex;align-items:center;min-height:38px;padding:0 11px;border:1px solid var(--line);border-radius:9px;color:var(--green);font-size:.67rem;font-weight:850;text-decoration:none}
+    @media(max-width:850px){.guide-hero,.guide-layout{grid-template-columns:1fr}.guide-index{position:static;display:flex;gap:3px;overflow:auto}.guide-index strong{display:none}.guide-index a{flex:0 0 auto;white-space:nowrap}.guide-flow{grid-template-columns:1fr}}
+    @media(max-width:560px){.guide{width:min(100% - 20px,1180px);padding-top:28px}.guide-section{padding:17px}.guide-table{display:block;overflow-x:auto}.guide-hero h1{font-size:clamp(2.7rem,15vw,4rem)}}
+  </style>
+</head>
+<body><main class="guide">
+  <header class="guide-hero">
+    <div><p class="eyebrow">Centro de ayuda</p><h1>Cómo usar <span>Data-Fut.</span></h1><p>Una guía para pasar del calendario a la evidencia, entender qué significa cada cifra y reconocer cuándo un dato no está disponible.</p></div>
+    <aside class="guide-start"><strong>Recorrido recomendado</strong><span>Elige un partido, ajusta la muestra, revisa las fuentes y guarda únicamente lo que quieras evaluar después.</span><a href="#inicio-rapido">Empezar en 3 pasos →</a></aside>
+  </header>
+
+  <div class="guide-layout">
+    <nav class="guide-index" aria-label="Contenido de la guía"><strong>Contenido</strong><a href="#conceptos">Antes de empezar</a><a href="#inicio-rapido">Inicio rápido</a><a href="#calendario">Calendario</a><a href="#partido">Centro de partido</a><a href="#comparador">Comparador</a><a href="#picks">Picks</a><a href="#seguimiento">Seguimiento</a><a href="#equipos">Equipos</a><a href="#competiciones">Competiciones</a><a href="#jugadores">Jugadores</a><a href="#arbitros">Árbitros</a><a href="#cobertura">Cobertura</a><a href="#glosario">Glosario</a></nav>
+    <div class="guide-content">
+
+      <section class="guide-section" id="conceptos">
+        <h2>Antes de empezar</h2>
+        <p>Data-Fut organiza información histórica para ayudarte a leer un partido. Una frecuencia alta describe lo ocurrido en una muestra; no garantiza que vuelva a ocurrir.</p>
+        <div class="guide-callout"><strong>La regla más importante</strong><p>Una estimación no es una cuota, una promesa ni una probabilidad calibrada. Siempre abre “¿Por qué?” y revisa la muestra concreta.</p></div>
+        <table class="guide-table"><thead><tr><th>Indicador</th><th>Qué significa</th></tr></thead><tbody>
+          <tr><td>0</td><td>El proveedor confirmó el dato y su valor fue cero.</td></tr>
+          <tr><td>—</td><td>El campo no fue entregado o no puede calcularse con seguridad. No se interpreta como cero.</td></tr>
+          <tr><td>Pendiente</td><td>El partido aún no termina o el resultado del mercado todavía no puede liquidarse.</td></tr>
+          <tr><td>Sin cobertura</td><td>Existe el partido o marcador, pero faltan estadísticas avanzadas para esa lectura.</td></tr>
+        </tbody></table>
+      </section>
+
+      <section class="guide-section" id="inicio-rapido">
+        <h2>Inicio rápido</h2>
+        <div class="guide-flow"><div><b>1 · Elige</b><span>Abre el calendario y selecciona un partido real.</span></div><div><b>2 · Comprueba</b><span>Ajusta condición, muestra y periodo; después abre la evidencia.</span></div><div><b>3 · Evalúa</b><span>Guarda un pick antes del inicio para comprobar posteriormente el resultado.</span></div></div>
+        <div class="guide-links"><a href="/calendario.html">Abrir calendario</a><a href="/comparador.html">Crear comparación libre</a></div>
+      </section>
+
+      <section class="guide-section" id="calendario">
+        <h2>Calendario de partidos</h2>
+        <p>Es la ruta más directa para analizar un encuentro real. Los horarios se muestran en tu zona local cuando el navegador la detecta.</p>
+        <ul><li>Busca una liga, país o equipo.</li><li>Filtra por finalizados, en juego o próximos.</li><li>Usa el rango horario para acotar la jornada.</li><li>Abre una tarjeta para entrar al centro del partido con local, visitante, liga y temporada ya configurados.</li></ul>
+        <div class="guide-callout warning"><strong>Partidos futuros</strong><p>Antes del inicio verás forma histórica, enfrentamientos y picks. Las estadísticas del partido actual aparecerán después de que termine y sean recibidas.</p></div>
+      </section>
+
+      <section class="guide-section" id="partido">
+        <h2>Centro de partido</h2>
+        <h3>Estadísticas del partido</h3><p>Después del encuentro presenta marcador, posesión, tiros, córners, faltas, tarjetas, offsides, eventos y rendimientos individuales cuando el proveedor los entrega.</p>
+        <h3>Resumen y forma</h3><p>Compara el rendimiento histórico del local y del visitante con los mismos controles de muestra y periodo.</p>
+        <h3>Picks del partido</h3><p>Explora líneas por categoría, periodo, alcance y dirección. Cada porcentaje puede abrirse para revisar las fuentes y los partidos utilizados.</p>
+        <h3>Enfrentamientos</h3><p>Muestra los cruces directos almacenados entre ambos equipos. Puede abarcar varias temporadas y no sustituye la forma reciente.</p>
+      </section>
+
+      <section class="guide-section" id="comparador">
+        <h2>Comparador libre</h2>
+        <p>Permite enfrentar equipos aunque pertenezcan a ligas distintas. Primero elige competición, temporada y equipo en cada lado.</p>
+        <table class="guide-table"><thead><tr><th>Campo</th><th>Cómo leerlo</th></tr></thead><tbody>
+          <tr><td>Izquierda</td><td>Representa al local proyectado en los picks.</td></tr><tr><td>Derecha</td><td>Representa al visitante proyectado.</td></tr>
+          <tr><td>Condición</td><td>General mezcla casa y visita; “local” o “visitante” conserva solamente ese contexto.</td></tr>
+          <tr><td>Partidos</td><td>Toda la temporada, últimos 5 o últimos 3 registros utilizables.</td></tr>
+          <tr><td>Periodo</td><td>Partido completo, primer tiempo o segundo tiempo. Los periodos requieren cobertura específica.</td></tr>
+          <tr><td>Porcentaje</td><td>Frecuencia de cumplimiento dentro de la muestra.</td></tr>
+          <tr><td>Veces cumplidas</td><td>Presenta el conteo directo, por ejemplo 4 de 5.</td></tr>
+        </tbody></table>
+        <p>La comparación puede guardarse en el dispositivo para volver con los mismos equipos y filtros.</p>
+      </section>
+
+      <section class="guide-section" id="picks">
+        <h2>Cómo interpretar los picks</h2>
+        <p>Los picks son mercados históricos calculados con los filtros visibles. Incluyen goles, resultado, córners, tarjetas, tiros, tiros a puerta, faltas y fueras de juego.</p>
+        <table class="guide-table"><thead><tr><th>Campo</th><th>Significado</th></tr></thead><tbody>
+          <tr><td>Estimación</td><td>Promedio de las tasas históricas suavizadas disponibles; no es certeza ni cuota.</td></tr>
+          <tr><td>Muestra</td><td>Número de partidos válidos considerado por fuente.</td></tr>
+          <tr><td>Fuentes 2/2</td><td>Existen datos utilizables tanto del local proyectado como del visitante.</td></tr>
+          <tr><td>Confianza</td><td>Etiqueta basada en tamaño de muestra: baja, media o alta. No mide seguridad del resultado.</td></tr>
+          <tr><td>Candidato</td><td>Superó los criterios internos mínimos de estimación, muestra y dos fuentes. Sigue sin ser garantía.</td></tr>
+          <tr><td>Over / Under</td><td>Más de / menos de la línea indicada.</td></tr>
+          <tr><td>Alcance</td><td>Ambos equipos, solamente el local o solamente el visitante.</td></tr>
+        </tbody></table>
+        <h3>¿Por qué no siempre coinciden los tres partidos más recientes?</h3>
+        <div class="guide-callout"><strong>“Últimos 3” significa últimos 3 utilizables para ese campo.</strong><p>Si el partido más reciente tiene marcador pero no faltas, córners o tiros, se excluye únicamente de ese mercado y se toma el siguiente partido anterior con el dato confirmado. Por eso la lista de faltas puede diferir de la lista de goles.</p></div>
+        <p>El suavizado usa <code>(aciertos + 2) / (partidos + 4)</code> para evitar mostrar 100% o 0% como certeza cuando la muestra es pequeña.</p>
+      </section>
+
+      <section class="guide-section" id="seguimiento">
+        <h2>Mis picks y mis boletas</h2>
+        <h3>Mis picks</h3><p>Solo puedes guardar selecciones antes del inicio. Al finalizar el partido, Data-Fut las liquida como acertadas o falladas y actualiza efectividad y Brier.</p>
+        <p><strong>Efectividad</strong> es el porcentaje de picks liquidados que acertó. <strong>Brier ↓</strong> evalúa la calidad de las estimaciones: cuanto menor, mejor; necesita suficientes resultados para ser representativo.</p>
+        <h3>Mis boletas</h3><p>Son borradores para organizar hasta 20 selecciones, copiar la lista y buscar manualmente las líneas. Data-Fut no recibe apuestas ni confirma cuotas; debes validar línea y reglas en la casa correspondiente.</p>
+        <div class="guide-links"><a href="/picks.html">Ver mis picks</a><a href="/boletas.html">Ver mis boletas</a></div>
+      </section>
+
+      <section class="guide-section" id="equipos">
+        <h2>Equipos</h2><p>El directorio permite buscar por equipo y filtrar por competición. La ficha reúne temporadas, forma, producción por partido, tendencias, últimos encuentros y jugadores disponibles.</p><ul><li>Selecciona la temporada dentro de la ficha.</li><li>Cambia condición, muestra y periodo para no mezclar contextos.</li><li>Marca un equipo como favorito para encontrarlo rápidamente desde el inicio.</li><li>Abre un partido reciente para consultar su desglose completo.</li></ul>
+        <div class="guide-links"><a href="/equipos.html">Explorar equipos</a></div>
+      </section>
+
+      <section class="guide-section" id="competiciones">
+        <h2>Competiciones</h2><p>Muestra las ligas y torneos realmente guardados, sus temporadas y el nivel de cobertura. La ficha de una competencia incluye clasificación reconstruida, jornadas, encuentros recientes y acceso a equipos y jugadores.</p><div class="guide-callout warning"><strong>Copas y formatos especiales</strong><p>Una tabla reconstruida resume los marcadores almacenados, pero puede no representar grupos, eliminatorias, sanciones o reglas oficiales del torneo.</p></div>
+        <div class="guide-links"><a href="/competiciones.html">Ver competiciones</a></div>
+      </section>
+
+      <section class="guide-section" id="jugadores">
+        <h2>Jugadores</h2><p>Filtra por competición, temporada y nombre. El directorio resume partidos, minutos, goles y tiros a puerta; la ficha amplía promedios y partidos guardados.</p><p>La cobertura individual es independiente de la cobertura del equipo: un encuentro puede tener marcador y estadísticas colectivas, pero no rendimientos de jugadores.</p><div class="guide-links"><a href="/jugadores.html">Buscar jugadores</a></div>
+      </section>
+
+      <section class="guide-section" id="arbitros">
+        <h2>Árbitros</h2><p>Filtra por competición, temporada y nombre. Cada perfil muestra partidos dirigidos y promedios de amarillas, rojas, faltas, córners y goles.</p><p>Al abrir “Ver historial” aparecen hasta 20 partidos con marcador y desglose. Los promedios avanzados usan únicamente encuentros donde ese bloque está disponible.</p><div class="guide-callout"><strong>Qué describe el promedio</strong><p>“Amarillas/P” son las amarillas totales mostradas por partido en esa muestra; “faltas/P” son las faltas cometidas por ambos equipos, no faltas personales del árbitro.</p></div><div class="guide-links"><a href="/arbitros.html">Explorar árbitros</a></div>
+      </section>
+
+      <section class="guide-section" id="cobertura">
+        <h2>Cobertura y calidad del dato</h2>
+        <p>Data-Fut recibe información de un proveedor externo. No todas las ligas, temporadas o partidos incluyen los mismos bloques.</p>
+        <ul><li><strong>Marcador:</strong> resultado básico del encuentro.</li><li><strong>Estadísticas avanzadas:</strong> tiros, córners, faltas, tarjetas y offsides.</li><li><strong>Periodos:</strong> desglose de primer y segundo tiempo.</li><li><strong>Eventos:</strong> goles, tarjetas, sustituciones y VAR cuando existen.</li><li><strong>Jugadores:</strong> minutos y rendimiento individual.</li></ul>
+        <div class="guide-callout warning"><strong>Si algo parece no cuadrar</strong><p>Comprueba competición, temporada, condición, muestra y periodo. Después abre la evidencia. Si aparece un cero donde esperabas “—”, partidos duplicados o una explicación incoherente, repórtalo en Sugerencias indicando partido, mercado y captura.</p></div>
+        <div class="guide-links"><a href="/sugerencias.html">Reportar una inconsistencia</a><a href="/legal.html">Fuentes y aviso legal</a></div>
+      </section>
+
+      <section class="guide-section" id="glosario">
+        <h2>Glosario rápido</h2>
+        <table class="guide-table"><tbody><tr><td>BTTS / Ambos anotan</td><td>Los dos equipos marcaron al menos un gol.</td></tr><tr><td>Córner</td><td>Tiro de esquina registrado.</td></tr><tr><td>Offside</td><td>Fuera de juego.</td></tr><tr><td>Tiro a puerta</td><td>Remate dirigido al arco según el proveedor.</td></tr><tr><td>H2H</td><td>Historial de enfrentamientos directos.</td></tr><tr><td>Local / visitante proyectado</td><td>Rol que tendrá cada equipo en el partido analizado.</td></tr><tr><td>Cobertura avanzada</td><td>El proveedor entregó estadísticas adicionales al marcador. Un campo puntual aún puede faltar y entonces se excluye de su mercado.</td></tr><tr><td>Tasa suavizada</td><td>Ajuste que reduce extremos provocados por muestras pequeñas.</td></tr></tbody></table>
+      </section>
+    </div>
+  </div>
+</main></body>
+</html>
