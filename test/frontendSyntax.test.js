@@ -136,6 +136,14 @@ test('Mis picks permite explorar candidatos generales por línea', () => {
   assert.match(picks, /Mejores picks generales/);
   assert.match(picks, /general-linea/);
   assert.match(picks, /general: '1'/);
+  assert.match(picks, /general-pick/);
+});
+
+test('la ficha destaca los mejores picks del partido antes del buscador', () => {
+  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  assert.match(partido, /Mejores picks del partido/);
+  assert.match(partido, /function mejoresPicksPartido/);
+  assert.match(partido, /data-destacar-pick/);
 });
 
 test('el directorio de competiciones agrupa temporadas y permite elegirlas', () => {

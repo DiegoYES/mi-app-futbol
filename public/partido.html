@@ -695,15 +695,39 @@ function prepararFiltrosMercado(datos) {
   return { lineas };
 }
 
+function mejoresPicksPartido(datos, limite = 3) {
+  const recomendados = new Set(datos.recomendados || []);
+  const candidatos = datos.mercados.filter(item => recomendados.has(item.id) && Number.isFinite(item.linea) && item.tipo);
+  const elegidos = [];
+  const categorias = new Set();
+  for (const item of candidatos) {
+    if (categorias.has(item.categoria)) continue;
+    elegidos.push(item);
+    categorias.add(item.categoria);
+    if (elegidos.length === limite) return elegidos;
+  }
+  for (const item of candidatos) {
+    if (elegidos.some(elegido => elegido.id === item.id)) continue;
+    elegidos.push(item);
+    if (elegidos.length === limite) break;
+  }
+  return elegidos;
+}
+
 function pintarPicksPartido() {
   const cont = document.getElementById('bloquePicks');
   const datos = datosPicksPartido;
   const categoriasExplorables = datos.categorias.filter(categoria => datos.mercados.some(item => item.categoria === categoria && Number.isFinite(item.linea) && item.tipo));
   const recomendados = new Set(datos.recomendados || []);
+  const mejores = mejoresPicksPartido(datos);
   const opciones = prepararFiltrosMercado(datos);
   const mercados = filtrarMercados(datos);
   cont.innerHTML = `
     ${datos.motivo_no_guardable ? `<div class="warning">${esc(datos.motivo_no_guardable)}</div>` : ''}
+    <section class="match-best-picks">
+      <div class="match-best-heading"><div><span>Selección automática</span><h4>Mejores picks del partido</h4></div><small>Ordenados por estimación y con evidencia de ambos equipos.</small></div>
+      ${mejores.length ? `<div class="match-best-grid">${mejores.map((item, indice) => `<button type="button" class="match-best-card" data-destacar-pick="${esc(item.id)}" data-categoria="${esc(item.categoria)}" data-alcance="${esc(item.alcance || 'total')}" data-tipo="${esc(item.tipo || '')}" data-linea="${Number.isFinite(item.linea) ? item.linea : ''}"><span>#${indice + 1} · ${esc(NOMBRES_CATEGORIAS[item.categoria] || item.categoria)}</span><strong>${esc(item.mercado)}</strong><b>${item.estimacion}%</b><small>${esc(item.confianza)} · muestra ${item.muestra}</small></button>`).join('')}</div>` : '<div class="aviso">Este partido todavía no tiene candidatos con evidencia suficiente.</div>'}
+    </section>
     <section class="market-explorer">
       <h4>Busca la línea que viste en tu casa</h4>
       <p>Selecciona una línea inicial. Mostramos también las líneas siguientes en la misma dirección para que compares probabilidades.</p>
@@ -888,6 +912,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const inicial = location.hash.slice(1);
   if (['estadisticas', 'comparacion', 'picks', 'h2h'].includes(inicial)) abrirPestana(inicial);
   document.getElementById('bloquePicks').addEventListener('click', async event => {
+    const destacado = event.target.closest('[data-destacar-pick]');
+    if (destacado) {
+      filtrosMercado.categoria = destacado.dataset.categoria;
+      filtrosMercado.alcance = destacado.dataset.alcance;
+      filtrosMercado.tipo = destacado.dataset.tipo;
+      filtrosMercado.linea = Number(destacado.dataset.linea);
+      pintarPicksPartido();
+      document.querySelector(`[data-explicar-pick="${CSS.escape(destacado.dataset.destacarPick)}"]`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
     const explicacion = event.target.closest('[data-explicar-pick]');
     if (explicacion) {
       const detalle = document.querySelector(`[data-razon-pick="${CSS.escape(explicacion.dataset.explicarPick)}"]`);
