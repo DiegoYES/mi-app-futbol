@@ -25,8 +25,19 @@
   .status-acertado { color:var(--green); background:rgba(84,227,142,.12); }
   .status-fallado { color:var(--red); background:rgba(255,124,120,.12); }
   .delete-pick { min-height:40px; padding:0 12px; background:transparent; border:1px solid var(--line); color:var(--muted); }
+  .general-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:18px 0; }
+  .general-controls label { color:var(--muted); font-size:.72rem; font-weight:800; }
+  .general-controls select { width:100%; margin-top:7px; }
+  .general-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
+  .general-card { display:flex; min-height:180px; flex-direction:column; gap:9px; padding:17px; color:inherit; text-decoration:none; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
+  .general-card:hover { border-color:var(--green); transform:translateY(-1px); }
+  .general-card > span, .general-card small { color:var(--muted); font-size:.73rem; }
+  .general-card strong { line-height:1.35; }
+  .general-score { margin-top:auto; color:var(--green); font-size:1.65rem; font-weight:900; }
+  .general-meta { display:flex; justify-content:space-between; gap:8px; }
   @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:minmax(0,1fr) auto;gap:12px; } }
-  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem} }
+  @media (max-width:800px) { .general-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid{grid-template-columns:1fr}.general-card{min-height:155px} }
 </style>
 </head>
 <body>
@@ -39,6 +50,20 @@
       <p>Aquí no cuentan retrospectivas: solamente pronósticos guardados antes del inicio y liquidados contra el marcador final.</p>
     </div>
   </header>
+
+  <section class="picks-section">
+    <div class="section-heading">
+      <div><p class="eyebrow">Próximos 7 días</p><h3>Mejores picks generales</h3></div>
+      <span class="model-badge">Evidencia mínima</span>
+    </div>
+    <p>Compara los candidatos más sólidos de todos los próximos partidos y busca la línea exacta que ofrece tu casa.</p>
+    <div class="general-controls">
+      <label>Categoría<select id="general-categoria"><option value="">Todas</option></select></label>
+      <label>Dirección<select id="general-direccion"><option value="">Over y Under</option></select></label>
+      <label>Línea<select id="general-linea"><option value="">Todas las líneas</option></select></label>
+    </div>
+    <div id="mejores-generales" class="general-grid"><div class="loader">Buscando mejores picks...</div></div>
+  </section>
 
   <section id="resumen" class="pick-kpis"><div class="loader">Cargando rendimiento...</div></section>
   <section class="picks-section">
@@ -58,6 +83,49 @@ function esc(valor) {
 
 function fecha(valor) {
   return new Date(valor).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
+let catalogoGeneralCargado = false;
+
+function opcionesSelect(id, valores, etiqueta) {
+  const select = document.getElementById(id);
+  const valorActual = select.value;
+  select.innerHTML = `<option value="">${etiqueta}</option>` + valores.map(item => `<option value="${esc(item)}">${esc(id === 'general-categoria' ? (nombresCategorias[item] || item) : id === 'general-direccion' ? (item === 'over' ? 'Over · Más de' : 'Under · Menos de') : item)}</option>`).join('');
+  select.value = valorActual;
+}
+
+async function cargarMejoresGenerales() {
+  const params = new URLSearchParams({ dias: '7', general: '1', tz: Intl.DateTimeFormat().resolvedOptions().timeZone });
+  const categoria = document.getElementById('general-categoria').value;
+  const direccion = document.getElementById('general-direccion').value;
+  const linea = document.getElementById('general-linea').value;
+  if (categoria) params.set('categoria', categoria);
+  if (direccion) params.set('direccion', direccion);
+  if (linea) params.set('linea', linea);
+  const contenedor = document.getElementById('mejores-generales');
+  contenedor.innerHTML = '<div class="loader">Buscando mejores picks...</div>';
+  try {
+    const respuesta = await fetch(`/api/calendario/picks?${params}`);
+    if (!respuesta.ok) throw new Error('No pudimos cargar los candidatos.');
+    const datos = await respuesta.json();
+    if (!catalogoGeneralCargado) {
+      opcionesSelect('general-categoria', datos.catalogo_general.categorias, 'Todas');
+      opcionesSelect('general-direccion', datos.catalogo_general.direcciones, 'Over y Under');
+      opcionesSelect('general-linea', datos.catalogo_general.lineas, 'Todas las líneas');
+      catalogoGeneralCargado = true;
+    }
+    if (!datos.mejores_general.length) {
+      contenedor.innerHTML = '<div class="empty-state">No hay candidatos con evidencia suficiente para esos filtros. Prueba otra línea o dirección.</div>';
+      return;
+    }
+    contenedor.innerHTML = datos.mejores_general.map(item => {
+      const enlace = `/partido.html?local=${item.local.id}&visitante=${item.visitante.id}&liga=${item.liga.id}&partido=${item.partido_id}`;
+      return `<a class="general-card" href="${enlace}"><span>${fecha(item.fecha)} · ${esc(item.liga.nombre)}</span><strong>${esc(item.local.nombre)} vs ${esc(item.visitante.nombre)}</strong><small>${esc(item.pick.mercado)}</small><div class="general-score">${item.pick.estimacion}%</div><div class="general-meta"><small>${esc(item.pick.confianza)}</small><small>muestra ${item.pick.muestra}</small></div></a>`;
+    }).join('');
+  } catch (error) {
+    contenedor.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
+  }
 }
 
 async function cargarHistorial() {
@@ -99,7 +167,8 @@ document.getElementById('historial').addEventListener('click', async event => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', cargarHistorial);
+document.querySelector('.general-controls').addEventListener('change', cargarMejoresGenerales);
+document.addEventListener('DOMContentLoaded', () => { cargarMejoresGenerales(); cargarHistorial(); });
 window.addEventListener('futbol:picks-actualizados', cargarHistorial);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
 </script>

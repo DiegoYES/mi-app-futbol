@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { familiaMercado, seleccionarPicksDiversos } = require('../services/calendarPicks');
+const { candidatosConEvidencia, familiaMercado, seleccionarPicksDiversos } = require('../services/calendarPicks');
 
 function pick(id, categoria, estimacion, extra = {}) {
   return { id, mercado: id, categoria, estimacion, muestra: 10, fuentes: 2, alcance: 'total', tipo: 'over', ...extra };
@@ -30,4 +30,13 @@ test('diversifica categorías y no repite líneas de la misma familia', () => {
     'faltas_total_over_21_5', 'amarillas_total_over_2_5'
   ]);
   assert.equal(familiaMercado(resultado[0]), familiaMercado(pick('over_3_5', 'goles', 70)));
+});
+
+test('la vista general conserva todas las líneas que superan la evidencia mínima', () => {
+  const resultado = candidatosConEvidencia([
+    pick('over_1_5', 'goles', 82, { linea: 1.5 }),
+    pick('over_2_5', 'goles', 78, { linea: 2.5 }),
+    pick('over_3_5', 'goles', 64, { linea: 3.5 })
+  ]);
+  assert.deepEqual(resultado.map(item => item.linea), [1.5, 2.5]);
 });

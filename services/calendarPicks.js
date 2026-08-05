@@ -18,12 +18,7 @@ function familiaMercado(pick) {
 }
 
 function seleccionarPicksDiversos(mercados, limite = 5) {
-  const candidatos = mercados.filter(pick => (
-    pick.id !== 'over_0_5'
-    && pick.estimacion >= 65
-    && pick.muestra >= 5
-    && pick.fuentes === 2
-  ));
+  const candidatos = candidatosConEvidencia(mercados);
   const elegidos = [];
   const familias = new Set();
   const categorias = new Set();
@@ -43,6 +38,15 @@ function seleccionarPicksDiversos(mercados, limite = 5) {
     if (elegidos.length === limite) break;
   }
   return elegidos;
+}
+
+function candidatosConEvidencia(mercados) {
+  return mercados.filter(pick => (
+    pick.id !== 'over_0_5'
+    && pick.estimacion >= 65
+    && pick.muestra >= 5
+    && pick.fuentes === 2
+  ));
 }
 
 async function analizarPartidosCalendario(partidos, limiteMuestra = 10) {
@@ -88,9 +92,10 @@ async function analizarPartidosCalendario(partidos, limiteMuestra = 10) {
       liga: { id: partido.liga.id, nombre: partido.liga.nombre },
       local: { id: partido.equipo_local.id, nombre: partido.equipo_local.nombre },
       visitante: { id: partido.equipo_visitante.id, nombre: partido.equipo_visitante.nombre },
-      picks: seleccionarPicksDiversos(resultado.mercados)
+      picks: seleccionarPicksDiversos(resultado.mercados),
+      candidatos: candidatosConEvidencia(resultado.mercados)
     };
   });
 }
 
-module.exports = { analizarPartidosCalendario, familiaMercado, seleccionarPicksDiversos };
+module.exports = { analizarPartidosCalendario, candidatosConEvidencia, familiaMercado, seleccionarPicksDiversos };

@@ -131,6 +131,13 @@ test('la ficha permite buscar manualmente líneas sin depender de una casa', () 
   assert.doesNotMatch(partido, /Playdoit · picks apostables/);
 });
 
+test('Mis picks permite explorar candidatos generales por línea', () => {
+  const picks = fs.readFileSync(path.join(__dirname, '..', 'public', 'picks.html'), 'utf8');
+  assert.match(picks, /Mejores picks generales/);
+  assert.match(picks, /general-linea/);
+  assert.match(picks, /general: '1'/);
+});
+
 test('el directorio de competiciones agrupa temporadas y permite elegirlas', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'competiciones.html'), 'utf8');
   assert.match(html, /data-competition-season/);

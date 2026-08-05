@@ -213,12 +213,40 @@ router.get('/picks', cacheMiddleware, async (req, res) => {
     });
     const analisis = await analizarPartidosCalendario(partidos);
     const porPartido = Object.fromEntries(analisis.map(item => [item.partido_id, item.picks]));
+    const candidatosGenerales = analisis.flatMap(item => item.candidatos.map(pick => ({
+      partido_id: item.partido_id,
+      fecha: item.fecha,
+      liga: item.liga,
+      local: item.local,
+      visitante: item.visitante,
+      pick
+    })));
+    const catalogoGeneral = {
+      categorias: [...new Set(candidatosGenerales.map(item => item.pick.categoria))].sort(),
+      direcciones: [...new Set(candidatosGenerales.map(item => item.pick.tipo).filter(Boolean))].sort(),
+      lineas: [...new Set(candidatosGenerales.map(item => item.pick.linea).filter(Number.isFinite))].sort((a, b) => a - b)
+    };
+    const categoria = String(req.query.categoria || '');
+    const direccion = String(req.query.direccion || '');
+    const lineaTexto = String(req.query.linea || '');
+    const linea = lineaTexto === '' ? null : Number(lineaTexto);
+    if (lineaTexto && !Number.isFinite(linea)) return res.status(400).json({ error: 'Línea inválida.' });
+    const mejoresGeneral = candidatosGenerales
+      .filter(item => !categoria || item.pick.categoria === categoria)
+      .filter(item => !direccion || item.pick.tipo === direccion)
+      .filter(item => linea === null || item.pick.linea === linea)
+      .sort((a, b) => b.pick.estimacion - a.pick.estimacion || b.pick.muestra - a.pick.muestra || new Date(a.fecha) - new Date(b.fecha))
+      .slice(0, 40);
     const mejores = analisis
       .filter(item => item.picks.length)
       .map(item => ({ ...item, pick: item.picks[0] }))
       .sort((a, b) => b.pick.estimacion - a.pick.estimacion || b.pick.muestra - a.pick.muestra)
       .slice(0, 5);
-    res.json({ desde: texto, dias, partidos: analisis.length, fuente_picks: 'modelo_historico', por_partido: porPartido, mejores });
+    res.json({
+      desde: texto, dias, partidos: analisis.length, fuente_picks: 'modelo_historico',
+      por_partido: porPartido, mejores,
+      ...(req.query.general === '1' ? { catalogo_general: catalogoGeneral, mejores_general: mejoresGeneral } : {})
+    });
   } catch (error) {
     errorServidor(res, error);
   }
