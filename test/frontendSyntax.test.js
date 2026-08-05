@@ -139,11 +139,11 @@ test('Mis picks permite explorar candidatos generales por línea', () => {
   assert.match(picks, /general-pick/);
 });
 
-test('la ficha destaca los mejores picks del partido antes del buscador', () => {
+test('la ficha explora por línea exacta sin duplicar un ranking automático', () => {
   const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
-  assert.match(partido, /Mejores picks del partido/);
-  assert.match(partido, /function mejoresPicksPartido/);
-  assert.match(partido, /data-destacar-pick/);
+  assert.match(partido, /Explora los picks de este partido/);
+  assert.match(partido, /item\.linea === Number\(filtrosMercado\.linea\)/);
+  assert.doesNotMatch(partido, /Mejores picks del partido/);
 });
 
 test('el directorio de competiciones agrupa temporadas y permite elegirlas', () => {
