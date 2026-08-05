@@ -149,6 +149,8 @@ test('Mis picks permite explorar candidatos generales por línea', () => {
   assert.match(picks, /general-pick/);
   assert.match(picks, /data-save-general/);
   assert.match(picks, /Guardar en Mis picks/);
+  assert.match(picks, /data-explain-general/);
+  assert.match(picks, /general-explanation-dialog/);
 });
 
 test('la ficha explora por línea exacta sin duplicar un ranking automático', () => {

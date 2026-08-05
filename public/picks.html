@@ -39,6 +39,9 @@
   .general-meta { display:flex; justify-content:space-between; gap:8px; }
   .general-save { width:100%; min-height:42px; margin-top:4px; border:1px solid rgba(84,227,142,.35); background:rgba(84,227,142,.08); color:var(--green); }
   .general-save.saved { border-color:var(--line); background:var(--surface-soft); color:var(--muted); }
+  .general-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .general-actions .pick-why,.general-actions .general-save { min-height:42px; margin:4px 0 0; }
+  @media (max-width:520px) { .general-actions{grid-template-columns:1fr} }
   @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:minmax(0,1fr) auto;gap:12px; } }
   @media (max-width:800px) { .general-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid{grid-template-columns:1fr}.general-card{min-height:155px} }
@@ -78,6 +81,10 @@
     <div id="historial" class="history-list"><div class="loader">Liquidando resultados pendientes...</div></div>
   </section>
 </main>
+<dialog id="general-explanation-dialog" class="explanation-dialog" aria-labelledby="general-explanation-title">
+  <div class="explanation-dialog-head"><div><span>Evidencia del modelo</span><h3 id="general-explanation-title">Explicación del mercado</h3></div><button id="general-explanation-close" class="explanation-dialog-close" type="button" aria-label="Cerrar explicación">×</button></div>
+  <div id="general-explanation-body" class="explanation-dialog-body"></div>
+</dialog>
 <script>
 function esc(valor) {
   return String(valor ?? '')
@@ -135,11 +142,35 @@ async function cargarMejoresGenerales() {
     }
     contenedor.innerHTML = datos.mejores_general.map(item => {
       const enlace = `/partido.html?local=${item.local.id}&visitante=${item.visitante.id}&liga=${item.liga.id}&partido=${item.partido_id}`;
-      return `<article class="general-card"><a class="general-card-link" href="${enlace}"><span>${fecha(item.fecha)} · ${esc(item.liga.nombre)}</span><strong>${esc(item.local.nombre)} vs ${esc(item.visitante.nombre)}</strong><div class="general-pick">${esc(item.pick.mercado)}</div><div class="general-score">${item.pick.estimacion}%</div><div class="general-meta"><small>${esc(item.pick.confianza)}</small><small>muestra ${item.pick.muestra}</small></div></a><button class="general-save" type="button" data-save-general="${item.partido_id}" data-market="${esc(item.pick.id)}">Guardar en Mis picks</button></article>`;
+      return `<article class="general-card"><a class="general-card-link" href="${enlace}"><span>${fecha(item.fecha)} · ${esc(item.liga.nombre)}</span><strong>${esc(item.local.nombre)} vs ${esc(item.visitante.nombre)}</strong><div class="general-pick">${esc(item.pick.mercado)}</div><div class="general-score">${item.pick.estimacion}%</div><div class="general-meta"><small>${esc(item.pick.confianza)}</small><small>muestra ${item.pick.muestra}</small></div></a><div class="general-actions"><button class="pick-why" type="button" data-explain-general="${item.partido_id}" data-market="${esc(item.pick.id)}" data-market-name="${esc(item.pick.mercado)}">¿Por qué ${item.pick.estimacion}%?</button><button class="general-save" type="button" data-save-general="${item.partido_id}" data-market="${esc(item.pick.id)}">Guardar en Mis picks</button></div></article>`;
     }).join('');
     marcarPicksGeneralesGuardados();
   } catch (error) {
     contenedor.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
+  }
+}
+
+function casosAnalisisGeneral(explicacion) {
+  return (explicacion.detalle_fuentes || []).map(fuente => {
+    const titulo = fuente.rol === 'local' ? 'Fuente del equipo local' : 'Fuente del equipo visitante';
+    const casos = (fuente.partidos || []).map(caso => `<li class="pick-case ${caso.cumplio ? 'hit' : 'miss'}"><div><span>${new Date(caso.fecha).toLocaleDateString('es-MX')}</span><strong>${esc(caso.local)} ${esc(caso.marcador)} ${esc(caso.visitante)}</strong></div><p>${caso.unidad === 'marcador' ? `Marcador usado: ${esc(caso.valor)}` : `Valor observado: <b>${esc(caso.valor)} ${esc(caso.unidad)}</b>`}</p><em>${caso.cumplio ? '✓ Cumplió' : '× No cumplió'}</em></li>`).join('');
+    return `<section><h5>${titulo} · ${fuente.aciertos}/${fuente.total} aciertos</h5><p>Frecuencia observada: <b>${fuente.frecuencia_observada}%</b> · suavizada: <b>${fuente.tasa_suavizada}%</b>.</p><ol>${casos}</ol></section>`;
+  }).join('');
+}
+
+async function abrirAnalisisGeneral(boton) {
+  const dialogo = document.getElementById('general-explanation-dialog');
+  document.getElementById('general-explanation-title').textContent = boton.dataset.marketName;
+  const cuerpo = document.getElementById('general-explanation-body');
+  cuerpo.innerHTML = '<div class="loader">Cargando evidencia y partidos concretos...</div>';
+  dialogo.showModal();
+  try {
+    const respuesta = await fetch(`/api/picks/partido/${Number(boton.dataset.explainGeneral)}/explicacion/${encodeURIComponent(boton.dataset.market)}?periodo=0`);
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudo cargar el análisis.');
+    cuerpo.innerHTML = `<div class="pick-reason"><strong>De dónde sale el ${datos.explicacion.estimacion}%</strong><div class="pick-cases">${casosAnalisisGeneral(datos.explicacion)}</div><p>Promediamos las tasas suavizadas disponibles. Fórmula: <code>(aciertos + 2) / (partidos + 4)</code>.</p></div>`;
+  } catch (error) {
+    cuerpo.innerHTML = `<div class="warning">${esc(error.message)}</div>`;
   }
 }
 
@@ -186,6 +217,11 @@ document.getElementById('historial').addEventListener('click', async event => {
 
 document.querySelector('.general-controls').addEventListener('change', cargarMejoresGenerales);
 document.getElementById('mejores-generales').addEventListener('click', async event => {
+  const explicacion = event.target.closest('[data-explain-general]');
+  if (explicacion) {
+    abrirAnalisisGeneral(explicacion);
+    return;
+  }
   const boton = event.target.closest('[data-save-general]');
   if (!boton || boton.disabled) return;
   boton.disabled = true;
@@ -207,6 +243,9 @@ document.getElementById('mejores-generales').addEventListener('click', async eve
     setTimeout(() => { boton.textContent = textoOriginal; boton.disabled = false; }, 2400);
   }
 });
+const dialogoGeneral = document.getElementById('general-explanation-dialog');
+document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
+dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
 document.addEventListener('DOMContentLoaded', () => { cargarMejoresGenerales(); cargarHistorial(); });
 window.addEventListener('futbol:picks-actualizados', cargarHistorial);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
