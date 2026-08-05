@@ -81,6 +81,16 @@ test('los picks del comparador reciben los filtros visibles de ambos equipos', (
   assert.match(html, /también se usan al generar los picks/);
 });
 
+test('partido y comparador permiten filtrar todas las categorías y líneas exactas', () => {
+  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  const comparador = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  assert.match(partido, />Todas<\/option>/);
+  assert.match(partido, /Todas las líneas/);
+  assert.match(comparador, /id="pick-scope"/);
+  assert.match(comparador, /id="pick-direction"/);
+  assert.match(comparador, /id="pick-line"/);
+});
+
 test('auth-client.js contiene JavaScript válido y monta Mis picks globales', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-client.js'), 'utf8');
   assert.doesNotThrow(() => new Function(codigo));
@@ -144,7 +154,7 @@ test('Mis picks permite explorar candidatos generales por línea', () => {
 test('la ficha explora por línea exacta sin duplicar un ranking automático', () => {
   const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
   assert.match(partido, /Explora los picks de este partido/);
-  assert.match(partido, /item\.linea === Number\(filtrosMercado\.linea\)/);
+  assert.match(partido, /linea === null \|\| item\.linea === linea/);
   assert.doesNotMatch(partido, /Mejores picks del partido/);
 });
 

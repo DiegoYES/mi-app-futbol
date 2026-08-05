@@ -857,8 +857,17 @@ function pintarPicks() {
     if (!picksActuales) return;
     const content = document.getElementById('picks-content');
     const categoria = document.getElementById('pick-category').value;
+    const alcance = document.getElementById('pick-scope').value;
+    const direccion = document.getElementById('pick-direction').value;
+    const lineaTexto = document.getElementById('pick-line').value;
+    const linea = lineaTexto === '' ? null : Number(lineaTexto);
     const recomendados = new Set(picksActuales.recomendados.map(item => item.id));
-    const mercadosCategoria = picksActuales.mercados.filter(item => item.categoria === categoria);
+    const mercadosCategoria = picksActuales.mercados.filter(item => (
+        (!categoria || item.categoria === categoria)
+        && (!alcance || item.alcance === alcance)
+        && (!direccion || item.tipo === direccion)
+        && (linea === null || item.linea === linea)
+    ));
     const recomendadosCategoria = mercadosCategoria.filter(item => recomendados.has(item.id));
     if (soloRecomendadosPicks && recomendadosCategoria.length === 0) soloRecomendadosPicks = false;
     const mercados = soloRecomendadosPicks ? recomendadosCategoria : mercadosCategoria;
@@ -912,6 +921,37 @@ function pintarPicks() {
         </div>
         <div class="pick-grid">${tarjetas}</div>
         <p class="method-note">${escaparHtml(picksActuales.metodologia)} Los roles del cruce siguen siendo izquierda-local y derecha-visitante, pero la evidencia histórica respeta los filtros elegidos. Comparar competiciones distintas mezcla contextos y se muestra como referencia, no como una predicción calibrada.</p>`;
+}
+
+function prepararFiltrosComparador() {
+    const controles = ['pick-category', 'pick-scope', 'pick-direction', 'pick-line'].map(id => document.getElementById(id));
+    const categoria = controles[0];
+    categoria.innerHTML = '<option value="">Todas las categorías</option>' + picksActuales.categorias.map(item => {
+        const total = picksActuales.mercados.filter(mercado => mercado.categoria === item).length;
+        return `<option value="${escaparHtml(item)}">${escaparHtml(NOMBRES_CATEGORIAS[item] || item)} (${total})</option>`;
+    }).join('');
+    const alcances = { total: 'Ambos equipos', local: 'Equipo local', visitante: 'Equipo visitante' };
+    controles[1].innerHTML = '<option value="">Todos los alcances</option>' + [...new Set(picksActuales.mercados.map(item => item.alcance).filter(Boolean))].map(item => `<option value="${item}">${alcances[item] || escaparHtml(item)}</option>`).join('');
+    controles[2].innerHTML = '<option value="">Over y Under</option><option value="over">Over · Más de</option><option value="under">Under · Menos de</option>';
+    controles.forEach(control => { control.disabled = false; control.value = ''; });
+    actualizarLineasComparador();
+}
+
+function actualizarLineasComparador() {
+    if (!picksActuales) return;
+    const categoria = document.getElementById('pick-category').value;
+    const alcance = document.getElementById('pick-scope').value;
+    const direccion = document.getElementById('pick-direction').value;
+    const select = document.getElementById('pick-line');
+    const anterior = select.value;
+    const lineas = [...new Set(picksActuales.mercados.filter(item => (
+        (!categoria || item.categoria === categoria)
+        && (!alcance || item.alcance === alcance)
+        && (!direccion || item.tipo === direccion)
+        && Number.isFinite(item.linea)
+    )).map(item => item.linea))].sort((a, b) => a - b);
+    select.innerHTML = '<option value="">Todas las líneas</option>' + lineas.map(item => `<option value="${item}">${item}</option>`).join('');
+    select.value = lineas.includes(Number(anterior)) ? anterior : '';
 }
 
 function pintarCasosExplicacion(explicacion) {
@@ -995,20 +1035,14 @@ async function mostrarPicks() {
         if (!data.mercados.length) {
             const muestra = data.local && data.visitante ? `Muestra encontrada: ${data.local.muestra} para ${escaparHtml(data.local.nombre)} y ${data.visitante.muestra} para ${escaparHtml(data.visitante.nombre)}.` : '';
             content.innerHTML = `<div class="empty-state"><strong>No hay mercados calculables con estos filtros.</strong><br>${muestra}<br><small>${escaparHtml(data.metodologia || 'Prueba ampliando la condición o usando el partido completo.')}</small></div>`;
-            document.getElementById('pick-category').disabled = true;
+            ['pick-category', 'pick-scope', 'pick-direction', 'pick-line'].forEach(id => { document.getElementById(id).disabled = true; });
             document.getElementById('pick-recommended-toggle').disabled = true;
             return;
         }
 
         picksActuales = data;
         soloRecomendadosPicks = false;
-        const select = document.getElementById('pick-category');
-        select.innerHTML = data.categorias.map(categoria => {
-            const total = data.mercados.filter(item => item.categoria === categoria).length;
-            return `<option value="${escaparHtml(categoria)}">${escaparHtml(NOMBRES_CATEGORIAS[categoria] || categoria)} (${total})</option>`;
-        }).join('');
-        select.disabled = false;
-        select.value = data.categorias.includes('goles') ? 'goles' : data.categorias[0];
+        prepararFiltrosComparador();
         pintarPicks();
         section.classList.remove('picks-reveal');
         requestAnimationFrame(() => {
@@ -1090,7 +1124,8 @@ function configurarEventos() {
     document.getElementById('save-comparison').addEventListener('click', guardarComparacionActual);
     document.getElementById('share-comparison').addEventListener('click', compartirComparacion);
     document.getElementById('pick-shortcut').addEventListener('click', mostrarPicks);
-    document.getElementById('pick-category').addEventListener('change', pintarPicks);
+    ['pick-category', 'pick-scope', 'pick-direction'].forEach(id => document.getElementById(id).addEventListener('change', () => { actualizarLineasComparador(); pintarPicks(); }));
+    document.getElementById('pick-line').addEventListener('change', pintarPicks);
     document.getElementById('pick-recommended-toggle').addEventListener('click', () => {
         soloRecomendadosPicks = !soloRecomendadosPicks;
         pintarPicks();

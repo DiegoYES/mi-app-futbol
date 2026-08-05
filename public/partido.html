@@ -681,17 +681,29 @@ async function alternarDetalleH2H(boton) {
 }
 
 function filtrarMercados(datos) {
-  return window.FutbolMarketSearch.filtrar(datos.mercados, filtrosMercado)
-    .filter(item => item.linea === Number(filtrosMercado.linea));
+  const linea = filtrosMercado.linea === '' || filtrosMercado.linea === null ? null : Number(filtrosMercado.linea);
+  return datos.mercados.filter(item => (
+    (filtrosMercado.categoria === 'todas' || item.categoria === filtrosMercado.categoria)
+    && item.alcance === filtrosMercado.alcance
+    && item.tipo === filtrosMercado.tipo
+    && Number.isFinite(item.linea)
+    && (linea === null || item.linea === linea)
+  ));
 }
 
 function prepararFiltrosMercado(datos) {
-  let lineas = window.FutbolMarketSearch.lineas(datos.mercados, filtrosMercado);
+  const obtenerLineas = () => [...new Set(datos.mercados.filter(item => (
+    (filtrosMercado.categoria === 'todas' || item.categoria === filtrosMercado.categoria)
+    && item.alcance === filtrosMercado.alcance
+    && item.tipo === filtrosMercado.tipo
+    && Number.isFinite(item.linea)
+  )).map(item => item.linea))].sort((a, b) => a - b);
+  let lineas = obtenerLineas();
   if (!lineas.length && filtrosMercado.alcance !== 'total') {
     filtrosMercado.alcance = 'total';
-    lineas = window.FutbolMarketSearch.lineas(datos.mercados, filtrosMercado);
+    lineas = obtenerLineas();
   }
-  if (!lineas.includes(Number(filtrosMercado.linea))) {
+  if (filtrosMercado.linea !== '' && !lineas.includes(Number(filtrosMercado.linea))) {
     filtrosMercado.linea = lineas.includes(1.5) ? 1.5 : lineas[0];
   }
   return { lineas };
@@ -711,6 +723,7 @@ function pintarPicksPartido() {
       <p>Elige la categoría, dirección y línea exacta que viste en tu casa para comparar la estimación del modelo.</p>
       <div class="market-explorer-controls">
         <label>Categoría<select id="categoriaPicksPartido" aria-label="Categoría de mercado">
+          <option value="todas" ${filtrosMercado.categoria === 'todas' ? 'selected' : ''}>Todas</option>
           ${categoriasExplorables.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.categoria ? 'selected' : ''}>${esc(NOMBRES_CATEGORIAS[item] || item)}</option>`).join('')}
         </select></label>
         <label>Periodo<select id="periodoMercadoPartido">
@@ -728,10 +741,11 @@ function pintarPicksPartido() {
           <option value="under" ${filtrosMercado.tipo === 'under' ? 'selected' : ''}>Under · Menos de</option>
         </select></label>
         <label>Línea<select id="lineaMercadoPartido">
+          <option value="" ${filtrosMercado.linea === '' || filtrosMercado.linea === null ? 'selected' : ''}>Todas las líneas</option>
           ${opciones.lineas.map(item => `<option value="${item}" ${item === Number(filtrosMercado.linea) ? 'selected' : ''}>${item}</option>`).join('')}
         </select></label>
       </div>
-      <div class="market-explorer-summary"><span>${mercados.length} pick${mercados.length === 1 ? '' : 's'} para ${filtrosMercado.tipo === 'over' ? 'Over' : 'Under'} ${filtrosMercado.linea}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>“Registradas” suma amarillas + rojas simples; confirma las reglas de tu casino.</span>' : ''}</div>
+      <div class="market-explorer-summary"><span>${mercados.length} pick${mercados.length === 1 ? '' : 's'} ${filtrosMercado.linea === '' || filtrosMercado.linea === null ? 'disponibles' : `para ${filtrosMercado.tipo === 'over' ? 'Over' : 'Under'} ${filtrosMercado.linea}`}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>“Registradas” suma amarillas + rojas simples; confirma las reglas de tu casino.</span>' : ''}</div>
     </section>
     <div class="pick-grid" style="margin-top:12px">
       ${mercados.length ? mercados.map(item => {
@@ -924,7 +938,7 @@ document.addEventListener('DOMContentLoaded', () => {
     } else if (event.target.id === 'tipoMercadoPartido') {
       filtrosMercado.tipo = event.target.value;
       filtrosMercado.linea = null;
-    } else if (event.target.id === 'lineaMercadoPartido') filtrosMercado.linea = Number(event.target.value);
+    } else if (event.target.id === 'lineaMercadoPartido') filtrosMercado.linea = event.target.value === '' ? '' : Number(event.target.value);
     else return;
     pintarPicksPartido();
   });
