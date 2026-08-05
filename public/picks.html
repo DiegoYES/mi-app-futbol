@@ -29,13 +29,16 @@
   .general-controls label { color:var(--muted); font-size:.72rem; font-weight:800; }
   .general-controls select { width:100%; margin-top:7px; }
   .general-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; }
-  .general-card { display:flex; min-height:180px; flex-direction:column; gap:9px; padding:17px; color:inherit; text-decoration:none; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
+  .general-card { display:flex; min-height:210px; flex-direction:column; gap:9px; padding:17px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
   .general-card:hover { border-color:var(--green); transform:translateY(-1px); }
+  .general-card-link { display:flex; flex:1; flex-direction:column; gap:9px; color:inherit; text-decoration:none; }
   .general-card > span, .general-card small { color:var(--muted); font-size:.73rem; }
   .general-card > strong { line-height:1.35; }
   .general-pick { padding:12px 14px; border-left:3px solid var(--green); border-radius:0 10px 10px 0; background:rgba(84,227,142,.08); color:var(--ink); font-size:1.18rem; font-weight:900; line-height:1.3; }
   .general-score { margin-top:auto; color:var(--green); font-size:1.65rem; font-weight:900; }
   .general-meta { display:flex; justify-content:space-between; gap:8px; }
+  .general-save { width:100%; min-height:42px; margin-top:4px; border:1px solid rgba(84,227,142,.35); background:rgba(84,227,142,.08); color:var(--green); }
+  .general-save.saved { border-color:var(--line); background:var(--surface-soft); color:var(--muted); }
   @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:minmax(0,1fr) auto;gap:12px; } }
   @media (max-width:800px) { .general-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
   @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid{grid-template-columns:1fr}.general-card{min-height:155px} }
@@ -88,6 +91,16 @@ function fecha(valor) {
 
 const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
 let catalogoGeneralCargado = false;
+let picksGuardados = new Set();
+
+function marcarPicksGeneralesGuardados() {
+  document.querySelectorAll('[data-save-general]').forEach(boton => {
+    const guardado = picksGuardados.has(`${boton.dataset.saveGeneral}:${boton.dataset.market}`);
+    boton.disabled = guardado;
+    boton.classList.toggle('saved', guardado);
+    if (guardado) boton.textContent = '✓ Guardado en Mis picks';
+  });
+}
 
 function opcionesSelect(id, valores, etiqueta) {
   const select = document.getElementById(id);
@@ -122,8 +135,9 @@ async function cargarMejoresGenerales() {
     }
     contenedor.innerHTML = datos.mejores_general.map(item => {
       const enlace = `/partido.html?local=${item.local.id}&visitante=${item.visitante.id}&liga=${item.liga.id}&partido=${item.partido_id}`;
-      return `<a class="general-card" href="${enlace}"><span>${fecha(item.fecha)} · ${esc(item.liga.nombre)}</span><strong>${esc(item.local.nombre)} vs ${esc(item.visitante.nombre)}</strong><div class="general-pick">${esc(item.pick.mercado)}</div><div class="general-score">${item.pick.estimacion}%</div><div class="general-meta"><small>${esc(item.pick.confianza)}</small><small>muestra ${item.pick.muestra}</small></div></a>`;
+      return `<article class="general-card"><a class="general-card-link" href="${enlace}"><span>${fecha(item.fecha)} · ${esc(item.liga.nombre)}</span><strong>${esc(item.local.nombre)} vs ${esc(item.visitante.nombre)}</strong><div class="general-pick">${esc(item.pick.mercado)}</div><div class="general-score">${item.pick.estimacion}%</div><div class="general-meta"><small>${esc(item.pick.confianza)}</small><small>muestra ${item.pick.muestra}</small></div></a><button class="general-save" type="button" data-save-general="${item.partido_id}" data-market="${esc(item.pick.id)}">Guardar en Mis picks</button></article>`;
     }).join('');
+    marcarPicksGeneralesGuardados();
   } catch (error) {
     contenedor.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
   }
@@ -133,6 +147,8 @@ async function cargarHistorial() {
   const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
   if (!respuesta.ok) return;
   const datos = await respuesta.json();
+  picksGuardados = new Set(datos.picks.map(pick => `${pick.partido_api_id}:${pick.mercado.id}`));
+  marcarPicksGeneralesGuardados();
   const r = datos.resumen;
   document.getElementById('resumen').innerHTML = `
     <article class="pick-kpi"><span>Total</span><strong>${r.total}</strong></article>
@@ -169,6 +185,28 @@ document.getElementById('historial').addEventListener('click', async event => {
 });
 
 document.querySelector('.general-controls').addEventListener('change', cargarMejoresGenerales);
+document.getElementById('mejores-generales').addEventListener('click', async event => {
+  const boton = event.target.closest('[data-save-general]');
+  if (!boton || boton.disabled) return;
+  boton.disabled = true;
+  const textoOriginal = boton.textContent;
+  try {
+    const respuesta = await fetch('/api/picks/seguimiento', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ partido_id: Number(boton.dataset.saveGeneral), mercado_id: boton.dataset.market })
+    });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudo guardar el pick.');
+    boton.textContent = '✓ Guardado en Mis picks';
+    boton.classList.add('saved');
+    picksGuardados.add(`${boton.dataset.saveGeneral}:${boton.dataset.market}`);
+    window.FutbolPicks?.notificarCambio?.();
+  } catch (error) {
+    boton.textContent = error.message;
+    setTimeout(() => { boton.textContent = textoOriginal; boton.disabled = false; }, 2400);
+  }
+});
 document.addEventListener('DOMContentLoaded', () => { cargarMejoresGenerales(); cargarHistorial(); });
 window.addEventListener('futbol:picks-actualizados', cargarHistorial);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
