@@ -1002,6 +1002,15 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
     const golesLocal = partido.equipo_local.goles;
     const golesVisitante = partido.equipo_visitante.goles;
     const totalGoles = golesLocal + golesVisitante;
+    // La tanda de penales y la prórroga se publican aparte del marcador: no
+    // entran en `totalGoles` ni en los mercados, que se liquidan a 90'/120'.
+    const marcadorExtra = origen => (
+      typeof origen?.local === 'number' && typeof origen?.visitante === 'number'
+        ? { local: origen.local, visitante: origen.visitante }
+        : null
+    );
+    const penales = marcadorExtra(partido.penales);
+    const golesProrroga = marcadorExtra(partido.goles_prorroga);
     const tieneEstadisticas = partido.estadisticas_completas === true;
     const valorAvanzado = valor => tieneEstadisticas ? (valor ?? null) : null;
     const jugadores = registrosJugadores.map(item => ({
@@ -1067,6 +1076,9 @@ app.get('/api/partidos/:id/estadisticas', async (req, res) => {
     res.json({
       fecha: partido.fecha,
       estado: partido.estado,
+      penales,
+      goles_prorroga: golesProrroga,
+      ganador_penales: partido.ganador_penales || null,
       jornada: partido.liga.jornada,
       arbitro: partido.arbitro,
       liga: partido.liga.nombre,

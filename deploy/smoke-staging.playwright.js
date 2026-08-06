@@ -122,6 +122,38 @@ async function recorrer(nombre, opcionesContexto) {
     }
   }
 
+  // Penales y prórroga: si staging tiene algún partido resuelto en la tanda,
+  // el calendario debe rotularlo "Penales" y mostrar el marcador de la tanda
+  // junto al de 120'. Sin partidos así, la comprobación se omite sin fallar.
+  const respDia = await pagina.request.get('/api/calendario/proximos?dias=30');
+  if (respDia.ok()) {
+    const datos = await respDia.json();
+    const conTanda = (datos.jornadas || [])
+      .flatMap(dia => dia.competiciones || [])
+      .flatMap(comp => comp.partidos || [])
+      .find(p => p.estado === 'PEN' || p.penales);
+
+    if (!conTanda) {
+      console.log(`  [${nombre}] sin partidos definidos en penales en staging; se omite esa comprobación.`);
+    } else {
+      if (!conTanda.penales || typeof conTanda.penales.local !== 'number') {
+        errores.push(`[${nombre}] el partido ${conTanda.api_id} está en PEN pero la API no expone la tanda.`);
+      }
+      const detalle = await pagina.request.get(`/api/partidos/${conTanda.api_id}/estadisticas`);
+      if (!detalle.ok()) {
+        errores.push(`[${nombre}] /api/partidos/${conTanda.api_id}/estadisticas respondió ${detalle.status()}`);
+      } else {
+        const ficha = await detalle.json();
+        if (!ficha.penales) errores.push(`[${nombre}] el centro de partido ${conTanda.api_id} no expone la tanda de penales.`);
+        const golesTotales = (ficha.equipo_local?.goles ?? 0) + (ficha.equipo_visitante?.goles ?? 0);
+        const tandaTotal = (ficha.penales?.local ?? 0) + (ficha.penales?.visitante ?? 0);
+        if (tandaTotal && golesTotales >= tandaTotal + 2) {
+          errores.push(`[${nombre}] el marcador del partido ${conTanda.api_id} parece incluir la tanda de penales.`);
+        }
+      }
+    }
+  }
+
   // Banner de entorno visible en la portada.
   await pagina.goto('/', { waitUntil: 'networkidle' });
   const banner = await pagina.locator('#banner-entorno-prueba').count();

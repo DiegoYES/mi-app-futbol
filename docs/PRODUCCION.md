@@ -97,6 +97,27 @@ junto con el rollback, está documentado en [`STAGING.md`](STAGING.md). La
 promoción (`deploy/promote-production.sh`) sólo acepta el commit registrado
 como validado por el smoke test y exige confirmación explícita.
 
+### Relleno único de penales y prórroga
+
+Los partidos AET/PEN sincronizados antes de que existiera el mapeo de
+`score.penalty` no tienen tanda guardada y se ven como un empate liso. El cron
+ya los guarda solo, así que sólo hace falta corregir el histórico una vez:
+
+```bash
+# 1. Simulación: no escribe nada, sólo lista lo que cambiaría.
+node scripts/rellenarPenales.js
+
+# 2. Aplicar (primero en staging, con su propio MONGODB_URI).
+node scripts/rellenarPenales.js --aplicar
+```
+
+El script imprime entorno, host sin credenciales, base y tipo de operación
+antes de conectarse; sólo escribe `penales.*`, `goles_prorroga.*` y
+`ganador_penales`, nunca goles ni resultados; y se niega a escribir en una base
+que no parezca de staging salvo que se confirme con `PERMITIR_PRODUCCION=1`.
+Consume API-Football (una petición por cada 20 partidos), así que conviene
+lanzarlo con cuota disponible.
+
 ## Alertas mínimas
 
 - Sondea `/health/ready` cada minuto y alerta tras tres fallos.

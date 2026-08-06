@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/styles.css">
 <script src="/auth-client.js"></script>
 <script src="/search-utils.js"></script>
+<script src="/match-score.js"></script>
 <style>
   .cal-top { display: flex; justify-content: space-between; align-items: center; gap: 20px; flex-wrap: wrap; margin-bottom: 24px; }
   .cal-top h1 { margin: 0 0 4px; font-size: 1.7rem; }
@@ -83,6 +84,7 @@
   .marcador { font-weight: 700; font-size: 1.05rem; background: var(--surface-soft); border-radius: 8px; padding: 4px 12px; min-width: 58px; text-align: center; }
   .marcador.live { border:1px solid rgba(84,227,142,.35);background:rgba(84,227,142,.1);color:var(--green); }
   .marcador.vs { color: var(--muted); font-weight: 400; font-size: .8rem; background: transparent; }
+  .marcador .penales { display:block;font-size:.66rem;font-weight:600;line-height:1.3;margin-top:2px;color:var(--muted);white-space:nowrap; }
   .match-shell { border-top:1px solid var(--line); }.match-shell .match { border-top:0; }
   .match-picks { padding:0 18px 12px 92px; }.pick-loading { color:var(--muted);font-size:.65rem; }
   .calendar-picks { border:1px solid rgba(84,227,142,.2);border-radius:11px;background:rgba(84,227,142,.045);overflow:hidden; }
@@ -402,22 +404,7 @@ function partidosFiltrados(jornada) {
 }
 
 function pintarCompeticiones(competiciones, fechaRef) {
-  const etiquetasEstado = {
-    PST: 'Aplazado',
-    CANC: 'Cancelado',
-    Canc: 'Cancelado',
-    ABD: 'Abandonado',
-    AWD: 'Adjudicado',
-    WO: 'Walkover',
-    SUSP: 'Suspendido',
-    INT: 'Interrumpido',
-    '1H': 'En vivo',
-    HT: 'Descanso',
-    '2H': 'En vivo',
-    ET: 'Prórroga',
-    BT: 'Pausa'
-  };
-  const abrirTodas = Boolean(filtroActivo) || filtroEstado !== 'todos' || horaDesde || horaHasta || competiciones.length <= 4;
+    const abrirTodas = Boolean(filtroActivo) || filtroEstado !== 'todos' || horaDesde || horaHasta || competiciones.length <= 4;
   const grupos = competiciones.map((c, indice) => `
     <details class="liga-group" data-league-group="${c.liga_id}" ${abrirTodas || indice < 3 ? 'open' : ''}>
       <summary class="liga-head">
@@ -426,10 +413,13 @@ function pintarCompeticiones(competiciones, fechaRef) {
       </summary>
       ${c.partidos.map(p => {
         const horaLocal = new Date(p.fecha).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
-        const estadoVisible = p.finalizado ? 'Final' : (etiquetasEstado[p.estado] || horaLocal || p.hora);
+        // 'Penales' y 'Final (pró.)' distinguen un 1-1 resuelto en la tanda de
+        // un empate liso. Antes ambos se mostraban como 'Final'.
+        const estadoVisible = FutbolMarcador.etiquetaEstado(p, horaLocal || p.hora);
         const enJuego = categoriaEstado(p) === 'en_juego';
+        const textoPenales = FutbolMarcador.textoPenales(p);
         const marcador = p.finalizado || enJuego
-          ? `<div class="marcador ${enJuego ? 'live' : ''}">${p.local.goles ?? 0} - ${p.visitante.goles ?? 0}</div>`
+          ? `<div class="marcador ${enJuego ? 'live' : ''}" aria-label="${esc(FutbolMarcador.descripcionMarcador(p))}">${p.local.goles ?? 0} - ${p.visitante.goles ?? 0}${textoPenales ? `<small class="penales">${esc(textoPenales)}</small>` : ''}</div>`
           : `<div class="marcador vs">vs</div>`;
         const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
         return `<div class="match-shell"><div class="match" role="link" tabindex="0" data-match-open="${esc(url)}">

@@ -7,6 +7,7 @@ const Partido = require('../models/partido');
 const Equipo = require('../models/Equipo');
 const config = require('../config/leagues');
 const { instalarControlCuotaAxios } = require('../services/apiQuota');
+const { construirMarcador, ESTADOS_FINALIZADOS } = require('../services/fixtureCatalog');
 instalarControlCuotaAxios(axios);
 
 console.log('🔑 API Key cargada:', process.env.API_FOOTBALL_KEY ? 'Sí' : 'No');
@@ -145,7 +146,10 @@ async function sincronizarPartidos(leagueId, season) {
         },
         total_goles: (p.goals.home ?? 0) + (p.goals.away ?? 0),
         ambos_anotan: p.goals.home > 0 && p.goals.away > 0,
-        resultado: p.fixture.status.short === 'FT'
+        // Un partido con prórroga o penales también está finalizado: si sólo
+        // se acepta 'FT', su resultado queda en null y la evaluación de picks
+        // lo ignora. El 1X2 se decide con el marcador de 90'/120'.
+        resultado: ESTADOS_FINALIZADOS.has(p.fixture.status.short)
           ? (p.goals.home > p.goals.away ? 'local' : (p.goals.home < p.goals.away ? 'visitante' : 'empate'))
           : null
       };
@@ -172,6 +176,7 @@ async function sincronizarPartidos(leagueId, season) {
             total_goles: doc.total_goles,
             ambos_anotan: doc.ambos_anotan,
             resultado: doc.resultado,
+            ...construirMarcador(p),
             fecha_actualizacion: new Date()
           },
           $setOnInsert: { api_id: p.fixture.id }
@@ -179,8 +184,8 @@ async function sincronizarPartidos(leagueId, season) {
         { upsert: true }
       );
 
-      // Si es FT y no tiene stats, procesamos el detalle
-      if (p.fixture.status.short === 'FT') {
+      // El detalle también aplica a partidos resueltos en prórroga o penales.
+      if (ESTADOS_FINALIZADOS.has(p.fixture.status.short)) {
         await procesarDetallePartido(p.fixture.id, p.teams.home.id, p.teams.away.id);
       }
     }

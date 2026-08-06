@@ -15,8 +15,19 @@ const CAMPOS_CALENDARIO = [
   'api_id', 'fecha', 'estado',
   'liga.id', 'liga.nombre', 'liga.temporada', 'liga.jornada',
   'equipo_local.id', 'equipo_local.nombre', 'equipo_local.logo', 'equipo_local.goles',
-  'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.logo', 'equipo_visitante.goles'
+  'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.logo', 'equipo_visitante.goles',
+  'penales.local', 'penales.visitante', 'ganador_penales',
+  'goles_prorroga.local', 'goles_prorroga.visitante'
 ].join(' ');
+
+// Normaliza la tanda para el cliente. Devuelve null salvo que ambos lados
+// traigan número: media tanda no se publica.
+function marcadorExtra(origen) {
+  const local = origen?.local;
+  const visitante = origen?.visitante;
+  if (typeof local !== 'number' || typeof visitante !== 'number') return null;
+  return { local, visitante };
+}
 
 // Convierte 'YYYY-MM-DD' al rango [00:00, 23:59:59.999] de ese día en hora local
 function rangoDelDia(textoFecha) {
@@ -74,6 +85,9 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
       const finalizado = esFinalizado(p.estado);
       porLiga.get(idLiga).partidos.push({
         api_id: p.api_id,
+        penales: marcadorExtra(p.penales),
+        goles_prorroga: marcadorExtra(p.goles_prorroga),
+        ganador_penales: p.ganador_penales || null,
         fecha: p.fecha,
         hora: horaEnZona(p.fecha, zonaHoraria),
         estado: p.estado,
@@ -150,6 +164,9 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
       const finalizado = esFinalizado(p.estado);
       dia.competiciones.get(idLiga).partidos.push({
         api_id: p.api_id,
+        penales: marcadorExtra(p.penales),
+        goles_prorroga: marcadorExtra(p.goles_prorroga),
+        ganador_penales: p.ganador_penales || null,
         fecha: p.fecha,
         hora: horaEnZona(p.fecha, zonaHoraria),
         estado: p.estado,

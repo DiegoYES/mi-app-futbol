@@ -199,9 +199,21 @@ staging, portada autenticada, calendario, comparador, picks y boletas, y con
 `RUN_PLAYWRIGHT=1` añade navegación real en escritorio y móvil, un centro de
 partido abierto con identificadores reales del calendario, errores JavaScript,
 respuestas 4xx/5xx inesperadas y la búsqueda "Argentina" del calendario sin
-resultados duplicados. Las credenciales llegan sólo por variables de entorno.
+resultados duplicados. También verifica, si staging tiene algún partido en
+estado `PEN`, que la tanda de penales llegue al calendario y al centro de
+partido y que no se haya sumado al marcador. Las credenciales llegan sólo por
+variables de entorno.
 `SMOKE_REMOTE=1` omite únicamente la verificación local de PM2/clon cuando el
 smoke corre desde otra máquina.
+
+### Validación del render de penales sin servidor ni base
+
+`npm run test:render` levanta un servidor estático efímero sobre `public/`,
+responde las llamadas `/api/` con fixtures en memoria y comprueba en Chromium
+(escritorio y móvil) que un 1-1 resuelto 3-4 en la tanda se rotule "Penales"
+con `1 - 1 (3 - 4 pen.)`, que un `AET` se rotule "Final (pró.)" y que un `FT`
+siga diciendo "Final". No abre conexión a MongoDB ni consume API-Football, así
+que puede ejecutarse en cualquier máquina y en CI sin credenciales.
 
 > **Nota sobre escrituras.** El smoke test no toca MongoDB directamente, pero
 > a nivel de aplicación no es 100% de sólo lectura: el login actualiza
