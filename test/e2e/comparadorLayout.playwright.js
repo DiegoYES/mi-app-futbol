@@ -35,13 +35,18 @@ const metrics = '<p class="period-label">Partido completo · 8 partidos</p><div 
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       columns: getComputedStyle(document.querySelector('.main-grid')).gridTemplateColumns.split(' ').length,
       metricColumns: getComputedStyle(document.querySelector('.record-grid')).gridTemplateColumns.split(' ').length,
-      container: Math.round(document.querySelector('.container').getBoundingClientRect().width)
+      container: Math.round(document.querySelector('.container').getBoundingClientRect().width),
+      selectorTops: [...document.querySelectorAll('#panel-a .selection-field')].map(field => {
+        const control = field.querySelector('.league-picker-button,.team-picker-button,select');
+        return Math.round(control.getBoundingClientRect().top);
+      })
     }));
     assert.equal(layout.overflow, false, `${config.name}: no debe haber desbordamiento horizontal`);
     if (config.name === 'desktop') {
       assert.equal(layout.columns, 2);
       assert.equal(layout.metricColumns, 6);
       assert.ok(layout.container <= 1320);
+      assert.ok(Math.max(...layout.selectorTops) - Math.min(...layout.selectorTops) <= 1, 'los tres selectores deben quedar alineados');
     } else {
       assert.equal(layout.columns, 1);
       assert.equal(layout.metricColumns, 3);

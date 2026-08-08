@@ -495,7 +495,8 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
 .comparator-page .team-header img { width:44px;height:44px;border-radius:12px; }
 .comparator-page .team-controls { gap:10px;padding:16px 16px 0; }
 .comparator-page .selection-controls { grid-template-columns:minmax(0,1fr) 150px minmax(0,1fr); }
-.comparator-page .selection-field { gap:5px; }
+.comparator-page .selection-field { grid-template-rows:32px auto;gap:5px; }
+.comparator-page .selection-field>span { display:flex;align-items:flex-end;line-height:1.25; }
 .comparator-page .league-picker-button,.comparator-page .team-picker-button { min-height:46px; }
 .comparator-page .advanced-options { margin:12px 16px 0; }
 .comparator-page .stats-table { padding:16px; }
@@ -701,6 +702,7 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   .live-pill { display: none; }
   .team-controls, .selection-controls, .filter-controls { grid-template-columns: 1fr; }
   .comparator-page .selection-controls { grid-template-columns:1fr; }
+  .comparator-page .selection-field { grid-template-rows:auto auto; }
   .team-controls { gap: 11px; padding-inline: 14px; }
   .team-header { min-height: 74px; padding: 14px; }
   .team-header img { width: 42px; height: 42px; }
