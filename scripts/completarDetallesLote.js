@@ -29,6 +29,10 @@ const DIAS_RECIENTES = Number.isInteger(Number(process.env.SYNC_RECENT_DAYS))
   && Number(process.env.SYNC_RECENT_DAYS) > 0
   ? Number(process.env.SYNC_RECENT_DAYS)
   : null;
+const HORAS_ENTRE_REINTENTOS = Number.isFinite(Number(process.env.SYNC_RETRY_AFTER_HOURS))
+  && Number(process.env.SYNC_RETRY_AFTER_HOURS) > 0
+  ? Number(process.env.SYNC_RETRY_AFTER_HOURS)
+  : 4;
 let solicitudesUsadas = 0;
 
 function partir(items, tamano = TAMANO_LOTE) {
@@ -42,7 +46,7 @@ function esperar(ms) {
 }
 
 async function completarLiga(leagueId, season) {
-  const reintentarAntesDe = new Date(Date.now() - (4 * 60 * 60 * 1000));
+  const reintentarAntesDe = new Date(Date.now() - (HORAS_ENTRE_REINTENTOS * 60 * 60 * 1000));
   const coberturaPendiente = REINTENTAR_HUECOS
     ? {
         $or: [

@@ -109,6 +109,12 @@ elif [ "$BATCH" = "batch1" ]; then
     node scripts/completarDetallesLote.js
 
   echo ""
+  echo "▸ Reintentar huecos recientes de las ligas prioritarias"
+  SYNC_RETRY_GAPS=true SYNC_RETRY_AFTER_HOURS=24 SYNC_RECENT_DAYS=14 \
+    FOOTBALL_SEASON=2026 SYNC_LEAGUES=262,253,71,39,140,61,135,78 \
+    node scripts/completarDetallesLote.js
+
+  echo ""
   echo "▸ Sincronizar fixtures futuros — ligas top"
   SYNC_LEAGUES=2,3,39,40,41,42,43,44,61,62,63,64,78,79,80,82,88,89,94,95,99,104,106,107,113,114,119,120,135,136,139,140,141,142,144,145,164,172,179,180,183,184,185,188,190,197,203,204,207,208,210,218,219,235,236,244,271,283,286,288,292,293,301,305,307,308,318,333,345,357,383,525,549,848 \
     node scripts/syncDatabase.js

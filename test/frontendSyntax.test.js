@@ -6,7 +6,8 @@ const path = require('node:path');
 const paginas = [
   'index.html', 'inicio.html', 'login.html', 'admin.html', 'calendario.html',
   'partido.html', 'picks.html', 'boletas.html', 'equipos.html', 'equipo.html', 'jugadores.html',
-  'competiciones.html', 'competicion.html', 'jugador.html', 'arbitros.html', 'guia.html', 'sugerencias.html'
+  'competiciones.html', 'competicion.html', 'jugador.html', 'arbitros.html', 'guia.html', 'sugerencias.html',
+  'suscripcion.html'
 ];
 
 for (const pagina of paginas) {
@@ -96,6 +97,20 @@ test('auth-client.js contiene JavaScript válido y monta Mis picks globales', ()
   assert.doesNotThrow(() => new Function(codigo));
   assert.match(codigo, /global-picks-widget/);
   assert.match(codigo, /futbol:picks-actualizados/);
+});
+
+test('la prueba y el checkout enlazan condiciones y exigen consentimiento', () => {
+  const landing = fs.readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8');
+  const checkout = fs.readFileSync(path.join(__dirname, '..', 'public', 'suscripcion.html'), 'utf8');
+  const script = fs.readFileSync(path.join(__dirname, '..', 'public', 'suscripcion.js'), 'utf8');
+  const terminos = fs.readFileSync(path.join(__dirname, '..', 'public', 'terminos.html'), 'utf8');
+
+  assert.match(landing, /Una sola prueba gratuita por persona/);
+  assert.match(landing, /href="\/terminos\.html"/);
+  assert.match(checkout, /id="billing-consent"/);
+  assert.match(checkout, /href="\/terminos\.html"/);
+  assert.match(script, /acepta_terminos: true/);
+  assert.match(terminos, /No está permitido crear, solicitar o utilizar cuentas adicionales/);
 });
 
 test('el panel de administración conecta sus controles sin eventos inline bloqueados por CSP', () => {

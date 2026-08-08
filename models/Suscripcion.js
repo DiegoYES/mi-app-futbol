@@ -17,6 +17,8 @@ const suscripcionSchema = new mongoose.Schema({
   periodo_fin: { type: Date, default: null },
   proximo_cobro: { type: Date, default: null },
   cancelada_en: { type: Date, default: null },
+  terminos_aceptados_en: { type: Date, default: null },
+  terminos_version: { type: String, default: null },
   ultimo_evento_en: { type: Date, default: null },
   ultimo_error: { type: String, default: null }
 }, { timestamps: true });

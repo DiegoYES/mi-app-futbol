@@ -3,6 +3,7 @@ const rateLimit = require('express-rate-limit');
 const Suscripcion = require('../models/Suscripcion');
 const { requireAuth } = require('../middleware/auth');
 const { errorServidor } = require('../middleware/security');
+const { TERMS_VERSION, consentimientoValido } = require('../services/terms');
 const {
   ErrorMercadoPago,
   PRECIO_MENSUAL,
@@ -62,11 +63,21 @@ router.get('/status', requireAuth, async (req, res) => {
 
 router.post('/subscribe', requireAuth, limiteBilling, async (req, res) => {
   try {
+    if (!consentimientoValido(req.body)) {
+      return res.status(400).json({
+        error: 'Debes leer y aceptar los Términos y Condiciones antes de continuar.',
+        codigo: 'TERMINOS_NO_ACEPTADOS'
+      });
+    }
+    const aceptadosEn = new Date();
     const existente = await Suscripcion.findOne({ usuario: req.usuario._id });
     if (existente?.estado === 'autorizada') {
       return res.status(409).json({ error: 'Ya tienes una suscripción activa.', codigo: 'SUSCRIPCION_ACTIVA' });
     }
     if (existente?.estado === 'pendiente' && existente.checkout_url) {
+      existente.terminos_aceptados_en = aceptadosEn;
+      existente.terminos_version = TERMS_VERSION;
+      await existente.save();
       return res.json({ checkout_url: existente.checkout_url, reutilizada: true });
     }
 
@@ -83,6 +94,8 @@ router.post('/subscribe', requireAuth, limiteBilling, async (req, res) => {
         importe: PRECIO_MENSUAL,
         moneda: 'MXN',
         checkout_url: remota.init_point,
+        terminos_aceptados_en: aceptadosEn,
+        terminos_version: TERMS_VERSION,
         ultimo_error: null
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }

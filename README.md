@@ -134,6 +134,9 @@ cupo. `SYNC_MAX_REQUESTS=3` limita voluntariamente una corrida a tres llamadas y
 las ocho competiciones objetivo de una temporada. Los huecos que el proveedor ya
 devolvió vacíos no se consultan repetidamente; para un reintento explícito usa
 `SYNC_RETRY_GAPS=true` junto con un `SYNC_MAX_REQUESTS` pequeño.
+`SYNC_RETRY_AFTER_HOURS` controla la espera mínima desde la consulta anterior
+(4 horas por defecto). El cron nocturno reintenta durante 14 días los huecos de
+las ocho ligas prioritarias, con una espera de 24 horas para proteger la cuota.
 
 ## Funciones analíticas
 

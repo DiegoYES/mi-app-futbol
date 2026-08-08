@@ -1,4 +1,5 @@
 (function () {
+  const VERSION_TERMINOS = '2026-08-08';
   const consentimiento = document.getElementById('billing-consent');
   const suscribir = document.getElementById('billing-subscribe');
   const cancelar = document.getElementById('billing-cancel');
@@ -31,7 +32,11 @@
     suscribir.disabled = true;
     mensaje('Preparando el checkout seguro…');
     try {
-      const respuesta = await fetch('/api/billing/subscribe', { method: 'POST' });
+      const respuesta = await fetch('/api/billing/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ acepta_terminos: true, version_terminos: VERSION_TERMINOS })
+      });
       const datos = await respuesta.json();
       if (!respuesta.ok || !datos.checkout_url) throw new Error(datos.error || 'No se pudo iniciar el pago.');
       window.location.assign(datos.checkout_url);
