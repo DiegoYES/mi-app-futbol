@@ -5,6 +5,7 @@ const https = require('https');
 const Partido = require('../models/partido');
 const config = require('../config/leagues');
 const { instalarControlCuotaAxios } = require('../services/apiQuota');
+const { valorEstadistica, tieneMetricasBasicas } = require('../services/statValue');
 instalarControlCuotaAxios(axios);
 
 console.log('🔑 API Key cargada:', process.env.API_FOOTBALL_KEY ? 'Sí' : 'No');
@@ -60,9 +61,9 @@ async function completarLiga(leagueId) {
       const update = {};
       if (homeStats) {
         const s = homeStats.statistics;
-        update['equipo_local.tiros_total'] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
-        update['equipo_local.tiros_puerta'] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
-        update['equipo_local.corners'] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
+        update['equipo_local.tiros_total'] = valorEstadistica(s, 'Total Shots');
+        update['equipo_local.tiros_puerta'] = valorEstadistica(s, 'Shots on Goal');
+        update['equipo_local.corners'] = valorEstadistica(s, 'Corner Kicks');
         update['equipo_local.faltas'] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
         update['equipo_local.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
         update['equipo_local.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
@@ -70,9 +71,9 @@ async function completarLiga(leagueId) {
       }
       if (awayStats) {
         const s = awayStats.statistics;
-        update['equipo_visitante.tiros_total'] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
-        update['equipo_visitante.tiros_puerta'] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
-        update['equipo_visitante.corners'] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
+        update['equipo_visitante.tiros_total'] = valorEstadistica(s, 'Total Shots');
+        update['equipo_visitante.tiros_puerta'] = valorEstadistica(s, 'Shots on Goal');
+        update['equipo_visitante.corners'] = valorEstadistica(s, 'Corner Kicks');
         update['equipo_visitante.faltas'] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
         update['equipo_visitante.tarjetas_amarillas'] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
         update['equipo_visitante.tarjetas_rojas'] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
@@ -80,7 +81,7 @@ async function completarLiga(leagueId) {
       }
 
       if (Object.keys(update).length > 0) {
-        update.estadisticas_completas = true;
+        update.estadisticas_completas = tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats);
         await Partido.updateOne({ api_id: p.api_id }, { $set: update });
         actualizados++;
         console.log(`      ✅ Partido ${p.api_id} actualizado.`);

@@ -1,9 +1,10 @@
-require('dotenv').config();
+update[] = valorEstadistica(s, 'Corner Kicks');require('dotenv').config();
 const mongoose = require('mongoose');
 const axios = require('axios');
 const https = require('https');
 const apiService = require('../services/apiFootball');
 const Partido = require('../models/partido');
+const { valorEstadistica, tieneMetricasBasicas } = require('../services/statValue');
 const Equipo = require('../models/Equipo');
 const config = require('../config/leagues');
 const { instalarControlCuotaAxios } = require('../services/apiQuota');
@@ -227,7 +228,7 @@ async function procesarDetallePartido(fixtureId, homeTeamId, awayTeamId) {
 
     const homeStats = fullFixture.statistics.find(s => s.team.id === homeTeamId);
     const awayStats = fullFixture.statistics.find(s => s.team.id === awayTeamId);
-    const update = { estadisticas_completas: true };
+    const update = { estadisticas_completas: tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats) };
 
     function extraerStats(statsObj, prefijo) {
       const s = statsObj.statistics;
