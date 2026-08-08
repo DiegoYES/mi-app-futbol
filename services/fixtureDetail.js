@@ -1,5 +1,6 @@
 const Partido = require('../models/partido');
 const JugadorPartido = require('../models/JugadorPartido');
+const { valorEstadistica, tieneMetricasBasicas } = require('./statValue');
 
 function numero(valor) {
   if (valor === null || valor === undefined || valor === '') return 0;
@@ -8,7 +9,7 @@ function numero(valor) {
 }
 
 function valorStat(estadisticas, tipo) {
-  return numero(estadisticas?.find(item => item.type === tipo)?.value);
+  return valorEstadistica(estadisticas, tipo);
 }
 
 function camposEstadisticas(prefijo, bloque) {
@@ -82,7 +83,7 @@ function construirUpdatePartido(detalle, partido) {
   if (homeStats && awayStats) {
     Object.assign(update, camposEstadisticas('equipo_local', homeStats));
     Object.assign(update, camposEstadisticas('equipo_visitante', awayStats));
-    update.estadisticas_completas = true;
+    update.estadisticas_completas = tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats);
   }
 
   if (Array.isArray(detalle.events)) {
