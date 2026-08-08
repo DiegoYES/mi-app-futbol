@@ -1,5 +1,6 @@
 (function (global) {
   const FAVORITOS = 'futbol:favoritos:v1';
+  const PARTIDOS_FAVORITOS = 'futbol:partidos-favoritos:v1';
   const COMPARACIONES = 'futbol:comparaciones:v1';
 
   function crearBiblioteca(storage) {
@@ -13,6 +14,7 @@
       try { storage.setItem(clave, JSON.stringify(valor)); return true; } catch { return false; }
     };
     const idEquipo = equipo => `${Number(equipo.id)}:${Number(equipo.league)}`;
+    const idPartido = partido => String(Number(partido.api_id ?? partido.id));
 
     return {
       favoritos() { return leer(FAVORITOS); },
@@ -24,6 +26,17 @@
         if (indice >= 0) lista.splice(indice, 1);
         else lista.unshift({ ...equipo, id: Number(equipo.id), league: Number(equipo.league), guardado_en: new Date().toISOString() });
         escribir(FAVORITOS, lista.slice(0, 30));
+        return indice < 0;
+      },
+      partidosFavoritos() { return leer(PARTIDOS_FAVORITOS); },
+      esPartidoFavorito(id) { return leer(PARTIDOS_FAVORITOS).some(partido => idPartido(partido) === String(Number(id))); },
+      alternarPartidoFavorito(partido) {
+        const lista = leer(PARTIDOS_FAVORITOS);
+        const clave = idPartido(partido);
+        const indice = lista.findIndex(item => idPartido(item) === clave);
+        if (indice >= 0) lista.splice(indice, 1);
+        else lista.unshift({ ...partido, api_id: Number(partido.api_id ?? partido.id), guardado_en: new Date().toISOString() });
+        escribir(PARTIDOS_FAVORITOS, lista.slice(0, 100));
         return indice < 0;
       },
       comparaciones() { return leer(COMPARACIONES); },
