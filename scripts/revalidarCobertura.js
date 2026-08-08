@@ -12,6 +12,7 @@ async function main() {
   const league = Number(argumento('league', 253));
   const seasonArg = argumento('season');
   const reabrir = process.argv.includes('--reabrir');
+  const restaurar = process.argv.includes('--restaurar-flags');
   await mongoose.connect(process.env.MONGODB_URI);
   try {
     const filtro = { 'liga.id': league, estado: { $in: ['FT', 'AET', 'PEN'] } };
@@ -31,6 +32,14 @@ async function main() {
       { $sort: { _id: -1 } }
     ]);
     console.log(JSON.stringify({ liga: league, temporadas: resumen }, null, 2));
+    if (restaurar) {
+      if (!seasonArg) throw new Error('--restaurar-flags exige --season.');
+      const campos = ['equipo_local.tiros_total', 'equipo_local.tiros_puerta', 'equipo_local.corners', 'equipo_visitante.tiros_total', 'equipo_visitante.tiros_puerta', 'equipo_visitante.corners'];
+      const completos = { ...filtro, $and: campos.map(campo => ({ [campo]: { $type: 'number' } })) };
+      const resultado = await Partido.updateMany(completos, { $set: { estadisticas_completas: true, detalle_completo: true } });
+      console.log(`Restauradas ${resultado.modifiedCount} coberturas con métricas básicas presentes.`);
+      return;
+    }
     if (!reabrir) return;
     if (!seasonArg) throw new Error('--reabrir exige --season para limitar el alcance.');
     const resultado = await Partido.updateMany(filtro, { $set: {
