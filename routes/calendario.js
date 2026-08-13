@@ -1,6 +1,7 @@
 const express = require('express');
 const { errorServidor } = require('../middleware/security');
 const Partido = require('../models/partido');
+const Equipo = require('../models/Equipo');
 const config = require('../config/leagues');
 const { cacheMiddleware } = require('../middleware/cache');
 const { analizarPartidosCalendario } = require('../services/calendarPicks');
@@ -13,10 +14,26 @@ const router = express.Router();
 // memoria y ancho de banda entre MongoDB y Node.
 const CAMPOS_CALENDARIO = [
   'api_id', 'fecha', 'estado',
-  'liga.id', 'liga.nombre', 'liga.temporada', 'liga.jornada',
+  'liga.id', 'liga.nombre', 'liga.pais', 'liga.temporada', 'liga.jornada',
   'equipo_local.id', 'equipo_local.nombre', 'equipo_local.logo', 'equipo_local.goles',
   'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.logo', 'equipo_visitante.goles'
 ].join(' ');
+
+async function paisesDeEquipos(partidos) {
+  const ids = [...new Set(partidos.flatMap(p => [p.equipo_local?.id, p.equipo_visitante?.id]).filter(Number.isFinite))];
+  if (!ids.length) return new Map();
+  const equipos = await Equipo.find({ api_id: { $in: ids } }).select('api_id pais').lean();
+  return new Map(equipos.filter(e => e.pais).map(e => [e.api_id, e.pais]));
+}
+
+function paisDePartido(partido, paises) {
+  const configurado = config.ligas[partido.liga?.id]?.pais;
+  if (configurado) return configurado;
+  if (partido.liga?.pais) return partido.liga.pais;
+  const local = paises.get(partido.equipo_local?.id);
+  const visitante = paises.get(partido.equipo_visitante?.id);
+  return local && local === visitante ? local : (local || visitante || '');
+}
 
 // Convierte 'YYYY-MM-DD' al rango [00:00, 23:59:59.999] de ese día en hora local
 function rangoDelDia(textoFecha) {
@@ -58,6 +75,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
 
     const candidatos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
     const partidos = candidatos.filter(p => fechaISOEnZona(p.fecha, zonaHoraria) === texto);
+    const paises = await paisesDeEquipos(partidos);
 
     const porLiga = new Map();
     for (const p of partidos) {
@@ -66,7 +84,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
         porLiga.set(idLiga, {
           liga_id: idLiga,
           liga: p.liga?.nombre || config.ligas[idLiga]?.nombre || `Liga ${idLiga}`,
-          pais: config.ligas[idLiga]?.pais || '',
+          pais: paisDePartido(p, paises),
           partidos: []
         });
       }
@@ -131,6 +149,7 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
     }
 
     const partidos = candidatos.filter(p => porDia.has(fechaISOEnZona(p.fecha, zonaHoraria)));
+    const paises = await paisesDeEquipos(partidos);
 
     for (const p of partidos) {
       const clave = fechaISOEnZona(p.fecha, zonaHoraria);
@@ -142,7 +161,7 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
         dia.competiciones.set(idLiga, {
           liga_id: idLiga,
           liga: p.liga?.nombre || config.ligas[idLiga]?.nombre || `Liga ${idLiga}`,
-          pais: config.ligas[idLiga]?.pais || '',
+          pais: paisDePartido(p, paises),
           partidos: []
         });
       }

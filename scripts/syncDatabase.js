@@ -126,6 +126,7 @@ async function sincronizarPartidos(leagueId, season) {
         liga: {
           id: leagueId,
           nombre: config.ligas[leagueId]?.nombre,
+          pais: config.ligas[leagueId]?.pais || p.league?.country || '',
           temporada: season,
           jornada: p.league.round
         },

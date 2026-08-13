@@ -44,6 +44,7 @@ const partidoSchema = new mongoose.Schema({
   liga: {
     id: { type: Number, required: true },
     nombre: String,
+    pais: String,
     temporada: Number,
     jornada: String
   },

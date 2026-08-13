@@ -71,6 +71,7 @@ async function sincronizarFecha(fecha, ligasSeguidas = new Set(Object.keys(confi
       liga: {
         id: f.league.id,
         nombre: config.ligas[f.league.id]?.nombre || f.league.name,
+        pais: config.ligas[f.league.id]?.pais || f.league.country || '',
         temporada: f.league.season,
         jornada: f.league.round
       },
