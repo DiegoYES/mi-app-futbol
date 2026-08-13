@@ -11,8 +11,8 @@
 
 [Unit]
 Description=Mi App Futbol (STAGING)
-After=network-online.target mongod.service
-Wants=network-online.target
+After=network-online.target mongod.service redis-server.service
+Wants=network-online.target redis-server.service
 
 [Service]
 Type=simple

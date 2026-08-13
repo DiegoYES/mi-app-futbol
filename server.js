@@ -37,6 +37,7 @@ const {
 } = require('./middleware/security');
 const { observarHttp } = require('./middleware/observability');
 const { crearEnviadorHtml, bannerEstatico } = require('./middleware/entornoBanner');
+const { cerrarRedis, conectarRedis } = require('./services/redisBackend');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -1151,7 +1152,13 @@ async function iniciarServidor() {
   }
   revisarConfiguracionSegura().forEach(aviso => console.warn(`⚠️  ${aviso}`));
 
-  await mongoose.connect(process.env.MONGODB_URI);
+  await conectarRedis();
+  try {
+    await mongoose.connect(process.env.MONGODB_URI);
+  } catch (error) {
+    await cerrarRedis().catch(() => {});
+    throw error;
+  }
   console.log('✅ Conectado a MongoDB');
 
   const servidor = app.listen(PORT, HOST, () => {
@@ -1171,14 +1178,19 @@ if (require.main === module) {
       cerrando = true;
       console.log(`\n${señal}: cerrando servidor de forma segura...`);
       servidor.close(async () => {
-        await mongoose.disconnect().catch(() => {});
+        await Promise.all([
+          mongoose.disconnect().catch(() => {}),
+          cerrarRedis().catch(() => {})
+        ]);
         process.exit(0);
       });
       setTimeout(() => process.exit(1), 15_000).unref();
     };
     process.once('SIGTERM', () => apagar('SIGTERM'));
     process.once('SIGINT', () => apagar('SIGINT'));
-  }).catch(error => {
+  }).catch(async error => {
+    await cerrarRedis().catch(() => {});
+    await mongoose.disconnect().catch(() => {});
     console.error('❌ No se pudo iniciar el servidor:', error.message);
     process.exitCode = 1;
   });

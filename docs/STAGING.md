@@ -25,6 +25,7 @@ Staging **no comparte nada** con producción:
 | Configuración  | .env de producción             | /var/www/mi-app-futbol-staging/.env      |
 | Base MongoDB   | mi-app-futbol                  | mi-app-futbol-staging                    |
 | JWT_SECRET     | propio                         | propio (distinto, generado aparte)       |
+| Redis          | namespace `datafut:production` | namespace `datafut:staging`              |
 | API-Football   | clave real                     | **sin clave** (vacía)                    |
 | Cron/workers   | scripts/cronSync.sh            | **ninguno**                              |
 | Cuentas        | usuarios reales                | sólo cuentas sintéticas de prueba        |
@@ -38,6 +39,8 @@ Reglas permanentes:
   actualizaciones de mercados (`MARKET_REFRESH_ENABLED=false`, clave API vacía).
 - No copies datos ni credenciales de producción a staging sin autorización
   explícita. Si staging necesita datos, usa las semillas sintéticas.
+- El daemon y socket Redis pueden ser comunes a la VM, pero las claves lógicas
+  no: `REDIS_KEY_PREFIX` debe ser distinto y explícito en cada entorno.
 
 ## Arquitectura
 
@@ -48,6 +51,9 @@ Internet ──► Nginx (TLS)
 MongoDB local:
               ├── base mi-app-futbol          (producción, intocable)
               └── base mi-app-futbol-staging  (staging, sintética)
+Redis local por socket Unix:
+              ├── namespace datafut:production
+              └── namespace datafut:staging
 ```
 
 La aplicación detecta `APP_ENVIRONMENT=staging` y muestra un banner fijo
@@ -87,6 +93,12 @@ sudo chmod 600 /var/www/mi-app-futbol-staging/.env
 `deploy-staging.sh` valida antes de arrancar que ese `.env` tenga
 `PORT=3100`, `APP_ENVIRONMENT=staging` y un `MONGODB_URI` terminado en
 `-staging`; si algo no cuadra, aborta.
+
+En la VM de referencia Redis no abre TCP. Staging usa
+`REDIS_SOCKET=/run/redis/redis-server.sock` y
+`REDIS_KEY_PREFIX=datafut:staging`; producción usa el mismo socket con el
+prefijo `datafut:production`. `/health/ready` añade `redis: ok` cuando el
+backend está habilitado y responde 503 si deja de estar disponible.
 
 ### 4. Nginx
 

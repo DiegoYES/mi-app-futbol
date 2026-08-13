@@ -1,11 +1,11 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 const Sugerencia = require('../models/Sugerencia');
+const { crearLimitador } = require('../middleware/rateLimit');
 
 const router = express.Router();
 const TIPOS = new Set(['idea', 'mejora', 'error', 'otro']);
 
-const limiteCreacion = rateLimit({
+const limiteCreacion = crearLimitador('sugerencias', {
   windowMs: 60 * 60 * 1000,
   limit: 10,
   standardHeaders: 'draft-8',

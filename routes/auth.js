@@ -1,11 +1,11 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 const Usuario = require('../models/Usuario');
 const { firmarToken, requireAuth } = require('../middleware/auth');
+const { crearLimitador } = require('../middleware/rateLimit');
 
 const router = express.Router();
 
-const limiteIntentos = rateLimit({
+const limiteIntentos = crearLimitador('auth', {
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: 'Demasiados intentos. Espera 15 minutos.', codigo: 'RATE_LIMIT' },

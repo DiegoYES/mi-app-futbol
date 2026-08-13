@@ -1,7 +1,7 @@
 const express = require('express');
-const rateLimit = require('express-rate-limit');
 const Suscripcion = require('../models/Suscripcion');
 const { requireAuth } = require('../middleware/auth');
+const { crearLimitador } = require('../middleware/rateLimit');
 const { errorServidor } = require('../middleware/security');
 const { TERMS_VERSION, consentimientoValido } = require('../services/terms');
 const {
@@ -13,7 +13,7 @@ const {
 } = require('../services/mercadoPago');
 
 const router = express.Router();
-const limiteBilling = rateLimit({ windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false });
+const limiteBilling = crearLimitador('billing', { windowMs: 60_000, limit: 10, standardHeaders: 'draft-8', legacyHeaders: false });
 
 router.get('/status', requireAuth, async (req, res) => {
   let suscripcion = await Suscripcion.findOne({ usuario: req.usuario._id });

@@ -1,5 +1,6 @@
 const express = require('express');
 const mongoose = require('mongoose');
+const { estadoRedis, redisHabilitado, redisListo } = require('../services/redisBackend');
 
 const router = express.Router();
 const iniciadoEn = Date.now();
@@ -10,9 +11,12 @@ router.get('/live', (_req, res) => {
 
 router.get('/ready', (_req, res) => {
   const mongoListo = mongoose.connection.readyState === 1;
-  res.status(mongoListo ? 200 : 503).json({
-    estado: mongoListo ? 'listo' : 'no_listo',
-    dependencias: { mongodb: mongoListo ? 'ok' : 'no_disponible' }
+  const dependenciasListas = mongoListo && redisListo();
+  const dependencias = { mongodb: mongoListo ? 'ok' : 'no_disponible' };
+  if (redisHabilitado()) dependencias.redis = estadoRedis();
+  res.status(dependenciasListas ? 200 : 503).json({
+    estado: dependenciasListas ? 'listo' : 'no_listo',
+    dependencias
   });
 });
 

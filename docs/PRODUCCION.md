@@ -15,7 +15,9 @@ logs, capturas ni respuestas HTTP.
    ```
 
 2. Configura `NODE_ENV=production`, `APP_ORIGIN=https://tu-dominio`,
-   `TRUST_PROXY=1`, `MONGODB_URI`, `JWT_SECRET` y `API_FOOTBALL_KEY`. No copies
+   `TRUST_PROXY=1`, `MONGODB_URI`, `JWT_SECRET`, `API_FOOTBALL_KEY`,
+   `REDIS_SOCKET=/run/redis/redis-server.sock` y
+   `REDIS_KEY_PREFIX=datafut:production`. No copies
    `.env` a una imagen, commit, respaldo público o pipeline log.
 3. Rota cualquier clave que alguna vez haya estado en Git, frontend, chat o log.
    Si el panel del proveedor permite restringir el proyecto por IP, usa la IP de
@@ -61,18 +63,20 @@ logs, capturas ni respuestas HTTP.
 - CSP en modo compatible bloquea scripts remotos, objetos, iframes y conexiones
   externas. Como la interfaz conserva JavaScript inline, el siguiente refuerzo
   será moverlo a archivos o nonces para retirar `'unsafe-inline'`.
-- Caché local acotado con coalescencia: solicitudes idénticas simultáneas
-  comparten una consulta en lugar de golpear MongoDB varias veces.
-- `/health/live` comprueba el proceso y `/health/ready` comprueba MongoDB. El
+- Caché Redis compartido con fallback local y coalescencia dentro de cada
+  proceso: solicitudes idénticas simultáneas comparten una consulta en lugar
+  de golpear MongoDB varias veces. Los rate limits usan el mismo backend con
+  prefijos independientes por política.
+- `/health/live` comprueba el proceso y `/health/ready` comprueba MongoDB y,
+  cuando está habilitado, Redis. El
   diagnóstico detallado está restringido al administrador en
   `/api/admin/produccion/estado` y nunca devuelve claves.
 
 ## VM recomendada
 
-> Estado actual: producción corre bajo PM2 (proceso `futbol-app`, cwd
-> `/var/www/mi-app-futbol`). Los puntos 1 y 2 describen el objetivo de la
-> fase 2 (migración a systemd con usuario restringido), documentada en
-> [`STAGING.md`](STAGING.md#fase-2-migración-a-systemd-con-usuario-restringido).
+> Estado actual: producción corre bajo systemd como `mi-app-futbol.service`,
+> con usuario restringido y releases inmutables en `/opt/mi-app-futbol`.
+> Staging permanece en PM2 hasta completar su migración separada.
 
 1. Crea un usuario sin shell administrativo, por ejemplo `miappfutbol`, y copia
    el proyecto en `/opt/mi-app-futbol`. El proceso no debe ejecutarse como root.
@@ -112,11 +116,13 @@ como validado por el smoke test y exige confirmación explícita.
 ## Escalado
 
 Una VM con un proceso web y un worker es el punto de partida más sencillo. El
-caché y los rate limits HTTP actuales son locales por proceso. Antes de añadir
-múltiples réplicas, mueve ambos stores a Redis, conserva el lease MongoDB para
-workers, usa una sola cola de sincronización y configura balanceador con checks
-de `/health/ready`. El control diario ya es compartido, pero el ritmo de 4/s es
-por proceso: no levantes varios workers hasta disponer de un limitador distribuido.
+caché y los rate limits HTTP pueden compartir Redis mediante `REDIS_SOCKET` o
+`REDIS_URL`; valida primero namespaces distintos, readiness y comportamiento
+fail-closed antes de añadir réplicas. Conserva el lease MongoDB para workers,
+usa una sola cola de sincronización y configura el balanceador con checks de
+`/health/ready`. El control diario ya es compartido, pero el ritmo de 4/s es
+por proceso: no levantes varios workers hasta disponer de un limitador
+distribuido para las llamadas salientes.
 
 Si API-Football falla, la web continúa sirviendo el último dato persistido en
 MongoDB. Muestra su fecha de actualización en la interfaz y evita borrar datos

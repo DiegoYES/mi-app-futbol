@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const rateLimit = require('express-rate-limit');
+const { crearLimitador } = require('./rateLimit');
 
 function enteroEnRango(valor, fallback, minimo, maximo) {
   const numero = Number.parseInt(valor, 10);
@@ -112,7 +112,7 @@ function respuestaLimite(_req, res) {  return res.status(429).json({
   });
 }
 
-const limiteApi = rateLimit({
+const limiteApi = crearLimitador('api', {
   windowMs: 60_000,
   limit: enteroEnRango(process.env.API_RATE_LIMIT_PER_MINUTE, 240, 30, 3000),
   standardHeaders: 'draft-8',
@@ -120,7 +120,7 @@ const limiteApi = rateLimit({
   handler: respuestaLimite
 });
 
-const limiteUsuario = rateLimit({
+const limiteUsuario = crearLimitador('usuario', {
   windowMs: 60_000,
   limit: enteroEnRango(process.env.USER_RATE_LIMIT_PER_MINUTE, 120, 20, 2000),
   keyGenerator: req => String(req.usuario?._id || 'sin-usuario'),
@@ -132,7 +132,7 @@ const limiteUsuario = rateLimit({
 // Los escudos son imágenes: una sola página de calendario pide cientos y el
 // navegador solo las vuelve a pedir cuando expira su caché. Van con un límite
 // propio y holgado para no agotar la cuota general de la API por IP.
-const limiteEscudos = rateLimit({
+const limiteEscudos = crearLimitador('escudos', {
   windowMs: 60_000,
   limit: enteroEnRango(process.env.BADGE_RATE_LIMIT_PER_MINUTE, 1200, 100, 10000),
   standardHeaders: 'draft-8',
