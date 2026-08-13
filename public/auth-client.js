@@ -6,6 +6,7 @@
 (function () {
   const fetchOriginal = window.fetch.bind(window);
   const esPaginaSuscripcion = window.location.pathname === '/suscripcion.html';
+  const esPaginaSoporte = window.location.pathname === '/sugerencias.html';
 
   function escaparHtml(valor) {
     return String(valor ?? '')
@@ -37,29 +38,36 @@
       if (respuesta.status === 401) {
         cerrarSesion();
       } else if (datos.codigo === 'ACCESO_EXPIRADO') {
-        mostrarPaywall();
+        mostrarPaywall(datos.motivo);
       }
     }
 
     return respuesta;
   };
 
-  function mostrarPaywall() {
+  function mostrarPaywall(motivo) {
     // Una cuenta sin acceso debe poder llegar al formulario de pago. Mostrar el
     // paywall en esta ruta la dejaría atrapada en un enlace hacia la misma página.
-    if (esPaginaSuscripcion) return;
+    if (esPaginaSuscripcion || esPaginaSoporte) return;
     if (document.getElementById('paywall')) return;
+    const bloqueoIP = motivo === 'ip_duplicada';
+    const titulo = bloqueoIP ? 'Prueba gratuita no habilitada' : 'Tu acceso terminó';
+    const explicacion = bloqueoIP
+      ? `Esta cuenta se registró desde una red que ya fue utilizada para otra prueba gratuita. Por eso no se habilitaron automáticamente los 7 días. Si se trata de otra persona o de una cuenta autorizada, solicita una revisión al administrador.`
+      : `Tu prueba gratuita de 7 días ha finalizado. Continúa con acceso completo a todas las ligas y estadísticas por <strong>$70 MXN al mes</strong>.`;
+    const accionPrincipal = bloqueoIP
+      ? `<a href="/sugerencias.html?tipo=otro&asunto=Revisi%C3%B3n%20de%20prueba%20gratuita" style="display:inline-block;padding:11px 22px;background:#54e38e;color:#07100d;border-radius:8px;text-decoration:none;font-weight:800">Solicitar revisión</a>`
+      : `<a href="/suscripcion.html" style="display:inline-block;padding:11px 22px;background:#54e38e;color:#07100d;border-radius:8px;text-decoration:none;font-weight:800">Suscribirme</a>`;
     const capa = document.createElement('div');
     capa.id = 'paywall';
     capa.style.cssText = 'position:fixed;inset:0;background:rgba(10,37,64,.94);z-index:9999;display:flex;align-items:center;justify-content:center;padding:20px;font-family:system-ui,sans-serif';
     capa.innerHTML = `
       <div style="background:#fff;border-radius:14px;max-width:420px;padding:32px;text-align:center">
-        <h2 style="color:#0a2540;margin:0 0 12px">Tu acceso terminó</h2>
+        <h2 style="color:#0a2540;margin:0 0 12px">${titulo}</h2>
         <p style="color:#475569;line-height:1.6;margin:0 0 22px">
-          Tu prueba gratuita de 7 días ha finalizado. Continúa con acceso completo
-          a todas las ligas y estadísticas por <strong>$70 MXN al mes</strong>.
+          ${explicacion}
         </p>
-        <a href="/suscripcion.html" style="display:inline-block;padding:11px 22px;background:#54e38e;color:#07100d;border-radius:8px;text-decoration:none;font-weight:800">Suscribirme</a>
+        ${accionPrincipal}
         <button id="btnSalirPaywall" style="padding:11px 22px;border:1px solid #cbd5e1;background:#fff;color:#334155;border-radius:8px;cursor:pointer;margin-left:8px">Cerrar sesión</button>
       </div>`;
     document.body.appendChild(capa);
@@ -131,7 +139,9 @@
         ? `Prueba · ${usuario.diasRestantes} día(s)`
         : usuario.motivo === 'suscripcion_activa'
           ? `Premium · ${usuario.diasRestantes} día(s)`
-          : 'Acceso expirado';
+          : usuario.motivo === 'ip_duplicada'
+            ? 'Prueba limitada'
+            : 'Acceso expirado';
     const claseChip = esAdmin ? 'admin' : (diasBajos ? 'alerta' : '');
 
     const enlaces = ENLACES_NAV.map(e =>
@@ -297,7 +307,7 @@
       pintarBarra(usuario);
       pintarAvisoLegal();
       crearWidgetPicks();
-      if (!usuario.tieneAcceso) mostrarPaywall();
+      if (!usuario.tieneAcceso) mostrarPaywall(usuario.motivo);
     } catch (err) {
       console.error('No se pudo validar la sesión:', err);
     }

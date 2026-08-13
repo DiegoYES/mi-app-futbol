@@ -139,6 +139,12 @@ document.getElementById('ticket-form').addEventListener('submit', async evento =
 });
 
 document.addEventListener('DOMContentLoaded', cargarTickets);
+document.addEventListener('DOMContentLoaded', () => {
+  const parametros = new URLSearchParams(location.search);
+  const tipo = parametros.get('tipo');
+  if (tipo && Object.hasOwn(ETIQUETAS_TIPO, tipo)) document.getElementById('tipo').value = tipo;
+  if (parametros.get('asunto')) document.getElementById('asunto').value = parametros.get('asunto').slice(0, 120);
+});
 </script>
 </body>
 </html>

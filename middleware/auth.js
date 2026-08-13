@@ -64,10 +64,14 @@ async function requireAuth(req, res, next) {
 function requireAcceso(req, res, next) {
   const estado = req.usuario.estadoAcceso();
   if (!estado.tieneAcceso) {
+    const bloqueoIP = estado.motivo === 'ip_duplicada';
     return res.status(403).json({
-      error: 'Tu acceso ha expirado. Suscríbete para continuar.',
+      error: bloqueoIP
+        ? 'La prueba gratuita no se habilitó porque esta red ya fue utilizada por otra cuenta.'
+        : 'Tu acceso ha expirado. Suscríbete para continuar.',
       codigo: 'ACCESO_EXPIRADO',
-      plan: estado.plan
+      plan: estado.plan,
+      motivo: estado.motivo
     });
   }
   next();
