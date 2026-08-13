@@ -1,135 +1,104 @@
 #!/usr/bin/env bash
-# Revierte PRODUCCIÓN (proceso PM2 "futbol-app") a un commit previamente
-# registrado en RELEASE_HISTORY.
-#
-# Uso:   deploy/rollback-production.sh [commit]
-#        Sin argumento, usa el commit anterior registrado en el historial.
-# Vars:  PROD_DIR      (por defecto /var/www/mi-app-futbol)
-#        PROD_PM2_APP  (por defecto futbol-app)
-#        PROD_PORT     (por defecto 3000)
-#
-# Garantías:
-#  - Sólo vuelve a commits registrados como activaciones saludables en
-#    ${PROD_DIR}/RELEASE_HISTORY (campos exactos "fecha commit etiqueta").
-#  - Valida por PM2 el nombre, script y cwd del proceso antes de tocarlo.
-#  - Se niega si el árbol tiene cambios locales versionados.
-#  - Exige confirmación explícita. No toca MongoDB. No borra nada.
-#  - Transaccional: si fallan el checkout, npm ci, pm2 restart o el health
-#    check, restaura el commit actual, sus dependencias y DEPLOYED_COMMIT, y
-#    verifica que PM2 quede saludable.
+# Rollback seguro entre releases existentes gestionados por systemd.
+# Uso: sudo deploy/rollback-production.sh [commit] [--check]
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROD_DIR="${PROD_DIR:-/var/www/mi-app-futbol}"
-PROD_PM2_APP="${PROD_PM2_APP:-futbol-app}"
+REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
+RELEASES_DIR="${RELEASES_DIR:-/opt/mi-app-futbol}"
+PROD_SERVICE="${PROD_SERVICE:-mi-app-futbol}"
+PROD_USER="${PROD_USER:-miappfutbol}"
 PROD_PORT="${PROD_PORT:-3000}"
-
+UNIT_PATH="${UNIT_PATH:-/etc/systemd/system/${PROD_SERVICE}.service}"
+EXPECTED_WORKING_DIR="${EXPECTED_WORKING_DIR:-${RELEASES_DIR}/current}"
+CHECK_ONLY=0; PEDIDO=""
 fallo() { echo "ERROR: $*" >&2; exit 1; }
+for ARG in "$@"; do
+  case "${ARG}" in
+    --check) [ "${CHECK_ONLY}" = 0 ] || fallo "--check repetido."; CHECK_ONLY=1 ;;
+    --*) fallo "opción desconocida: ${ARG}" ;;
+    *) [ -z "${PEDIDO}" ] || fallo "indica como máximo un commit."; PEDIDO="${ARG}" ;;
+  esac
+done
+[ "${EUID}" -eq 0 ] || fallo "ejecuta mediante sudo."
+[ -d "${REPO_DIR}/.git" ] || fallo "no es repositorio: ${REPO_DIR}"
+[ -d "${RELEASES_DIR}/releases" ] || fallo "falta el directorio de releases."
+[ -L "${RELEASES_DIR}/current" ] || fallo "current no es un symlink."
+HISTORIAL="${RELEASES_DIR}/RELEASE_HISTORY"
+[ -f "${HISTORIAL}" ] || fallo "falta RELEASE_HISTORY."
+id "${PROD_USER}" >/dev/null 2>&1 || fallo "no existe ${PROD_USER}."
+for COMANDO in curl flock git readlink stat systemctl; do
+  command -v "${COMANDO}" >/dev/null || fallo "${COMANDO} no está disponible."
+done
+exec 9<"${RELEASES_DIR}/releases"
+flock -n 9 || fallo "hay otra promoción o rollback en curso."
+[ "$(systemctl show "${PROD_SERVICE}" -p LoadState --value)" = loaded ] || fallo "la unidad no está cargada."
+[ "$(systemctl show "${PROD_SERVICE}" -p FragmentPath --value)" = "${UNIT_PATH}" ] || fallo "ruta de unidad inesperada."
+[ "$(systemctl show "${PROD_SERVICE}" -p WorkingDirectory --value)" = "${EXPECTED_WORKING_DIR}" ] || fallo "WorkingDirectory inesperado."
+[ "$(systemctl show "${PROD_SERVICE}" -p User --value)" = "${PROD_USER}" ] || fallo "usuario systemd inesperado."
+case "$(systemctl show "${PROD_SERVICE}" -p ExecStart --value)" in *server.js*) :;; *) fallo "ExecStart no ejecuta server.js.";; esac
+[ "$(systemctl is-active "${PROD_SERVICE}")" = active ] || fallo "${PROD_SERVICE} no está activo."
 
-[ -d "${PROD_DIR}/.git" ] || fallo "PROD_DIR no es un repositorio git: ${PROD_DIR}"
-command -v pm2 >/dev/null || fallo "pm2 no está disponible."
-HISTORIAL="${PROD_DIR}/RELEASE_HISTORY"
-[ -f "${HISTORIAL}" ] || fallo "no existe ${HISTORIAL}: no hay despliegues registrados a los que volver."
+CURRENT_REAL="$(readlink -f "${RELEASES_DIR}/current")"
+case "${CURRENT_REAL}" in "${RELEASES_DIR}/releases/"*) :;; *) fallo "current apunta fuera de releases.";; esac
+[ ! -L "${CURRENT_REAL}" ] || fallo "el release activo no puede ser un symlink."
+[ -f "${CURRENT_REAL}/.release-ok" ] && [ -f "${CURRENT_REAL}/server.js" ] || fallo "release activo incompleto."
+[ "$(stat -c %U "${CURRENT_REAL}")" = "${PROD_USER}" ] || fallo "propietario inesperado en el release activo."
+ACTUAL="$(basename "${CURRENT_REAL}")"
+[[ "${ACTUAL}" =~ ^[0-9a-f]{40}$ ]] || fallo "el release activo no tiene nombre SHA completo."
+[ -f "${RELEASES_DIR}/DEPLOYED_COMMIT" ] || fallo "falta DEPLOYED_COMMIT."
+MARCADOR="$(tr -d '\r\n' < "${RELEASES_DIR}/DEPLOYED_COMMIT")"
+[ "${MARCADOR}" = "${ACTUAL}" ] || fallo "DEPLOYED_COMMIT y current no coinciden."
 
-# --- Validación del proceso PM2 productivo -----------------------------------
-JLIST="$(pm2 jlist)"
-ESTADO="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${PROD_PM2_APP}" status)" \
-  || fallo "no existe el proceso PM2 '${PROD_PM2_APP}'."
-CWD_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${PROD_PM2_APP}" cwd)"
-SCRIPT_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${PROD_PM2_APP}" script)"
-[ "${CWD_PM2}" = "${PROD_DIR}" ] \
-  || fallo "el proceso ${PROD_PM2_APP} ejecuta desde '${CWD_PM2}', no desde ${PROD_DIR}."
-case "${SCRIPT_PM2}" in
-  */server.js) : ;;
-  *) fallo "el proceso ${PROD_PM2_APP} ejecuta '${SCRIPT_PM2}', no server.js; me niego a continuar." ;;
-esac
-
-OBJETIVO="${1:-}"
-[ -z "$(git -C "${PROD_DIR}" status --porcelain --untracked-files=no)" ] \
-  || fallo "el árbol de producción tiene cambios locales en archivos versionados; resuélvelos antes del rollback."
-ACTUAL="$(git -C "${PROD_DIR}" rev-parse HEAD)"
-
-# El historial registra SÓLO activaciones saludables, con campos exactos
-# "<fecha> <commit> <etiqueta>". Los commits fallidos nunca aparecen.
-if [ -z "${OBJETIVO}" ]; then
-  # Última activación saludable distinta del commit actual.
-  OBJETIVO="$(awk -v actual="${ACTUAL}" 'NF >= 2 && $2 != actual { ultimo = $2 } END { print ultimo }' "${HISTORIAL}")"
-  [ -n "${OBJETIVO}" ] || fallo "el historial no registra un commit anterior distinto del actual; indícalo como argumento."
+if [ -z "${PEDIDO}" ]; then
+  OBJETIVO="$(awk -v actual="${ACTUAL}" '$3 == "->" && $4 ~ /^[0-9a-f]{40}$/ && $4 != actual { objetivo=$4 } END { print objetivo }' "${HISTORIAL}")"
+  [ -n "${OBJETIVO}" ] || fallo "el historial no contiene un release anterior distinto del actual."
+else
+  GIT=(git -c "safe.directory=${REPO_DIR}" -C "${REPO_DIR}")
+  "${GIT[@]}" cat-file -e "${PEDIDO}^{commit}" 2>/dev/null || fallo "commit inexistente: ${PEDIDO}"
+  OBJETIVO="$("${GIT[@]}" rev-parse "${PEDIDO}^{commit}")"
 fi
-git -C "${PROD_DIR}" cat-file -e "${OBJETIVO}^{commit}" 2>/dev/null \
-  || fallo "el commit '${OBJETIVO}' no existe en ${PROD_DIR}."
-OBJETIVO="$(git -C "${PROD_DIR}" rev-parse "${OBJETIVO}^{commit}")"
-awk -v objetivo="${OBJETIVO}" 'NF >= 2 && $2 == objetivo { encontrado = 1 } END { exit encontrado ? 0 : 1 }' "${HISTORIAL}" \
-  || fallo "el commit ${OBJETIVO} no aparece como activación saludable en ${HISTORIAL}; sólo se permite volver a commits registrados."
-[ "${OBJETIVO}" != "${ACTUAL}" ] || fallo "producción ya ejecuta el commit ${OBJETIVO}; nada que revertir."
+[ "${OBJETIVO}" != "${ACTUAL}" ] || fallo "producción ya sirve ${OBJETIVO}."
+awk -v objetivo="${OBJETIVO}" '$3 == "->" && $4 == objetivo { ok=1 } END { exit ok ? 0 : 1 }' "${HISTORIAL}" \
+  || fallo "${OBJETIVO} no figura como activación saludable."
+TARGET="${RELEASES_DIR}/releases/${OBJETIVO}"
+[ ! -L "${TARGET}" ] || fallo "el release objetivo no puede ser un symlink."
+[ -d "${TARGET}" ] && [ -f "${TARGET}/.release-ok" ] && [ -f "${TARGET}/server.js" ] || fallo "release objetivo incompleto o ausente."
+[ "$(stat -c %U "${TARGET}")" = "${PROD_USER}" ] || fallo "propietario inesperado en el release objetivo."
 
-echo "Rollback de PRODUCCIÓN (PM2):"
-echo "  Proceso        : ${PROD_PM2_APP} (estado: ${ESTADO}, cwd ${CWD_PM2})"
-echo "  Commit actual  : ${ACTUAL}"
-echo "  Volver a       : ${OBJETIVO}"
-printf 'Escribe exactamente ROLLBACK para continuar: '
-read -r CONFIRMACION
-[ "${CONFIRMACION}" = "ROLLBACK" ] || fallo "confirmación incorrecta; no se hace nada."
+echo "Actual   : ${ACTUAL}"
+echo "Rollback : ${OBJETIVO}"
+echo "Ruta     : ${TARGET}"
+if [ "${CHECK_ONLY}" = 1 ]; then echo "CHECK OK: no se modificó producción."; exit 0; fi
+printf 'Escribe exactamente ROLLBACK para continuar: '; read -r CONFIRMACION
+[ "${CONFIRMACION}" = ROLLBACK ] || fallo "confirmación incorrecta; no se hace nada."
 
-registrar() { # registrar <commit> <etiqueta>
-  printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" >> "${HISTORIAL}"
+LINK_TMP="${RELEASES_DIR}/.current.$$"; ENLACE_CAMBIADO=0; OK=0
+escribir_marcador() {
+  local VALOR="$1" TMP="${RELEASES_DIR}/.DEPLOYED_COMMIT.$$"
+  printf '%s\n' "${VALOR}" > "${TMP}"
+  chmod 644 "${TMP}"
+  mv -f "${TMP}" "${RELEASES_DIR}/DEPLOYED_COMMIT"
 }
-
-DEPLOYED_PREVIO=""
-DEPLOYED_EXISTIA=0
-if [ -f "${PROD_DIR}/DEPLOYED_COMMIT" ]; then
-  DEPLOYED_EXISTIA=1
-  DEPLOYED_PREVIO="$(cat "${PROD_DIR}/DEPLOYED_COMMIT")"
-fi
-
-reiniciar_y_verificar() { # -> 0 si pm2 restart funciona y /health/ready responde
-  pm2 restart "${PROD_PM2_APP}" --update-env || return 1
-  for _ in $(seq 1 20); do
-    if curl -fsS "http://127.0.0.1:${PROD_PORT}/health/ready" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 2
-  done
+saludable() {
+  for _ in $(seq 1 20); do curl -fsS "http://127.0.0.1:${PROD_PORT}/health/ready" >/dev/null 2>&1 && return 0; sleep 2; done
   return 1
 }
-
-# --- Fase transaccional: cualquier fallo restaura el commit actual -------------
-TRANSACCION_OK=0
-RESTAURADO=0
-restaurar_produccion() {
-  [ "${TRANSACCION_OK}" = "1" ] && return 0
-  [ "${RESTAURADO}" = "1" ] && return 0
-  RESTAURADO=1
-  set +e
-  echo "RESTAURANDO producción al commit ${ACTUAL}..." >&2
-  git -C "${PROD_DIR}" checkout --detach --quiet "${ACTUAL}"
-  (cd "${PROD_DIR}" && npm ci --omit=dev --no-audit --no-fund)
-  if reiniciar_y_verificar; then
-    if [ "${DEPLOYED_EXISTIA}" = "1" ]; then
-      printf '%s\n' "${DEPLOYED_PREVIO}" > "${PROD_DIR}/DEPLOYED_COMMIT"
-    else
-      rm -f "${PROD_DIR}/DEPLOYED_COMMIT"
-    fi
-    registrar "${ACTUAL}" "auto-rollback"
-    echo "Producción quedó restaurada y saludable con ${ACTUAL}. Revisa pm2 logs ${PROD_PM2_APP}." >&2
-  else
-    echo "INTERVENCIÓN MANUAL URGENTE: la restauración tampoco respondió /health/ready. Revisa pm2 logs ${PROD_PM2_APP}." >&2
+restaurar() {
+  [ "${OK}" = 1 ] && return 0
+  set +e; rm -f "${LINK_TMP}" "${RELEASES_DIR}/.DEPLOYED_COMMIT.$$"
+  if [ "${ENLACE_CAMBIADO}" = 1 ]; then
+    echo "RESTAURANDO ${ACTUAL}..." >&2
+    ln -s "${CURRENT_REAL}" "${LINK_TMP}" && mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"
+    escribir_marcador "${ACTUAL}"
+    systemctl restart "${PROD_SERVICE}"
+    saludable && echo "Restauración saludable." >&2 || echo "INTERVENCIÓN URGENTE: restauración sin salud." >&2
   fi
 }
-trap restaurar_produccion EXIT
-
-git -C "${PROD_DIR}" checkout --detach --quiet "${OBJETIVO}"
-[ -f "${PROD_DIR}/server.js" ] || fallo "el checkout no contiene server.js; se restaura el commit actual."
-(cd "${PROD_DIR}" && npm ci --omit=dev --no-audit --no-fund) \
-  || fallo "npm ci falló con el commit ${OBJETIVO}; se restaura el commit actual."
-
-echo "Reiniciando ${PROD_PM2_APP}..."
-reiniciar_y_verificar \
-  || fallo "producción no respondió /health/ready tras el rollback; se restaura el commit actual."
-
-printf '%s\n' "${OBJETIVO}" > "${PROD_DIR}/DEPLOYED_COMMIT"
-registrar "${OBJETIVO}" "rollback"
-TRANSACCION_OK=1
-trap - EXIT
-echo "Rollback completado: producción sirve el commit ${OBJETIVO}."
-exit 0
+trap restaurar EXIT
+ln -s "${TARGET}" "${LINK_TMP}"; mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"; ENLACE_CAMBIADO=1
+systemctl restart "${PROD_SERVICE}"
+saludable || fallo "el rollback no respondió; se restaura ${ACTUAL}."
+escribir_marcador "${OBJETIVO}"
+printf '%s rollback -> %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${OBJETIVO}" >> "${HISTORIAL}"
+OK=1; trap - EXIT
+echo "Rollback completado y saludable con ${OBJETIVO}."

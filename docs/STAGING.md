@@ -3,12 +3,14 @@
 Staging es un entorno de prueba completamente separado de producción. Sirve
 para validar cada commit **antes** de promoverlo a https://data-fut.com.
 
-## Infraestructura real (fase 1: PM2)
+## Infraestructura real
 
-Producción corre hoy bajo **PM2** como proceso `futbol-app` (usuario root,
-cwd `/var/www/mi-app-futbol`, puerto 3000, Nginx → 127.0.0.1:3000). La fase 1
-añade staging con el mismo gestor para no introducir dos modelos a la vez; la
-migración a systemd con usuario restringido es la [fase 2](#fase-2-migración-a-systemd-con-usuario-restringido).
+Producción corre bajo **systemd** como `mi-app-futbol.service`, con el usuario
+restringido `miappfutbol`, releases inmutables bajo
+`/opt/mi-app-futbol/releases/<sha>` y el symlink `/opt/mi-app-futbol/current`.
+Staging continúa bajo PM2 como `futbol-staging`. La definición antigua
+`futbol-app` permanece detenida temporalmente como contingencia de migración;
+no se usa para promociones ni rollbacks normales.
 
 ## Garantías de aislamiento
 
@@ -17,8 +19,8 @@ Staging **no comparte nada** con producción:
 | Recurso        | Producción                     | Staging                                  |
 | -------------- | ------------------------------ | ---------------------------------------- |
 | Dominio        | data-fut.com                   | staging.data-fut.com                     |
-| Proceso PM2    | futbol-app                     | futbol-staging                           |
-| Directorio     | /var/www/mi-app-futbol         | /var/www/mi-app-futbol-staging           |
+| Servicio       | systemd: mi-app-futbol         | PM2: futbol-staging                      |
+| Directorio     | /opt/mi-app-futbol/current     | /var/www/mi-app-futbol-staging           |
 | Puerto interno | 3000                           | 3100                                     |
 | Configuración  | .env de producción             | /var/www/mi-app-futbol-staging/.env      |
 | Base MongoDB   | mi-app-futbol                  | mi-app-futbol-staging                    |
@@ -41,7 +43,7 @@ Reglas permanentes:
 
 ```
 Internet ──► Nginx (TLS)
-              ├── data-fut.com          ──► 127.0.0.1:3000 (PM2: futbol-app)
+              ├── data-fut.com          ──► 127.0.0.1:3000 (systemd: mi-app-futbol)
               └── staging.data-fut.com  ──► 127.0.0.1:3100 (PM2: futbol-staging)
 MongoDB local:
               ├── base mi-app-futbol          (producción, intocable)
@@ -158,11 +160,11 @@ Usa siempre credenciales inventadas para staging, nunca las de una cuenta real.
 ## Flujo commit → staging → smoke test → producción
 
 Todos los scripts usan `set -euo pipefail`, validan rutas y variables, no
-contienen secretos, no usan `rm -rf` y **jamás tocan MongoDB directamente**.
-El despliegue siempre recibe un commit explícito; nunca "lo último" implícito.
-Cada script valida por PM2 (`pm2 jlist` + `deploy/pm2-info.js`) el nombre,
-script, cwd y estado del proceso antes de reiniciarlo, y detecta el commit
-desplegado con git en ese cwd: nunca reinicia un proceso equivocado.
+contienen secretos y **jamás tocan MongoDB directamente**. El despliegue
+siempre recibe un commit explícito; nunca "lo último" implícito. Staging valida
+su proceso PM2. Promoción y rollback validan la unidad systemd, usuario,
+`WorkingDirectory`, `ExecStart`, release activo y marcadores antes de reiniciar.
+Además usan `flock` para impedir operaciones concurrentes.
 
 ```bash
 # 1. Despliega un commit concreto en staging: clona/actualiza
@@ -178,20 +180,19 @@ STAGING_SMOKE_PASSWORD='...' \
 RUN_PLAYWRIGHT=1 \
 deploy/smoke-staging.sh
 
-# 3. Promueve a producción. Valida el proceso PM2 futbol-app (nombre, script,
-#    cwd, online), sólo acepta el commit registrado como validado, exige
-#    teclear PROMOVER, se niega si el árbol tiene cambios locales y, si el
-#    proceso no queda saludable, revierte automáticamente al commit anterior.
-deploy/promote-production.sh <sha>
+# 3. Comprueba sin cambios que el commit validado puede promoverse.
+sudo deploy/promote-production.sh <sha> --check
+
+# 4. Promueve a un release inmutable y conmuta current de forma atómica.
+#    Exige teclear PROMOVER y restaura el release anterior si falla salud.
+sudo deploy/promote-production.sh <sha>
 ```
 
-**Primera promoción (bootstrap):** si aún no existen `DEPLOYED_COMMIT` ni
-`RELEASE_HISTORY`, el script no asume que Git HEAD sea el código que PM2 tiene
-cargado (HEAD puede haber avanzado con el proceso ejecutando código anterior).
-Exige `CURRENT_RUNNING_COMMIT=<sha>` con el commit realmente en ejecución, lo
-muestra antes de pedir confirmación, lo usa como destino de restauración y lo
-registra como `baseline` sólo tras confirmar. En promociones posteriores el
-commit base se toma de `DEPLOYED_COMMIT` y esa variable ya no es necesaria.
+La promoción exige que `VALIDATED_COMMIT` coincida exactamente con el SHA
+pedido. Construye primero el release en un directorio temporal, instala sólo
+dependencias de producción y lo mueve a su nombre definitivo cuando está
+completo. `DEPLOYED_COMMIT` se escribe atómicamente y `RELEASE_HISTORY` sólo
+registra activaciones que respondieron `/health/ready`.
 
 El smoke test comprueba: `/health/live`, `/health/ready`, cabeceras
 CSP/HSTS/X-Content-Type-Options, banner de entorno, login con cuenta de
@@ -212,23 +213,22 @@ smoke corre desde otra máquina.
 ## Rollback
 
 `promote-production.sh` registra cada activación **saludable** en
-`/var/www/mi-app-futbol/RELEASE_HISTORY` (una línea por activación, campos
-exactos `fecha commit etiqueta`, con etiqueta `baseline`, `promote`,
-`rollback` o `auto-rollback`). Un commit que falló su health check nunca se
-registra, así el rollback sin argumento jamás lo seleccionará. Para volver
-atrás:
+`/opt/mi-app-futbol/RELEASE_HISTORY`, con formato `fecha acción -> sha`. Un
+commit que falló salud nunca se registra. Para volver atrás:
 
 ```bash
-deploy/rollback-production.sh          # vuelve a la última activación saludable distinta de la actual
-deploy/rollback-production.sh <sha>    # o a una concreta del historial
+sudo deploy/rollback-production.sh --check       # valida el destino automático
+sudo deploy/rollback-production.sh               # última activación saludable distinta
+sudo deploy/rollback-production.sh <sha> --check # valida una concreta
+sudo deploy/rollback-production.sh <sha>         # conmuta a una concreta
 ```
 
-El rollback valida el proceso PM2, sólo acepta commits registrados como
-activaciones saludables, exige teclear `ROLLBACK`, hace checkout + `npm ci`,
-reinicia y verifica `/health/ready`. Tanto la promoción como el rollback son
-**transaccionales**: si fallan el checkout, `npm ci`, `pm2 restart` o el
-health check, restauran automáticamente el commit anterior, sus dependencias
-y `DEPLOYED_COMMIT`, y verifican que PM2 quede saludable. No tocan MongoDB:
+El rollback sólo acepta releases completos ya existentes y registrados como
+activaciones saludables, exige teclear `ROLLBACK`, conmuta el symlink de forma
+atómica, reinicia systemd y verifica `/health/ready`. Tanto promoción como
+rollback son **transaccionales**: ante un fallo restauran `current` y
+`DEPLOYED_COMMIT`, reinician el release anterior y vuelven a comprobar salud.
+No tocan MongoDB:
 si un despliegue incluyó cambios de esquema, evalúa su compatibilidad hacia
 atrás antes de promover (los cambios de datos requieren su propio plan
 autorizado).
@@ -259,38 +259,21 @@ interrumpe, el destino parcial se conserva para diagnóstico y el script se
 negará a reutilizarlo. Eliminar una copia parcial requiere una autorización
 separada.
 
-## Fase 2: migración a systemd con usuario restringido
+## Migración a systemd completada
 
-**No ejecutar en la fase actual.** Producción corre como root bajo PM2; el
-objetivo de la fase 2 es un servicio systemd endurecido (usuario sin
-privilegios, `ProtectSystem=strict`, releases inmutables en
-`/opt/mi-app-futbol/releases/<sha>` con symlink `current`).
+La migración se completó el 2026-08-13. Producción corre con el usuario sin
+privilegios `miappfutbol`, `ProtectSystem=strict` y releases inmutables en
+`/opt/mi-app-futbol/releases/<sha>` mediante el symlink `current`.
 
-Requisitos previos (todos con autorización explícita):
+El script `deploy/migrate-production-systemd.sh` se conserva como registro del
+procedimiento inicial y **no debe volver a ejecutarse**: aborta si la unidad ya
+existe. Estado de contingencia:
 
-1. Ventana de mantenimiento acordada: la conmutación reinicia producción.
-2. Usuario `miappfutbol` creado sin shell administrativo.
-3. `/etc/mi-app-futbol/app.env` creado (permisos 600) con las variables reales.
-4. Revisión de las plantillas `deploy/mi-app-futbol.service` y
-   `deploy/mi-app-futbol-staging.service`.
-
-Procedimiento: `deploy/migrate-production-systemd.sh` (exige teclear `MIGRAR`):
-
-1. Verifica por PM2 que `futbol-app` está online con el script y cwd esperados
-   y detecta el commit exacto que ejecuta; aborta ante cualquier divergencia.
-2. Instala ese mismo commit como release inicial y crea `current`.
-3. Instala el unit (no debe existir uno previo) y hace `daemon-reload`.
-4. Conmutación: `pm2 stop futbol-app` (**sin** `delete`: la definición se
-   conserva) y `systemctl start mi-app-futbol` + health check.
-5. **Restauración automática si falla**: detiene y elimina el unit instalado,
-   restaura symlink y `DEPLOYED_COMMIT` (o su ausencia) y rearranca el proceso
-   PM2 original, verificando `/health/ready`.
-6. Sólo tras un periodo de observación estable se ejecuta manualmente
-   `pm2 delete futbol-app && pm2 save`, se adapta Nginx si procede y se
-   actualizan los scripts de promoción/rollback al modelo systemd.
-
-Hasta completar la fase 2, los scripts de este repositorio operan
-exclusivamente sobre PM2.
+1. `mi-app-futbol.service` está activo y habilitado.
+2. `futbol-app` permanece detenido, no eliminado, como rollback temporal.
+3. `futbol-staging` continúa activo bajo PM2.
+4. No eliminar `futbol-app` hasta observar al menos una promoción y un rollback
+   controlados con los scripts systemd.
 
 ## Qué NO hace ningún script de este flujo
 
@@ -301,4 +284,4 @@ exclusivamente sobre PM2.
   escribe en ella.
 - No copia `.env` ni secretos.
 - No borra releases, datos ni configuración.
-- No reinicia procesos sin validar antes su nombre, script y cwd vía PM2.
+- No reinicia procesos sin validar antes su gestor, identidad y directorio.

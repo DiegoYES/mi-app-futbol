@@ -1,171 +1,104 @@
 #!/usr/bin/env bash
-# Promueve a PRODUCCIÓN (proceso PM2 "futbol-app") exactamente un commit ya
-# VALIDADO en staging. Fase 1: producción sigue en PM2; la migración a
-# systemd/usuario restringido es la fase 2 documentada en docs/STAGING.md.
-#
-# Uso:   deploy/promote-production.sh <commit>
-# Vars:  PROD_DIR       (por defecto /var/www/mi-app-futbol)
-#        PROD_PM2_APP   (por defecto futbol-app)
-#        PROD_PORT      (por defecto 3000)
-#        STAGING_DIR    (por defecto /var/www/mi-app-futbol-staging) — de aquí
-#                       se lee VALIDATED_COMMIT.
-#        CURRENT_RUNNING_COMMIT  sólo para el PRIMER uso (bootstrap): commit
-#                       que PM2 ejecuta ahora mismo, cuando no existe
-#                       DEPLOYED_COMMIT. Git HEAD no se asume equivalente.
-#
-# Garantías:
-#  - Rechaza cualquier commit que no coincida con el registrado como validado
-#    por deploy/smoke-staging.sh.
-#  - Valida por PM2 el nombre, script y cwd del proceso productivo antes de
-#    tocarlo; detecta el commit actual con git en ese cwd.
-#  - Se niega si el árbol de producción tiene cambios locales versionados.
-#  - Exige teclear una confirmación explícita.
-#  - Transaccional desde antes del checkout: si fallan el checkout, npm ci,
-#    pm2 restart o el health check, restaura el commit anterior, reinstala sus
-#    dependencias, repone DEPLOYED_COMMIT y verifica que PM2 quede saludable.
-#  - RELEASE_HISTORY sólo registra activaciones saludables ("fecha commit
-#    etiqueta"); un commit fallido nunca queda como destino de rollback.
-#  - No toca MongoDB, no ejecuta db:indexes ni sincronizaciones, no borra nada.
+# Promoción segura mediante releases inmutables + systemd.
+# Uso: sudo deploy/promote-production.sh <commit> [--check]
 set -euo pipefail
-
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROD_DIR="${PROD_DIR:-/var/www/mi-app-futbol}"
-PROD_PM2_APP="${PROD_PM2_APP:-futbol-app}"
-PROD_PORT="${PROD_PORT:-3000}"
+REPO_DIR="${REPO_DIR:-$(cd "${SCRIPT_DIR}/.." && pwd)}"
 STAGING_DIR="${STAGING_DIR:-/var/www/mi-app-futbol-staging}"
-
+RELEASES_DIR="${RELEASES_DIR:-/opt/mi-app-futbol}"
+PROD_SERVICE="${PROD_SERVICE:-mi-app-futbol}"
+PROD_USER="${PROD_USER:-miappfutbol}"
+PROD_PORT="${PROD_PORT:-3000}"
+UNIT_PATH="${UNIT_PATH:-/etc/systemd/system/${PROD_SERVICE}.service}"
+EXPECTED_WORKING_DIR="${EXPECTED_WORKING_DIR:-${RELEASES_DIR}/current}"
+CHECK_ONLY=0
 fallo() { echo "ERROR: $*" >&2; exit 1; }
-
-[ "$#" -eq 1 ] || fallo "uso: $0 <commit>  (debes indicar el commit exacto a promover)"
-[ -d "${PROD_DIR}/.git" ] || fallo "PROD_DIR no es un repositorio git: ${PROD_DIR}"
-command -v pm2 >/dev/null || fallo "pm2 no está disponible."
-
-git -C "${PROD_DIR}" cat-file -e "$1^{commit}" 2>/dev/null || fallo "el commit '$1' no existe en ${PROD_DIR}."
-SHA="$(git -C "${PROD_DIR}" rev-parse "$1^{commit}")"
-
-# --- Validación del proceso PM2 productivo -----------------------------------
-JLIST="$(pm2 jlist)"
-ESTADO="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${PROD_PM2_APP}" status)" \
-  || fallo "no existe el proceso PM2 '${PROD_PM2_APP}'."
-CWD_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${PROD_PM2_APP}" cwd)"
-SCRIPT_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${PROD_PM2_APP}" script)"
-[ "${ESTADO}" = "online" ] || fallo "el proceso ${PROD_PM2_APP} no está online (estado: ${ESTADO})."
-[ "${CWD_PM2}" = "${PROD_DIR}" ] \
-  || fallo "el proceso ${PROD_PM2_APP} ejecuta desde '${CWD_PM2}', no desde ${PROD_DIR}; ajusta PROD_DIR o el proceso."
-case "${SCRIPT_PM2}" in
-  */server.js) : ;;
-  *) fallo "el proceso ${PROD_PM2_APP} ejecuta '${SCRIPT_PM2}', no server.js; me niego a continuar." ;;
-esac
-
-# --- Sólo se promueve el commit validado en staging ---------------------------
-VALIDADO_ARCHIVO="${STAGING_DIR}/VALIDATED_COMMIT"
-[ -f "${VALIDADO_ARCHIVO}" ] || fallo "no existe ${VALIDADO_ARCHIVO}: valida primero el commit en staging con smoke-staging.sh."
-VALIDADO="$(cat "${VALIDADO_ARCHIVO}")"
-[ "${SHA}" = "${VALIDADO}" ] || fallo "el commit ${SHA} NO coincide con el validado en staging (${VALIDADO}). Sólo se promueve un commit validado."
-
-# --- Estado actual de producción ----------------------------------------------
-[ -z "$(git -C "${PROD_DIR}" status --porcelain --untracked-files=no)" ] \
-  || fallo "el árbol de producción tiene cambios locales en archivos versionados; guárdalos o descártalos antes de promover."
-HEAD_GIT="$(git -C "${PROD_DIR}" rev-parse HEAD)"
-
-# Git HEAD NO equivale al código cargado por PM2: HEAD puede haber avanzado
-# mientras el proceso sigue ejecutando un commit anterior. El commit base
-# (destino de restauración) se determina así:
-#   - Si existe DEPLOYED_COMMIT, debe ser un SHA válido y es el commit
-#     realmente desplegado.
-#   - Primer uso (bootstrap, sin DEPLOYED_COMMIT): exige CURRENT_RUNNING_COMMIT
-#     con el commit que PM2 ejecuta ahora mismo.
-BOOTSTRAP=0
-if [ -f "${PROD_DIR}/DEPLOYED_COMMIT" ]; then
-  BASE="$(cat "${PROD_DIR}/DEPLOYED_COMMIT")"
-  git -C "${PROD_DIR}" cat-file -e "${BASE}^{commit}" 2>/dev/null \
-    || fallo "DEPLOYED_COMMIT contiene '${BASE}', que no es un commit válido de ${PROD_DIR}; corrígelo antes de promover."
-  BASE="$(git -C "${PROD_DIR}" rev-parse "${BASE}^{commit}")"
-else
-  BOOTSTRAP=1
-  [ -n "${CURRENT_RUNNING_COMMIT:-}" ] \
-    || fallo "primer uso sin DEPLOYED_COMMIT: define CURRENT_RUNNING_COMMIT con el commit que PM2 ejecuta AHORA (no se asume Git HEAD; compruébalo con pm2 describe/logs antes de promover)."
-  git -C "${PROD_DIR}" cat-file -e "${CURRENT_RUNNING_COMMIT}^{commit}" 2>/dev/null \
-    || fallo "CURRENT_RUNNING_COMMIT ('${CURRENT_RUNNING_COMMIT}') no es un commit válido de ${PROD_DIR}."
-  BASE="$(git -C "${PROD_DIR}" rev-parse "${CURRENT_RUNNING_COMMIT}^{commit}")"
+[ "$#" -ge 1 ] && [ "$#" -le 2 ] || fallo "uso: sudo $0 <commit> [--check]"
+PEDIDO="$1"
+if [ "${2:-}" = --check ]; then CHECK_ONLY=1; elif [ "$#" -eq 2 ]; then fallo "opción desconocida: $2"; fi
+[ "${EUID}" -eq 0 ] || fallo "ejecuta mediante sudo."
+[ -d "${REPO_DIR}/.git" ] || fallo "no es repositorio: ${REPO_DIR}"
+[ -d "${RELEASES_DIR}/releases" ] || fallo "falta el directorio de releases."
+[ -L "${RELEASES_DIR}/current" ] || fallo "current no es un symlink."
+id "${PROD_USER}" >/dev/null 2>&1 || fallo "no existe ${PROD_USER}."
+for COMANDO in curl flock git npm readlink stat systemctl tar; do
+  command -v "${COMANDO}" >/dev/null || fallo "${COMANDO} no está disponible."
+done
+exec 9<"${RELEASES_DIR}/releases"
+flock -n 9 || fallo "hay otra promoción o rollback en curso."
+GIT=(git -c "safe.directory=${REPO_DIR}" -C "${REPO_DIR}")
+"${GIT[@]}" cat-file -e "${PEDIDO}^{commit}" 2>/dev/null || fallo "commit inexistente: ${PEDIDO}"
+SHA="$("${GIT[@]}" rev-parse "${PEDIDO}^{commit}")"
+VALIDADO_FILE="${STAGING_DIR}/VALIDATED_COMMIT"
+[ -f "${VALIDADO_FILE}" ] || fallo "falta ${VALIDADO_FILE}; valida staging primero."
+VALIDADO="$(tr -d '\r\n' < "${VALIDADO_FILE}")"
+[ "${SHA}" = "${VALIDADO}" ] || fallo "${SHA} no coincide con staging validado (${VALIDADO})."
+[ "$(systemctl show "${PROD_SERVICE}" -p LoadState --value)" = loaded ] || fallo "la unidad no está cargada."
+[ "$(systemctl show "${PROD_SERVICE}" -p FragmentPath --value)" = "${UNIT_PATH}" ] || fallo "ruta de unidad inesperada."
+[ "$(systemctl show "${PROD_SERVICE}" -p WorkingDirectory --value)" = "${EXPECTED_WORKING_DIR}" ] || fallo "WorkingDirectory inesperado."
+[ "$(systemctl show "${PROD_SERVICE}" -p User --value)" = "${PROD_USER}" ] || fallo "usuario systemd inesperado."
+case "$(systemctl show "${PROD_SERVICE}" -p ExecStart --value)" in *server.js*) :;; *) fallo "ExecStart no ejecuta server.js.";; esac
+[ "$(systemctl is-active "${PROD_SERVICE}")" = active ] || fallo "${PROD_SERVICE} no está activo."
+CURRENT_REAL="$(readlink -f "${RELEASES_DIR}/current")"
+case "${CURRENT_REAL}" in "${RELEASES_DIR}/releases/"*) :;; *) fallo "current apunta fuera de releases.";; esac
+[ ! -L "${CURRENT_REAL}" ] || fallo "el release activo no puede ser un symlink."
+[ -f "${CURRENT_REAL}/.release-ok" ] && [ -f "${CURRENT_REAL}/server.js" ] || fallo "release activo incompleto."
+[ "$(stat -c %U "${CURRENT_REAL}")" = "${PROD_USER}" ] || fallo "propietario inesperado en el release activo."
+BASE="$(basename "${CURRENT_REAL}")"
+[[ "${BASE}" =~ ^[0-9a-f]{40}$ ]] || fallo "el release activo no tiene nombre SHA completo."
+[ -f "${RELEASES_DIR}/DEPLOYED_COMMIT" ] || fallo "falta DEPLOYED_COMMIT."
+MARCADOR="$(tr -d '\r\n' < "${RELEASES_DIR}/DEPLOYED_COMMIT")"
+[ "${MARCADOR}" = "${BASE}" ] || fallo "DEPLOYED_COMMIT y current no coinciden."
+[ "${SHA}" != "${BASE}" ] || fallo "producción ya sirve ${SHA}."
+RELEASE_DIR="${RELEASES_DIR}/releases/${SHA}"
+if [ -e "${RELEASE_DIR}" ]; then
+  [ ! -L "${RELEASE_DIR}" ] || fallo "el release destino no puede ser un symlink."
+  [ -d "${RELEASE_DIR}" ] && [ -f "${RELEASE_DIR}/.release-ok" ] && [ -f "${RELEASE_DIR}/server.js" ] || fallo "release destino incompleto."
+  [ "$(stat -c %U "${RELEASE_DIR}")" = "${PROD_USER}" ] || fallo "propietario inesperado en el release destino."
 fi
-[ "${BASE}" != "${SHA}" ] || fallo "producción ya ejecuta el commit ${SHA}; nada que promover."
-
-echo "Vas a promover a PRODUCCIÓN (PM2):"
-echo "  Proceso        : ${PROD_PM2_APP} (online, cwd ${CWD_PM2})"
-if [ "${BOOTSTRAP}" = "1" ]; then
-  echo "  Commit en PM2  : ${BASE} (bootstrap: indicado por CURRENT_RUNNING_COMMIT)"
-else
-  echo "  Commit en PM2  : ${BASE} (según DEPLOYED_COMMIT)"
-fi
-[ "${HEAD_GIT}" = "${BASE}" ] || echo "  Git HEAD       : ${HEAD_GIT} (difiere del código en ejecución)"
-echo "  Commit nuevo   : ${SHA}"
-echo "Si la promoción falla, se restaurará el commit ${BASE}."
-echo "Este script NO toca MongoDB, ni índices, ni sincronizaciones."
-printf 'Escribe exactamente PROMOVER para continuar: '
-read -r CONFIRMACION
-[ "${CONFIRMACION}" = "PROMOVER" ] || fallo "confirmación incorrecta; no se hace nada."
-
-# --- Historial de activaciones -------------------------------------------------
-# RELEASE_HISTORY registra SÓLO activaciones que quedaron saludables, una por
-# línea con campos exactos: "<fecha> <commit> <etiqueta>". Un commit fallido
-# jamás se registra, así el rollback sin argumento nunca lo seleccionará.
-HISTORIAL="${PROD_DIR}/RELEASE_HISTORY"
-registrar() { # registrar <commit> <etiqueta>
-  printf '%s %s %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "$1" "$2" >> "${HISTORIAL}"
+echo "Actual: ${BASE}"; echo "Nuevo : ${SHA}"; echo "Ruta  : ${RELEASE_DIR}"
+if [ "${CHECK_ONLY}" = 1 ]; then echo "CHECK OK: no se modificó producción."; exit 0; fi
+printf 'Escribe exactamente PROMOVER para continuar: '; read -r CONFIRMACION
+[ "${CONFIRMACION}" = PROMOVER ] || fallo "confirmación incorrecta; no se hace nada."
+BUILD_DIR="${RELEASES_DIR}/releases/.${SHA}.build.$$"
+LINK_TMP="${RELEASES_DIR}/.current.$$"
+ENLACE_CAMBIADO=0; OK=0
+escribir_marcador() {
+  local VALOR="$1" TMP="${RELEASES_DIR}/.DEPLOYED_COMMIT.$$"
+  printf '%s\n' "${VALOR}" > "${TMP}"
+  chmod 644 "${TMP}"
+  mv -f "${TMP}" "${RELEASES_DIR}/DEPLOYED_COMMIT"
 }
-# El commit base está en ejecución bajo PM2: es un destino legítimo de
-# rollback. Se registra SÓLO tras la confirmación, como última entrada.
-if [ ! -f "${HISTORIAL}" ] || [ "$(awk 'END{print $2}' "${HISTORIAL}")" != "${BASE}" ]; then
-  registrar "${BASE}" "baseline"
-fi
-
-reiniciar_y_verificar() { # -> 0 si pm2 restart funciona y /health/ready responde
-  pm2 restart "${PROD_PM2_APP}" --update-env || return 1
-  for _ in $(seq 1 20); do
-    if curl -fsS "http://127.0.0.1:${PROD_PORT}/health/ready" >/dev/null 2>&1; then
-      return 0
-    fi
-    sleep 2
-  done
+saludable() {
+  for _ in $(seq 1 20); do curl -fsS "http://127.0.0.1:${PROD_PORT}/health/ready" >/dev/null 2>&1 && return 0; sleep 2; done
   return 1
 }
-
-# --- Fase transaccional: cualquier fallo restaura el commit anterior -----------
-TRANSACCION_OK=0
-RESTAURADO=0
-restaurar_produccion() {
-  [ "${TRANSACCION_OK}" = "1" ] && return 0
-  [ "${RESTAURADO}" = "1" ] && return 0
-  RESTAURADO=1
+restaurar() {
+  [ "${OK}" = 1 ] && return 0
   set +e
-  echo "RESTAURANDO producción al commit base ${BASE}..." >&2
-  git -C "${PROD_DIR}" checkout --detach --quiet "${BASE}"
-  (cd "${PROD_DIR}" && npm ci --omit=dev --no-audit --no-fund)
-  if reiniciar_y_verificar; then
-    # La restauración quedó saludable: BASE es ahora, con certeza, el commit
-    # desplegado (también en el bootstrap, donde DEPLOYED_COMMIT no existía).
-    printf '%s\n' "${BASE}" > "${PROD_DIR}/DEPLOYED_COMMIT"
-    registrar "${BASE}" "auto-rollback"
-    echo "Producción quedó revertida y saludable con ${BASE}. Revisa pm2 logs ${PROD_PM2_APP}." >&2
-  else
-    echo "INTERVENCIÓN MANUAL URGENTE: la restauración tampoco respondió /health/ready. Revisa pm2 logs ${PROD_PM2_APP}." >&2
+  rm -f "${LINK_TMP}" "${RELEASES_DIR}/.DEPLOYED_COMMIT.$$"
+  case "${BUILD_DIR}" in "${RELEASES_DIR}/releases/.${SHA}.build."*) [ -d "${BUILD_DIR}" ] && rm -rf -- "${BUILD_DIR}";; esac
+  if [ "${ENLACE_CAMBIADO}" = 1 ]; then
+    echo "RESTAURANDO ${BASE}..." >&2
+    ln -s "${CURRENT_REAL}" "${LINK_TMP}" && mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"
+    escribir_marcador "${BASE}"
+    systemctl restart "${PROD_SERVICE}"
+    saludable && echo "Restauración saludable." >&2 || echo "INTERVENCIÓN URGENTE: restauración sin salud." >&2
   fi
 }
-trap restaurar_produccion EXIT
-
-echo "Activando commit ${SHA} en ${PROD_DIR}..."
-git -C "${PROD_DIR}" checkout --detach --quiet "${SHA}"
-[ -f "${PROD_DIR}/server.js" ] || fallo "el checkout no contiene server.js; se restaura el commit anterior."
-(cd "${PROD_DIR}" && npm ci --omit=dev --no-audit --no-fund) \
-  || fallo "npm ci falló con el commit ${SHA}; se restaura el commit anterior."
-reiniciar_y_verificar \
-  || fallo "producción no respondió /health/ready con el commit ${SHA}; se restaura el commit anterior."
-
-printf '%s\n' "${SHA}" > "${PROD_DIR}/DEPLOYED_COMMIT"
-registrar "${SHA}" "promote"
-TRANSACCION_OK=1
-trap - EXIT
-echo "Producción actualizada al commit ${SHA}."
-echo "Si algo falla: deploy/rollback-production.sh"
-exit 0
+trap restaurar EXIT
+if [ ! -d "${RELEASE_DIR}" ]; then
+  mkdir "${BUILD_DIR}"
+  "${GIT[@]}" archive "${SHA}" | tar -x -C "${BUILD_DIR}"
+  [ -f "${BUILD_DIR}/server.js" ] || fallo "el commit no contiene server.js."
+  (cd "${BUILD_DIR}" && npm ci --omit=dev --no-audit --no-fund)
+  mkdir -p "${BUILD_DIR}/var"; touch "${BUILD_DIR}/.release-ok"
+  chown -R "${PROD_USER}:${PROD_USER}" "${BUILD_DIR}"; mv "${BUILD_DIR}" "${RELEASE_DIR}"
+fi
+ln -s "${RELEASE_DIR}" "${LINK_TMP}"; mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"; ENLACE_CAMBIADO=1
+systemctl restart "${PROD_SERVICE}"
+saludable || fallo "el release nuevo no respondió; se restaura ${BASE}."
+escribir_marcador "${SHA}"
+printf '%s promote -> %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SHA}" >> "${RELEASES_DIR}/RELEASE_HISTORY"
+OK=1; trap - EXIT
+echo "Producción actualizada y saludable con ${SHA}."
