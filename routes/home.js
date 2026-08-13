@@ -7,9 +7,11 @@ const Boleta = require('../models/Boleta');
 const config = require('../config/leagues');
 const { etiquetaTemporada } = require('../services/seasonLabel');
 const { construirCatalogo } = require('../services/competitionCatalog');
-const { cacheMiddleware } = require('../middleware/cache');
+const { cacheMiddleware, obtenerOCrearCache } = require('../middleware/cache');
 
 const router = express.Router();
+const CACHE_RESUMEN_GLOBAL = 'interno:/api/home/resumen:global:v1';
+const TTL_RESUMEN_GLOBAL = 600;
 
 async function obtenerCompeticiones() {
   return Partido.aggregate([
@@ -28,28 +30,58 @@ async function obtenerCompeticiones() {
   ]);
 }
 
+function construirResumenGlobal(competiciones, jugadores) {
+  const idsLigas = new Set();
+  const temporadas = new Set();
+  let partidos = 0;
+  let conEstadisticas = 0;
+  let desde = null;
+  let hasta = null;
+
+  for (const item of competiciones) {
+    idsLigas.add(Number(item._id.id));
+    temporadas.add(item._id.temporada);
+    partidos += Number(item.partidos) || 0;
+    conEstadisticas += Number(item.estadisticas) || 0;
+    if (item.desde && (!desde || item.desde < desde)) desde = item.desde;
+    if (item.hasta && (!hasta || item.hasta > hasta)) hasta = item.hasta;
+  }
+
+  return {
+    partidos,
+    con_estadisticas: conEstadisticas,
+    jugadores: jugadores.length,
+    ligas: idsLigas.size,
+    competiciones: idsLigas.size,
+    temporadas_guardadas: competiciones.length,
+    rango: { desde, hasta },
+    temporadas: [...temporadas].sort((a, b) => b - a)
+  };
+}
+
+async function obtenerResumenGlobal() {
+  return obtenerOCrearCache(CACHE_RESUMEN_GLOBAL, async () => {
+    const [competiciones, jugadores] = await Promise.all([
+      obtenerCompeticiones(),
+      JugadorPartido.distinct('jugador.id')
+    ]);
+    return construirResumenGlobal(competiciones, jugadores);
+  }, TTL_RESUMEN_GLOBAL);
+}
+
 router.get('/resumen', async (req, res) => {
   try {
-    const [partidos, conEstadisticas, jugadores, picks, boletas, rango, competiciones] = await Promise.all([
-      Partido.countDocuments({}),
-      Partido.countDocuments({ estadisticas_completas: true }),
-      JugadorPartido.distinct('jugador.id'),
+    // Sólo el bloque global entra en caché. Los conteos personales se consultan
+    // siempre por usuario y la respuesta HTTP completa nunca se comparte.
+    const [global, picks, boletas] = await Promise.all([
+      obtenerResumenGlobal(),
       PickGuardado.countDocuments({ usuario: req.usuario._id }),
-      Boleta.countDocuments({ usuario: req.usuario._id }),
-      Partido.aggregate([{ $group: { _id: null, desde: { $min: '$fecha' }, hasta: { $max: '$fecha' } } }]),
-      obtenerCompeticiones()
+      Boleta.countDocuments({ usuario: req.usuario._id })
     ]);
     res.json({
-      partidos,
-      con_estadisticas: conEstadisticas,
-      jugadores: jugadores.length,
+      ...global,
       picks,
-      boletas,
-      ligas: new Set(competiciones.map(item => Number(item._id.id))).size,
-      competiciones: new Set(competiciones.map(item => Number(item._id.id))).size,
-      temporadas_guardadas: competiciones.length,
-      rango: rango[0] || { desde: null, hasta: null },
-      temporadas: [...new Set(competiciones.map(item => item._id.temporada))].sort((a, b) => b - a)
+      boletas
     });
   } catch (error) {
     errorServidor(res, error);

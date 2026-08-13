@@ -12,7 +12,11 @@ test('Redis comparte rate limit y caché entre consumidores', { skip: !habilitad
     crearStoreRateLimit,
     obtenerClienteRedis
   } = require('../services/redisBackend');
-  const { cacheMiddleware, limpiarCache } = require('../middleware/cache');
+  const {
+    cacheMiddleware,
+    limpiarCache,
+    obtenerOCrearCache
+  } = require('../middleware/cache');
 
   await conectarRedis();
   const storeA = crearStoreRateLimit('integracion');
@@ -67,6 +71,21 @@ test('Redis comparte rate limit y caché entre consumidores', { skip: !habilitad
   assert.equal(consultas, 1);
   assert.equal(segunda.headers['X-Cache'], 'HIT');
   assert.deepEqual(segunda.body, { compartido: true });
+
+  const claveFragmento = 'redis-integration:fragmento-global';
+  let calculosFragmento = 0;
+  const primerFragmento = await obtenerOCrearCache(claveFragmento, async () => {
+    calculosFragmento += 1;
+    return { global: true };
+  }, 60);
+  const segundoFragmento = await obtenerOCrearCache(claveFragmento, async () => {
+    calculosFragmento += 1;
+    return { global: false };
+  }, 60);
+  assert.deepEqual(primerFragmento, { global: true });
+  assert.deepEqual(segundoFragmento, { global: true });
+  assert.equal(calculosFragmento, 1);
+  assert.equal(await cliente.exists(claveRedis('cache', claveFragmento)), 1);
 
   await storeA.resetKey(identidad);
   await limpiarCache('redis-integration');

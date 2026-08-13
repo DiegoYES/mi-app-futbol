@@ -54,6 +54,34 @@ async function guardarCache(key, body, ttl) {
   }
 }
 
+// Caché para fragmentos globales que forman parte de una respuesta personal.
+// A diferencia de `cacheMiddleware`, nunca intercepta ni almacena el body HTTP
+// completo: el llamador decide exactamente qué datos no personalizados guarda.
+async function obtenerOCrearCache(key, calcular, ttl = TTL_CORTO) {
+  let cached = await leerCache(key);
+  if (cached !== undefined) return cached;
+
+  if (enCurso.has(key)) {
+    solicitudesCoalescidas += 1;
+    await enCurso.get(key);
+    cached = await leerCache(key);
+    if (cached !== undefined) return cached;
+  }
+
+  let resolver;
+  const pendiente = new Promise(resolve => { resolver = resolve; });
+  enCurso.set(key, pendiente);
+  try {
+    const body = await calcular();
+    const ttlSeguro = Math.min(Math.max(Number.parseInt(ttl, 10) || TTL_CORTO, 1), 86_400);
+    await guardarCache(key, body, ttlSeguro);
+    return body;
+  } finally {
+    if (enCurso.get(key) === pendiente) enCurso.delete(key);
+    resolver();
+  }
+}
+
 async function cacheMiddleware(req, res, next) {
   const key = req.originalUrl;
   let cached = await leerCache(key);
@@ -126,4 +154,9 @@ function obtenerEstadisticasCache() {
   };
 }
 
-module.exports = { cacheMiddleware, limpiarCache, obtenerEstadisticasCache };
+module.exports = {
+  cacheMiddleware,
+  limpiarCache,
+  obtenerEstadisticasCache,
+  obtenerOCrearCache
+};
