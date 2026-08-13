@@ -8,9 +8,9 @@ para validar cada commit **antes** de promoverlo a https://data-fut.com.
 Producción corre bajo **systemd** como `mi-app-futbol.service`, con el usuario
 restringido `miappfutbol`, releases inmutables bajo
 `/opt/mi-app-futbol/releases/<sha>` y el symlink `/opt/mi-app-futbol/current`.
-Staging continúa bajo PM2 como `futbol-staging`. La definición antigua
-`futbol-app` permanece detenida temporalmente como contingencia de migración;
-no se usa para promociones ni rollbacks normales.
+Staging continúa bajo PM2 como `futbol-staging` y `futbol-staging-2`. La
+definición antigua `futbol-app` permanece detenida temporalmente como
+contingencia de migración; no se usa para promociones ni rollbacks normales.
 
 ## Garantías de aislamiento
 
@@ -19,9 +19,9 @@ Staging **no comparte nada** con producción:
 | Recurso        | Producción                     | Staging                                  |
 | -------------- | ------------------------------ | ---------------------------------------- |
 | Dominio        | data-fut.com                   | staging.data-fut.com                     |
-| Servicio       | systemd: mi-app-futbol         | PM2: futbol-staging                      |
+| Servicio       | systemd: mi-app-futbol         | PM2: futbol-staging + futbol-staging-2   |
 | Directorio     | /opt/mi-app-futbol/current     | /var/www/mi-app-futbol-staging           |
-| Puerto interno | 3000                           | 3100                                     |
+| Puerto interno | 3000                           | 3100 y 3101                              |
 | Configuración  | .env de producción             | /var/www/mi-app-futbol-staging/.env      |
 | Base MongoDB   | mi-app-futbol                  | mi-app-futbol-staging                    |
 | JWT_SECRET     | propio                         | propio (distinto, generado aparte)       |
@@ -47,7 +47,7 @@ Reglas permanentes:
 ```
 Internet ──► Nginx (TLS)
               ├── data-fut.com          ──► 127.0.0.1:3000 (systemd: mi-app-futbol)
-              └── staging.data-fut.com  ──► 127.0.0.1:3100 (PM2: futbol-staging)
+              └── staging.data-fut.com  ──► Nginx least_conn ──► 127.0.0.1:3100/3101
 MongoDB local:
               ├── base mi-app-futbol          (producción, intocable)
               └── base mi-app-futbol-staging  (staging, sintética)
@@ -181,12 +181,12 @@ Además usan `flock` para impedir operaciones concurrentes.
 ```bash
 # 1. Despliega un commit concreto en staging: clona/actualiza
 #    /var/www/mi-app-futbol-staging, hace checkout EXACTO del sha, npm ci,
-#    y crea o reinicia el proceso PM2 futbol-staging (nunca futbol-app).
+#    y crea o reinicia ambos procesos PM2 de staging (nunca futbol-app).
 deploy/deploy-staging.sh <sha>
 
-# 2. Ejecuta el smoke test. Verifica vía PM2 que futbol-staging está online
-#    con el cwd y script esperados y que el HEAD del clon coincide con el
-#    commit a validar; sólo entonces lo registra como VALIDADO.
+# 2. Ejecuta el smoke test. Verifica vía PM2 que ambas instancias están online,
+#    listas en 3100/3101, con el cwd y script esperados, y que el HEAD del clon
+#    coincide con el commit a validar; sólo entonces lo registra como VALIDADO.
 STAGING_SMOKE_EMAIL='smoke@staging.local' \
 STAGING_SMOKE_PASSWORD='...' \
 RUN_PLAYWRIGHT=1 \
@@ -287,7 +287,7 @@ existe. Estado de contingencia:
 
 1. `mi-app-futbol.service` está activo y habilitado.
 2. `futbol-app` permanece detenido, no eliminado, como rollback temporal.
-3. `futbol-staging` continúa activo bajo PM2.
+3. `futbol-staging` y `futbol-staging-2` continúan activos bajo PM2.
 4. No eliminar `futbol-app` hasta observar al menos una promoción y un rollback
    controlados con los scripts systemd.
 

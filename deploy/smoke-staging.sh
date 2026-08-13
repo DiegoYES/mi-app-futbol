@@ -12,6 +12,8 @@
 #        STAGING_SMOKE_PASSWORD  contraseña de esa cuenta (obligatoria)
 #        STAGING_DIR             (por defecto /var/www/mi-app-futbol-staging)
 #        STAGING_PM2_APP         proceso PM2 de staging (por defecto futbol-staging)
+#        STAGING_SECONDARY_PM2_APP / STAGING_SECONDARY_PORT
+#                                segunda instancia local (futbol-staging-2 / 3101)
 #        SMOKE_REMOTE=1          omite la verificación local de PM2/clon (para
 #                                ejecutar el smoke desde otra máquina)
 #        STAGING_BASIC_AUTH_USER / STAGING_BASIC_AUTH_PASSWORD
@@ -27,6 +29,9 @@ set -euo pipefail
 BASE_URL="${STAGING_BASE_URL:-https://staging.data-fut.com}"
 STAGING_DIR="${STAGING_DIR:-/var/www/mi-app-futbol-staging}"
 STAGING_PM2_APP="${STAGING_PM2_APP:-futbol-staging}"
+STAGING_PORT="${STAGING_PORT:-3100}"
+STAGING_SECONDARY_PM2_APP="${STAGING_SECONDARY_PM2_APP:-${STAGING_PM2_APP}-2}"
+STAGING_SECONDARY_PORT="${STAGING_SECONDARY_PORT:-3101}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 EMAIL="${STAGING_SMOKE_EMAIL:-}"
 PASSWORD="${STAGING_SMOKE_PASSWORD:-}"
@@ -65,17 +70,24 @@ fi
 if [ "${SMOKE_REMOTE:-0}" != "1" ]; then
   command -v pm2 >/dev/null || fallo "pm2 no está disponible (usa SMOKE_REMOTE=1 sólo desde otra máquina)."
   JLIST="$(pm2 jlist)"
-  ESTADO_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" status)" \
-    || fallo "no existe el proceso PM2 '${STAGING_PM2_APP}'; despliega antes con deploy-staging.sh."
-  [ "${ESTADO_PM2}" = "online" ] || fallo "el proceso ${STAGING_PM2_APP} no está online (estado: ${ESTADO_PM2})."
-  CWD_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" cwd)"
-  [ "${CWD_PM2}" = "${STAGING_DIR}" ] \
-    || fallo "el proceso ${STAGING_PM2_APP} ejecuta desde '${CWD_PM2}', no desde ${STAGING_DIR}."
-  SCRIPT_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${STAGING_PM2_APP}" script)"
-  case "${SCRIPT_PM2}" in
-    */server.js) : ;;
-    *) fallo "el proceso ${STAGING_PM2_APP} ejecuta '${SCRIPT_PM2}', no server.js." ;;
-  esac
+  validar_proceso_pm2() {
+    local APP="$1" PUERTO="$2" ESTADO_PM2 CWD_PM2 SCRIPT_PM2
+    ESTADO_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${APP}" status)" \
+      || fallo "no existe el proceso PM2 '${APP}'; despliega antes con deploy-staging.sh."
+    [ "${ESTADO_PM2}" = "online" ] || fallo "el proceso ${APP} no está online (estado: ${ESTADO_PM2})."
+    CWD_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${APP}" cwd)"
+    [ "${CWD_PM2}" = "${STAGING_DIR}" ] \
+      || fallo "el proceso ${APP} ejecuta desde '${CWD_PM2}', no desde ${STAGING_DIR}."
+    SCRIPT_PM2="$(printf '%s' "${JLIST}" | node "${SCRIPT_DIR}/pm2-info.js" "${APP}" script)"
+    case "${SCRIPT_PM2}" in
+      */server.js) : ;;
+      *) fallo "el proceso ${APP} ejecuta '${SCRIPT_PM2}', no server.js." ;;
+    esac
+    curl -fsS "http://127.0.0.1:${PUERTO}/health/ready" >/dev/null \
+      || fallo "${APP} no está listo en el puerto ${PUERTO}."
+  }
+  validar_proceso_pm2 "${STAGING_PM2_APP}" "${STAGING_PORT}"
+  validar_proceso_pm2 "${STAGING_SECONDARY_PM2_APP}" "${STAGING_SECONDARY_PORT}"
   [ -d "${STAGING_DIR}/.git" ] || fallo "${STAGING_DIR} no es un clon git."
   HEAD_CLON="$(git -C "${STAGING_DIR}" rev-parse HEAD)"
   [ "${HEAD_CLON}" = "${COMMIT}" ] \
