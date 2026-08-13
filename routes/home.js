@@ -7,6 +7,7 @@ const Boleta = require('../models/Boleta');
 const config = require('../config/leagues');
 const { etiquetaTemporada } = require('../services/seasonLabel');
 const { construirCatalogo } = require('../services/competitionCatalog');
+const { cacheMiddleware } = require('../middleware/cache');
 
 const router = express.Router();
 
@@ -55,7 +56,7 @@ router.get('/resumen', async (req, res) => {
   }
 });
 
-router.get('/competiciones', async (_req, res) => {
+router.get('/competiciones', cacheMiddleware, async (_req, res) => {
   try {
     const filas = await obtenerCompeticiones();
     const competiciones = construirCatalogo(filas, config.ligas, etiquetaTemporada);
@@ -69,7 +70,7 @@ router.get('/competiciones', async (_req, res) => {
   }
 });
 
-router.get('/competiciones/:id', async (req, res) => {
+router.get('/competiciones/:id', cacheMiddleware, async (req, res) => {
   try {
     const id = Number.parseInt(req.params.id, 10);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Competición inválida.' });
