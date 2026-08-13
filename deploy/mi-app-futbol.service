@@ -1,7 +1,5 @@
-# Servicio systemd de producción — FASE 2 (migración PM2 -> systemd).
-# En la fase actual producción corre bajo PM2 (proceso futbol-app). Esta
-# plantilla la instala deploy/migrate-production-systemd.sh durante la
-# ventana de mantenimiento autorizada; no la instales a mano.
+# Plantilla del servicio systemd de producción.
+# Producción usa releases inmutables y el symlink /opt/mi-app-futbol/current.
 
 [Unit]
 Description=Mi App Futbol
@@ -22,9 +20,24 @@ RestartSec=5
 TimeoutStopSec=20
 NoNewPrivileges=true
 PrivateTmp=true
+PrivateDevices=true
 ProtectSystem=strict
 ProtectHome=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
 ReadWritePaths=/opt/mi-app-futbol/current/var
+CapabilityBoundingSet=
+RemoveIPC=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
 UMask=0077
 LimitNOFILE=65535
 

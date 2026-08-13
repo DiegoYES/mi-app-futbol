@@ -264,6 +264,10 @@ separada.
 La migración se completó el 2026-08-13. Producción corre con el usuario sin
 privilegios `miappfutbol`, `ProtectSystem=strict` y releases inmutables en
 `/opt/mi-app-futbol/releases/<sha>` mediante el symlink `current`.
+La primera capa adicional de hardening elimina capabilities, limita familias
+de sockets a Unix/IPv4/IPv6 y protege dispositivos, namespaces, reloj,
+hostname, módulos, tunables, logs y cgroups. La exposición informada por
+`systemd-analyze security` bajó de 8.3 a 3.0 sin perder salud.
 
 El script `deploy/migrate-production-systemd.sh` se conserva como registro del
 procedimiento inicial y **no debe volver a ejecutarse**: aborta si la unidad ya
