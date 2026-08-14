@@ -307,7 +307,14 @@
       pintarBarra(usuario);
       pintarAvisoLegal();
       crearWidgetPicks();
-      if (!usuario.tieneAcceso) mostrarPaywall(usuario.motivo);
+      const parametros = new URLSearchParams(window.location.search);
+      const registroLimitado = parametros.get('registro') === 'ip_duplicada';
+      if (!usuario.tieneAcceso || registroLimitado) mostrarPaywall(registroLimitado ? 'ip_duplicada' : usuario.motivo);
+      if (registroLimitado) {
+        parametros.delete('registro');
+        const consulta = parametros.toString();
+        history.replaceState(null, '', `${window.location.pathname}${consulta ? `?${consulta}` : ''}${window.location.hash}`);
+      }
     } catch (err) {
       console.error('No se pudo validar la sesión:', err);
     }

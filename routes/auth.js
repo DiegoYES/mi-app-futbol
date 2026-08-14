@@ -2,6 +2,7 @@ const express = require('express');
 const Usuario = require('../models/Usuario');
 const { firmarToken, requireAuth } = require('../middleware/auth');
 const { crearLimitador } = require('../middleware/rateLimit');
+const { registrarEventoProducto } = require('../services/productEvents');
 
 const router = express.Router();
 
@@ -63,6 +64,8 @@ router.post('/registro', limiteIntentos, async (req, res) => {
       ip_ultimo_acceso: ip,
       bloqueado_ip_duplicada: !!cuentaConMismaIP
     });
+
+    registrarEventoProducto(cuentaConMismaIP ? 'registration_ip_limited' : 'registration_active');
 
     const token = firmarToken(usuario);
     res.cookie('token', token, OPCIONES_COOKIE);

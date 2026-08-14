@@ -38,12 +38,12 @@
     @media(max-width:620px){.landing-shell{width:min(100% - 22px,1180px)}.landing-nav{min-height:64px;gap:10px}.landing-links{gap:7px}.landing-links .landing-login,.landing-links .landing-cta{min-height:38px;padding-inline:10px;font-size:.65rem}.landing-hero{min-height:auto;padding:50px 0 70px}.landing-hero h1{font-size:clamp(3rem,15vw,4.8rem)}.feature-list,.faq{grid-template-columns:1fr}.landing-section{padding:70px 0}.preview-teams{grid-template-columns:1fr}.preview-team:last-child{text-align:left}.preview-vs{display:none}.pricing-wrap{gap:30px}.landing-footer{display:grid;text-align:center}.landing-actions{display:grid}.landing-actions a{width:100%}.landing-bottom-actions{display:grid}.landing-bottom-actions a{width:100%}}
   </style>
 </head>
-<body class="landing">
+<body class="landing" data-product-event="landing_view">
   <header class="landing-shell landing-nav">
     <a class="landing-brand brand-logo-link" href="/" aria-label="Data-Fut · Inicio"><img class="brand-logo" src="/brand-logo.svg" alt="Data-Fut"></a>
     <nav class="landing-links" aria-label="Navegación principal">
       <a href="#beneficios">Por qué elegirnos</a><a href="#incluye">Qué incluye</a><a href="#precio">Precio</a>
-      <a class="landing-login" href="/login.html">Iniciar sesión</a><a class="landing-cta" href="/login.html#registro">Probar gratis</a>
+      <a class="landing-login" href="/login.html">Iniciar sesión</a><a class="landing-cta" data-product-event="trial_cta_click" href="/login.html#registro">Probar gratis</a>
     </nav>
   </header>
 
@@ -53,7 +53,7 @@
         <p class="landing-kicker">Análisis de fútbol, sin ruido</p>
         <h1>Todo el contexto del partido. <span>Una mejor lectura.</span></h1>
         <p class="landing-lead">Compara equipos, revisa tendencias por periodo y entiende la evidencia detrás de cada dato antes de tomar una decisión.</p>
-        <div class="landing-actions"><a class="landing-cta" href="/login.html#registro">Comenzar prueba gratis →</a><a class="landing-login" href="/login.html">Ya tengo cuenta · Iniciar sesión</a></div>
+        <div class="landing-actions"><a class="landing-cta" data-product-event="trial_cta_click" href="/login.html#registro">Comenzar prueba gratis →</a><a class="landing-login" href="/login.html">Ya tengo cuenta · Iniciar sesión</a></div>
         <ul class="landing-trust"><li>7 días de prueba</li><li>Una sola membresía</li><li>Datos actualizados cada hora</li></ul>
       </div>
       <aside class="product-preview" aria-label="Vista previa del producto">
@@ -73,5 +73,6 @@
     <section class="landing-shell landing-bottom"><h2>Convierte datos dispersos en una lectura más clara.</h2><p>Explora toda la plataforma gratis durante 7 días o continúa con tu cuenta.</p><div class="landing-bottom-actions"><a class="landing-cta" href="/login.html#registro">Crear cuenta gratis →</a><a class="landing-login" href="/login.html">Iniciar sesión</a></div></section>
   </main>
   <footer class="landing-shell landing-footer"><span>© 2026 Data-Fut · Información estadística, no garantía de resultados.</span><span><a href="/terminos.html">Términos y Condiciones</a> · <a href="/legal.html">Aviso legal y fuentes</a> · <a href="/login.html">Acceso</a></span></footer>
+  <script src="/product-events.js" defer></script>
 </body>
 </html>

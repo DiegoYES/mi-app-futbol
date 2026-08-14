@@ -168,6 +168,26 @@ tiempo promedio de Node e instancias utilizadas. Espera una muestra suficiente
 antes de optimizar: health checks o unas cuantas solicitudes sintéticas no
 representan tráfico de usuarios.
 
+## Embudo anónimo de producto
+
+Las vistas de landing, calendario, comparador y membresía, los clics para iniciar
+la prueba, los registros activos o limitados por IP y el inicio de checkout se
+registran como líneas `[product-event]` en stdout. Cada línea contiene únicamente
+el nombre cerrado del evento, fecha y entorno: no incluye IP, correo, usuario,
+cookie, token, texto libre ni query string, y no escribe una colección en MongoDB.
+
+Para contar los eventos de producción conservados en el journal:
+
+```bash
+sudo journalctl -u mi-app-futbol -u mi-app-futbol-secondary --since today -o cat | \
+  node scripts/resumirEventosProducto.js --environment production
+```
+
+El endpoint del navegador sólo acepta los cinco nombres públicos definidos en
+`services/productEvents.js`; conserva la validación de origen y el rate limit
+global de `/api`. Los registros y checkouts se emiten exclusivamente desde sus
+controladores después de que la operación correspondiente tuvo éxito.
+
 ## Flujo de despliegue con staging
 
 Ningún commit debería llegar a producción sin pasar por el entorno de prueba

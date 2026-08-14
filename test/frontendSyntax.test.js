@@ -99,6 +99,30 @@ test('auth-client.js contiene JavaScript válido y monta Mis picks globales', ()
   assert.match(codigo, /futbol:picks-actualizados/);
 });
 
+test('los eventos anónimos del embudo tienen sintaxis válida y cobertura de vistas', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'product-events.js'), 'utf8');
+  const landing = fs.readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8');
+  const calendario = fs.readFileSync(path.join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  const comparador = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
+  const suscripcion = fs.readFileSync(path.join(__dirname, '..', 'public', 'suscripcion.html'), 'utf8');
+
+  assert.doesNotThrow(() => new Function(codigo));
+  assert.match(codigo, /\.landing-cta/);
+  assert.match(landing, /data-product-event="landing_view"/);
+  assert.match(calendario, /data-product-event="calendar_view"/);
+  assert.match(comparador, /data-product-event="comparator_view"/);
+  assert.match(suscripcion, /data-product-event="subscription_view"/);
+});
+
+test('el registro limitado por IP redirige al aviso específico', () => {
+  const login = fs.readFileSync(path.join(__dirname, '..', 'public', 'login.html'), 'utf8');
+  const auth = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-client.js'), 'utf8');
+  assert.match(login, /datos\.usuario\.motivo === 'ip_duplicada'/);
+  assert.match(login, /\/?registro=ip_duplicada/);
+  assert.match(auth, /parametros\.get\('registro'\) === 'ip_duplicada'/);
+  assert.match(auth, /history\.replaceState/);
+});
+
 test('la prueba y el checkout enlazan condiciones y exigen consentimiento', () => {
   const landing = fs.readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8');
   const checkout = fs.readFileSync(path.join(__dirname, '..', 'public', 'suscripcion.html'), 'utf8');

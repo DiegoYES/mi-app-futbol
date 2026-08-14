@@ -22,6 +22,7 @@ const jugadoresRoutes = require('./routes/jugadores');
 const sugerenciasRoutes = require('./routes/sugerencias');
 const systemRoutes = require('./routes/system');
 const billingRoutes = require('./routes/billing');
+const productEventsRoutes = require('./routes/productEvents');
 const mercadoPagoWebhookRoutes = require('./routes/mercadoPagoWebhook');
 const { protegido, requireAuth, requireAdmin, usuarioDeSesion } = require('./middleware/auth');
 const { paginasPrivadas } = require('./middleware/paginasPrivadas');
@@ -107,6 +108,7 @@ app.use(bannerEstatico(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use('/api/auth', authRoutes);
+app.use('/api/eventos-producto', productEventsRoutes);
 // Billing sólo exige sesión: una prueba vencida también debe poder pagar.
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);

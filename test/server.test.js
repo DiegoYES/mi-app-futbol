@@ -60,6 +60,24 @@ test('acepta escrituras del mismo host cuando un proxy termina HTTPS', async t =
   assert.equal(body.mensaje, 'Sesión cerrada');
 });
 
+test('acepta eventos anónimos conocidos y rechaza eventos reservados', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const aceptado = await fetch(`${baseUrl}/api/eventos-producto`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ evento: 'landing_view' })
+  });
+  const rechazado = await fetch(`${baseUrl}/api/eventos-producto`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ evento: 'registration_active' })
+  });
+
+  assert.equal(aceptado.status, 204);
+  assert.equal(rechazado.status, 400);
+  assert.equal((await rechazado.json()).codigo, 'EVENTO_NO_VALIDO');
+});
+
 test('rechaza cuerpos JSON demasiado grandes con una respuesta controlada', async t => {
   const baseUrl = await servidorTemporal(t);
   const respuesta = await fetch(`${baseUrl}/api/auth/login`, {

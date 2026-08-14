@@ -108,6 +108,12 @@ async function enviar(evento, tipo) {
       return;
     }
 
+    if (tipo === 'registro' && datos.usuario.motivo === 'ip_duplicada') {
+      mostrar('Cuenta creada. La prueba gratuita necesita revisión.', 'ok');
+      window.location.href = '/?registro=ip_duplicada';
+      return;
+    }
+
     mostrar('¡Listo! Entrando...', 'ok');
     window.location.href = datos.usuario.rol === 'admin' ? '/admin.html' : '/';
   } catch (err) {

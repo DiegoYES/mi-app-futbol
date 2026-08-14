@@ -4,6 +4,7 @@ const { requireAuth } = require('../middleware/auth');
 const { crearLimitador } = require('../middleware/rateLimit');
 const { errorServidor } = require('../middleware/security');
 const { TERMS_VERSION, consentimientoValido } = require('../services/terms');
+const { registrarEventoProducto } = require('../services/productEvents');
 const {
   ErrorMercadoPago,
   PRECIO_MENSUAL,
@@ -78,6 +79,7 @@ router.post('/subscribe', requireAuth, limiteBilling, async (req, res) => {
       existente.terminos_aceptados_en = aceptadosEn;
       existente.terminos_version = TERMS_VERSION;
       await existente.save();
+      registrarEventoProducto('checkout_started');
       return res.json({ checkout_url: existente.checkout_url, reutilizada: true });
     }
 
@@ -100,6 +102,7 @@ router.post('/subscribe', requireAuth, limiteBilling, async (req, res) => {
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
+    registrarEventoProducto('checkout_started');
     res.status(201).json({ checkout_url: suscripcion.checkout_url });
   } catch (error) {
     if (error instanceof ErrorMercadoPago) {
