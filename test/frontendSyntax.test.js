@@ -208,6 +208,8 @@ test('el directorio de jugadores separa competición y temporada', () => {
   assert.match(html, /id="temporada"/);
   assert.match(html, /pintarTemporadas/);
   assert.match(html, /&season=\$\{season\}/);
+  assert.match(html, /if\(!league\|\|!season\)/);
+  assert.match(html, /Elige una competición y una temporada/);
   assert.doesNotMatch(html, /const \[league,season\]=valor\.split/);
 });
 

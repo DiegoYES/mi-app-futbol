@@ -48,5 +48,11 @@ jugadorPartidoSchema.index(
   { 'jugador.id': 1, 'liga.id': 1, 'liga.temporada': -1, fecha: -1 },
   { name: 'jugador_liga_temporada_fecha' }
 );
+// El directorio y las fichas de equipo filtran primero competición/temporada
+// y, opcionalmente, equipo. Sin este índice recorren millones de actuaciones.
+jugadorPartidoSchema.index(
+  { 'liga.id': 1, 'liga.temporada': 1, 'equipo.id': 1, fecha: -1 },
+  { name: 'liga_temporada_equipo_fecha' }
+);
 
 module.exports = mongoose.model('JugadorPartido', jugadorPartidoSchema);

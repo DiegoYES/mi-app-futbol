@@ -13,8 +13,11 @@ router.get('/', async (req, res) => {
     const league = Number.parseInt(req.query.league, 10);
     const season = Number.parseInt(req.query.season, 10);
     const team = Number.parseInt(req.query.team, 10);
-    if (Number.isInteger(league)) match['liga.id'] = league;
-    if (Number.isInteger(season)) match['liga.temporada'] = season;
+    if (!Number.isInteger(league) || !Number.isInteger(season)) {
+      return res.status(400).json({ error: 'Selecciona una competición y una temporada.' });
+    }
+    match['liga.id'] = league;
+    match['liga.temporada'] = season;
     if (Number.isInteger(team)) match['equipo.id'] = team;
     const jornada = typeof req.query.round === 'string' ? req.query.round.trim().slice(0, 100) : '';
     let jornadas = [];

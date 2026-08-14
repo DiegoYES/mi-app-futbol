@@ -19,7 +19,7 @@
   </header>
 
   <section class="catalog-controls player-filters" aria-label="Filtros de jugadores">
-    <label class="catalog-filter-field"><span>1 · Competición</span><select id="liga"><option value="">Todas las competiciones</option></select></label>
+    <label class="catalog-filter-field"><span>1 · Competición</span><select id="liga"><option value="">Elige una competición</option></select></label>
     <label class="catalog-filter-field"><span>2 · Temporada</span><select id="temporada" disabled><option value="">Elige una competición</option></select></label>
     <label class="catalog-filter-field player-search"><span>3 · Jugador</span><input id="buscar" type="search" autocomplete="off" placeholder="Buscar por nombre…"></label>
     <button id="filtrar" type="button">Buscar</button>
@@ -42,7 +42,7 @@ function pintarTemporadas(temporadaPreferida=''){
   const competencia=competenciaActual();
   if(!competencia){
     select.disabled=true;
-    select.innerHTML='<option value="">Todas las temporadas</option>';
+    select.innerHTML='<option value="">Elige una competición</option>';
     return;
   }
   select.disabled=false;
@@ -70,8 +70,13 @@ async function cargar(){
   if(league)params.set('league',league);
   if(season)params.set('season',season);
   const lista=document.getElementById('lista');
-  lista.innerHTML='<div class="loader">Buscando jugadores…</div>';
   actualizarUrl();
+  if(!league||!season){
+    document.getElementById('resultados').textContent='';
+    lista.innerHTML='<div class="catalog-empty"><strong>Elige una competición y una temporada.</strong><span>Así consultamos únicamente los rendimientos del periodo que te interesa.</span></div>';
+    return;
+  }
+  lista.innerHTML='<div class="loader">Buscando jugadores…</div>';
   try{
     const respuesta=await fetch(`/api/jugadores?${params}`);
     const datos=await respuesta.json().catch(()=>({}));
@@ -95,7 +100,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     if(!respuesta.ok)throw new Error(datos.error||'No disponible');
     competiciones=(datos.competiciones||[]).map(item=>({...item,id:Number(item.id),temporadas:[...(item.temporadas||[])].sort((a,b)=>b.temporada-a.temporada)}));
     const liga=document.getElementById('liga');
-    liga.innerHTML='<option value="">Todas las competiciones</option>'+competiciones.map(item=>`<option value="${item.id}">${esc(item.nombre)} · ${esc(item.pais)}</option>`).join('');
+    liga.innerHTML='<option value="">Elige una competición</option>'+competiciones.map(item=>`<option value="${item.id}">${esc(item.nombre)} · ${esc(item.pais)}</option>`).join('');
     const ligaInicial=params.get('league');
     if(ligaInicial&&[...liga.options].some(option=>option.value===ligaInicial))liga.value=ligaInicial;
     pintarTemporadas(params.get('season'));
