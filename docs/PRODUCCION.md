@@ -104,6 +104,8 @@ Mientras no exista `/etc/mi-app-futbol/deploy.env`, los scripts de promoción y
 rollback administran únicamente `mi-app-futbol.service`, igual que antes. Al
 activar el pool, ese archivo configura ambas unidades y sus puertos; los
 reinicios son secuenciales y cada instancia debe pasar `/health/ready`.
+Entre instancias espera 11 segundos para superar el `fail_timeout=10s` de
+Nginx antes de tocar la siguiente.
 
 Antes de una ventana de activación:
 

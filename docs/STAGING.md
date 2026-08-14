@@ -188,6 +188,8 @@ Además usan `flock` para impedir operaciones concurrentes.
 Si el pool de producción está activo, ambos scripts leen la lista de unidades,
 puertos y rutas desde `/etc/mi-app-futbol/deploy.env`, reinician cada instancia
 secuencialmente y exigen readiness directo antes de continuar con la siguiente.
+Además esperan 11 segundos entre instancias para que venza cualquier cuarentena
+`fail_timeout` del upstream antes de reiniciar la siguiente.
 
 ```bash
 # 1. Despliega un commit concreto en staging: clona/actualiza

@@ -26,6 +26,7 @@ fi
 PROD_SERVICES="${PROD_SERVICES:-${PROD_SERVICE}}"
 PROD_PORTS="${PROD_PORTS:-${PROD_PORT}}"
 PROD_UNIT_PATHS="${PROD_UNIT_PATHS:-${UNIT_PATH}}"
+POOL_SETTLE_SECONDS="${POOL_SETTLE_SECONDS:-11}"
 read -r -a POOL_SERVICES <<< "${PROD_SERVICES}"
 read -r -a POOL_PORTS <<< "${PROD_PORTS}"
 read -r -a POOL_UNIT_PATHS <<< "${PROD_UNIT_PATHS}"
@@ -37,6 +38,7 @@ if [ "${2:-}" = --check ]; then CHECK_ONLY=1; elif [ "$#" -eq 2 ]; then fallo "o
   && [ "${#POOL_SERVICES[@]}" -eq "${#POOL_PORTS[@]}" ] \
   && [ "${#POOL_SERVICES[@]}" -eq "${#POOL_UNIT_PATHS[@]}" ] \
   || fallo "PROD_SERVICES, PROD_PORTS y PROD_UNIT_PATHS deben tener la misma cantidad de elementos."
+[[ "${POOL_SETTLE_SECONDS}" =~ ^[0-9]+$ ]] || fallo "POOL_SETTLE_SECONDS debe ser un entero no negativo."
 [ -d "${REPO_DIR}/.git" ] || fallo "no es repositorio: ${REPO_DIR}"
 [ -d "${RELEASES_DIR}/releases" ] || fallo "falta el directorio de releases."
 [ -L "${RELEASES_DIR}/current" ] || fallo "current no es un symlink."
@@ -101,6 +103,9 @@ reiniciar_pool() {
   for INDICE in "${!POOL_SERVICES[@]}"; do
     systemctl restart "${POOL_SERVICES[${INDICE}]}" || return 1
     saludable "${POOL_PORTS[${INDICE}]}" || return 1
+    if [ "${INDICE}" -lt "$(("${#POOL_SERVICES[@]}" - 1))" ] && [ "${POOL_SETTLE_SECONDS}" -gt 0 ]; then
+      sleep "${POOL_SETTLE_SECONDS}"
+    fi
   done
 }
 restaurar() {

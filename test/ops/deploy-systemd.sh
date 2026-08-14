@@ -44,6 +44,7 @@ esac
 EOF
 cat > "${BIN}/sleep" <<'EOF'
 #!/usr/bin/env bash
+echo "sleep $*" >> "${FAKE_LOG}"
 exit 0
 EOF
 chmod 755 "${BIN}/systemctl" "${BIN}/curl" "${BIN}/sleep"
@@ -88,6 +89,7 @@ printf 'PROMOVER\n' | run ok "${PROMOTE}" "${B}"
 estado_es "${B}"; grep -q "promote -> ${B}" "${FIX}/RELEASE_HISTORY"
 grep -q 'systemctl restart falso$' "${LOG}"
 grep -q 'systemctl restart falso-secondary$' "${LOG}"
+grep -q '^sleep 11$' "${LOG}"
 
 reset_fixture
 set +e; printf 'PROMOVER\n' | run fail-secondary "${PROMOTE}" "${B}"; RC=$?; set -e
