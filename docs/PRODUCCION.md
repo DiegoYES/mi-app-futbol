@@ -144,6 +144,27 @@ sudo systemctl status mi-app-futbol mi-app-futbol-secondary --no-pager
 sudo nginx -t
 ```
 
+## Latencia observada en Nginx
+
+El access log de esta VM usa el formato `data_fut_timing`. Conserva el formato
+combinado y añade `rt` (tiempo total), `urt` (tiempo del upstream Node),
+`uaddr` (instancia 3000/3001) y `ustatus` (estado del upstream). No deben
+añadirse cookies, JWT, claves, cuerpos ni encabezados de autorización al log.
+El respaldo anterior al cambio es
+`/root/nginx-backup-20260814-timing/nginx.conf`; la rotación continúa diaria,
+con 14 archivos.
+
+Para resumir las rutas más lentas sin conservar query strings ni IDs dinámicos:
+
+```bash
+sudo node scripts/resumirLatenciaNginx.js /var/log/nginx/access.log --top 25
+```
+
+La salida ordena por p95 y también muestra promedio, p99, máximo, errores 5xx,
+tiempo promedio de Node e instancias utilizadas. Espera una muestra suficiente
+antes de optimizar: health checks o unas cuantas solicitudes sintéticas no
+representan tráfico de usuarios.
+
 ## Flujo de despliegue con staging
 
 Ningún commit debería llegar a producción sin pasar por el entorno de prueba
