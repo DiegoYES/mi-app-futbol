@@ -76,7 +76,8 @@ logs, capturas ni respuestas HTTP.
 
 > Estado actual: producción corre bajo systemd como `mi-app-futbol.service`,
 > con usuario restringido y releases inmutables en `/opt/mi-app-futbol`.
-> Staging permanece en PM2 hasta completar su migración separada.
+> Nginx todavía envía producción únicamente al puerto 3000. Staging permanece
+> en dos procesos PM2 balanceados.
 
 1. Crea un usuario sin shell administrativo, por ejemplo `miappfutbol`, y copia
    el proyecto en `/opt/mi-app-futbol`. El proceso no debe ejecutarse como root.
@@ -91,6 +92,49 @@ logs, capturas ni respuestas HTTP.
    7) desde systemd timers o cron. El propio script adquiere el lease distribuido.
    No ejecutes workers de
    sincronización dentro de cada réplica web.
+
+## Pool systemd preparado, no activo
+
+El repositorio incluye una transición reversible para ejecutar una segunda
+instancia web como `mi-app-futbol-secondary.service` en el puerto 3001 y
+balancear 3000/3001 con `least_conn`. No crea workers adicionales, no modifica
+MongoDB y ambas instancias comparten el release, JWT y Redis de producción.
+
+Mientras no exista `/etc/mi-app-futbol/deploy.env`, los scripts de promoción y
+rollback administran únicamente `mi-app-futbol.service`, igual que antes. Al
+activar el pool, ese archivo configura ambas unidades y sus puertos; los
+reinicios son secuenciales y cada instancia debe pasar `/health/ready`.
+
+Antes de una ventana de activación:
+
+```bash
+sudo test/ops/deploy-systemd.sh
+sudo test/ops/enable-production-pool.sh
+sudo systemd-analyze verify deploy/mi-app-futbol-secondary.service
+sudo nginx -t -p "$PWD/" -c test/ops/nginx-production-pool.conf
+```
+
+La activación exige escribir literalmente `ACTIVAR_POOL`:
+
+```bash
+sudo deploy/enable-production-pool.sh
+```
+
+El activador valida primero la primaria y la unidad, crea un respaldo privado,
+arranca y comprueba la secundaria directamente, valida `nginx -t`, recarga
+Nginx y finalmente comprueba el readiness público. Si cualquier paso falla,
+detiene y deshabilita la secundaria, elimina sólo los archivos recién
+instalados, restaura el snippet previo y vuelve a validar la primaria.
+
+Después de activarlo deben aprobar:
+
+```bash
+curl -fsS http://127.0.0.1:3000/health/ready
+curl -fsS http://127.0.0.1:3001/health/ready
+curl -fsS https://data-fut.com/health/ready
+sudo systemctl status mi-app-futbol mi-app-futbol-secondary --no-pager
+sudo nginx -t
+```
 
 ## Flujo de despliegue con staging
 

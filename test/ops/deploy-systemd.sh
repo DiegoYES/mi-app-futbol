@@ -16,9 +16,16 @@ cat > "${BIN}/systemctl" <<'EOF'
 echo "systemctl $*" >> "${FAKE_LOG}"
 case "$1" in
   show)
+    SERVICE="$2"
     PROP=""; while [ "$#" -gt 0 ]; do [ "$1" = -p ] && PROP="$2" && break; shift; done
     case "${PROP}" in
-      LoadState) echo loaded;; FragmentPath) echo "${UNIT_PATH}";;
+      LoadState) echo loaded;;
+      FragmentPath)
+        case "${SERVICE}" in
+          falso) echo /fake-primary.service;;
+          falso-secondary) echo /fake-secondary.service;;
+          *) exit 92;;
+        esac;;
       WorkingDirectory) echo "${EXPECTED_WORKING_DIR}";; User) echo root;;
       ExecStart) echo "/usr/bin/node server.js";; *) exit 91;;
     esac;;
@@ -28,7 +35,12 @@ EOF
 cat > "${BIN}/curl" <<'EOF'
 #!/usr/bin/env bash
 echo "curl $*" >> "${FAKE_LOG}"
-[ "${FAKE_HEALTH:-ok}" = ok ]
+case "${FAKE_HEALTH:-ok}" in
+  ok) exit 0;;
+  fail-secondary) case "$*" in *127.0.0.1:3001*) exit 1;; *) exit 0;; esac;;
+  fail) exit 1;;
+  *) exit 93;;
+esac
 EOF
 cat > "${BIN}/sleep" <<'EOF'
 #!/usr/bin/env bash
@@ -45,13 +57,26 @@ reset_fixture() {
   printf '%s\n' "${A}" > "${FIX}/DEPLOYED_COMMIT"
   printf '%s\n' "${B}" > "${FIX}/staging/VALIDATED_COMMIT"
   printf '2000-01-01T00:00:00Z baseline -> %s\n' "${A}" > "${FIX}/RELEASE_HISTORY"
+  printf '%s\n' \
+    'PROD_SERVICES="falso falso-secondary"' \
+    'PROD_PORTS="3000 3001"' \
+    'PROD_UNIT_PATHS="/fake-primary.service /fake-secondary.service"' \
+    > "${FIX}/deploy.env"
+  chmod 600 "${FIX}/deploy.env"
   : > "${LOG}"
 }
 run() {
   env PATH="${BIN}:/usr/bin:/bin" FAKE_LOG="${LOG}" FAKE_HEALTH="$1" \
     REPO_DIR="${REPO}" STAGING_DIR="${FIX}/staging" RELEASES_DIR="${FIX}" \
-    PROD_SERVICE=falso PROD_USER=root UNIT_PATH=/fake.service \
+    DEPLOY_CONFIG="${FIX}/deploy.env" PROD_SERVICE=falso PROD_USER=root \
     EXPECTED_WORKING_DIR="${FIX}/current" "$2" "${@:3}"
+}
+run_single() {
+  env PATH="${BIN}:/usr/bin:/bin" FAKE_LOG="${LOG}" FAKE_HEALTH="$1" \
+    REPO_DIR="${REPO}" STAGING_DIR="${FIX}/staging" RELEASES_DIR="${FIX}" \
+    DEPLOY_CONFIG="${FIX}/sin-config" PROD_SERVICE=falso PROD_USER=root \
+    UNIT_PATH=/fake-primary.service EXPECTED_WORKING_DIR="${FIX}/current" \
+    "$2" "${@:3}"
 }
 estado_es() {
   [ "$(readlink -f "${FIX}/current")" = "${FIX}/releases/$1" ]
@@ -61,9 +86,11 @@ estado_es() {
 reset_fixture
 printf 'PROMOVER\n' | run ok "${PROMOTE}" "${B}"
 estado_es "${B}"; grep -q "promote -> ${B}" "${FIX}/RELEASE_HISTORY"
+grep -q 'systemctl restart falso$' "${LOG}"
+grep -q 'systemctl restart falso-secondary$' "${LOG}"
 
 reset_fixture
-set +e; printf 'PROMOVER\n' | run fail "${PROMOTE}" "${B}"; RC=$?; set -e
+set +e; printf 'PROMOVER\n' | run fail-secondary "${PROMOTE}" "${B}"; RC=$?; set -e
 [ "${RC}" -ne 0 ]; estado_es "${A}"; ! grep -q "promote -> ${B}" "${FIX}/RELEASE_HISTORY"
 
 preparar_rollback() {
@@ -75,9 +102,15 @@ preparar_rollback() {
 preparar_rollback
 printf 'ROLLBACK\n' | run ok "${ROLLBACK}" "${A}"
 estado_es "${A}"; grep -q "rollback -> ${A}" "${FIX}/RELEASE_HISTORY"
+grep -q 'systemctl restart falso-secondary$' "${LOG}"
 
 preparar_rollback
-set +e; printf 'ROLLBACK\n' | run fail "${ROLLBACK}" "${A}"; RC=$?; set -e
+set +e; printf 'ROLLBACK\n' | run fail-secondary "${ROLLBACK}" "${A}"; RC=$?; set -e
 [ "${RC}" -ne 0 ]; estado_es "${B}"; ! grep -q "rollback -> ${A}" "${FIX}/RELEASE_HISTORY"
 
-echo "OK: promoción, rollback y restauraciones systemd aisladas."
+# Sin deploy.env ni variables de pool, conserva compatibilidad con una unidad.
+reset_fixture
+run_single ok "${PROMOTE}" "${B}" --check
+estado_es "${A}"
+
+echo "OK: promoción, rollback, pool y compatibilidad systemd aislados."

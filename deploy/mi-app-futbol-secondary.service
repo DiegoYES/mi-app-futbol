@@ -1,0 +1,45 @@
+# Segunda instancia systemd de producción. No instalar hasta ejecutar y validar
+# deploy/enable-production-pool.sh durante una ventana autorizada.
+
+[Unit]
+Description=Mi App Futbol (secundaria)
+After=network-online.target mongod.service redis-server.service
+Wants=network-online.target redis-server.service
+
+[Service]
+Type=simple
+User=miappfutbol
+Group=miappfutbol
+WorkingDirectory=/opt/mi-app-futbol/current
+EnvironmentFile=/etc/mi-app-futbol/app.env
+# Este archivo no contiene secretos y se carga después para sobrescribir PORT.
+EnvironmentFile=/etc/mi-app-futbol/secondary.env
+ExecStart=/usr/bin/node server.js
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=20
+NoNewPrivileges=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectSystem=strict
+ProtectHome=true
+ProtectClock=true
+ProtectControlGroups=true
+ProtectHostname=true
+ProtectKernelLogs=true
+ProtectKernelModules=true
+ProtectKernelTunables=true
+ReadWritePaths=/opt/mi-app-futbol/current/var
+CapabilityBoundingSet=
+RemoveIPC=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+UMask=0077
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

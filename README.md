@@ -27,8 +27,9 @@ La lista de seguridad, variables, alertas y plantilla de VM está en
 ## Staging y despliegue
 
 Cada commit se valida en https://staging.data-fut.com antes de llegar a
-producción. Ambos entornos corren bajo PM2 (`futbol-app` y `futbol-staging`)
-con directorios, puertos, bases y secretos separados. El flujo completo
+producción. Producción corre bajo systemd con releases inmutables; staging usa
+dos procesos PM2 balanceados en los puertos 3100/3101. Ambos entornos conservan
+directorios, puertos, bases y secretos separados. El flujo completo
 (instalación, semillas sintéticas, smoke test, promoción y rollback) está en
 [`docs/STAGING.md`](docs/STAGING.md):
 

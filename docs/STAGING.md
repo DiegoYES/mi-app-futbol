@@ -19,7 +19,7 @@ Staging **no comparte nada** con producción:
 | Recurso        | Producción                     | Staging                                  |
 | -------------- | ------------------------------ | ---------------------------------------- |
 | Dominio        | data-fut.com                   | staging.data-fut.com                     |
-| Servicio       | systemd: mi-app-futbol         | PM2: futbol-staging + futbol-staging-2   |
+| Servicio       | systemd: mi-app-futbol (actual)| PM2: futbol-staging + futbol-staging-2   |
 | Directorio     | /opt/mi-app-futbol/current     | /var/www/mi-app-futbol-staging           |
 | Puerto interno | 3000                           | 3100 y 3101                              |
 | Configuración  | .env de producción             | /var/www/mi-app-futbol-staging/.env      |
@@ -60,6 +60,13 @@ La aplicación detecta `APP_ENVIRONMENT=staging` y muestra un banner fijo
 "ENTORNO DE PRUEBA" en todas las páginas HTML. En producción esa variable no
 se define y el banner no existe (hay pruebas que cubren ambas condiciones en
 `test/entornoBanner.test.js`).
+
+El repositorio ya contiene la preparación reversible para añadir
+`mi-app-futbol-secondary` en el puerto 3001 y balancear producción mediante
+`least_conn`. Esa preparación **no está activa** mientras no exista
+`/etc/mi-app-futbol/deploy.env`; promoción y rollback conservan entonces el
+comportamiento actual de una sola instancia. El procedimiento está documentado
+en [`PRODUCCION.md`](PRODUCCION.md#pool-systemd-preparado-no-activo).
 
 ## Instalación (acciones manuales, requieren autorización)
 
@@ -177,6 +184,10 @@ siempre recibe un commit explícito; nunca "lo último" implícito. Staging vali
 su proceso PM2. Promoción y rollback validan la unidad systemd, usuario,
 `WorkingDirectory`, `ExecStart`, release activo y marcadores antes de reiniciar.
 Además usan `flock` para impedir operaciones concurrentes.
+
+Si el pool de producción está activo, ambos scripts leen la lista de unidades,
+puertos y rutas desde `/etc/mi-app-futbol/deploy.env`, reinician cada instancia
+secuencialmente y exigen readiness directo antes de continuar con la siguiente.
 
 ```bash
 # 1. Despliega un commit concreto en staging: clona/actualiza

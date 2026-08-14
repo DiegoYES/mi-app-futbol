@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Despliega UN COMMIT EXPLÍCITO en el entorno de staging gestionado por PM2.
 #
-# Infraestructura (fase 1, PM2):
-#   Producción: proceso PM2 "futbol-app", cwd /var/www/mi-app-futbol, puerto 3000.
+# Infraestructura actual:
+#   Producción: systemd "mi-app-futbol", release /opt/mi-app-futbol/current,
+#               puerto 3000 (el pool 3000/3001 se activa por separado).
 #   Staging:    procesos PM2 "futbol-staging" y "futbol-staging-2", cwd
 #               /var/www/mi-app-futbol-staging, puertos 3100/3101, clon git
 #               independiente y base -staging.
