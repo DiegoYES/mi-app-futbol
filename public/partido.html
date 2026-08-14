@@ -297,7 +297,7 @@ const ID_PARTIDO = params.get('partido');
 let datosLocal = null;
 let datosVisitante = null;
 let datosPicksPartido = null;
-const filtrosMercado = { categoria: 'goles', familia: 'todas', alcance: 'total', tipo: 'over', linea: 1.5, periodo: 0 };
+const filtrosMercado = { categoria: 'todas', familia: 'todas', alcance: '', tipo: '', linea: '', periodo: 0 };
 let temporadaPartido = null;
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
@@ -684,8 +684,8 @@ function filtrarMercados(datos) {
   const linea = filtrosMercado.linea === '' || filtrosMercado.linea === null ? null : Number(filtrosMercado.linea);
   return datos.mercados.filter(item => (
     (filtrosMercado.categoria === 'todas' || item.categoria === filtrosMercado.categoria)
-    && item.alcance === filtrosMercado.alcance
-    && item.tipo === filtrosMercado.tipo
+    && (!filtrosMercado.alcance || item.alcance === filtrosMercado.alcance)
+    && (!filtrosMercado.tipo || item.tipo === filtrosMercado.tipo)
     && Number.isFinite(item.linea)
     && (linea === null || item.linea === linea)
   ));
@@ -694,12 +694,12 @@ function filtrarMercados(datos) {
 function prepararFiltrosMercado(datos) {
   const obtenerLineas = () => [...new Set(datos.mercados.filter(item => (
     (filtrosMercado.categoria === 'todas' || item.categoria === filtrosMercado.categoria)
-    && item.alcance === filtrosMercado.alcance
-    && item.tipo === filtrosMercado.tipo
+    && (!filtrosMercado.alcance || item.alcance === filtrosMercado.alcance)
+    && (!filtrosMercado.tipo || item.tipo === filtrosMercado.tipo)
     && Number.isFinite(item.linea)
   )).map(item => item.linea))].sort((a, b) => a - b);
   let lineas = obtenerLineas();
-  if (!lineas.length && filtrosMercado.alcance !== 'total') {
+  if (!lineas.length && filtrosMercado.alcance && filtrosMercado.alcance !== 'total') {
     filtrosMercado.alcance = 'total';
     lineas = obtenerLineas();
   }
@@ -732,11 +732,13 @@ function pintarPicksPartido() {
           <option value="2" ${filtrosMercado.periodo === 2 ? 'selected' : ''}>Segundo tiempo</option>
         </select></label>
         <label>Alcance<select id="alcanceMercadoPartido">
+          <option value="" ${filtrosMercado.alcance === '' ? 'selected' : ''}>Todos los alcances</option>
           <option value="total" ${filtrosMercado.alcance === 'total' ? 'selected' : ''}>Ambos equipos</option>
           <option value="local" ${filtrosMercado.alcance === 'local' ? 'selected' : ''}>Equipo local</option>
           <option value="visitante" ${filtrosMercado.alcance === 'visitante' ? 'selected' : ''}>Equipo visitante</option>
         </select></label>
         <label>Dirección<select id="tipoMercadoPartido">
+          <option value="" ${filtrosMercado.tipo === '' ? 'selected' : ''}>Over y Under</option>
           <option value="over" ${filtrosMercado.tipo === 'over' ? 'selected' : ''}>Over · Más de</option>
           <option value="under" ${filtrosMercado.tipo === 'under' ? 'selected' : ''}>Under · Menos de</option>
         </select></label>
@@ -837,11 +839,11 @@ async function cargarPicks() {
     return;
   }
   datosPicksPartido = datos;
-  filtrosMercado.categoria = datos.categorias.includes('goles') ? 'goles' : datos.categorias[0];
+  filtrosMercado.categoria = 'todas';
   filtrosMercado.familia = 'todas';
-  filtrosMercado.alcance = 'total';
-  filtrosMercado.tipo = 'over';
-  filtrosMercado.linea = filtrosMercado.categoria === 'goles' ? 1.5 : null;
+  filtrosMercado.alcance = '';
+  filtrosMercado.tipo = '';
+  filtrosMercado.linea = '';
   pintarPicksPartido();
 }
 
@@ -924,20 +926,18 @@ document.addEventListener('DOMContentLoaded', () => {
     if (event.target.id === 'categoriaPicksPartido') {
       filtrosMercado.categoria = event.target.value;
       filtrosMercado.familia = 'todas';
-      filtrosMercado.alcance = 'total';
-      filtrosMercado.tipo = 'over';
-      filtrosMercado.linea = null;
+      filtrosMercado.linea = '';
     } else if (event.target.id === 'periodoMercadoPartido') {
       filtrosMercado.periodo = Number(event.target.value);
-      filtrosMercado.linea = null;
+      filtrosMercado.linea = '';
       cargarPicks();
       return;
     } else if (event.target.id === 'alcanceMercadoPartido') {
       filtrosMercado.alcance = event.target.value;
-      filtrosMercado.linea = null;
+      filtrosMercado.linea = '';
     } else if (event.target.id === 'tipoMercadoPartido') {
       filtrosMercado.tipo = event.target.value;
-      filtrosMercado.linea = null;
+      filtrosMercado.linea = '';
     } else if (event.target.id === 'lineaMercadoPartido') filtrosMercado.linea = event.target.value === '' ? '' : Number(event.target.value);
     else return;
     pintarPicksPartido();
