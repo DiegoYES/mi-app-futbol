@@ -76,8 +76,9 @@ logs, capturas ni respuestas HTTP.
 
 > Estado actual: producción corre bajo systemd como `mi-app-futbol.service`,
 > con usuario restringido y releases inmutables en `/opt/mi-app-futbol`.
-> Nginx todavía envía producción únicamente al puerto 3000. Staging permanece
-> en dos procesos PM2 balanceados.
+> Nginx balancea `mi-app-futbol`/3000 y
+> `mi-app-futbol-secondary`/3001 mediante `least_conn`. Staging permanece en
+> dos procesos PM2 balanceados.
 
 1. Crea un usuario sin shell administrativo, por ejemplo `miappfutbol`, y copia
    el proyecto en `/opt/mi-app-futbol`. El proceso no debe ejecutarse como root.
@@ -93,12 +94,12 @@ logs, capturas ni respuestas HTTP.
    No ejecutes workers de
    sincronización dentro de cada réplica web.
 
-## Pool systemd preparado, no activo
+## Pool systemd activo
 
-El repositorio incluye una transición reversible para ejecutar una segunda
-instancia web como `mi-app-futbol-secondary.service` en el puerto 3001 y
-balancear 3000/3001 con `least_conn`. No crea workers adicionales, no modifica
-MongoDB y ambas instancias comparten el release, JWT y Redis de producción.
+Desde el 2026-08-14 producción ejecuta una segunda instancia web como
+`mi-app-futbol-secondary.service` en el puerto 3001 y balancea 3000/3001 con
+`least_conn`. No crea workers adicionales, no modifica MongoDB y ambas
+instancias comparten el release, JWT y Redis de producción.
 
 Mientras no exista `/etc/mi-app-futbol/deploy.env`, los scripts de promoción y
 rollback administran únicamente `mi-app-futbol.service`, igual que antes. Al
@@ -107,7 +108,7 @@ reinicios son secuenciales y cada instancia debe pasar `/health/ready`.
 Entre instancias espera 11 segundos para superar el `fail_timeout=10s` de
 Nginx antes de tocar la siguiente.
 
-Antes de una ventana de activación:
+Comprobaciones del pool:
 
 ```bash
 sudo test/ops/deploy-systemd.sh
@@ -116,11 +117,16 @@ sudo systemd-analyze verify deploy/mi-app-futbol-secondary.service
 sudo nginx -t -p "$PWD/" -c test/ops/nginx-production-pool.conf
 ```
 
-La activación exige escribir literalmente `ACTIVAR_POOL`:
+En una instalación nueva, la activación exige escribir literalmente
+`ACTIVAR_POOL`:
 
 ```bash
 sudo deploy/enable-production-pool.sh
 ```
+
+No vuelvas a ejecutar ese activador en esta VM: abortará porque los archivos ya
+existen. El respaldo de la configuración previa es
+`/root/data-fut-pool-backup.VzetCE`.
 
 El activador valida primero la primaria y la unidad, crea un respaldo privado,
 arranca y comprueba la secundaria directamente, valida `nginx -t`, recarga
@@ -128,7 +134,7 @@ Nginx y finalmente comprueba el readiness público. Si cualquier paso falla,
 detiene y deshabilita la secundaria, elimina sólo los archivos recién
 instalados, restaura el snippet previo y vuelve a validar la primaria.
 
-Después de activarlo deben aprobar:
+Después de promociones o mantenimiento deben aprobar:
 
 ```bash
 curl -fsS http://127.0.0.1:3000/health/ready

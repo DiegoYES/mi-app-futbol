@@ -19,9 +19,9 @@ Staging **no comparte nada** con producción:
 | Recurso        | Producción                     | Staging                                  |
 | -------------- | ------------------------------ | ---------------------------------------- |
 | Dominio        | data-fut.com                   | staging.data-fut.com                     |
-| Servicio       | systemd: mi-app-futbol (actual)| PM2: futbol-staging + futbol-staging-2   |
+| Servicio       | systemd: primaria + secundaria | PM2: futbol-staging + futbol-staging-2   |
 | Directorio     | /opt/mi-app-futbol/current     | /var/www/mi-app-futbol-staging           |
-| Puerto interno | 3000                           | 3100 y 3101                              |
+| Puerto interno | 3000 y 3001                    | 3100 y 3101                              |
 | Configuración  | .env de producción             | /var/www/mi-app-futbol-staging/.env      |
 | Base MongoDB   | mi-app-futbol                  | mi-app-futbol-staging                    |
 | JWT_SECRET     | propio                         | propio (distinto, generado aparte)       |
@@ -46,7 +46,7 @@ Reglas permanentes:
 
 ```
 Internet ──► Nginx (TLS)
-              ├── data-fut.com          ──► 127.0.0.1:3000 (systemd: mi-app-futbol)
+              ├── data-fut.com          ──► Nginx least_conn ──► 127.0.0.1:3000/3001
               └── staging.data-fut.com  ──► Nginx least_conn ──► 127.0.0.1:3100/3101
 MongoDB local:
               ├── base mi-app-futbol          (producción, intocable)
@@ -61,12 +61,11 @@ La aplicación detecta `APP_ENVIRONMENT=staging` y muestra un banner fijo
 se define y el banner no existe (hay pruebas que cubren ambas condiciones en
 `test/entornoBanner.test.js`).
 
-El repositorio ya contiene la preparación reversible para añadir
-`mi-app-futbol-secondary` en el puerto 3001 y balancear producción mediante
-`least_conn`. Esa preparación **no está activa** mientras no exista
-`/etc/mi-app-futbol/deploy.env`; promoción y rollback conservan entonces el
-comportamiento actual de una sola instancia. El procedimiento está documentado
-en [`PRODUCCION.md`](PRODUCCION.md#pool-systemd-preparado-no-activo).
+Producción tiene activas `mi-app-futbol` en 3000 y
+`mi-app-futbol-secondary` en 3001, balanceadas mediante `least_conn`.
+`/etc/mi-app-futbol/deploy.env` hace que promoción y rollback administren
+ambas secuencialmente. El procedimiento y rollback de infraestructura están
+documentados en [`PRODUCCION.md`](PRODUCCION.md#pool-systemd-activo).
 
 ## Instalación (acciones manuales, requieren autorización)
 
