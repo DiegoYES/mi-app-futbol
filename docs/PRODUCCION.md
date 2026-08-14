@@ -155,6 +155,10 @@ como validado por el smoke test y exige confirmación explícita.
 
 ## Alertas mínimas
 
+- Instala `deploy/data-fut-monitor` como `/usr/local/sbin/data-fut-monitor`
+  y ejecútalo cada cinco minutos. Comprueba ambas unidades Node, puertos
+  3000/3001, readiness público, Nginx, MongoDB, Redis, SSH, Fail2ban, memoria,
+  swap y disco; no reinicia servicios.
 - Sondea `/health/ready` cada minuto y alerta tras tres fallos.
 - Consulta como administrador `/api/admin/produccion/estado`: alerta con cuota
   diaria menor al margen operativo, `limitadas > 0`, circuito abierto, MongoDB

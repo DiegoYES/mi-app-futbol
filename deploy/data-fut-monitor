@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+# Monitor local del host. No reinicia servicios ni modifica datos.
+set -u
+
+TAG="${MONITOR_TAG:-data-fut-monitor}"
+REQUIRED_SERVICES="${REQUIRED_SERVICES:-nginx mongod redis-server fail2ban ssh mi-app-futbol mi-app-futbol-secondary}"
+PRODUCTION_PORTS="${PRODUCTION_PORTS:-3000 3001}"
+PUBLIC_READY_URL="${PUBLIC_READY_URL:-https://data-fut.com/health/ready}"
+failures=0
+
+warn() {
+  logger -p daemon.warning -t "${TAG}" -- "$1"
+  failures=$((failures + 1))
+}
+
+mem_available_kb="$(awk '/^MemAvailable:/ {print $2}' /proc/meminfo)"
+swap_total_kb="$(awk '/^SwapTotal:/ {print $2}' /proc/meminfo)"
+swap_free_kb="$(awk '/^SwapFree:/ {print $2}' /proc/meminfo)"
+swap_used_kb=$((swap_total_kb - swap_free_kb))
+disk_used_pct="$(df -P / | awk 'NR==2 {gsub(/%/, "", $5); print $5}')"
+
+if [ "${mem_available_kb:-0}" -lt 786432 ]; then
+  warn "Memoria disponible baja: ${mem_available_kb:-0} KiB (umbral 786432 KiB)."
+fi
+if [ "${swap_used_kb}" -gt 1048576 ]; then
+  warn "Uso de swap elevado: ${swap_used_kb} KiB (umbral 1048576 KiB)."
+fi
+if [ "${disk_used_pct:-100}" -ge 85 ]; then
+  warn "Uso de disco elevado: ${disk_used_pct:-desconocido}% (umbral 85%)."
+fi
+
+for service in ${REQUIRED_SERVICES}; do
+  systemctl is-active --quiet "${service}" || warn "Servicio inactivo: ${service}."
+done
+
+for port in ${PRODUCTION_PORTS}; do
+  curl -fsS --max-time 5 "http://127.0.0.1:${port}/health/live" >/dev/null \
+    || warn "Instancia ${port} no responde en /health/live."
+  curl -fsS --max-time 5 "http://127.0.0.1:${port}/health/ready" >/dev/null \
+    || warn "Instancia ${port} no está lista en /health/ready."
+done
+
+if [ -n "${PUBLIC_READY_URL}" ]; then
+  curl -fsS --max-time 8 "${PUBLIC_READY_URL}" >/dev/null \
+    || warn "Nginx público no responde en ${PUBLIC_READY_URL}."
+fi
+
+if [ "${failures}" -eq 0 ]; then
+  logger -p daemon.info -t "${TAG}" -- \
+    "OK ports=${PRODUCTION_PORTS// /,} mem_available_kb=${mem_available_kb} swap_used_kb=${swap_used_kb} disk_used_pct=${disk_used_pct}"
+fi
+
+exit "${failures}"
