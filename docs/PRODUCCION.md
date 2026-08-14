@@ -180,8 +180,13 @@ Para contar los eventos de producción conservados en el journal:
 
 ```bash
 sudo journalctl -u mi-app-futbol -u mi-app-futbol-secondary --since today -o cat | \
-  node scripts/resumirEventosProducto.js --environment production
+  node scripts/resumirEventosProducto.js --environment production --minimum-sample 50
 ```
+
+Además de los conteos, la salida calcula tasas entre etapas y marca la muestra
+como insuficiente mientras no alcance el mínimo indicado. Son proporciones de
+eventos agregados, no usuarios únicos: una persona puede generar varias vistas
+o clics, así que no deben interpretarse como atribución individual.
 
 El endpoint del navegador sólo acepta los cinco nombres públicos definidos en
 `services/productEvents.js`; conserva la validación de origen y el rate limit
