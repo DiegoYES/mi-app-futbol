@@ -26,19 +26,21 @@ function sumarTiempos(valor) {
 }
 
 function analizarLinea(linea) {
-  const coincidencia = linea.match(
-    /"([A-Z]+)\s+(\S+)\s+HTTP\/[^\"]+"\s+(\d{3})\s+\S+.*\srt=([0-9.]+)\s+urt=(.*?)\s+uaddr=(.*?)\s+ustatus=(.*?)\s*$/
-  );
-  if (!coincidencia) return null;
-  const duracion = Number(coincidencia[4]);
+  const solicitud = linea.match(/"([A-Z]+)\s+(\S+)\s+HTTP\/[^\"]+"\s+(\d{3})\s+\S+/);
+  const metricas = linea.match(/\srt=([0-9.]+)\s+urt=(.*?)\s+uaddr=(.*?)\s+ustatus=(.*?)\s*$/);
+  if (!solicitud || !metricas) return null;
+  const duracion = Number(metricas[1]);
   if (!Number.isFinite(duracion)) return null;
+  const upstream = sumarTiempos(metricas[2]);
+  const host = linea.match(/\shost=(\S+)\s+rt=/)?.[1] || 'desconocido';
   return {
-    metodo: coincidencia[1],
-    ruta: normalizarRuta(coincidencia[2]),
-    estado: Number(coincidencia[3]),
+    host,
+    metodo: solicitud[1],
+    ruta: normalizarRuta(solicitud[2]),
+    estado: Number(solicitud[3]),
     duracion_ms: duracion * 1000,
-    upstream_ms: sumarTiempos(coincidencia[5]) === null ? null : sumarTiempos(coincidencia[5]) * 1000,
-    upstream: coincidencia[6]
+    upstream_ms: upstream === null ? null : upstream * 1000,
+    upstream: metricas[3]
   };
 }
 
@@ -54,21 +56,23 @@ function redondear(valor) {
 function resumir(filas) {
   const grupos = new Map();
   for (const fila of filas) {
-    const clave = `${fila.metodo} ${fila.ruta}`;
-    if (!grupos.has(clave)) grupos.set(clave, { duraciones: [], upstream: [], instancias: new Set(), errores5xx: 0 });
+    const ruta = `${fila.metodo} ${fila.ruta}`;
+    const clave = `${fila.host}\u0000${ruta}`;
+    if (!grupos.has(clave)) grupos.set(clave, { host: fila.host, ruta, duraciones: [], upstream: [], instancias: new Set(), errores5xx: 0 });
     const grupo = grupos.get(clave);
     grupo.duraciones.push(fila.duracion_ms);
     if (fila.upstream_ms !== null) grupo.upstream.push(fila.upstream_ms);
     if (fila.upstream && fila.upstream !== '-') grupo.instancias.add(fila.upstream);
     if (fila.estado >= 500) grupo.errores5xx += 1;
   }
-  return [...grupos.entries()].map(([ruta, grupo]) => {
+  return [...grupos.values()].map(grupo => {
     const tiempos = grupo.duraciones.sort((a, b) => a - b);
     const upstreamPromedio = grupo.upstream.length
       ? grupo.upstream.reduce((total, item) => total + item, 0) / grupo.upstream.length
       : 0;
     return {
-      ruta,
+      host: grupo.host,
+      ruta: grupo.ruta,
       solicitudes: tiempos.length,
       promedio_ms: redondear(tiempos.reduce((total, item) => total + item, 0) / tiempos.length),
       p95_ms: redondear(percentil(tiempos, 0.95)),
@@ -85,27 +89,32 @@ function opciones(argv) {
   let archivo = '/var/log/nginx/access.log';
   let limite = 25;
   let json = false;
+  let host = null;
   for (let i = 0; i < argv.length; i += 1) {
     if (argv[i] === '--json') json = true;
     else if (argv[i] === '--top') limite = Math.max(1, Number.parseInt(argv[++i], 10) || limite);
+    else if (argv[i] === '--host') host = argv[++i] || null;
     else if (!argv[i].startsWith('--')) archivo = argv[i];
   }
-  return { archivo, limite, json };
+  return { archivo, limite, json, host };
 }
 
 async function main() {
-  const { archivo, limite, json } = opciones(process.argv.slice(2));
+  const { archivo, limite, json, host } = opciones(process.argv.slice(2));
   const entrada = archivo === '-' ? process.stdin : fs.createReadStream(archivo, { encoding: 'utf8' });
   const lector = readline.createInterface({ input: entrada, crlfDelay: Infinity });
   const filas = [];
+  let lineasConTiempo = 0;
   for await (const linea of lector) {
     const fila = analizarLinea(linea);
-    if (fila) filas.push(fila);
+    if (!fila) continue;
+    lineasConTiempo += 1;
+    if (!host || fila.host === host) filas.push(fila);
   }
   const resultado = resumir(filas).slice(0, limite);
-  if (json) console.log(JSON.stringify({ lineas_con_tiempo: filas.length, rutas: resultado }, null, 2));
+  if (json) console.log(JSON.stringify({ lineas_con_tiempo: lineasConTiempo, filtro_host: host, lineas_del_host: filas.length, rutas: resultado }, null, 2));
   else {
-    console.log(`Líneas con métricas: ${filas.length}. Rutas más lentas por p95:`);
+    console.log(`Líneas con métricas: ${lineasConTiempo}. Coincidencias${host ? ` para ${host}` : ''}: ${filas.length}. Rutas más lentas por p95:`);
     console.table(resultado);
   }
 }
@@ -117,4 +126,4 @@ if (require.main === module) {
   });
 }
 
-module.exports = { analizarLinea, normalizarRuta, percentil, resumir };
+module.exports = { analizarLinea, normalizarRuta, opciones, percentil, resumir };

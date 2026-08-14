@@ -148,16 +148,19 @@ sudo nginx -t
 
 El access log de esta VM usa el formato `data_fut_timing`. Conserva el formato
 combinado y añade `rt` (tiempo total), `urt` (tiempo del upstream Node),
-`uaddr` (instancia 3000/3001) y `ustatus` (estado del upstream). No deben
+`host` (entorno solicitado), `uaddr` (instancia 3000/3001) y `ustatus` (estado
+del upstream). No deben
 añadirse cookies, JWT, claves, cuerpos ni encabezados de autorización al log.
-El respaldo anterior al cambio es
-`/root/nginx-backup-20260814-timing/nginx.conf`; la rotación continúa diaria,
-con 14 archivos.
+Los respaldos anteriores al formato y a la separación por host son
+`/root/nginx-backup-20260814-timing/nginx.conf` y
+`/root/nginx-backup-20260814-timing-v1/nginx.conf`; la rotación continúa
+diaria, con 14 archivos.
 
 Para resumir las rutas más lentas sin conservar query strings ni IDs dinámicos:
 
 ```bash
-sudo node scripts/resumirLatenciaNginx.js /var/log/nginx/access.log --top 25
+sudo node scripts/resumirLatenciaNginx.js /var/log/nginx/access.log \
+  --host data-fut.com --top 25
 ```
 
 La salida ordena por p95 y también muestra promedio, p99, máximo, errores 5xx,
