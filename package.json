@@ -32,6 +32,7 @@
     "logs:latency": "node scripts/resumirLatenciaNginx.js",
     "logs:funnel": "node scripts/resumirEventosProducto.js",
     "check:product-events": "node --check services/productEvents.js && node --check routes/productEvents.js && node --check public/product-events.js && node --check scripts/resumirEventosProducto.js",
+    "test:ops:backup": "bash test/ops/mongo-backup.sh",
     "markets:inspect": "node scripts/inspeccionarPlaydoit.js",
     "markets:inspect:headed": "node scripts/inspeccionarPlaydoit.js --headed",
     "markets:refresh": "node scripts/actualizarMercados.js",

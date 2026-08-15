@@ -218,6 +218,27 @@ como validado por el smoke test y exige confirmación explícita.
 - Haz copia diaria de MongoDB con retención y cifrado; prueba restauración antes
   del lanzamiento.
 
+## Backup local diario de MongoDB
+
+La primera capa de recuperación crea un archivo lógico comprimido, valida su
+tamaño y gzip, ejecuta `mongorestore --dryRun`, publica mediante renombrados
+atómicos y sólo entonces elimina copias propias mayores a siete días.
+Nunca imprime la URI ni modifica MongoDB.
+
+```bash
+sudo deploy/install-mongo-backup.sh
+sudo systemctl start data-fut-mongo-backup.service
+sudo systemctl status data-fut-mongo-backup.service --no-pager
+sudo systemctl list-timers data-fut-mongo-backup.timer --no-pager
+sudo sh -c 'cd /var/backups/data-fut-mongodb && sha256sum -c *.sha256'
+```
+
+El timer corre diariamente a las 03:35 UTC con hasta diez minutos aleatorios.
+Las copias quedan en `/var/backups/data-fut-mongodb`, permisos root y retención
+de siete días. Esta capa protege contra errores lógicos, pero no contra pérdida
+completa de la VM: añade después una copia cifrada fuera de IONOS y ejecuta un
+simulacro de restauración en una base aislada.
+
 ## Escalado
 
 Una VM con un proceso web y un worker es el punto de partida más sencillo. El

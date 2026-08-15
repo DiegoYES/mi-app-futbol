@@ -1,0 +1,11 @@
+[Unit]
+Description=Programación diaria del backup MongoDB de Data-Fut
+
+[Timer]
+OnCalendar=*-*-* 03:35:00 UTC
+RandomizedDelaySec=10m
+Persistent=true
+Unit=data-fut-mongo-backup.service
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+# Backup lógico de MongoDB: no modifica la base y publica el archivo sólo tras
+# validar gzip, tamaño, dry-run de mongorestore y checksum.
+set -euo pipefail
+umask 077
+
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/data-fut-mongodb}"
+EXPECTED_MONGO_DATABASE="${EXPECTED_MONGO_DATABASE:-futbol-app}"
+RETENTION_DAYS="${RETENTION_DAYS:-7}"
+MIN_BACKUP_BYTES="${MIN_BACKUP_BYTES:-1048576}"
+MONGODUMP_BIN="${MONGODUMP_BIN:-mongodump}"
+MONGORESTORE_BIN="${MONGORESTORE_BIN:-mongorestore}"
+LOCK_FILE="${LOCK_FILE:-/run/lock/data-fut-mongo-backup.lock}"
+
+fallo() { echo "ERROR: $*" >&2; exit 1; }
+
+[ "${EUID}" -eq 0 ] || [ "${ALLOW_NON_ROOT:-0}" = 1 ] \
+  || fallo "ejecuta mediante root/systemd."
+[ -n "${MONGODB_URI:-}" ] || fallo "falta MONGODB_URI."
+[[ "${RETENTION_DAYS}" =~ ^[0-9]+$ ]] || fallo "RETENTION_DAYS debe ser entero."
+[[ "${MIN_BACKUP_BYTES}" =~ ^[0-9]+$ ]] || fallo "MIN_BACKUP_BYTES debe ser entero."
+
+URI_SIN_QUERY="${MONGODB_URI%%\?*}"
+BASE="${URI_SIN_QUERY##*/}"
+[ "${BASE}" = "${EXPECTED_MONGO_DATABASE}" ] \
+  || fallo "la URI apunta a una base distinta de la esperada; backup bloqueado."
+
+for COMANDO in flock gzip sha256sum stat; do command -v "${COMANDO}" >/dev/null || fallo "falta ${COMANDO}."; done
+command -v "${MONGODUMP_BIN}" >/dev/null || fallo "falta mongodump."
+command -v "${MONGORESTORE_BIN}" >/dev/null || fallo "falta mongorestore."
+
+install -d -o root -g root -m 700 "${BACKUP_DIR}" 2>/dev/null || {
+  [ -d "${BACKUP_DIR}" ] || fallo "no se pudo crear ${BACKUP_DIR}."
+}
+exec 9>"${LOCK_FILE}"
+flock -n 9 || fallo "ya existe otro backup en ejecución."
+
+MARCA="${BACKUP_TIMESTAMP:-$(date -u +%Y%m%dT%H%M%SZ)}"
+NOMBRE="mongodb-${EXPECTED_MONGO_DATABASE}-${MARCA}.archive.gz"
+FINAL="${BACKUP_DIR}/${NOMBRE}"
+CHECKSUM="${FINAL}.sha256"
+[ ! -e "${FINAL}" ] && [ ! -e "${CHECKSUM}" ] || fallo "ya existe el backup ${NOMBRE}."
+
+TEMPORAL="$(mktemp "${BACKUP_DIR}/.${NOMBRE}.XXXXXX")"
+TEMP_CHECKSUM="${TEMPORAL}.sha256"
+limpiar() {
+  rm -f -- "${TEMPORAL}" "${TEMP_CHECKSUM}"
+  [ -e "${FINAL}" ] || rm -f -- "${CHECKSUM}"
+}
+trap limpiar EXIT
+
+"${MONGODUMP_BIN}" --quiet --uri="${MONGODB_URI}" --archive="${TEMPORAL}" --gzip
+TAMANO="$(stat -c %s "${TEMPORAL}")"
+[ "${TAMANO}" -ge "${MIN_BACKUP_BYTES}" ] || fallo "backup demasiado pequeño (${TAMANO} bytes)."
+gzip -t "${TEMPORAL}"
+"${MONGORESTORE_BIN}" --quiet --uri="${MONGODB_URI}" --archive="${TEMPORAL}" --gzip --dryRun >/dev/null
+
+HASH="$(sha256sum "${TEMPORAL}")"
+printf '%s  %s\n' "${HASH%% *}" "${NOMBRE}" > "${TEMP_CHECKSUM}"
+mv -- "${TEMP_CHECKSUM}" "${CHECKSUM}"
+mv -- "${TEMPORAL}" "${FINAL}"
+chmod 600 "${FINAL}" "${CHECKSUM}"
+
+# La retención sólo se ejecuta después de publicar una copia válida.
+while IFS= read -r -d '' ANTIGUO; do
+  rm -f -- "${ANTIGUO}" "${ANTIGUO}.sha256"
+done < <(find "${BACKUP_DIR}" -maxdepth 1 -type f \
+  -name "mongodb-${EXPECTED_MONGO_DATABASE}-????????T??????Z.archive.gz" \
+  -mtime "+${RETENTION_DAYS}" -print0)
+
+trap - EXIT
+echo "Backup Mongo válido: ${FINAL} (${TAMANO} bytes); retención ${RETENTION_DAYS} días."
