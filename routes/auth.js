@@ -87,7 +87,9 @@ router.post('/login', limiteIntentos, async (req, res) => {
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     }
 
-    const usuario = await Usuario.findOne({ email: email.toLowerCase() });
+    // El hash está excluido por defecto y sólo se carga para verificar el login.
+    const usuario = await Usuario.findOne({ email: email.toLowerCase() })
+      .select('+password');
     if (!usuario || !(await usuario.compararPassword(password))) {
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     }

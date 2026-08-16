@@ -42,6 +42,15 @@ test('una cuenta vencida no obtiene acceso y nunca expone su contraseña', () =>
   assert.equal('password' in salida, false);
 });
 
+test('el hash queda excluido por defecto y tampoco se serializa accidentalmente', () => {
+  const campoPassword = Usuario.schema.path('password');
+  const cuenta = usuario();
+
+  assert.equal(campoPassword.options.select, false);
+  assert.equal('password' in cuenta.toJSON(), false);
+  assert.equal('password' in cuenta.toObject(), false);
+});
+
 test('una suscripción vigente prevalece sobre el límite de prueba por IP', () => {
   const estado = usuario({
     bloqueado_ip_duplicada: true,

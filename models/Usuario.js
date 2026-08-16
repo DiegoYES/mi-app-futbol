@@ -12,7 +12,8 @@ const usuarioSchema = new mongoose.Schema({
     trim: true,
     maxlength: 254
   },
-  password: { type: String, required: true, minlength: 8 },
+  // El hash se carga sólo cuando un flujo lo solicita expresamente.
+  password: { type: String, required: true, minlength: 8, select: false },
   nombre: { type: String, trim: true, maxlength: 80 },
   rol: { type: String, enum: ['usuario', 'admin'], default: 'usuario' },
   plan: { type: String, enum: ['prueba', 'premium', 'expirado'], default: 'prueba' },
@@ -30,6 +31,15 @@ const usuarioSchema = new mongoose.Schema({
   activo: { type: Boolean, default: true },
   ultimo_acceso: { type: Date, default: null }
 });
+
+// Defensa adicional ante una serialización accidental del documento.
+function ocultarPassword(_doc, salida) {
+  delete salida.password;
+  return salida;
+}
+
+usuarioSchema.set('toJSON', { transform: ocultarPassword });
+usuarioSchema.set('toObject', { transform: ocultarPassword });
 
 usuarioSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
