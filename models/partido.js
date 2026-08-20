@@ -92,7 +92,21 @@ const partidoSchema = new mongoose.Schema({
   },
   total_goles: { type: Number, default: 0 },
   ambos_anotan: { type: Boolean, default: false },
+  // `resultado` se decide con el marcador de 90'/120', que es como se liquidan
+  // los mercados 1X2. Un partido resuelto en penales sigue siendo 'empate'.
   resultado: String,
+  // Goles anotados durante la prórroga y tanda de penales. Quedan en null
+  // cuando el partido no llegó a esa fase; no son parte de `total_goles`.
+  goles_prorroga: {
+    local: { type: Number, default: null },
+    visitante: { type: Number, default: null }
+  },
+  penales: {
+    local: { type: Number, default: null },
+    visitante: { type: Number, default: null }
+  },
+  // Quién avanzó tras la tanda: 'local' | 'visitante' | null.
+  ganador_penales: { type: String, default: null },
   estadisticas_completas: { type: Boolean, default: false },
   estadisticas_no_disponibles: { type: Boolean, default: false },
   estadisticas_intentos: { type: Number, default: 0 },

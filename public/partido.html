@@ -8,6 +8,7 @@
 <meta name="theme-color" content="#07100d">
 <link rel="stylesheet" href="/styles.css">
 <script src="/auth-client.js"></script>
+<script src="/match-score.js"></script>
 <script src="/market-search.js"></script>
 <style>
   .volver { display: inline-block; color: var(--green); text-decoration: none; margin-bottom: 18px; font-size: .9rem; }
@@ -20,6 +21,7 @@
   .lado .rol { font-size: .74rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; }
   .centro { text-align: center; }
   .centro .res { font-size: 2rem; font-weight: 700; }
+  .centro .res-penales { font-size: .82rem; font-weight: 600; color: var(--green); margin-top: 4px; }
   .centro .vs { font-size: 1.3rem; color: var(--muted); }
   .centro .meta { font-size: .78rem; color: var(--muted); margin-top: 6px; }
 
@@ -448,10 +450,19 @@ async function cargarCabecera() {
   document.getElementById('labelAlcanceVisitante').textContent = `Condición de ${nombreV}`;
 
   const tieneMarcador = partido?.equipo_local?.goles != null && partido?.equipo_visitante?.goles != null;
-  const jugado = Boolean(partido && (['FT', 'AET', 'PEN'].includes(partido.estado) || tieneMarcador));
+  const jugado = Boolean(partido && (FutbolMarcador.esFinalizado(partido.estado) || tieneMarcador));
+  // El marcador grande nunca incluye la tanda: los penales deciden quién
+  // avanza, no el resultado con el que se liquidan los mercados.
+  const tanda = FutbolMarcador.penalesDe(partido);
+  const prorroga = FutbolMarcador.prorrogaDe(partido);
+  const detalleFinal = partido?.estado === 'PEN'
+    ? 'Definido en penales'
+    : partido?.estado === 'AET' ? 'Finalizado en tiempo extra' : 'Finalizado';
   const centro = jugado
     ? `<div class="res">${partido.equipo_local.goles} - ${partido.equipo_visitante.goles}</div>
-       <div class="meta">Finalizado</div>`
+       ${tanda ? `<div class="res-penales">${tanda.local} - ${tanda.visitante} en penales</div>` : ''}
+       ${prorroga && !tanda ? `<div class="res-penales">${prorroga.local} - ${prorroga.visitante} en la prórroga</div>` : ''}
+       <div class="meta">${detalleFinal}</div>`
     : `<div class="vs">VS</div><div class="meta">Por jugarse</div>`;
 
   document.title = `${nombreL} vs ${nombreV} · Match Center`;

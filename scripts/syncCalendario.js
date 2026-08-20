@@ -5,6 +5,7 @@ const https = require('https');
 const Partido = require('../models/partido');
 const config = require('../config/leagues');
 const { instalarControlCuotaAxios, obtenerApiKeys } = require('../services/apiQuota');
+const { construirMarcador } = require('../services/fixtureCatalog');
 instalarControlCuotaAxios(axios);
 
 const httpsAgent = new https.Agent({ family: 4 });
@@ -85,6 +86,7 @@ async function sincronizarFecha(fecha, ligasSeguidas = new Set(Object.keys(confi
       'equipo_visitante.logo': f.teams.away.logo,
       'equipo_visitante.goles': f.goals.away,
       'equipo_visitante.goles_primer_tiempo': f.score?.halftime?.away ?? 0,
+      ...construirMarcador(f),
       fecha_actualizacion: new Date()
     };
 

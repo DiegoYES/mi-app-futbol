@@ -1,5 +1,40 @@
 const ESTADOS_FINALIZADOS = new Set(['FT', 'AET', 'PEN']);
 
+// Traduce el bloque `score` de API-Football a los campos del documento.
+//
+// `goals` es el marcador con el que se liquidan los mercados: 90' o 120' si
+// hubo prórroga. La tanda de penales vive sólo en `score.penalty` y jamás debe
+// sumarse a `goals`, porque decide quién avanza, no el resultado del partido.
+// Antes de este mapeo la tanda se perdía y un 1-1 (4-3) se veía como "Final 1-1".
+//
+// Devuelve siempre las cinco claves, con null cuando no aplican, para que un
+// partido corregido por el proveedor (por ejemplo, uno marcado por error como
+// PEN) quede limpio en la siguiente pasada del cron en vez de conservar datos
+// obsoletos.
+function construirMarcador(fixture) {
+  const score = (fixture && fixture.score) || {};
+  const numero = valor => (typeof valor === 'number' && Number.isFinite(valor) ? valor : null);
+
+  const prorrogaLocal = numero(score.extratime?.home);
+  const prorrogaVisitante = numero(score.extratime?.away);
+  const penalesLocal = numero(score.penalty?.home);
+  const penalesVisitante = numero(score.penalty?.away);
+
+  // Una tanda a medias (un solo lado informado) no es publicable: se descarta
+  // entera en vez de mostrar un marcador incompleto.
+  const tandaCompleta = penalesLocal !== null && penalesVisitante !== null;
+
+  return {
+    'goles_prorroga.local': prorrogaLocal,
+    'goles_prorroga.visitante': prorrogaVisitante,
+    'penales.local': tandaCompleta ? penalesLocal : null,
+    'penales.visitante': tandaCompleta ? penalesVisitante : null,
+    ganador_penales: !tandaCompleta || penalesLocal === penalesVisitante
+      ? null
+      : (penalesLocal > penalesVisitante ? 'local' : 'visitante')
+  };
+}
+
 function documentoFixture(fixture, nombresLigas = {}) {
   const estado = fixture.fixture.status.short;
   const finalizado = ESTADOS_FINALIZADOS.has(estado);
@@ -27,6 +62,7 @@ function documentoFixture(fixture, nombresLigas = {}) {
     'equipo_visitante.logo': fixture.teams.away.logo,
     'equipo_visitante.goles': golesVisitante,
     'equipo_visitante.goles_primer_tiempo': fixture.score?.halftime?.away ?? null,
+    ...construirMarcador(fixture),
     ...(finalizado ? {
       total_goles: (golesLocal ?? 0) + (golesVisitante ?? 0),
       ambos_anotan: golesLocal > 0 && golesVisitante > 0,
@@ -52,4 +88,4 @@ function documentoEquipo(item, leagueId) {
   };
 }
 
-module.exports = { documentoEquipo, documentoFixture, ESTADOS_FINALIZADOS };
+module.exports = { documentoEquipo, documentoFixture, construirMarcador, ESTADOS_FINALIZADOS };
