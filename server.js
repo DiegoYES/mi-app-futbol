@@ -25,6 +25,7 @@ const billingRoutes = require('./routes/billing');
 const productEventsRoutes = require('./routes/productEvents');
 const mercadoPagoWebhookRoutes = require('./routes/mercadoPagoWebhook');
 const { protegido, requireAuth, requireAdmin, usuarioDeSesion } = require('./middleware/auth');
+const { resumirEventosPorMinuto } = require('./services/minuteRangeAnalysis');
 const { paginasPrivadas } = require('./middleware/paginasPrivadas');
 const {
   asignarIdSolicitud,
@@ -891,23 +892,16 @@ app.get('/api/analisis/rangos', async (req, res) => {
       partidos = partidos.slice(0, 3);
     }
 
-    let totalPartidos = partidos.length;
-    let suma = { goles: 0, amarillas: 0, rojas: 0, corners: 0 };
+    const totalPartidos = partidos.length;
+    const suma = { goles: 0, amarillas: 0, rojas: 0 };
 
     partidos.forEach(p => {
       const isLocal = p.equipo_local.id === teamId;
-      const rangos = isLocal ? p.equipo_local.estadisticas_por_rango : p.equipo_visitante.estadisticas_por_rango;
-      if (!rangos) return;
-
-      rangos.forEach(r => {
-        const [rInicio, rFin] = r.rango_minutos.split('-').map(Number);
-        if (rInicio <= minFin && rFin >= minInicio) {
-          suma.goles += r.goles || 0;
-          suma.amarillas += r.amarillas || 0;
-          suma.rojas += r.rojas || 0;
-          suma.corners += r.corners || 0;
-        }
-      });
+      const eventos = isLocal ? p.equipo_local.eventos : p.equipo_visitante.eventos;
+      const totales = resumirEventosPorMinuto(eventos, minInicio, minFin);
+      suma.goles += totales.goles;
+      suma.amarillas += totales.amarillas;
+      suma.rojas += totales.rojas;
     });
 
     const promedios = {};
@@ -915,7 +909,6 @@ app.get('/api/analisis/rangos', async (req, res) => {
     promedios.goles = (suma.goles / divisor).toFixed(2);
     promedios.amarillas = (suma.amarillas / divisor).toFixed(2);
     promedios.rojas = (suma.rojas / divisor).toFixed(2);
-    promedios.corners = (suma.corners / divisor).toFixed(2);
 
     res.json({
       equipo: teamId,
