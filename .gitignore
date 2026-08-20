@@ -14,3 +14,9 @@ var/playdoit/
 /artifacts/
 /DEPLOYED_COMMIT
 /RELEASE_HISTORY
+
+# Relevo privado y placeholders operativos locales
+/docs/CONTEXTO_OPERATIVO_CODEX.md
+/docs/STAGING-nuevo.md
+/deploy/*-nuevo.sh
+/test/e2e/smokeStaging.js
