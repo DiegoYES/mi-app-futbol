@@ -51,6 +51,16 @@ test('una respuesta de fixtures alimenta estadísticas, eventos y alineaciones',
   assert.equal(update['equipo_local.formacion'], '4-3-3');
 });
 
+test('no inventa cero ni marca cobertura completa si faltan corners', () => {
+  const bloque = id => ({ team: { id }, statistics: [
+    { type: 'Total Shots', value: 8 }, { type: 'Shots on Goal', value: 3 }
+  ] });
+  const update = construirUpdatePartido({ statistics: [bloque(1), bloque(2)] }, partido);
+  assert.equal(update.estadisticas_completas, false);
+  assert.equal(update['equipo_local.corners'], null);
+  assert.equal(update['equipo_visitante.corners'], null);
+});
+
 test('normaliza el rendimiento individual incluido en el fixture', () => {
   const resultado = datosJugador({
     player: { id: 10, name: 'Delantero', photo: 'foto' },

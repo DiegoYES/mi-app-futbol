@@ -4,6 +4,7 @@ const axios = require('axios');
 const https = require('https');
 const apiService = require('../services/apiFootball');
 const Partido = require('../models/partido');
+const { valorEstadistica, tieneMetricasBasicas } = require('../services/statValue');
 const Equipo = require('../models/Equipo');
 const config = require('../config/leagues');
 const { instalarControlCuotaAxios } = require('../services/apiQuota');
@@ -227,13 +228,13 @@ async function procesarDetallePartido(fixtureId, homeTeamId, awayTeamId) {
 
     const homeStats = fullFixture.statistics.find(s => s.team.id === homeTeamId);
     const awayStats = fullFixture.statistics.find(s => s.team.id === awayTeamId);
-    const update = { estadisticas_completas: true };
+    const update = { estadisticas_completas: tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats) };
 
     function extraerStats(statsObj, prefijo) {
       const s = statsObj.statistics;
       update[`${prefijo}.tiros_total`] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
       update[`${prefijo}.tiros_puerta`] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
-      update[`${prefijo}.corners`] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
+      update[`${prefijo}.corners`] = valorEstadistica(s, "Corner Kicks");
       update[`${prefijo}.faltas`] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
       update[`${prefijo}.tarjetas_amarillas`] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
       update[`${prefijo}.tarjetas_rojas`] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
