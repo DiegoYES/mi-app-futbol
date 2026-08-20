@@ -9,3 +9,8 @@ coverage/
 backups/
 var/playdoit/
 /cloudflared.deb
+
+# Artefactos locales de despliegue, pruebas y demostraciones
+/artifacts/
+/DEPLOYED_COMMIT
+/RELEASE_HISTORY

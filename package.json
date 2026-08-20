@@ -40,10 +40,18 @@
     "markets:debug": "node scripts/diagnosticarMercados.js",
     "test:markets": "node --test test/betting/*.test.js"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "keywords": [
+    "football",
+    "sports-analytics",
+    "express",
+    "mongodb",
+    "redis",
+    "statistics"
+  ],
+  "author": "Diego Jesús Hernández Aguilar",
+  "license": "UNLICENSED",
+  "private": true,
+  "description": "Plataforma web de análisis estadístico de fútbol, seguimiento de picks y comparación de mercados.",
   "dependencies": {
     "axios": "^1.16.0",
     "bcryptjs": "^3.0.3",

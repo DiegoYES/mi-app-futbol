@@ -152,8 +152,7 @@ combinado y añade `rt` (tiempo total), `urt` (tiempo del upstream Node),
 del upstream). No deben
 añadirse cookies, JWT, claves, cuerpos ni encabezados de autorización al log.
 Los respaldos anteriores al formato y a la separación por host son
-`/root/nginx-backup-20260814-timing/nginx.conf` y
-`/root/nginx-backup-20260814-timing-v1/nginx.conf`; la rotación continúa
+respaldos de configuración almacenados fuera del repositorio; la rotación continúa
 diaria, con 14 archivos.
 
 Para resumir las rutas más lentas sin conservar query strings ni IDs dinámicos:

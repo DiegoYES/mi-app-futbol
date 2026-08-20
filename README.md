@@ -1,14 +1,48 @@
-# Comparador estadístico de fútbol
+# Data Fut — análisis estadístico de fútbol
 
-Aplicación Express + MongoDB para comparar equipos, mercados de goles, partidos
-recientes, enfrentamientos directos y eventos por rango de minutos.
+![Data Fut](public/brand-social-banner.png)
+
+Plataforma web full stack para explorar datos históricos de fútbol, comparar equipos y evaluar mercados deportivos con muestras y probabilidades explícitas. El producto incluye autenticación, seguimiento personal, suscripciones, sincronización de datos y operación automatizada en producción.
+
+> Proyecto independiente con fines informativos. No es una casa de apuestas ni garantiza resultados.
+> Código fuente visible para evaluación profesional y fines de portafolio. No se concede permiso para copiar, redistribuir o utilizar comercialmente el proyecto.
+
+## Qué demuestra este proyecto
+
+- Aplicación web completa con Node.js, Express y JavaScript nativo en el cliente.
+- Modelado de partidos, equipos, jugadores y estadísticas en MongoDB.
+- Caché, rate limiting y coordinación entre procesos mediante Redis.
+- JWT en cookies seguras, roles, Helmet, validación de origen y límites de uso.
+- Suscripciones con Mercado Pago y validación de webhooks.
+- Ingesta reanudable, control de cuota, circuit breaker y auditorías de datos.
+- Pruebas unitarias, de integración, de interfaz y smoke tests.
+- Nginx, systemd, staging, rollback, monitoreo y respaldos automatizados.
+
+## Arquitectura
+
+```text
+Navegador
+   │
+Nginx ──► Express ──► MongoDB
+              │
+              ├────► Redis (caché, límites y coordinación)
+              ├────► API-Football (datos deportivos)
+              └────► Mercado Pago (suscripciones y webhooks)
+```
+
+## Tecnologías
+
+`Node.js` · `Express 5` · `MongoDB/Mongoose` · `Redis` · `JWT` · `Playwright` · `Node Test Runner` · `Nginx` · `systemd` · `Mercado Pago`
 
 ## Puesta en marcha
 
-1. Copia `.env.example` a `.env` y configura MongoDB, API-Football y JWT.
-2. Instala dependencias con `npm install`.
-3. Arranca la aplicación con `npm start`.
-4. Abre `http://localhost:3000/login.html`.
+1. Instala Node.js 20 o posterior y una instancia de MongoDB.
+2. Ejecuta `npm install`.
+3. Copia `.env.example` a `.env` y configura MongoDB, API-Football y JWT.
+4. Arranca la aplicación con `npm start`.
+5. Abre `http://localhost:3000/login.html`.
+
+Las credenciales reales deben permanecer únicamente en `.env`; este archivo está excluido de Git. Los valores de `.env.example` son plantillas.
 
 Comandos de comprobación:
 
@@ -26,7 +60,7 @@ La lista de seguridad, variables, alertas y plantilla de VM está en
 
 ## Staging y despliegue
 
-Cada commit se valida en https://staging.data-fut.com antes de llegar a
+Cada versión se valida en un entorno de staging aislado antes de llegar a
 producción. Producción corre bajo systemd con releases inmutables; staging usa
 dos procesos PM2 balanceados en los puertos 3100/3101. Ambos entornos conservan
 directorios, puertos, bases y secretos separados. El flujo completo
