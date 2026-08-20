@@ -1,4 +1,4 @@
-update[] = valorEstadistica(s, 'Corner Kicks');require('dotenv').config();
+require('dotenv').config();
 const mongoose = require('mongoose');
 const axios = require('axios');
 const https = require('https');
@@ -234,7 +234,7 @@ async function procesarDetallePartido(fixtureId, homeTeamId, awayTeamId) {
       const s = statsObj.statistics;
       update[`${prefijo}.tiros_total`] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
       update[`${prefijo}.tiros_puerta`] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
-      update[`${prefijo}.corners`] = parseInt(s.find(x => x.type === 'Corner Kicks')?.value) || 0;
+      update[`${prefijo}.corners`] = valorEstadistica(s, "Corner Kicks");
       update[`${prefijo}.faltas`] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
       update[`${prefijo}.tarjetas_amarillas`] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
       update[`${prefijo}.tarjetas_rojas`] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
