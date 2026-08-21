@@ -35,9 +35,10 @@ function normalizarMomio(valor, formato) {
     };
   }
   if (!/^[+-]?\d+$/.test(capturado)) return null;
-  const americano = Number(capturado);
-  const decimal = americanoADecimal(americano);
-  if (!decimal || decimal > 100000 || Math.abs(americano) > 10000000) return null;
+  const americanoCapturado = Number(capturado);
+  const decimal = americanoADecimal(americanoCapturado);
+  if (!decimal || decimal > 100000 || Math.abs(americanoCapturado) > 10000000) return null;
+  const americano = americanoCapturado === -100 ? 100 : americanoCapturado;
   return {
     cuota: Number(decimal.toFixed(4)),
     americano,

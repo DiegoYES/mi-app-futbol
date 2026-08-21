@@ -49,6 +49,12 @@ test('convierte momios americanos positivos y negativos a decimal y viceversa', 
   assert.equal(decimalAAmericano(2.5), 150);
   assert.equal(decimalAAmericano(1.91), -110);
   assert.equal(normalizarMomio('+150', 'americano').cuota, 2.5);
+  assert.deepEqual(normalizarMomio('-100', 'americano'), {
+    cuota: 2,
+    americano: 100,
+    formato: 'americano',
+    capturado: '+100'
+  });
   assert.equal(normalizarMomio('-99', 'americano'), null);
 });
 

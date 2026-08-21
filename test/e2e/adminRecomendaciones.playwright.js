@@ -46,8 +46,20 @@ async function main() {
 
     await tipo.selectOption('pick');
     if (await selecciones.count() !== 1) throw new Error('Volver a pick no redujo el formulario a una selección.');
+
+    const seleccion = selecciones.first();
+    await seleccion.locator('[data-rec="formato"]').selectOption('americano');
+    await seleccion.locator('[data-rec="momio"]').fill('-100');
+    if (await seleccion.locator('[data-rec="momio"]').inputValue() !== '+100') {
+      throw new Error('El momio individual -100 no se normalizó como +100.');
+    }
+    await pagina.locator('#rec-formato-total').selectOption('americano');
+    await pagina.locator('#rec-momio-total').fill('-100');
+    if (await pagina.locator('#rec-momio-total').inputValue() !== '+100') {
+      throw new Error('El momio total -100 no se normalizó como +100.');
+    }
     if (errores.length) throw new Error(`Errores JavaScript: ${errores.join(' | ')}`);
-    console.log('Playwright admin OK: añadir selección convierte el pick en parlay y agrega filas.');
+    console.log('Playwright admin OK: añade selecciones y normaliza -100 como +100.');
   } finally {
     await navegador.close();
   }

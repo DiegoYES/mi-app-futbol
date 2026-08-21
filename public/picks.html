@@ -132,9 +132,10 @@ function mostrarMomio(decimal, americano) {
   if (!decimal) return '';
   const cuota = Number(decimal);
   const recibido = Number(americano);
-  const valorAmericano = Number.isFinite(recibido)
+  const calculado = Number.isFinite(recibido)
     ? recibido
     : cuota >= 2 ? Math.round((cuota - 1) * 100) : Math.round(-100 / (cuota - 1));
+  const valorAmericano = calculado === -100 ? 100 : calculado;
   return `${Number(decimal).toFixed(2)} (${valorAmericano > 0 ? '+' : ''}${valorAmericano})`;
 }
 

@@ -244,8 +244,13 @@ function momioEnFormato(decimal, formato) {
 
 function resumenMomios(decimal, americano) {
   if (!decimal) return '—';
-  const momioAmericano = americano ?? americanoDesdeDecimal(decimal);
+  const recibido = americano ?? americanoDesdeDecimal(decimal);
+  const momioAmericano = recibido === -100 ? 100 : recibido;
   return `${Number(decimal).toFixed(2)} / ${momioAmericano > 0 ? '+' : ''}${momioAmericano}`;
+}
+
+function normalizarCienAmericano(input, formato) {
+  if (formato === 'americano' && input.value.trim() === '-100') input.value = '+100';
 }
 
 function etiquetaPartido(partido) {
@@ -795,10 +800,17 @@ function instalarEventos() {
     const fila = evento.target.closest('.rec-selection');
     if (!fila) return;
     if (evento.target.matches('[data-rec="partido"]')) cargarMercadosFila(fila);
-    if (evento.target.matches('[data-rec="formato"]')) actualizarMomioTotal();
+    if (evento.target.matches('[data-rec="formato"]')) {
+      normalizarCienAmericano(fila.querySelector('[data-rec="momio"]'), evento.target.value);
+      actualizarMomioTotal();
+    }
   });
   document.getElementById('rec-selecciones').addEventListener('input', evento => {
-    if (evento.target.matches('[data-rec="momio"]')) actualizarMomioTotal();
+    if (evento.target.matches('[data-rec="momio"]')) {
+      const fila = evento.target.closest('.rec-selection');
+      normalizarCienAmericano(evento.target, fila.querySelector('[data-rec="formato"]').value);
+      actualizarMomioTotal();
+    }
     if (evento.target.matches('[data-rec="buscar-partido"]')) {
       const fila = evento.target.closest('.rec-selection');
       poblarPartidosFila(fila, fila.querySelector('[data-rec="partido"]').value);
@@ -809,6 +821,7 @@ function instalarEventos() {
     }
   });
   document.getElementById('rec-momio-total').addEventListener('input', evento => {
+    normalizarCienAmericano(evento.target, document.getElementById('rec-formato-total').value);
     momioTotalManual = Boolean(evento.target.value.trim());
   });
   document.getElementById('rec-formato-total').addEventListener('change', () => {
