@@ -388,10 +388,13 @@ function actualizarMomioTotal(forzar = false) {
 function ajustarSelecciones() {
   const contenedor = document.getElementById('rec-selecciones');
   if (!contenedor.children.length) agregarSeleccion();
-  if (document.getElementById('rec-tipo').value === 'pick') {
+  const esPick = document.getElementById('rec-tipo').value === 'pick';
+  if (esPick) {
     while (contenedor.children.length > 1) contenedor.lastElementChild.remove();
   }
-  document.getElementById('rec-agregar').disabled = document.getElementById('rec-tipo').value === 'pick';
+  document.getElementById('rec-agregar').title = esPick
+    ? 'Al añadir otra selección se cambiará automáticamente a parlay.'
+    : 'Añadir otra selección al parlay.';
 }
 
 function limpiarRecomendacion() {
@@ -773,7 +776,13 @@ function instalarEventos() {
   document.getElementById('rec-form').addEventListener('submit', guardarRecomendacion);
   document.getElementById('rec-tipo').addEventListener('change', () => { ajustarSelecciones(); actualizarMomioTotal(); });
   document.getElementById('rec-cierra').addEventListener('change', cargarPartidosRecomendacion);
-  document.getElementById('rec-agregar').addEventListener('click', () => { agregarSeleccion(); actualizarMomioTotal(); });
+  document.getElementById('rec-agregar').addEventListener('click', () => {
+    const tipo = document.getElementById('rec-tipo');
+    if (tipo.value === 'pick') tipo.value = 'parlay';
+    agregarSeleccion();
+    ajustarSelecciones();
+    actualizarMomioTotal();
+  });
   document.getElementById('rec-cancelar').addEventListener('click', limpiarRecomendacion);
   document.getElementById('rec-selecciones').addEventListener('click', evento => {
     const boton = evento.target.closest('[data-rec-quitar]');

@@ -41,6 +41,7 @@
     "markets:debug": "node scripts/diagnosticarMercados.js",
     "test:render": "node test/e2e/penalesRender.playwright.js",
     "test:layout": "node test/e2e/comparadorLayout.playwright.js",
+    "test:admin-recomendaciones": "node test/e2e/adminRecomendaciones.playwright.js",
     "test:markets": "node --test test/betting/*.test.js"
   },
   "keywords": [
