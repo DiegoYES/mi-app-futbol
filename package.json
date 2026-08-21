@@ -43,6 +43,7 @@
     "test:layout": "node test/e2e/comparadorLayout.playwright.js",
     "test:admin-recomendaciones": "node test/e2e/adminRecomendaciones.playwright.js",
     "test:configuracion": "node test/e2e/configuracionCuenta.playwright.js",
+    "test:cambio-password": "node test/e2e/cambioPassword.playwright.js",
     "test:markets": "node --test test/betting/*.test.js"
   },
   "keywords": [
