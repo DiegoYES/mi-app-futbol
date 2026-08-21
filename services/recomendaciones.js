@@ -7,10 +7,43 @@ function texto(valor, maximo) {
   return typeof valor === 'string' ? valor.trim().slice(0, maximo) : '';
 }
 
-function numeroOpcional(valor) {
-  if (valor === '' || valor === null || valor === undefined) return undefined;
-  const numero = Number(valor);
-  return Number.isFinite(numero) ? numero : NaN;
+function decimalAAmericano(decimal) {
+  if (!Number.isFinite(decimal) || decimal <= 1) return null;
+  return decimal >= 2
+    ? Math.round((decimal - 1) * 100)
+    : Math.round(-100 / (decimal - 1));
+}
+
+function americanoADecimal(americano) {
+  if (!Number.isInteger(americano) || (americano > -100 && americano < 100)) return null;
+  return americano > 0
+    ? 1 + americano / 100
+    : 1 + 100 / Math.abs(americano);
+}
+
+function normalizarMomio(valor, formato) {
+  const capturado = typeof valor === 'number' ? String(valor) : texto(valor, 30);
+  if (!capturado || !['decimal', 'americano'].includes(formato)) return null;
+  if (formato === 'decimal') {
+    const decimal = Number(capturado.replace(',', '.'));
+    if (!Number.isFinite(decimal) || decimal <= 1 || decimal > 100000) return null;
+    return {
+      cuota: Number(decimal.toFixed(4)),
+      americano: decimalAAmericano(decimal),
+      formato,
+      capturado
+    };
+  }
+  if (!/^[+-]?\d+$/.test(capturado)) return null;
+  const americano = Number(capturado);
+  const decimal = americanoADecimal(americano);
+  if (!decimal || decimal > 100000 || Math.abs(americano) > 10000000) return null;
+  return {
+    cuota: Number(decimal.toFixed(4)),
+    americano,
+    formato,
+    capturado: americano > 0 ? `+${americano}` : String(americano)
+  };
 }
 
 function normalizarRecomendacion(entrada = {}) {
@@ -22,14 +55,28 @@ function normalizarRecomendacion(entrada = {}) {
   const resultado = RESULTADOS.has(entrada.resultado) ? entrada.resultado : null;
   const cierraEn = new Date(entrada.cierra_en);
   const selecciones = Array.isArray(entrada.selecciones)
-    ? entrada.selecciones.slice(0, 20).map(item => ({
-        evento: texto(item?.evento, 140),
-        mercado: texto(item?.mercado, 180),
-        cuota: numeroOpcional(item?.cuota),
-        casa: texto(item?.casa, 80)
-      }))
+    ? entrada.selecciones.slice(0, 20).map(item => {
+        const momio = normalizarMomio(item?.momio, item?.formato_momio);
+        return {
+          partido_api_id: Number(item?.partido_api_id),
+          mercado_id: texto(item?.mercado_id, 120),
+          cuota: momio?.cuota,
+          momio_americano: momio?.americano,
+          formato_momio: momio?.formato,
+          momio_capturado: momio?.capturado,
+          casa: texto(item?.casa, 80)
+        };
+      })
     : [];
-  const cuotaTotal = numeroOpcional(entrada.cuota_total);
+  const cuotaCalculada = selecciones.reduce((total, item) => total * (item.cuota || 1), 1);
+  const formatoMomioTotal = ['decimal', 'americano'].includes(entrada.formato_momio_total)
+    ? entrada.formato_momio_total : 'decimal';
+  const momioTotal = normalizarMomio(
+    entrada.momio_total === '' || entrada.momio_total === null || entrada.momio_total === undefined
+      ? cuotaCalculada.toFixed(4)
+      : entrada.momio_total,
+    formatoMomioTotal
+  );
 
   if (!tipo || !titulo || !visibilidad || !estadoPublicacion || !resultado) {
     return { error: 'Completa tipo, título, visibilidad, publicación y resultado.' };
@@ -39,16 +86,14 @@ function normalizarRecomendacion(entrada = {}) {
       || (tipo === 'parlay' && (selecciones.length < 2 || selecciones.length > 20))) {
     return { error: 'Un pick requiere una selección y un parlay entre 2 y 20.' };
   }
-  if (selecciones.some(item => !item.evento || !item.mercado)) {
-    return { error: 'Cada selección necesita evento y mercado.' };
+  if (selecciones.some(item => !Number.isInteger(item.partido_api_id) || !item.mercado_id)) {
+    return { error: 'Cada selección necesita un partido y un mercado válidos.' };
   }
-  if (selecciones.some(item => item.cuota !== undefined
-      && (!Number.isFinite(item.cuota) || item.cuota < 1 || item.cuota > 1000))) {
-    return { error: 'Las cuotas deben estar entre 1 y 1000.' };
+  if (selecciones.some(item => !Number.isFinite(item.cuota) || item.cuota > 1000)) {
+    return { error: 'Captura un momio decimal mayor a 1 o americano desde +100/-100.' };
   }
-  if (cuotaTotal !== undefined
-      && (!Number.isFinite(cuotaTotal) || cuotaTotal < 1 || cuotaTotal > 100000)) {
-    return { error: 'La cuota total debe estar entre 1 y 100000.' };
+  if (!momioTotal) {
+    return { error: 'El momio total no es válido.' };
   }
 
   return { datos: {
@@ -60,7 +105,10 @@ function normalizarRecomendacion(entrada = {}) {
     resultado,
     destacada: Boolean(entrada.destacada),
     selecciones,
-    cuota_total: cuotaTotal,
+    cuota_total: momioTotal.cuota,
+    momio_total_americano: momioTotal.americano,
+    formato_momio_total: momioTotal.formato,
+    momio_total_capturado: momioTotal.capturado,
     cierra_en: cierraEn
   } };
 }
@@ -78,6 +126,7 @@ function recomendacionParaUsuario(recomendacion, tieneAcceso) {
     resultado: item.resultado,
     destacada: item.destacada,
     cuota_total: item.cuota_total,
+    momio_total_americano: item.momio_total_americano,
     cierra_en: item.cierra_en,
     publicada_en: item.publicada_en,
     bloqueada: true,
@@ -85,4 +134,10 @@ function recomendacionParaUsuario(recomendacion, tieneAcceso) {
   };
 }
 
-module.exports = { normalizarRecomendacion, recomendacionParaUsuario };
+module.exports = {
+  americanoADecimal,
+  decimalAAmericano,
+  normalizarMomio,
+  normalizarRecomendacion,
+  recomendacionParaUsuario
+};

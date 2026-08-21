@@ -14,10 +14,92 @@ const mongoose = require('mongoose');
 const { obtenerMetricasHttp } = require('../middleware/observability');
 const Recomendacion = require('../models/Recomendacion');
 const { normalizarRecomendacion } = require('../services/recomendaciones');
+const Partido = require('../models/partido');
+const { obtenerMercado } = require('../services/marketCatalog');
+const { analizarPartido } = require('./picks');
 
 const router = express.Router();
 
 router.use(requireAuth, requireAdmin);
+
+const CAMPOS_PARTIDO_RECOMENDACION = [
+  'api_id', 'fecha', 'estado',
+  'liga.id', 'liga.nombre',
+  'equipo_local.id', 'equipo_local.nombre',
+  'equipo_visitante.id', 'equipo_visitante.nombre'
+].join(' ');
+
+router.get('/recomendaciones/partidos', async (req, res) => {
+  try {
+    const ahora = new Date();
+    const hasta = new Date(req.query.hasta);
+    const maximo = new Date(ahora.getTime() + 31 * 86400000);
+    if (Number.isNaN(hasta.getTime()) || hasta <= ahora || hasta > maximo) {
+      return res.status(400).json({ error: 'El límite debe estar entre ahora y los próximos 31 días.' });
+    }
+    const partidos = await Partido.find({
+      fecha: { $gte: ahora, $lte: hasta },
+      estado: { $nin: ['FT', 'AET', 'PEN'] }
+    }).select(CAMPOS_PARTIDO_RECOMENDACION).sort({ fecha: 1 }).lean();
+    res.json({ desde: ahora, hasta, partidos: partidos.map(partido => ({
+      api_id: partido.api_id,
+      fecha: partido.fecha,
+      liga: partido.liga,
+      local: partido.equipo_local,
+      visitante: partido.equipo_visitante
+    })) });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+router.get('/recomendaciones/partidos/:id/mercados', async (req, res) => {
+  try {
+    const partidoId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(partidoId)) return res.status(400).json({ error: 'Partido inválido.' });
+    const partido = await Partido.findOne({ api_id: partidoId });
+    if (!partido) return res.status(404).json({ error: 'Partido no encontrado.' });
+    const analisis = await analizarPartido(partido.toObject(), 10, 0);
+    res.json({ mercados: analisis.mercados.map(mercado => ({
+      id: mercado.id,
+      nombre: mercado.mercado,
+      categoria: mercado.categoria,
+      estimacion: mercado.estimacion,
+      confianza: mercado.confianza,
+      muestra: mercado.muestra
+    })) });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+async function enriquecerRecomendacion(datos) {
+  const ids = [...new Set(datos.selecciones.map(item => item.partido_api_id))];
+  const partidos = await Partido.find({ api_id: { $in: ids } })
+    .select(CAMPOS_PARTIDO_RECOMENDACION).lean();
+  const porId = new Map(partidos.map(partido => [partido.api_id, partido]));
+  const selecciones = [];
+
+  for (const seleccion of datos.selecciones) {
+    const partido = porId.get(seleccion.partido_api_id);
+    if (!partido) return { error: 'Uno de los partidos seleccionados ya no está disponible.' };
+    if (partido.fecha > datos.cierra_en) {
+      return { error: 'Todos los partidos deben comenzar antes de la fecha límite.' };
+    }
+    const mercado = obtenerMercado(seleccion.mercado_id);
+    if (!mercado) return { error: 'Uno de los mercados seleccionados no es válido.' };
+    selecciones.push({
+      ...seleccion,
+      fecha_partido: partido.fecha,
+      liga: { id: partido.liga.id, nombre: partido.liga.nombre },
+      local: { id: partido.equipo_local.id, nombre: partido.equipo_local.nombre },
+      visitante: { id: partido.equipo_visitante.id, nombre: partido.equipo_visitante.nombre },
+      evento: `${partido.equipo_local.nombre} vs ${partido.equipo_visitante.nombre}`,
+      mercado: mercado.nombre
+    });
+  }
+  return { datos: { ...datos, selecciones } };
+}
 
 router.get('/recomendaciones', async (_req, res) => {
   try {
@@ -35,7 +117,9 @@ router.post('/recomendaciones', async (req, res) => {
   try {
     const normalizada = normalizarRecomendacion(req.body);
     if (normalizada.error) return res.status(400).json({ error: normalizada.error });
-    const datos = normalizada.datos;
+    const enriquecida = await enriquecerRecomendacion(normalizada.datos);
+    if (enriquecida.error) return res.status(400).json({ error: enriquecida.error });
+    const datos = enriquecida.datos;
     const recomendacion = await Recomendacion.create({
       ...datos,
       creada_por: req.usuario._id,
@@ -52,10 +136,12 @@ router.patch('/recomendaciones/:id', async (req, res) => {
   try {
     const normalizada = normalizarRecomendacion(req.body);
     if (normalizada.error) return res.status(400).json({ error: normalizada.error });
+    const enriquecida = await enriquecerRecomendacion(normalizada.datos);
+    if (enriquecida.error) return res.status(400).json({ error: enriquecida.error });
     const actual = await Recomendacion.findById(req.params.id);
     if (!actual) return res.status(404).json({ error: 'Recomendación no encontrada.' });
     const antesPublicada = actual.estado_publicacion === 'publicada';
-    Object.assign(actual, normalizada.datos);
+    Object.assign(actual, enriquecida.datos);
     if (!antesPublicada && actual.estado_publicacion === 'publicada') actual.publicada_en = new Date();
     if (actual.estado_publicacion === 'borrador') actual.publicada_en = null;
     await actual.save();

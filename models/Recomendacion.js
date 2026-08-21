@@ -1,9 +1,27 @@
 const mongoose = require('mongoose');
 
 const seleccionRecomendadaSchema = new mongoose.Schema({
+  partido_api_id: { type: Number, required: true },
+  fecha_partido: { type: Date, required: true },
+  liga: {
+    id: { type: Number, required: true },
+    nombre: String
+  },
+  local: {
+    id: { type: Number, required: true },
+    nombre: { type: String, required: true }
+  },
+  visitante: {
+    id: { type: Number, required: true },
+    nombre: { type: String, required: true }
+  },
   evento: { type: String, required: true, trim: true, maxlength: 140 },
+  mercado_id: { type: String, required: true, trim: true, maxlength: 120 },
   mercado: { type: String, required: true, trim: true, maxlength: 180 },
-  cuota: { type: Number, min: 1, max: 1000 },
+  cuota: { type: Number, required: true, min: 1.001, max: 1000 },
+  momio_americano: { type: Number, required: true, min: -100000, max: 100000 },
+  formato_momio: { type: String, enum: ['decimal', 'americano'], required: true },
+  momio_capturado: { type: String, required: true, maxlength: 20 },
   casa: { type: String, trim: true, maxlength: 80 }
 }, { _id: false });
 
@@ -30,7 +48,10 @@ const recomendacionSchema = new mongoose.Schema({
       message: 'Un pick requiere una selección y un parlay entre 2 y 20.'
     }
   },
-  cuota_total: { type: Number, min: 1, max: 100000 },
+  cuota_total: { type: Number, required: true, min: 1.001, max: 100000 },
+  momio_total_americano: { type: Number, required: true, min: -10000000, max: 10000000 },
+  formato_momio_total: { type: String, enum: ['decimal', 'americano'], required: true },
+  momio_total_capturado: { type: String, required: true, maxlength: 30 },
   cierra_en: { type: Date, required: true },
   publicada_en: { type: Date, default: null },
   creada_por: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true }

@@ -74,8 +74,18 @@
   .rec-check { display:flex!important;align-items:center;gap:8px;min-height:42px;color:#334155!important; }
   .rec-check input { width:auto;min-height:auto;margin:0; }
   .rec-selections { display:grid;gap:8px;margin:12px 0; }
-  .rec-selection { display:grid;grid-template-columns:1.2fr 1.2fr 80px 100px auto;gap:7px;padding:9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px; }
-  .rec-selection input { min-width:0;margin:0; }
+  .rec-selection { display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:7px;padding:9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px; }
+  .rec-selection input,.rec-selection select { min-width:0;min-height:42px;margin:0;padding:8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;font:inherit; }
+  .rec-selection [data-rec="partido"],.rec-selection [data-rec="mercado"] { grid-column:span 6; }
+  .rec-selection [data-rec="buscar-partido"],.rec-selection [data-rec="buscar-mercado"] { grid-column:span 6;background:#fffef5; }
+  .rec-selection [data-rec="formato"] { grid-column:span 3; }
+  .rec-selection [data-rec="momio"] { grid-column:span 3; }
+  .rec-selection [data-rec="casa"] { grid-column:span 4; }
+  .rec-selection [data-rec-quitar] { grid-column:span 2; }
+  .rec-partidos-status { grid-column:1/-1;margin:-2px 0 2px;color:#64748b;font-size:.69rem; }
+  .momio-group { display:grid;grid-template-columns:125px minmax(0,1fr);gap:6px;margin-top:5px; }
+  .momio-group select,.momio-group input { margin-top:0; }
+  .momio-help { display:block;margin-top:5px;color:#64748b;font-size:.65rem;font-weight:400; }
   .rec-actions { display:flex;gap:8px;flex-wrap:wrap; }
   .rec-actions button { min-height:42px;border:0;border-radius:7px;padding:9px 13px;cursor:pointer; }
   .rec-primary { background:var(--primary);color:#fff; }
@@ -88,7 +98,7 @@
   .rec-card ol { margin:9px 0;padding-left:20px;font-size:.8rem; }
   .rec-card-meta { color:#64748b;font-size:.7rem; }
   @media(max-width:900px){.rec-panel{grid-template-columns:1fr}}
-  @media(max-width:800px){.ticket-edit{grid-template-columns:1fr 1fr}.ticket-edit>div:nth-child(3){grid-column:1/-1}.admin-ticket-head{display:block}.rec-selection{grid-template-columns:1fr 1fr}.rec-selection button{grid-column:1/-1}}
+  @media(max-width:800px){.ticket-edit{grid-template-columns:1fr 1fr}.ticket-edit>div:nth-child(3){grid-column:1/-1}.admin-ticket-head{display:block}.rec-selection{grid-template-columns:1fr 1fr}.rec-selection [data-rec]{grid-column:auto}.rec-selection [data-rec="partido"],.rec-selection [data-rec="mercado"],.rec-selection button{grid-column:1/-1}}
   @media(max-width:600px){.wrap{padding:18px 12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}.ticket-edit{grid-template-columns:1fr}.ticket-edit>div:nth-child(3){grid-column:auto}}
   @media(max-width:360px){.kpis{grid-template-columns:1fr}}
 </style>
@@ -111,9 +121,10 @@
           <label>Resultado<select id="rec-resultado"><option value="pendiente">Pendiente</option><option value="acertado">Acertado</option><option value="fallado">Fallado</option><option value="anulado">Anulado</option></select></label>
           <label class="rec-wide">Título<input id="rec-titulo" maxlength="140" required placeholder="Ej. Pick destacado del viernes"></label>
           <label class="rec-wide">Análisis<textarea id="rec-descripcion" maxlength="3000" placeholder="Explica brevemente por qué lo recomendamos"></textarea></label>
-          <label>Fecha y hora límite<input id="rec-cierra" type="datetime-local" required></label>
-          <label>Cuota total<input id="rec-cuota-total" type="number" min="1" max="100000" step="0.01" placeholder="Opcional"></label>
+          <label>Partidos disponibles hasta<input id="rec-cierra" type="datetime-local" required><span class="momio-help">Se mostrarán partidos desde este momento hasta el límite.</span></label>
+          <label>Momio total<div class="momio-group"><select id="rec-formato-total"><option value="decimal">Decimal</option><option value="americano">Americano</option></select><input id="rec-momio-total" inputmode="text" maxlength="30" placeholder="Se calcula solo"></div><span class="momio-help" id="rec-total-ayuda">Puedes reemplazar el cálculo con el momio de la casa.</span></label>
           <label class="rec-check rec-wide"><input id="rec-destacada" type="checkbox"> Destacar esta recomendación</label>
+          <p class="rec-partidos-status" id="rec-partidos-status">Elige una fecha límite para cargar partidos.</p>
         </div>
         <div id="rec-selecciones" class="rec-selections"></div>
         <div class="rec-actions">
@@ -200,15 +211,178 @@ function fechaLocalInput(valor) {
   return local.toISOString().slice(0, 16);
 }
 
+let partidosRecomendacion = [];
+const mercadosRecomendacion = new Map();
+let cargaPartidosId = 0;
+let momioTotalManual = false;
+
+function fechaHora(valor) {
+  return new Date(valor).toLocaleString('es-MX', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function cuotaDecimalDesdeEntrada(valor, formato) {
+  const texto = String(valor || '').trim().replace(',', '.');
+  if (!texto) return null;
+  const numero = Number(texto);
+  if (!Number.isFinite(numero)) return null;
+  if (formato === 'decimal') return numero > 1 ? numero : null;
+  if (!Number.isInteger(numero) || (numero > -100 && numero < 100)) return null;
+  return numero > 0 ? 1 + numero / 100 : 1 + 100 / Math.abs(numero);
+}
+
+function americanoDesdeDecimal(decimal) {
+  if (!Number.isFinite(decimal) || decimal <= 1) return null;
+  return decimal >= 2 ? Math.round((decimal - 1) * 100) : Math.round(-100 / (decimal - 1));
+}
+
+function momioEnFormato(decimal, formato) {
+  if (!Number.isFinite(decimal) || decimal <= 1) return '';
+  if (formato === 'decimal') return decimal.toFixed(2);
+  const americano = americanoDesdeDecimal(decimal);
+  return americano > 0 ? `+${americano}` : String(americano);
+}
+
+function resumenMomios(decimal, americano) {
+  if (!decimal) return '—';
+  const momioAmericano = americano ?? americanoDesdeDecimal(decimal);
+  return `${Number(decimal).toFixed(2)} / ${momioAmericano > 0 ? '+' : ''}${momioAmericano}`;
+}
+
+function etiquetaPartido(partido) {
+  return `${fechaHora(partido.fecha)} · ${partido.local.nombre} vs ${partido.visitante.nombre} · ${partido.liga?.nombre || 'Competición'}`;
+}
+
+function textoBusqueda(valor) {
+  return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+}
+
+function poblarPartidosFila(fila, seleccionado = '', legado = null) {
+  const select = fila.querySelector('[data-rec="partido"]');
+  const id = Number(seleccionado);
+  const busqueda = textoBusqueda(fila.querySelector('[data-rec="buscar-partido"]')?.value);
+  const opciones = partidosRecomendacion.filter(partido => !busqueda
+    || textoBusqueda(etiquetaPartido(partido)).includes(busqueda)
+    || partido.api_id === id);
+  if (id && !opciones.some(partido => partido.api_id === id) && legado) {
+    opciones.unshift({
+      api_id: id,
+      fecha: legado.fecha_partido,
+      liga: legado.liga || {},
+      local: legado.local || { nombre: legado.evento || 'Partido guardado' },
+      visitante: legado.visitante || { nombre: '' }
+    });
+  }
+  select.innerHTML = '<option value="">Selecciona un partido…</option>' + opciones.map(partido =>
+    `<option value="${partido.api_id}" ${partido.api_id === id ? 'selected' : ''}>${escaparHtml(etiquetaPartido(partido))}</option>`
+  ).join('');
+}
+
+function pintarMercadosFila(fila, seleccionado = '', nombreLegado = '') {
+  const partidoId = Number(fila.querySelector('[data-rec="partido"]').value);
+  const select = fila.querySelector('[data-rec="mercado"]');
+  const busqueda = textoBusqueda(fila.querySelector('[data-rec="buscar-mercado"]')?.value);
+  const todos = mercadosRecomendacion.get(partidoId) || [];
+  const mercados = todos.filter(mercado => !busqueda
+    || textoBusqueda(`${mercado.nombre} ${mercado.categoria}`).includes(busqueda)
+    || mercado.id === seleccionado);
+  const existe = todos.some(mercado => mercado.id === seleccionado);
+  select.innerHTML = '<option value="">Selecciona un mercado…</option>'
+    + (!existe && seleccionado ? `<option value="${escaparHtml(seleccionado)}" selected>${escaparHtml(nombreLegado || seleccionado)}</option>` : '')
+    + mercados.map(mercado => `<option value="${escaparHtml(mercado.id)}" ${mercado.id === seleccionado ? 'selected' : ''}>${escaparHtml(mercado.nombre)} · ${mercado.estimacion}% · muestra ${mercado.muestra}</option>`).join('');
+  select.disabled = false;
+}
+
+async function cargarMercadosFila(fila, seleccionado = '', nombreLegado = '') {
+  const partidoId = Number(fila.querySelector('[data-rec="partido"]').value);
+  const select = fila.querySelector('[data-rec="mercado"]');
+  if (!partidoId) {
+    select.innerHTML = '<option value="">Primero selecciona un partido</option>';
+    select.disabled = true;
+    return;
+  }
+  select.disabled = true;
+  select.innerHTML = '<option value="">Cargando mercados…</option>';
+  try {
+    if (!mercadosRecomendacion.has(partidoId)) {
+      const respuesta = await fetch(`/api/admin/recomendaciones/partidos/${partidoId}/mercados`);
+      const datos = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar los mercados.');
+      mercadosRecomendacion.set(partidoId, datos.mercados);
+    }
+    if (Number(fila.querySelector('[data-rec="partido"]').value) !== partidoId) return;
+    pintarMercadosFila(fila, seleccionado, nombreLegado);
+  } catch (error) {
+    select.innerHTML = `<option value="">${escaparHtml(error.message)}</option>`;
+  }
+}
+
 function agregarSeleccion(datos = {}) {
   const fila = document.createElement('div');
   fila.className = 'rec-selection';
-  fila.innerHTML = `<input data-rec="evento" maxlength="140" required placeholder="Partido o evento" value="${escaparHtml(datos.evento || '')}">
-    <input data-rec="mercado" maxlength="180" required placeholder="Mercado recomendado" value="${escaparHtml(datos.mercado || '')}">
-    <input data-rec="cuota" type="number" min="1" max="1000" step="0.01" placeholder="Cuota" value="${escaparHtml(datos.cuota ?? '')}">
-    <input data-rec="casa" maxlength="80" placeholder="Casa" value="${escaparHtml(datos.casa || '')}">
+  fila.innerHTML = `<input data-rec="buscar-partido" type="search" placeholder="Buscar equipo o liga…">
+    <input data-rec="buscar-mercado" type="search" placeholder="Buscar mercado…">
+    <select data-rec="partido" required></select>
+    <select data-rec="mercado" required disabled><option value="">Primero selecciona un partido</option></select>
+    <select data-rec="formato"><option value="decimal" ${datos.formato_momio !== 'americano' ? 'selected' : ''}>Decimal</option><option value="americano" ${datos.formato_momio === 'americano' ? 'selected' : ''}>Americano</option></select>
+    <input data-rec="momio" inputmode="text" maxlength="20" required placeholder="Momio" value="${escaparHtml(datos.momio_capturado ?? datos.cuota ?? '')}">
+    <input data-rec="casa" maxlength="80" placeholder="Casa (opcional)" value="${escaparHtml(datos.casa || '')}">
     <button class="rec-danger" type="button" data-rec-quitar>Quitar</button>`;
   document.getElementById('rec-selecciones').appendChild(fila);
+  poblarPartidosFila(fila, datos.partido_api_id, datos);
+  if (datos.partido_api_id) cargarMercadosFila(fila, datos.mercado_id, datos.mercado);
+}
+
+async function cargarPartidosRecomendacion() {
+  const cierre = document.getElementById('rec-cierra').value;
+  const estado = document.getElementById('rec-partidos-status');
+  if (!cierre) {
+    partidosRecomendacion = [];
+    estado.textContent = 'Elige una fecha límite para cargar partidos.';
+    return;
+  }
+  const limite = new Date(cierre);
+  if (limite <= new Date()) {
+    partidosRecomendacion = [];
+    estado.textContent = 'La fecha límite debe estar en el futuro.';
+    return;
+  }
+  const carga = ++cargaPartidosId;
+  estado.textContent = 'Cargando partidos disponibles…';
+  try {
+    const respuesta = await fetch(`/api/admin/recomendaciones/partidos?hasta=${encodeURIComponent(limite.toISOString())}`);
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar los partidos.');
+    if (carga !== cargaPartidosId) return;
+    partidosRecomendacion = datos.partidos;
+    estado.textContent = partidosRecomendacion.length
+      ? `${partidosRecomendacion.length} partido(s) entre ahora y ${fechaHora(limite)}.`
+      : 'No hay partidos guardados dentro de ese rango.';
+    document.querySelectorAll('.rec-selection').forEach(fila => {
+      const seleccionado = fila.querySelector('[data-rec="partido"]').value;
+      poblarPartidosFila(fila, seleccionado);
+      if (seleccionado) cargarMercadosFila(fila, fila.querySelector('[data-rec="mercado"]').value);
+    });
+  } catch (error) {
+    if (carga !== cargaPartidosId) return;
+    estado.textContent = error.message;
+  }
+}
+
+function actualizarMomioTotal(forzar = false) {
+  if (momioTotalManual && !forzar) return;
+  const cuotas = [...document.querySelectorAll('.rec-selection')].map(fila => cuotaDecimalDesdeEntrada(
+    fila.querySelector('[data-rec="momio"]').value,
+    fila.querySelector('[data-rec="formato"]').value
+  ));
+  const input = document.getElementById('rec-momio-total');
+  if (!cuotas.length || cuotas.some(cuota => !cuota)) {
+    input.value = '';
+    document.getElementById('rec-total-ayuda').textContent = 'Captura los momios individuales para calcular el total.';
+    return;
+  }
+  const total = cuotas.reduce((producto, cuota) => producto * cuota, 1);
+  input.value = momioEnFormato(total, document.getElementById('rec-formato-total').value);
+  document.getElementById('rec-total-ayuda').textContent = `Cálculo de las selecciones: ${resumenMomios(total)}. Puedes reemplazarlo.`;
 }
 
 function ajustarSelecciones() {
@@ -223,11 +397,17 @@ function ajustarSelecciones() {
 function limpiarRecomendacion() {
   document.getElementById('rec-form').reset();
   document.getElementById('rec-id').value = '';
+  const manana = new Date();
+  manana.setDate(manana.getDate() + 1);
+  manana.setHours(23, 59, 0, 0);
+  document.getElementById('rec-cierra').value = fechaLocalInput(manana);
   document.getElementById('rec-selecciones').innerHTML = '';
   document.getElementById('rec-guardar').textContent = 'Crear recomendación';
   document.getElementById('rec-cancelar').hidden = true;
+  momioTotalManual = false;
   agregarSeleccion();
   ajustarSelecciones();
+  cargarPartidosRecomendacion();
 }
 
 function datosRecomendacionFormulario() {
@@ -240,12 +420,14 @@ function datosRecomendacionFormulario() {
     estado_publicacion: document.getElementById('rec-publicacion').value,
     resultado: document.getElementById('rec-resultado').value,
     destacada: document.getElementById('rec-destacada').checked,
-    cuota_total: document.getElementById('rec-cuota-total').value,
+    formato_momio_total: document.getElementById('rec-formato-total').value,
+    momio_total: document.getElementById('rec-momio-total').value,
     cierra_en: cierreLocal ? new Date(cierreLocal).toISOString() : '',
     selecciones: [...document.querySelectorAll('.rec-selection')].map(fila => ({
-      evento: fila.querySelector('[data-rec="evento"]').value,
-      mercado: fila.querySelector('[data-rec="mercado"]').value,
-      cuota: fila.querySelector('[data-rec="cuota"]').value,
+      partido_api_id: Number(fila.querySelector('[data-rec="partido"]').value),
+      mercado_id: fila.querySelector('[data-rec="mercado"]').value,
+      formato_momio: fila.querySelector('[data-rec="formato"]').value,
+      momio: fila.querySelector('[data-rec="momio"]').value,
       casa: fila.querySelector('[data-rec="casa"]').value
     }))
   };
@@ -291,13 +473,13 @@ async function cargarRecomendacionesAdmin() {
   contenedor.innerHTML = recomendacionesAdmin.map(item => `<article class="rec-card" data-rec-id="${item._id}">
     <div class="rec-card-head"><div><span class="rec-card-meta">${item.tipo === 'parlay' ? 'PARLAY' : 'PICK'} · ${escaparHtml(item.visibilidad)} · ${escaparHtml(item.estado_publicacion)}</span><h3>${escaparHtml(item.titulo)}</h3></div><span class="badge ${item.resultado === 'acertado' ? 'premium' : item.resultado === 'fallado' ? 'expirado' : 'prueba'}">${escaparHtml(item.resultado)}</span></div>
     ${item.descripcion ? `<p>${escaparHtml(item.descripcion)}</p>` : ''}
-    <ol>${item.selecciones.map(seleccion => `<li><strong>${escaparHtml(seleccion.evento)}</strong> · ${escaparHtml(seleccion.mercado)}${seleccion.cuota ? ` @ ${seleccion.cuota}` : ''}</li>`).join('')}</ol>
-    <div class="rec-card-meta">Cierra ${fecha(item.cierra_en)}${item.cuota_total ? ` · Cuota total ${item.cuota_total}` : ''}${item.destacada ? ' · ⭐ Destacada' : ''}</div>
+    <ol>${item.selecciones.map(seleccion => `<li><strong>${escaparHtml(seleccion.evento)}</strong> · ${escaparHtml(seleccion.mercado)} · ${resumenMomios(seleccion.cuota, seleccion.momio_americano)}${seleccion.casa ? ` · ${escaparHtml(seleccion.casa)}` : ''}<br><small>${fechaHora(seleccion.fecha_partido)}</small></li>`).join('')}</ol>
+    <div class="rec-card-meta">Cierra ${fechaHora(item.cierra_en)} · Momio total ${resumenMomios(item.cuota_total, item.momio_total_americano)}${item.destacada ? ' · ⭐ Destacada' : ''}</div>
     <div class="rec-actions" style="margin-top:11px"><button class="rec-secondary" type="button" data-rec-editar="${item._id}">Editar</button><button class="rec-danger" type="button" data-rec-eliminar="${item._id}">Eliminar</button></div>
   </article>`).join('');
 }
 
-function editarRecomendacion(id) {
+async function editarRecomendacion(id) {
   const item = recomendacionesAdmin.find(recomendacion => recomendacion._id === id);
   if (!item) return;
   document.getElementById('rec-id').value = item._id;
@@ -308,9 +490,12 @@ function editarRecomendacion(id) {
   document.getElementById('rec-titulo').value = item.titulo;
   document.getElementById('rec-descripcion').value = item.descripcion || '';
   document.getElementById('rec-cierra').value = fechaLocalInput(item.cierra_en);
-  document.getElementById('rec-cuota-total').value = item.cuota_total || '';
+  document.getElementById('rec-formato-total').value = item.formato_momio_total || 'decimal';
+  document.getElementById('rec-momio-total').value = item.momio_total_capturado || item.cuota_total || '';
   document.getElementById('rec-destacada').checked = item.destacada;
   document.getElementById('rec-selecciones').innerHTML = '';
+  momioTotalManual = true;
+  await cargarPartidosRecomendacion();
   item.selecciones.forEach(agregarSeleccion);
   ajustarSelecciones();
   document.getElementById('rec-guardar').textContent = 'Guardar cambios';
@@ -586,14 +771,40 @@ function refrescar() {
 
 function instalarEventos() {
   document.getElementById('rec-form').addEventListener('submit', guardarRecomendacion);
-  document.getElementById('rec-tipo').addEventListener('change', ajustarSelecciones);
-  document.getElementById('rec-agregar').addEventListener('click', () => agregarSeleccion());
+  document.getElementById('rec-tipo').addEventListener('change', () => { ajustarSelecciones(); actualizarMomioTotal(); });
+  document.getElementById('rec-cierra').addEventListener('change', cargarPartidosRecomendacion);
+  document.getElementById('rec-agregar').addEventListener('click', () => { agregarSeleccion(); actualizarMomioTotal(); });
   document.getElementById('rec-cancelar').addEventListener('click', limpiarRecomendacion);
   document.getElementById('rec-selecciones').addEventListener('click', evento => {
     const boton = evento.target.closest('[data-rec-quitar]');
     if (!boton) return;
     boton.closest('.rec-selection').remove();
     ajustarSelecciones();
+    actualizarMomioTotal();
+  });
+  document.getElementById('rec-selecciones').addEventListener('change', evento => {
+    const fila = evento.target.closest('.rec-selection');
+    if (!fila) return;
+    if (evento.target.matches('[data-rec="partido"]')) cargarMercadosFila(fila);
+    if (evento.target.matches('[data-rec="formato"]')) actualizarMomioTotal();
+  });
+  document.getElementById('rec-selecciones').addEventListener('input', evento => {
+    if (evento.target.matches('[data-rec="momio"]')) actualizarMomioTotal();
+    if (evento.target.matches('[data-rec="buscar-partido"]')) {
+      const fila = evento.target.closest('.rec-selection');
+      poblarPartidosFila(fila, fila.querySelector('[data-rec="partido"]').value);
+    }
+    if (evento.target.matches('[data-rec="buscar-mercado"]')) {
+      const fila = evento.target.closest('.rec-selection');
+      pintarMercadosFila(fila, fila.querySelector('[data-rec="mercado"]').value);
+    }
+  });
+  document.getElementById('rec-momio-total').addEventListener('input', evento => {
+    momioTotalManual = Boolean(evento.target.value.trim());
+  });
+  document.getElementById('rec-formato-total').addEventListener('change', () => {
+    momioTotalManual = false;
+    actualizarMomioTotal(true);
   });
   document.getElementById('rec-lista').addEventListener('click', evento => {
     const editar = evento.target.closest('[data-rec-editar]');

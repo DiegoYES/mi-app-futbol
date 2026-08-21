@@ -128,6 +128,16 @@ function fecha(valor) {
   return new Date(valor).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function mostrarMomio(decimal, americano) {
+  if (!decimal) return '';
+  const cuota = Number(decimal);
+  const recibido = Number(americano);
+  const valorAmericano = Number.isFinite(recibido)
+    ? recibido
+    : cuota >= 2 ? Math.round((cuota - 1) * 100) : Math.round(-100 / (cuota - 1));
+  return `${Number(decimal).toFixed(2)} (${valorAmericano > 0 ? '+' : ''}${valorAmericano})`;
+}
+
 const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
 let catalogoGeneralCargado = false;
 let picksGuardados = new Set();
@@ -147,8 +157,8 @@ async function cargarRecomendacionesEditoriales() {
       const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${item.resultado !== 'pendiente' ? `<span class="editorial-badge ${esc(item.resultado)}">${esc(item.resultado)}</span>` : ''}`;
       const contenido = item.bloqueada
         ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
-        : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => `<li class="editorial-selection"><div><strong>${esc(seleccion.evento)}</strong><span>${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div>${seleccion.cuota ? `<b>@ ${seleccion.cuota}</b>` : ''}</li>`).join('')}</ol>`;
-      return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>${item.cuota_total ? `Cuota total ${item.cuota_total}` : tipo}</strong></footer></article>`;
+        : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => `<li class="editorial-selection"><div><strong>${esc(seleccion.evento)}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b></li>`).join('')}</ol>`;
+      return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>Momio total ${mostrarMomio(item.cuota_total, item.momio_total_americano)}</strong></footer></article>`;
     }).join('');
   } catch (error) {
     contenedor.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
