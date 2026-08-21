@@ -30,9 +30,12 @@ async function main() {
     ]);
     await pagina.goto('/admin.html', { waitUntil: 'networkidle' });
 
-    const paneles = ['resumen', 'picks', 'usuarios', 'tickets', 'mercados', 'seguridad'];
+    const paneles = ['resumen', 'picks', 'usuarios', 'tickets', 'seguridad'];
     const menu = pagina.locator('#admin-menu [data-admin-panel]');
     if (await menu.count() !== paneles.length) throw new Error('El menú no contiene todas las secciones administrativas.');
+    if (await pagina.getByText('Playdoit', { exact: false }).count()) {
+      throw new Error('La integración Playdoit todavía aparece en el panel.');
+    }
     if (await pagina.locator('[data-admin-panel-content]:visible').count() !== 1) {
       throw new Error('Debe mostrarse exactamente una sección administrativa.');
     }
