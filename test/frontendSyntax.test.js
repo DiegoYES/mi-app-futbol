@@ -148,6 +148,14 @@ test('el panel de administración conecta sus controles sin eventos inline bloqu
   assert.match(html, /data-accion="extender"/);
 });
 
+test('el creador editorial tokeniza partidos y mercados y muestra el nombre completo de Audax', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.html'), 'utf8');
+  assert.match(html, /<script src="\/search-utils\.js"><\/script>/);
+  assert.match(html, /\[2329, 'Audax Italiano'\]/);
+  assert.match(html, /FutbolSearch\.ordenar\(partidosRecomendacion/);
+  assert.match(html, /FutbolSearch\.ordenar\(todos/);
+});
+
 test('los enfrentamientos del centro de partido exponen detalles desplegables', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
   assert.match(html, /data-h2h-details/);

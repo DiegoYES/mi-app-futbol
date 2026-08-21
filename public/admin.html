@@ -6,6 +6,7 @@
 <title>Panel de administración</title>
 <link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
 <script src="/auth-client.js"></script>
+<script src="/search-utils.js"></script>
 <style>
   :root { --primary: #0a2540; --accent: #00d4ff; --bg: #f3f4f6; }
   * { box-sizing: border-box; }
@@ -275,21 +276,34 @@ function normalizarCienAmericano(input, formato) {
   if (formato === 'americano' && input.value.trim() === '-100') input.value = '+100';
 }
 
-function etiquetaPartido(partido) {
-  return `${fechaHora(partido.fecha)} · ${partido.local.nombre} vs ${partido.visitante.nombre} · ${partido.liga?.nombre || 'Competición'}`;
+const NOMBRES_EDITORIALES_EQUIPO = new Map([
+  [2329, 'Audax Italiano']
+]);
+
+function nombreEquipoEditorial(equipo = {}) {
+  return NOMBRES_EDITORIALES_EQUIPO.get(Number(equipo.id)) || equipo.nombre || 'Equipo';
 }
 
-function textoBusqueda(valor) {
-  return String(valor || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+function etiquetaPartido(partido) {
+  return `${fechaHora(partido.fecha)} · ${nombreEquipoEditorial(partido.local)} vs ${nombreEquipoEditorial(partido.visitante)} · ${partido.liga?.nombre || 'Competición'}`;
+}
+
+function textoIndexPartido(partido) {
+  return [
+    etiquetaPartido(partido),
+    partido.local?.nombre,
+    partido.visitante?.nombre,
+    partido.liga?.nombre
+  ].filter(Boolean).join(' ');
 }
 
 function poblarPartidosFila(fila, seleccionado = '', legado = null) {
   const select = fila.querySelector('[data-rec="partido"]');
   const id = Number(seleccionado);
-  const busqueda = textoBusqueda(fila.querySelector('[data-rec="buscar-partido"]')?.value);
-  const opciones = partidosRecomendacion.filter(partido => !busqueda
-    || textoBusqueda(etiquetaPartido(partido)).includes(busqueda)
-    || partido.api_id === id);
+  const busqueda = fila.querySelector('[data-rec="buscar-partido"]')?.value || '';
+  const opciones = FutbolSearch.ordenar(partidosRecomendacion, busqueda, textoIndexPartido);
+  const partidoSeleccionado = partidosRecomendacion.find(partido => partido.api_id === id);
+  if (partidoSeleccionado && !opciones.some(partido => partido.api_id === id)) opciones.unshift(partidoSeleccionado);
   if (id && !opciones.some(partido => partido.api_id === id) && legado) {
     opciones.unshift({
       api_id: id,
@@ -307,11 +321,11 @@ function poblarPartidosFila(fila, seleccionado = '', legado = null) {
 function pintarMercadosFila(fila, seleccionado = '', nombreLegado = '') {
   const partidoId = Number(fila.querySelector('[data-rec="partido"]').value);
   const select = fila.querySelector('[data-rec="mercado"]');
-  const busqueda = textoBusqueda(fila.querySelector('[data-rec="buscar-mercado"]')?.value);
+  const busqueda = fila.querySelector('[data-rec="buscar-mercado"]')?.value || '';
   const todos = mercadosRecomendacion.get(partidoId) || [];
-  const mercados = todos.filter(mercado => !busqueda
-    || textoBusqueda(`${mercado.nombre} ${mercado.categoria}`).includes(busqueda)
-    || mercado.id === seleccionado);
+  const mercados = FutbolSearch.ordenar(todos, busqueda, mercado => `${mercado.nombre} ${mercado.categoria}`);
+  const mercadoSeleccionado = todos.find(mercado => mercado.id === seleccionado);
+  if (mercadoSeleccionado && !mercados.some(mercado => mercado.id === seleccionado)) mercados.unshift(mercadoSeleccionado);
   const existe = todos.some(mercado => mercado.id === seleccionado);
   select.innerHTML = '<option value="">Selecciona un mercado…</option>'
     + (!existe && seleccionado ? `<option value="${escaparHtml(seleccionado)}" selected>${escaparHtml(nombreLegado || seleccionado)}</option>` : '')

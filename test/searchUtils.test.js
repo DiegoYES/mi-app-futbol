@@ -20,3 +20,8 @@ test('los resultados exactos y por prefijo aparecen primero', () => {
   const equipos = [{ nombre: 'Real Sociedad' }, { nombre: 'Real Madrid' }, { nombre: 'Madrid CFF' }];
   assert.deepEqual(busqueda.ordenar(equipos, 'real mad', item => item.nombre).map(item => item.nombre), ['Real Madrid']);
 });
+
+test('los alias editoriales y los mercados aceptan fragmentos en cualquier orden', () => {
+  assert.equal(busqueda.coincide('A. Italiano Audax Italiano', 'Italiano Audax'), true);
+  assert.equal(busqueda.coincide('Más de 2.5 tarjetas registradas totales tarjetas', 'registradas tarjetas'), true);
+});

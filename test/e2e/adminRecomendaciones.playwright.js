@@ -20,6 +20,30 @@ async function main() {
   const errores = [];
   pagina.on('pageerror', error => errores.push(error.message));
 
+  const partidoAudax = {
+    api_id: 99001549,
+    fecha: new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString(),
+    liga: { id: 265, nombre: 'Chile Primera División' },
+    local: { id: 2329, nombre: 'A. Italiano' },
+    visitante: { id: 2326, nombre: 'Union La Calera' }
+  };
+  await pagina.route('**/api/admin/recomendaciones/partidos?*', async ruta => {
+    const respuesta = await ruta.fetch();
+    const datos = await respuesta.json();
+    await ruta.fulfill({ response: respuesta, json: { ...datos, partidos: [...(datos.partidos || []), partidoAudax] } });
+  });
+  await pagina.route(`**/api/admin/recomendaciones/partidos/${partidoAudax.api_id}/mercados`, ruta => ruta.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ mercados: [{
+      id: 'tarjetas_total_over_2.5',
+      nombre: 'Más de 2.5 tarjetas registradas totales',
+      categoria: 'tarjetas',
+      estimacion: 78.6,
+      muestra: 10
+    }] })
+  }));
+
   try {
     await pagina.goto('/login.html', { waitUntil: 'networkidle' });
     await pagina.fill('input[type="email"]', EMAIL);
@@ -64,6 +88,19 @@ async function main() {
     if (await selecciones.count() !== 1) throw new Error('El pick inicial no tiene exactamente una selección.');
     if (await agregar.isDisabled()) throw new Error('El botón Añadir selección está deshabilitado.');
 
+    const primeraSeleccion = selecciones.first();
+    await primeraSeleccion.locator('[data-rec="buscar-partido"]').fill('Italiano Audax');
+    const opcionAudax = primeraSeleccion.locator(`[data-rec="partido"] option[value="${partidoAudax.api_id}"]`);
+    if (await opcionAudax.count() !== 1 || !(await opcionAudax.textContent()).includes('Audax Italiano')) {
+      throw new Error('La búsqueda tokenizada no encontró Audax Italiano usando el alias del proveedor.');
+    }
+    await primeraSeleccion.locator('[data-rec="partido"]').selectOption(String(partidoAudax.api_id));
+    await primeraSeleccion.locator('[data-rec="mercado"]:not([disabled])').waitFor();
+    await primeraSeleccion.locator('[data-rec="buscar-mercado"]').fill('registradas tarjetas');
+    if (await primeraSeleccion.locator('[data-rec="mercado"] option[value="tarjetas_total_over_2.5"]').count() !== 1) {
+      throw new Error('La búsqueda tokenizada no encontró el mercado con las palabras en distinto orden.');
+    }
+
     await agregar.click();
     if (await tipo.inputValue() !== 'parlay') throw new Error('Añadir una segunda selección no cambió el tipo a parlay.');
     if (await selecciones.count() !== 2) throw new Error('Añadir selección no creó la segunda fila.');
@@ -94,7 +131,7 @@ async function main() {
       if (desborde) throw new Error(`La sección ${panel} genera desborde horizontal en móvil.`);
     }
     if (errores.length) throw new Error(`Errores JavaScript: ${errores.join(' | ')}`);
-    console.log('Playwright admin OK: menú por secciones en escritorio/móvil y creador de parlays funcional.');
+    console.log('Playwright admin OK: menú, búsqueda tokenizada de Audax/mercados y creador de parlays funcional.');
   } finally {
     await navegador.close();
   }
