@@ -15,6 +15,11 @@ const usuarioSchema = new mongoose.Schema({
   // El hash se carga sólo cuando un flujo lo solicita expresamente.
   password: { type: String, required: true, minlength: 8, select: false },
   nombre: { type: String, trim: true, maxlength: 80 },
+  preferencias: {
+    formato_momio: { type: String, enum: ['ambos', 'decimal', 'americano'], default: 'ambos' }
+  },
+  sesion_version: { type: Number, min: 0, default: 0 },
+  password_actualizada_en: { type: Date, default: null },
   rol: { type: String, enum: ['usuario', 'admin'], default: 'usuario' },
   plan: { type: String, enum: ['prueba', 'premium', 'expirado'], default: 'prueba' },
   fecha_registro: { type: Date, default: Date.now },
@@ -101,6 +106,8 @@ usuarioSchema.methods.aJSON = function () {
     id: this._id,
     email: this.email,
     nombre: this.nombre,
+    preferencias: { formato_momio: this.preferencias?.formato_momio || 'ambos' },
+    password_actualizada_en: this.password_actualizada_en || null,
     rol: this.rol,
     plan: estado.plan,
     tieneAcceso: estado.tieneAcceso,

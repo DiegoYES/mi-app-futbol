@@ -71,6 +71,48 @@ test('la API de administración exige sesión', async t => {
   assert.equal(cuerpo.codigo, 'SIN_TOKEN');
 });
 
+test('la configuración de cuenta no se sirve a visitantes anónimos', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const respuesta = await fetch(`${baseUrl}/configuracion.html`);
+  const cuerpo = await respuesta.text();
+
+  assert.equal(respuesta.status, 404);
+  assert.doesNotMatch(cuerpo, /Cambiar contraseña/);
+});
+
+test('los cambios de cuenta exigen sesión y rechazan orígenes externos', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const solicitudes = [
+    ['/api/auth/perfil', 'PATCH', { nombre: 'Persona', preferencias: { formato_momio: 'ambos' } }],
+    ['/api/auth/cambiar-password', 'POST', { password_actual: 'x', password_nueva: 'frase extensa de ejemplo' }],
+    ['/api/auth/revocar-sesiones', 'POST', undefined]
+  ];
+
+  for (const [ruta, method, body] of solicitudes) {
+    const respuesta = await fetch(`${baseUrl}${ruta}`, {
+      method,
+      headers: { 'Content-Type': 'application/json' },
+      ...(body ? { body: JSON.stringify(body) } : {})
+    });
+    assert.equal(respuesta.status, 401, ruta);
+  }
+
+  const externa = await fetch(`${baseUrl}/api/auth/perfil`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Origin: 'https://sitio-atacante.example' },
+    body: JSON.stringify({ nombre: 'Persona', preferencias: { formato_momio: 'ambos' } })
+  });
+  assert.equal(externa.status, 403);
+  assert.equal((await externa.json()).codigo, 'ORIGEN_NO_PERMITIDO');
+});
+
+test('la configuración pinta datos del servidor sólo con textContent o value', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'configuracion.html'), 'utf8');
+  assert.doesNotMatch(codigo, /\.innerHTML\s*=/);
+  assert.match(codigo, /cuenta-nombre'\)\.textContent/);
+  assert.match(codigo, /config-nombre'\)\.value/);
+});
+
 test('normalizarRuta neutraliza codificaciones y recorridos', () => {
   assert.equal(normalizarRuta('/admin.html'), '/admin.html');
   assert.equal(normalizarRuta('//admin.html'), '/admin.html');
@@ -117,7 +159,7 @@ test('revisarConfiguracionSegura alerta de una puesta en producción insegura', 
 
 test('ninguna ruta devuelve el mensaje interno de error al cliente', () => {
   const archivos = ['server.js', 'routes/admin.js', 'routes/boletas.js', 'routes/calendario.js',
-    'routes/home.js', 'routes/jugadores.js', 'routes/picks.js'];
+    'routes/home.js', 'routes/jugadores.js', 'routes/picks.js', 'routes/auth.js'];
 
   for (const archivo of archivos) {
     const codigo = fs.readFileSync(path.join(__dirname, '..', archivo), 'utf8');

@@ -10,7 +10,16 @@ if (!JWT_SECRET) {
 }
 
 function firmarToken(usuario) {
-  return jwt.sign({ id: usuario._id, rol: usuario.rol }, JWT_SECRET, { expiresIn: JWT_EXPIRA });
+  return jwt.sign({
+    id: usuario._id,
+    rol: usuario.rol,
+    sesion_version: Number(usuario.sesion_version || 0)
+  }, JWT_SECRET, { expiresIn: JWT_EXPIRA });
+}
+
+function sesionCoincide(payload, usuario) {
+  const versionToken = Number.isInteger(payload?.sesion_version) ? payload.sesion_version : 0;
+  return versionToken === Number(usuario?.sesion_version || 0);
 }
 
 function extraerToken(req) {
@@ -30,7 +39,7 @@ async function usuarioDeSesion(req) {
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     const usuario = await Usuario.findById(payload.id);
-    if (!usuario || !usuario.activo) return null;
+    if (!usuario || !usuario.activo || !sesionCoincide(payload, usuario)) return null;
     return usuario;
   } catch (_error) {
     return null;
@@ -48,7 +57,7 @@ async function requireAuth(req, res, next) {
     const payload = jwt.verify(token, JWT_SECRET);
     const usuario = await Usuario.findById(payload.id);
 
-    if (!usuario || !usuario.activo) {
+    if (!usuario || !usuario.activo || !sesionCoincide(payload, usuario)) {
       return res.status(401).json({ error: 'Cuenta no disponible', codigo: 'CUENTA_INVALIDA' });
     }
 
@@ -89,6 +98,7 @@ const protegido = [requireAuth, limiteUsuario, requireAcceso];
 
 module.exports = {
   firmarToken,
+  sesionCoincide,
   requireAuth,
   requireAcceso,
   requireAdmin,

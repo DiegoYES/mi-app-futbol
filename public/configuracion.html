@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Configuración de cuenta</title>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
+<meta name="theme-color" content="#07100d">
+<link rel="stylesheet" href="/styles.css">
+<script src="/auth-client.js"></script>
+<style>
+  .settings-shell{max-width:1080px;margin:0 auto;padding:38px 22px 64px}
+  .settings-head{display:flex;justify-content:space-between;gap:24px;align-items:end;margin-bottom:24px}
+  .settings-head h1{margin:4px 0 7px;font-size:clamp(2rem,5vw,3.5rem);line-height:1}.settings-head h1 span{color:var(--green)}
+  .settings-head p{max-width:660px;margin:0;color:var(--muted);line-height:1.55}
+  .account-summary{display:grid;grid-template-columns:auto minmax(0,1fr) repeat(3,minmax(120px,.5fr));gap:14px;align-items:center;margin-bottom:18px;padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--surface-raised)}
+  .account-avatar{width:58px;height:58px;display:grid;place-items:center;border-radius:17px;background:rgba(84,227,142,.13);color:var(--green);font-size:1.45rem;font-weight:900}
+  .account-main strong,.account-main span{display:block}.account-main strong{font-size:1rem}.account-main span{margin-top:4px;color:var(--muted);font-size:.72rem;overflow-wrap:anywhere}
+  .account-fact{padding:10px 12px;border-left:1px solid var(--line)}.account-fact span,.account-fact strong{display:block}.account-fact span{color:var(--muted);font-size:.58rem;font-weight:850;text-transform:uppercase;letter-spacing:.06em}.account-fact strong{margin-top:4px;font-size:.78rem}
+  .settings-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+  .settings-card{padding:21px;border:1px solid var(--line);border-radius:18px;background:var(--surface-raised);box-shadow:0 15px 38px rgba(0,0,0,.13)}
+  .settings-card.wide{grid-column:1/-1}.settings-card h2{margin:0;font-size:1.05rem}.settings-card>p{margin:8px 0 18px;color:var(--muted);font-size:.73rem;line-height:1.55}
+  .settings-form{display:grid;gap:13px}.settings-form label{display:block;color:var(--muted);font-size:.68rem;font-weight:850}.settings-form input,.settings-form select{width:100%;min-height:46px;margin-top:7px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft);color:var(--ink);font:inherit}
+  .settings-form input:focus,.settings-form select:focus{outline:3px solid rgba(84,227,142,.16);border-color:var(--green)}.settings-form input[readonly]{opacity:.72;cursor:not-allowed}
+  .field-help{display:block;margin-top:6px;color:var(--muted);font-size:.59rem;font-weight:500;line-height:1.45}
+  .settings-action{min-height:44px;justify-self:start;padding:0 17px;border:1px solid rgba(84,227,142,.4);border-radius:10px;background:var(--green);color:#07100d;font-weight:900;cursor:pointer}.settings-action:disabled{opacity:.55;cursor:wait}
+  .settings-action.secondary{background:transparent;color:var(--ink);border-color:var(--line)}.settings-action.danger{background:rgba(245,190,91,.1);color:var(--amber);border-color:rgba(245,190,91,.35)}
+  .form-message{min-height:20px;margin:0!important;font-size:.67rem!important;font-weight:750}.form-message.ok{color:var(--green)}.form-message.error{color:var(--red)}
+  .security-row{display:flex;justify-content:space-between;align-items:center;gap:20px;padding:15px;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft)}.security-row strong,.security-row span{display:block}.security-row span{margin-top:4px;color:var(--muted);font-size:.67rem;line-height:1.45}
+  .security-note{margin-top:14px;padding:13px;border-left:3px solid var(--cyan);border-radius:0 10px 10px 0;background:rgba(104,217,231,.06);color:var(--muted);font-size:.65rem;line-height:1.55}
+  @media(max-width:820px){.account-summary{grid-template-columns:auto minmax(0,1fr)}.account-fact{border-left:0;border-top:1px solid var(--line)}.settings-grid{grid-template-columns:1fr}.settings-card.wide{grid-column:auto}}
+  @media(max-width:560px){.settings-shell{padding:26px 12px 48px}.settings-head{display:block}.account-summary{gap:10px;padding:14px}.account-fact{padding:9px 4px}.security-row{display:block}.security-row .settings-action{width:100%;margin-top:13px}}
+</style>
+</head>
+<body>
+<main class="settings-shell">
+  <header class="settings-head">
+    <div><p class="eyebrow">Tu cuenta</p><h1>Configuración<span>.</span></h1><p>Actualiza tus datos y protege tus sesiones. Los mismos controles aplican a usuarios y administradores.</p></div>
+  </header>
+
+  <section class="account-summary" aria-label="Resumen de cuenta">
+    <div class="account-avatar" id="cuenta-avatar" aria-hidden="true">—</div>
+    <div class="account-main"><strong id="cuenta-nombre">Cargando…</strong><span id="cuenta-email">—</span></div>
+    <div class="account-fact"><span>Rol</span><strong id="cuenta-rol">—</strong></div>
+    <div class="account-fact"><span>Acceso</span><strong id="cuenta-acceso">—</strong></div>
+    <div class="account-fact"><span>Registro</span><strong id="cuenta-registro">—</strong></div>
+  </section>
+
+  <div class="settings-grid">
+    <section class="settings-card">
+      <h2>Perfil y preferencias</h2>
+      <p>El nombre se muestra en tu sesión. El correo permanece bloqueado hasta contar con verificación por email.</p>
+      <form id="form-perfil" class="settings-form">
+        <label for="config-nombre">Nombre
+          <input id="config-nombre" name="nombre" type="text" required minlength="2" maxlength="80" autocomplete="name">
+          <span class="field-help">Letras, números, espacios, puntos, apóstrofes y guiones.</span>
+        </label>
+        <label for="config-email">Correo
+          <input id="config-email" type="email" readonly autocomplete="email">
+        </label>
+        <label for="config-momio">Mostrar momios editoriales como
+          <select id="config-momio" name="formato_momio">
+            <option value="ambos">Decimal y americano</option>
+            <option value="decimal">Solo decimal</option>
+            <option value="americano">Solo americano</option>
+          </select>
+        </label>
+        <p id="mensaje-perfil" class="form-message" role="status" aria-live="polite"></p>
+        <button class="settings-action" type="submit">Guardar configuración</button>
+      </form>
+    </section>
+
+    <section class="settings-card">
+      <h2>Cambiar contraseña</h2>
+      <p>Solicitamos la contraseña actual y cerramos automáticamente las demás sesiones después del cambio.</p>
+      <form id="form-password" class="settings-form">
+        <label for="password-actual">Contraseña actual
+          <input id="password-actual" type="password" required maxlength="200" autocomplete="current-password">
+        </label>
+        <label for="password-nueva">Nueva contraseña
+          <input id="password-nueva" type="password" required minlength="15" maxlength="72" autocomplete="new-password">
+          <span class="field-help">Mínimo 15 caracteres. Puedes usar espacios, Unicode y un gestor de contraseñas.</span>
+        </label>
+        <label for="password-confirmacion">Confirmar nueva contraseña
+          <input id="password-confirmacion" type="password" required minlength="15" maxlength="72" autocomplete="new-password">
+        </label>
+        <p id="mensaje-password" class="form-message" role="status" aria-live="polite"></p>
+        <button class="settings-action" type="submit">Actualizar contraseña</button>
+      </form>
+    </section>
+
+    <section class="settings-card wide">
+      <h2>Sesiones y seguridad</h2>
+      <p>Si accediste desde un equipo compartido o no reconoces una sesión, invalida todos los accesos anteriores.</p>
+      <div class="security-row">
+        <div><strong>Cerrar las demás sesiones</strong><span>Tu sesión actual seguirá abierta; cualquier otro token tendrá que iniciar sesión nuevamente.</span></div>
+        <button id="revocar-sesiones" class="settings-action danger" type="button">Cerrar otras sesiones</button>
+      </div>
+      <div class="security-note">Nunca te pediremos tu contraseña por correo, mensaje o soporte. Las contraseñas no se muestran ni se devuelven desde la API.</div>
+      <p id="mensaje-sesiones" class="form-message" role="status" aria-live="polite"></p>
+    </section>
+  </div>
+</main>
+
+<script>
+let usuarioConfiguracion = null;
+
+function fechaCuenta(valor) {
+  if (!valor) return '—';
+  return new Date(valor).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function mostrarMensaje(id, texto, tipo = '') {
+  const elemento = document.getElementById(id);
+  elemento.textContent = texto;
+  elemento.className = `form-message${tipo ? ` ${tipo}` : ''}`;
+}
+
+function pintarCuenta(usuario) {
+  usuarioConfiguracion = usuario;
+  const nombre = usuario.nombre || 'Sin nombre configurado';
+  document.getElementById('cuenta-avatar').textContent = [...nombre][0]?.toLocaleUpperCase('es-MX') || 'U';
+  document.getElementById('cuenta-nombre').textContent = nombre;
+  document.getElementById('cuenta-email').textContent = usuario.email;
+  document.getElementById('cuenta-rol').textContent = usuario.rol === 'admin' ? 'Administrador' : 'Usuario';
+  document.getElementById('cuenta-acceso').textContent = usuario.tieneAcceso
+    ? (usuario.rol === 'admin' ? 'Administrador' : usuario.plan === 'premium' ? 'Premium' : 'Prueba activa')
+    : 'Sin acceso premium';
+  document.getElementById('cuenta-registro').textContent = fechaCuenta(usuario.fecha_registro);
+  document.getElementById('config-nombre').value = usuario.nombre || '';
+  document.getElementById('config-email').value = usuario.email || '';
+  document.getElementById('config-momio').value = usuario.preferencias?.formato_momio || 'ambos';
+}
+
+async function cargarCuenta() {
+  const respuesta = await fetch('/api/auth/me', { cache: 'no-store' });
+  const datos = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) throw new Error(datos.error || 'No se pudo cargar la cuenta.');
+  pintarCuenta(datos.usuario);
+}
+
+document.getElementById('form-perfil').addEventListener('submit', async evento => {
+  evento.preventDefault();
+  const boton = evento.submitter || evento.currentTarget.querySelector('button[type="submit"]');
+  boton.disabled = true;
+  mostrarMensaje('mensaje-perfil', 'Guardando…');
+  try {
+    const respuesta = await fetch('/api/auth/perfil', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        nombre: document.getElementById('config-nombre').value,
+        preferencias: { formato_momio: document.getElementById('config-momio').value }
+      })
+    });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudo guardar.');
+    pintarCuenta(datos.usuario);
+    try { localStorage.setItem('datafut:formato-momio', datos.usuario.preferencias.formato_momio); } catch {}
+    window.dispatchEvent(new CustomEvent('futbol:usuario-actualizado', { detail: datos.usuario }));
+    mostrarMensaje('mensaje-perfil', datos.mensaje, 'ok');
+  } catch (error) {
+    mostrarMensaje('mensaje-perfil', error.message, 'error');
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+document.getElementById('form-password').addEventListener('submit', async evento => {
+  evento.preventDefault();
+  const boton = evento.submitter || evento.currentTarget.querySelector('button[type="submit"]');
+  const actual = document.getElementById('password-actual');
+  const nueva = document.getElementById('password-nueva');
+  const confirmacion = document.getElementById('password-confirmacion');
+  mostrarMensaje('mensaje-password', '');
+  if (nueva.value !== confirmacion.value) {
+    mostrarMensaje('mensaje-password', 'Las contraseñas nuevas no coinciden.', 'error');
+    confirmacion.focus();
+    return;
+  }
+  if ([...nueva.value].length < 15 || new TextEncoder().encode(nueva.value).length > 72) {
+    mostrarMensaje('mensaje-password', 'Usa entre 15 caracteres y 72 bytes.', 'error');
+    nueva.focus();
+    return;
+  }
+  boton.disabled = true;
+  mostrarMensaje('mensaje-password', 'Actualizando…');
+  try {
+    const respuesta = await fetch('/api/auth/cambiar-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ password_actual: actual.value, password_nueva: nueva.value })
+    });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudo cambiar la contraseña.');
+    pintarCuenta(datos.usuario);
+    mostrarMensaje('mensaje-password', datos.mensaje, 'ok');
+  } catch (error) {
+    mostrarMensaje('mensaje-password', error.message, 'error');
+  } finally {
+    actual.value = '';
+    nueva.value = '';
+    confirmacion.value = '';
+    boton.disabled = false;
+  }
+});
+
+document.getElementById('revocar-sesiones').addEventListener('click', async evento => {
+  if (!confirm('¿Cerrar todas las demás sesiones de esta cuenta?')) return;
+  const boton = evento.currentTarget;
+  boton.disabled = true;
+  mostrarMensaje('mensaje-sesiones', 'Cerrando sesiones…');
+  try {
+    const respuesta = await fetch('/api/auth/revocar-sesiones', { method: 'POST' });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cerrar las sesiones.');
+    mostrarMensaje('mensaje-sesiones', datos.mensaje, 'ok');
+  } catch (error) {
+    mostrarMensaje('mensaje-sesiones', error.message, 'error');
+  } finally {
+    boton.disabled = false;
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  cargarCuenta().catch(error => mostrarMensaje('mensaje-perfil', error.message, 'error'));
+});
+</script>
+</body>
+</html>

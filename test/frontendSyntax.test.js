@@ -7,7 +7,7 @@ const paginas = [
   'index.html', 'inicio.html', 'login.html', 'admin.html', 'calendario.html',
   'partido.html', 'picks.html', 'boletas.html', 'equipos.html', 'equipo.html', 'jugadores.html',
   'competiciones.html', 'competicion.html', 'jugador.html', 'arbitros.html', 'guia.html', 'sugerencias.html',
-  'suscripcion.html'
+  'suscripcion.html', 'configuracion.html'
 ];
 
 for (const pagina of paginas) {

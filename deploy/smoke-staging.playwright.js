@@ -45,7 +45,7 @@ if (!EMAIL || !PASSWORD) {
 }
 
 // /partido.html se prueba aparte con identificadores reales del calendario.
-const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/boletas.html'];
+const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/boletas.html', '/configuracion.html'];
 
 async function recorrer(nombre, opcionesContexto) {
   const errores = [];

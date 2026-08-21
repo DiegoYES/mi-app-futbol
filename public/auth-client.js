@@ -7,6 +7,8 @@
   const fetchOriginal = window.fetch.bind(window);
   const esPaginaSuscripcion = window.location.pathname === '/suscripcion.html';
   const esPaginaSoporte = window.location.pathname === '/sugerencias.html';
+  const esPaginaConfiguracion = window.location.pathname === '/configuracion.html';
+  const CLAVE_FORMATO_MOMIO = 'datafut:formato-momio';
 
   function escaparHtml(valor) {
     return String(valor ?? '')
@@ -48,7 +50,7 @@
   function mostrarPaywall(motivo) {
     // Una cuenta sin acceso debe poder llegar al formulario de pago. Mostrar el
     // paywall en esta ruta la dejaría atrapada en un enlace hacia la misma página.
-    if (esPaginaSuscripcion || esPaginaSoporte) return;
+    if (esPaginaSuscripcion || esPaginaSoporte || esPaginaConfiguracion) return;
     if (document.getElementById('paywall')) return;
     const bloqueoIP = motivo === 'ip_duplicada';
     const titulo = bloqueoIP ? 'Prueba gratuita no habilitada' : 'Tu acceso terminó';
@@ -82,7 +84,8 @@
     { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' },
     { href: '/guia.html', texto: 'Guía', icono: '📖' },
     { href: '/sugerencias.html', texto: 'Sugerencias', icono: '💡' },
-    { href: '/suscripcion.html', texto: 'Mi suscripción', icono: '💳' }
+    { href: '/suscripcion.html', texto: 'Mi suscripción', icono: '💳' },
+    { href: '/configuracion.html', texto: 'Configuración', icono: '⚙️' }
   ];
 
   function esRutaActiva(href) {
@@ -130,6 +133,7 @@
 
   function pintarBarra(usuario) {
     inyectarEstilosBarra();
+    document.querySelector('.barra-sesion')?.remove();
 
     const esAdmin = usuario.rol === 'admin';
     const diasBajos = usuario.diasRestantes != null && usuario.diasRestantes <= 3;
@@ -166,6 +170,14 @@
       </nav>`;
     document.body.prepend(barra);
     document.getElementById('btnCerrarSesion').onclick = cerrarSesion;
+  }
+
+  function actualizarUsuarioInterfaz(usuario) {
+    window.usuarioActual = usuario;
+    const formato = ['ambos', 'decimal', 'americano'].includes(usuario?.preferencias?.formato_momio)
+      ? usuario.preferencias.formato_momio : 'ambos';
+    try { localStorage.setItem(CLAVE_FORMATO_MOMIO, formato); } catch {}
+    pintarBarra(usuario);
   }
 
   const EVENTO_PICKS = 'futbol:picks-actualizados';
@@ -302,11 +314,10 @@
       if (!resp.ok) return cerrarSesion();
 
       const { usuario } = await resp.json();
-      window.usuarioActual = usuario;
-
-      pintarBarra(usuario);
+      actualizarUsuarioInterfaz(usuario);
+      window.dispatchEvent(new CustomEvent('futbol:usuario-cargado', { detail: usuario }));
       pintarAvisoLegal();
-      crearWidgetPicks();
+      if (!esPaginaConfiguracion) crearWidgetPicks();
       const parametros = new URLSearchParams(window.location.search);
       const registroLimitado = parametros.get('registro') === 'ip_duplicada';
       if (!usuario.tieneAcceso || registroLimitado) mostrarPaywall(registroLimitado ? 'ip_duplicada' : usuario.motivo);
@@ -321,6 +332,9 @@
   });
 
   window.addEventListener(EVENTO_PICKS, actualizarPicksFlotantes);
+  window.addEventListener('futbol:usuario-actualizado', evento => {
+    if (evento.detail) actualizarUsuarioInterfaz(evento.detail);
+  });
   window.addEventListener('storage', event => { if (event.key === CLAVE_PICKS) actualizarPicksFlotantes(); });
   window.addEventListener('pageshow', event => { if (event.persisted) actualizarPicksFlotantes(); });
 

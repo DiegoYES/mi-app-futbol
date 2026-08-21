@@ -136,7 +136,12 @@ function mostrarMomio(decimal, americano) {
     ? recibido
     : cuota >= 2 ? Math.round((cuota - 1) * 100) : Math.round(-100 / (cuota - 1));
   const valorAmericano = calculado === -100 ? 100 : calculado;
-  return `${Number(decimal).toFixed(2)} (${valorAmericano > 0 ? '+' : ''}${valorAmericano})`;
+  const americanoTexto = `${valorAmericano > 0 ? '+' : ''}${valorAmericano}`;
+  let formato = 'ambos';
+  try { formato = localStorage.getItem('datafut:formato-momio') || 'ambos'; } catch {}
+  if (formato === 'decimal') return Number(decimal).toFixed(2);
+  if (formato === 'americano') return americanoTexto;
+  return `${Number(decimal).toFixed(2)} (${americanoTexto})`;
 }
 
 const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
@@ -313,6 +318,7 @@ const dialogoGeneral = document.getElementById('general-explanation-dialog');
 document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
 dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
 document.addEventListener('DOMContentLoaded', () => { cargarRecomendacionesEditoriales(); cargarMejoresGenerales(); cargarHistorial(); });
+window.addEventListener('futbol:usuario-cargado', cargarRecomendacionesEditoriales);
 window.addEventListener('futbol:picks-actualizados', cargarHistorial);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
 </script>
