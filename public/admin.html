@@ -11,7 +11,16 @@
   * { box-sizing: border-box; }
   body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: #334155; margin: 0; }
   .wrap { max-width: 1200px; margin: 0 auto; padding: 24px; }
-  h1 { color: var(--primary); font-size: 1.6rem; margin: 0 0 20px; }
+  h1 { color: var(--primary); font-size: 1.6rem; margin: 0; }
+  .admin-heading { display:flex;justify-content:space-between;align-items:end;gap:16px;margin-bottom:18px; }
+  .admin-heading p { margin:5px 0 0;color:#64748b;font-size:.88rem; }
+  .admin-menu { position:sticky;top:62px;z-index:20;display:flex;gap:8px;overflow-x:auto;margin:0 0 20px;padding:8px;background:rgba(243,244,246,.96);border:1px solid #dbe3ed;border-radius:12px;box-shadow:0 5px 18px rgba(15,23,42,.08);scrollbar-width:thin; }
+  .admin-menu button { flex:0 0 auto;min-height:42px;padding:9px 14px;border:0;border-radius:8px;background:transparent;color:#475569;font:inherit;font-size:.84rem;font-weight:700;cursor:pointer;white-space:nowrap; }
+  .admin-menu button:hover { background:#e2e8f0;color:var(--primary); }
+  .admin-menu button.active { background:var(--primary);color:#fff;box-shadow:0 3px 8px rgba(10,37,64,.2); }
+  .admin-menu button:focus-visible { outline:3px solid rgba(0,212,255,.35);outline-offset:2px; }
+  .admin-section { margin-top:0;scroll-margin-top:125px; }
+  .admin-section[hidden] { display:none!important; }
   .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 14px; margin-bottom: 22px; }
   .kpi { background: #fff; border-radius: 10px; padding: 16px; box-shadow: 0 2px 8px rgba(0,0,0,.07); }
   .kpi .label { font-size: .78rem; color: #64748b; text-transform: uppercase; letter-spacing: .04em; }
@@ -40,7 +49,7 @@
   .btn-on { background: #dcfce7; color: #166534; }
   .vacio { text-align: center; padding: 32px; color: #94a3b8; }
   .ip-text { font-size: .75rem; color: #64748b; font-family: monospace; }
-  .seccion { margin-top: 32px; }
+  .seccion { margin-top: 20px; }
   .seccion h2 { font-size: 1.1rem; color: var(--primary); margin-bottom: 12px; }
   .mercados-panel { background:#fff;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.07); }
   .mercados-actions { display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:12px; }
@@ -99,17 +108,30 @@
   .rec-card-meta { color:#64748b;font-size:.7rem; }
   @media(max-width:900px){.rec-panel{grid-template-columns:1fr}}
   @media(max-width:800px){.ticket-edit{grid-template-columns:1fr 1fr}.ticket-edit>div:nth-child(3){grid-column:1/-1}.admin-ticket-head{display:block}.rec-selection{grid-template-columns:1fr 1fr}.rec-selection [data-rec]{grid-column:auto}.rec-selection [data-rec="partido"],.rec-selection [data-rec="mercado"],.rec-selection button{grid-column:1/-1}}
-  @media(max-width:600px){.wrap{padding:18px 12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}.ticket-edit{grid-template-columns:1fr}.ticket-edit>div:nth-child(3){grid-column:auto}}
+  @media(max-width:600px){.wrap{padding:18px 12px}.admin-heading{align-items:start}.admin-heading p{font-size:.78rem}.admin-menu{top:58px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;margin-left:-4px;margin-right:-4px}.admin-menu button{min-width:0;min-height:42px;padding:8px 4px;font-size:.73rem}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}.ticket-edit{grid-template-columns:1fr}.ticket-edit>div:nth-child(3){grid-column:auto}}
   @media(max-width:360px){.kpis{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <h1>🛠️ Panel de administración</h1>
+  <header class="admin-heading">
+    <div><h1>🛠️ Panel de administración</h1><p>Gestiona cada área sin recorrer una página interminable.</p></div>
+  </header>
+  <nav class="admin-menu" id="admin-menu" aria-label="Secciones del panel">
+    <button type="button" data-admin-panel="resumen" aria-controls="admin-resumen">📊 Resumen</button>
+    <button type="button" data-admin-panel="picks" aria-controls="admin-picks">🎯 Picks</button>
+    <button type="button" data-admin-panel="usuarios" aria-controls="admin-usuarios">👥 Usuarios</button>
+    <button type="button" data-admin-panel="tickets" aria-controls="admin-tickets-panel">💡 Tickets</button>
+    <button type="button" data-admin-panel="mercados" aria-controls="admin-mercados">📈 Mercados</button>
+    <button type="button" data-admin-panel="seguridad" aria-controls="admin-seguridad">🛡️ Seguridad</button>
+  </nav>
 
-  <div class="kpis" id="kpis"></div>
+  <section class="seccion admin-section" id="admin-resumen" data-admin-panel-content="resumen">
+    <h2>📊 Resumen general</h2>
+    <div class="kpis" id="kpis"></div>
+  </section>
 
-  <div class="seccion">
+  <section class="seccion admin-section" id="admin-picks" data-admin-panel-content="picks" hidden>
     <h2>🎯 Picks y parlays recomendados</h2>
     <div class="rec-panel">
       <form class="rec-form" id="rec-form">
@@ -135,9 +157,9 @@
       </form>
       <div id="rec-lista" class="rec-list"><div class="ticket-empty">Cargando recomendaciones…</div></div>
     </div>
-  </div>
+  </section>
 
-  <div class="seccion">
+  <section class="seccion admin-section" id="admin-mercados" data-admin-panel-content="mercados" hidden>
     <h2>Mercados de Playdoit</h2>
     <div class="mercados-panel">
       <div class="mercados-actions">
@@ -146,9 +168,9 @@
       </div>
       <div class="diag-grid" id="diagnostico-mercados"></div>
     </div>
-  </div>
+  </section>
 
-  <div class="seccion">
+  <section class="seccion admin-section" id="admin-tickets-panel" data-admin-panel-content="tickets" hidden>
     <h2>💡 Sugerencias y tickets</h2>
     <div class="ticket-tools">
       <select id="filtro-ticket-estado">
@@ -168,8 +190,10 @@
       </select>
     </div>
     <div class="admin-tickets" id="admin-tickets"><div class="ticket-empty">Cargando tickets…</div></div>
-  </div>
+  </section>
 
+  <section class="seccion admin-section" id="admin-usuarios" data-admin-panel-content="usuarios" hidden>
+    <h2>👥 Usuarios y suscripciones</h2>
   <div class="barra">
     <input type="search" id="busqueda" placeholder="Buscar por email o nombre...">
   </div>
@@ -180,15 +204,33 @@
     </thead>
     <tbody id="tbody"><tr><td colspan="7" class="vacio">Cargando...</td></tr></tbody>
   </table></div>
+  </section>
 
-  <div class="seccion">
+  <section class="seccion admin-section" id="admin-seguridad" data-admin-panel-content="seguridad" hidden>
     <h2>⚠️ IPs duplicadas</h2>
     <div id="ips-duplicadas"><p style="color:#94a3b8">Cargando...</p></div>
-  </div>
+  </section>
 </div>
 
 <script>
 let temporizador;
+const PANELES_ADMIN = new Set(['resumen', 'picks', 'usuarios', 'tickets', 'mercados', 'seguridad']);
+
+function mostrarPanelAdmin(nombre, actualizarUrl = true) {
+  const panel = PANELES_ADMIN.has(nombre) ? nombre : 'resumen';
+  document.querySelectorAll('[data-admin-panel-content]').forEach(seccion => {
+    seccion.hidden = seccion.dataset.adminPanelContent !== panel;
+  });
+  document.querySelectorAll('[data-admin-panel]').forEach(boton => {
+    const activo = boton.dataset.adminPanel === panel;
+    boton.classList.toggle('active', activo);
+    if (activo) boton.setAttribute('aria-current', 'page');
+    else boton.removeAttribute('aria-current');
+  });
+  if (actualizarUrl && location.hash !== `#${panel}`) {
+    history.replaceState(null, '', `${location.pathname}${location.search}#${panel}`);
+  }
+}
 
 function escaparHtml(valor) {
   return String(valor ?? '')
@@ -778,6 +820,12 @@ function refrescar() {
 }
 
 function instalarEventos() {
+  document.getElementById('admin-menu').addEventListener('click', evento => {
+    const boton = evento.target.closest('[data-admin-panel]');
+    if (!boton) return;
+    mostrarPanelAdmin(boton.dataset.adminPanel);
+  });
+  window.addEventListener('hashchange', () => mostrarPanelAdmin(location.hash.slice(1), false));
   document.getElementById('rec-form').addEventListener('submit', guardarRecomendacion);
   document.getElementById('rec-tipo').addEventListener('change', () => { ajustarSelecciones(); actualizarMomioTotal(); });
   document.getElementById('rec-cierra').addEventListener('change', cargarPartidosRecomendacion);
@@ -862,6 +910,7 @@ function instalarEventos() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  mostrarPanelAdmin(location.hash.slice(1) || 'resumen');
   limpiarRecomendacion();
   instalarEventos();
   refrescar();

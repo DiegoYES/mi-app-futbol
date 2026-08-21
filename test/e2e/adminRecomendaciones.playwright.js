@@ -30,6 +30,30 @@ async function main() {
     ]);
     await pagina.goto('/admin.html', { waitUntil: 'networkidle' });
 
+    const paneles = ['resumen', 'picks', 'usuarios', 'tickets', 'mercados', 'seguridad'];
+    const menu = pagina.locator('#admin-menu [data-admin-panel]');
+    if (await menu.count() !== paneles.length) throw new Error('El menú no contiene todas las secciones administrativas.');
+    if (await pagina.locator('[data-admin-panel-content]:visible').count() !== 1) {
+      throw new Error('Debe mostrarse exactamente una sección administrativa.');
+    }
+    for (const panel of paneles) {
+      await pagina.locator(`[data-admin-panel="${panel}"]`).click();
+      if (await pagina.locator(`[data-admin-panel-content="${panel}"]`).isHidden()) {
+        throw new Error(`El menú no mostró la sección ${panel}.`);
+      }
+      if (await pagina.locator('[data-admin-panel-content]:visible').count() !== 1) {
+        throw new Error(`La sección ${panel} dejó más de un panel visible.`);
+      }
+      if (await pagina.evaluate(() => location.hash) !== `#${panel}`) {
+        throw new Error(`La sección ${panel} no se reflejó en la URL.`);
+      }
+    }
+    await pagina.reload({ waitUntil: 'networkidle' });
+    if (await pagina.locator('[data-admin-panel-content="seguridad"]').isHidden()) {
+      throw new Error('La sección indicada por el hash no persistió al recargar.');
+    }
+    await pagina.locator('[data-admin-panel="picks"]').click();
+
     const tipo = pagina.locator('#rec-tipo');
     const agregar = pagina.locator('#rec-agregar');
     const selecciones = pagina.locator('.rec-selection');
@@ -58,8 +82,16 @@ async function main() {
     if (await pagina.locator('#rec-momio-total').inputValue() !== '+100') {
       throw new Error('El momio total -100 no se normalizó como +100.');
     }
+
+    await pagina.setViewportSize({ width: 390, height: 844 });
+    await pagina.goto('/admin.html#resumen', { waitUntil: 'networkidle' });
+    for (const panel of paneles) {
+      await pagina.locator(`[data-admin-panel="${panel}"]`).click();
+      const desborde = await pagina.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
+      if (desborde) throw new Error(`La sección ${panel} genera desborde horizontal en móvil.`);
+    }
     if (errores.length) throw new Error(`Errores JavaScript: ${errores.join(' | ')}`);
-    console.log('Playwright admin OK: añade selecciones y normaliza -100 como +100.');
+    console.log('Playwright admin OK: menú por secciones en escritorio/móvil y creador de parlays funcional.');
   } finally {
     await navegador.close();
   }
