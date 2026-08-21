@@ -82,10 +82,12 @@
     { href: '/comparador.html', texto: 'Comparador', icono: '⚽' },
     { href: '/picks.html', texto: 'Mis picks', icono: '🎯' },
     { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' },
+    { href: '/suscripcion.html', texto: 'Mi suscripción', icono: '💳' }
+  ];
+  const ENLACES_CUENTA = [
+    { href: '/configuracion.html', texto: 'Configuración', icono: '⚙️' },
     { href: '/guia.html', texto: 'Guía', icono: '📖' },
-    { href: '/sugerencias.html', texto: 'Sugerencias', icono: '💡' },
-    { href: '/suscripcion.html', texto: 'Mi suscripción', icono: '💳' },
-    { href: '/configuracion.html', texto: 'Configuración', icono: '⚙️' }
+    { href: '/sugerencias.html', texto: 'Sugerencias', icono: '💡' }
   ];
 
   function esRutaActiva(href) {
@@ -103,7 +105,13 @@
         font-family:system-ui,sans-serif; font-size:.86rem; flex-wrap:wrap;
         border-bottom:1px solid rgba(255,255,255,.09); position:sticky; top:0; z-index:900;
         box-shadow:0 2px 12px rgba(0,0,0,.25); }
-      .barra-sesion .usuario { display:flex; align-items:center; gap:9px; padding:11px 0; font-weight:600; }
+      .barra-sesion .cuenta-menu { position:relative;align-self:stretch;display:flex;align-items:center; }
+      .barra-sesion .usuario { min-height:100%;display:flex;align-items:center;gap:9px;padding:10px 7px 10px 0;border:0;background:transparent;color:#fff;font:inherit;font-weight:650;cursor:pointer; }
+      .barra-sesion .usuario:hover,.barra-sesion .usuario[aria-expanded="true"] { color:#54e38e; }
+      .barra-sesion .usuario.activo { color:#54e38e; }
+      .barra-sesion .usuario-nombre { max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+      .barra-sesion .usuario-flecha { color:rgba(255,255,255,.55);font-size:.66rem;transition:transform .15s; }
+      .barra-sesion .usuario[aria-expanded="true"] .usuario-flecha { transform:rotate(180deg); }
       .barra-sesion .chip-plan { background:rgba(84,227,142,.14); color:#54e38e; padding:3px 10px;
         border-radius:11px; font-size:.74rem; font-weight:600; white-space:nowrap; }
       .barra-sesion .chip-plan.alerta { background:rgba(245,190,91,.16); color:#f5be5b; }
@@ -115,18 +123,24 @@
       .barra-sesion nav a.activo { color:#54e38e; border-bottom-color:#54e38e; font-weight:600; }
       .barra-sesion nav a.admin { color:#00d4ff; }
       .barra-sesion nav a.admin.activo { border-bottom-color:#00d4ff; }
-      .barra-sesion .btn-salir { background:transparent; border:1px solid rgba(255,255,255,.28);
-        color:#fff; padding:6px 14px; border-radius:7px; cursor:pointer; margin-left:10px;
-        font-size:.82rem; transition:background .15s, border-color .15s; }
-      .barra-sesion .btn-salir:hover { background:rgba(255,255,255,.1); border-color:rgba(255,255,255,.5); }
+      .barra-sesion .cuenta-panel { position:absolute;top:calc(100% + 8px);left:0;z-index:950;width:245px;padding:7px;border:1px solid rgba(255,255,255,.13);border-radius:13px;background:#101a17;box-shadow:0 22px 55px rgba(0,0,0,.58); }
+      .barra-sesion .cuenta-panel[hidden] { display:none; }
+      .barra-sesion .cuenta-panel a,.barra-sesion .cuenta-panel button { width:100%;min-height:40px;display:flex;align-items:center;gap:10px;padding:8px 10px;border:0;border-radius:8px;background:transparent;color:rgba(255,255,255,.82);font:inherit;font-size:.78rem;text-align:left;text-decoration:none;cursor:pointer; }
+      .barra-sesion .cuenta-panel a:hover,.barra-sesion .cuenta-panel button:hover,.barra-sesion .cuenta-panel a.activo { background:rgba(84,227,142,.1);color:#54e38e; }
+      .barra-sesion .cuenta-separador { height:1px;margin:6px 5px;background:rgba(255,255,255,.1); }
+      .barra-sesion .cuenta-panel .btn-salir { color:#ffaaa6; }
+      .barra-sesion .cuenta-panel .btn-salir:hover { background:rgba(255,124,120,.1);color:#ff7c78; }
       @media (max-width: 720px) {
         .barra-sesion { gap:0;padding:0 12px; }
-        .barra-sesion .usuario { width:100%;justify-content:space-between;padding:8px 2px;font-size:.76rem; }
+        .barra-sesion .cuenta-menu { width:100%;min-width:0; }
+        .barra-sesion .usuario { width:100%;padding:8px 2px;font-size:.76rem; }
+        .barra-sesion .usuario-nombre { max-width:44vw; }
+        .barra-sesion .chip-plan { margin-left:auto; }
+        .barra-sesion .cuenta-panel { top:calc(100% + 5px);left:0;width:min(280px,calc(100vw - 24px)); }
         .barra-sesion nav { width:calc(100% + 24px);flex-wrap:nowrap;justify-content:flex-start;overflow-x:auto;margin:0 -12px;padding:0 8px;border-top:1px solid rgba(255,255,255,.07);scrollbar-width:none;scroll-snap-type:x proximity; }
         .barra-sesion nav::-webkit-scrollbar { display:none; }
         .barra-sesion nav a { display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;padding:9px 8px;font-size:.7rem;scroll-snap-align:start; }
         .barra-sesion nav a .ico { font-size:.88rem; }
-        .barra-sesion .btn-salir { flex:0 0 auto;min-height:32px;margin:5px 4px;padding:5px 11px;font-size:.7rem; }
       }`;
     document.head.appendChild(estilos);
   }
@@ -156,20 +170,47 @@
       ? `<a href="/admin.html" class="admin ${esRutaActiva('/admin.html') ? 'activo' : ''}">
           <span class="ico">🛠️</span> <span class="txt">Panel admin</span></a>`
       : '';
+    const enlacesCuenta = ENLACES_CUENTA.map(e =>
+      `<a href="${e.href}" class="${esRutaActiva(e.href) ? 'activo' : ''}">
+        <span aria-hidden="true">${e.icono}</span> <span>${escaparHtml(e.texto)}</span>
+      </a>`).join('');
+    const cuentaActiva = ENLACES_CUENTA.some(e => esRutaActiva(e.href));
 
     const barra = document.createElement('div');
     barra.className = 'barra-sesion';
     barra.innerHTML = `
-      <span class="usuario">👤 ${escaparHtml(usuario.nombre || usuario.email)}
-        <span class="chip-plan ${claseChip}">${escaparHtml(etiqueta)}</span>
-      </span>
+      <div class="cuenta-menu">
+        <button id="cuenta-menu-trigger" class="usuario ${cuentaActiva ? 'activo' : ''}" type="button" aria-expanded="false" aria-controls="cuenta-menu-panel">
+          <span aria-hidden="true">👤</span><span class="usuario-nombre">${escaparHtml(usuario.nombre || usuario.email)}</span>
+          <span class="chip-plan ${claseChip}">${escaparHtml(etiqueta)}</span><span class="usuario-flecha" aria-hidden="true">▼</span>
+        </button>
+        <div id="cuenta-menu-panel" class="cuenta-panel" aria-label="Menú de cuenta" hidden>
+          ${enlacesCuenta}
+          <div class="cuenta-separador" aria-hidden="true"></div>
+          <button id="btnCerrarSesion" class="btn-salir" type="button"><span aria-hidden="true">↪</span><span>Cerrar sesión</span></button>
+        </div>
+      </div>
       <nav aria-label="Navegación principal">
         ${enlaces}
         ${enlaceAdmin}
-        <button id="btnCerrarSesion" class="btn-salir">Salir</button>
       </nav>`;
     document.body.prepend(barra);
+    const triggerCuenta = document.getElementById('cuenta-menu-trigger');
+    const panelCuenta = document.getElementById('cuenta-menu-panel');
+    triggerCuenta.addEventListener('click', () => {
+      panelCuenta.hidden = !panelCuenta.hidden;
+      triggerCuenta.setAttribute('aria-expanded', String(!panelCuenta.hidden));
+    });
     document.getElementById('btnCerrarSesion').onclick = cerrarSesion;
+  }
+
+  function cerrarMenuCuenta({ devolverFoco = false } = {}) {
+    const trigger = document.getElementById('cuenta-menu-trigger');
+    const panel = document.getElementById('cuenta-menu-panel');
+    if (!trigger || !panel || panel.hidden) return;
+    panel.hidden = true;
+    trigger.setAttribute('aria-expanded', 'false');
+    if (devolverFoco) trigger.focus();
   }
 
   function actualizarUsuarioInterfaz(usuario) {
@@ -334,6 +375,12 @@
   window.addEventListener(EVENTO_PICKS, actualizarPicksFlotantes);
   window.addEventListener('futbol:usuario-actualizado', evento => {
     if (evento.detail) actualizarUsuarioInterfaz(evento.detail);
+  });
+  document.addEventListener('click', evento => {
+    if (!evento.target.closest('.cuenta-menu')) cerrarMenuCuenta();
+  });
+  document.addEventListener('keydown', evento => {
+    if (evento.key === 'Escape') cerrarMenuCuenta({ devolverFoco: true });
   });
   window.addEventListener('storage', event => { if (event.key === CLAVE_PICKS) actualizarPicksFlotantes(); });
   window.addEventListener('pageshow', event => { if (event.persisted) actualizarPicksFlotantes(); });

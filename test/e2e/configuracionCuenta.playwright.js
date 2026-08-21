@@ -34,9 +34,21 @@ async function main() {
     if (!login.ok()) throw new Error(`El login respondió ${login.status()}.`);
 
     await pagina.goto('/admin.html', { waitUntil: 'networkidle' });
-    const enlace = pagina.locator('a[href="/configuracion.html"]');
-    if (!await enlace.count()) throw new Error('El panel administrativo no muestra Configuración en la navegación.');
-    await enlace.first().click();
+    const navPrincipal = pagina.locator('nav[aria-label="Navegación principal"]');
+    for (const ruta of ['/configuracion.html', '/guia.html', '/sugerencias.html']) {
+      if (await navPrincipal.locator(`a[href="${ruta}"]`).count()) throw new Error(`${ruta} todavía aparece en la navegación principal.`);
+    }
+    const triggerCuenta = pagina.locator('#cuenta-menu-trigger');
+    await triggerCuenta.click();
+    if (await triggerCuenta.getAttribute('aria-expanded') !== 'true') throw new Error('El nombre no abrió el menú de cuenta.');
+    const enlace = pagina.locator('#cuenta-menu-panel a[href="/configuracion.html"]');
+    if (!await enlace.isVisible()) throw new Error('Configuración no aparece en el menú de cuenta.');
+    if (!await pagina.locator('#cuenta-menu-panel a[href="/guia.html"]').isVisible()) throw new Error('Guía no aparece en el menú de cuenta.');
+    if (!await pagina.locator('#cuenta-menu-panel a[href="/sugerencias.html"]').isVisible()) throw new Error('Sugerencias no aparece en el menú de cuenta.');
+    await pagina.mouse.click(1000, 300);
+    if (await pagina.locator('#cuenta-menu-panel').isVisible()) throw new Error('El clic fuera no cerró el menú de cuenta.');
+    await triggerCuenta.click();
+    await enlace.click();
     await pagina.waitForURL('**/configuracion.html');
     await pagina.waitForLoadState('networkidle');
 
@@ -93,6 +105,10 @@ async function main() {
     }
 
     await pagina.setViewportSize({ width: 390, height: 844 });
+    await pagina.locator('#cuenta-menu-trigger').click();
+    if (!await pagina.locator('#cuenta-menu-panel').isVisible()) throw new Error('El menú de cuenta no abre en móvil.');
+    await pagina.keyboard.press('Escape');
+    if (await pagina.locator('#cuenta-menu-panel').isVisible()) throw new Error('Escape no cerró el menú de cuenta.');
     const desborde = await pagina.evaluate(() => document.documentElement.scrollWidth > window.innerWidth);
     if (desborde) throw new Error('La configuración genera desborde horizontal en móvil.');
     if (errores.length) throw new Error(`Errores JavaScript: ${errores.join(' | ')}`);
