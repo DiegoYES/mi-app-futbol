@@ -41,10 +41,33 @@
   .general-save.saved { border-color:var(--line); background:var(--surface-soft); color:var(--muted); }
   .general-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .general-actions .pick-why,.general-actions .general-save { min-height:42px; margin:4px 0 0; }
+  .editorial-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+  .editorial-card { position:relative;display:flex;flex-direction:column;gap:12px;padding:19px;border:1px solid var(--line);border-radius:16px;background:var(--surface-raised);overflow:hidden; }
+  .editorial-card.featured { border-color:rgba(245,190,91,.55);box-shadow:0 12px 34px rgba(0,0,0,.18); }
+  .editorial-head { display:flex;justify-content:space-between;gap:14px;align-items:flex-start; }
+  .editorial-head small { display:block;color:var(--muted);font-size:.62rem;font-weight:850;letter-spacing:.07em;text-transform:uppercase; }
+  .editorial-head h4 { margin:5px 0 0;font-size:1.08rem;line-height:1.35; }
+  .editorial-badges { display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end; }
+  .editorial-badge { padding:5px 8px;border-radius:999px;background:rgba(84,227,142,.1);color:var(--green);font-size:.58rem;font-weight:900;text-transform:uppercase;white-space:nowrap; }
+  .editorial-badge.premium { background:rgba(104,217,231,.1);color:var(--cyan); }
+  .editorial-badge.acertado { background:rgba(84,227,142,.12);color:var(--green); }
+  .editorial-badge.fallado { background:rgba(255,124,120,.12);color:var(--red); }
+  .editorial-analysis { margin:0;color:var(--muted);font-size:.77rem;line-height:1.65;white-space:pre-wrap; }
+  .editorial-selections { display:grid;gap:8px;margin:0;padding:0;list-style:none; }
+  .editorial-selection { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:11px 12px;border-left:3px solid var(--green);border-radius:0 9px 9px 0;background:rgba(84,227,142,.07); }
+  .editorial-selection strong,.editorial-selection span { display:block; }
+  .editorial-selection strong { font-size:.78rem; }
+  .editorial-selection span { margin-top:3px;color:var(--muted);font-size:.68rem; }
+  .editorial-selection b { color:var(--green);font-size:.86rem;white-space:nowrap; }
+  .editorial-footer { display:flex;justify-content:space-between;gap:12px;margin-top:auto;padding-top:11px;border-top:1px solid var(--line);color:var(--muted);font-size:.65rem; }
+  .editorial-lock { padding:20px;border:1px dashed rgba(104,217,231,.4);border-radius:12px;background:rgba(104,217,231,.05);text-align:center; }
+  .editorial-lock strong,.editorial-lock span { display:block; }
+  .editorial-lock span { margin:7px 0 12px;color:var(--muted);font-size:.72rem; }
+  .editorial-lock a { color:var(--green);font-size:.72rem;font-weight:900; }
   @media (max-width:520px) { .general-actions{grid-template-columns:1fr} }
   @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:minmax(0,1fr) auto;gap:12px; } }
-  @media (max-width:800px) { .general-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid{grid-template-columns:1fr}.general-card{min-height:155px} }
+  @media (max-width:800px) { .general-grid,.editorial-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px} }
 </style>
 </head>
 <body>
@@ -57,6 +80,15 @@
       <p>Aquí no cuentan retrospectivas: solamente pronósticos guardados antes del inicio y liquidados contra el marcador final.</p>
     </div>
   </header>
+
+  <section class="picks-section">
+    <div class="section-heading">
+      <div><p class="eyebrow">Selección de Data-Fut</p><h3>Picks y parlays recomendados</h3></div>
+      <span class="model-badge">Actualizados por nosotros</span>
+    </div>
+    <p>Recomendaciones editoriales publicadas desde el panel. Los picks premium están incluidos durante tus 7 días de prueba y con la membresía activa.</p>
+    <div id="recomendaciones-editoriales" class="editorial-grid"><div class="loader">Cargando recomendaciones…</div></div>
+  </section>
 
   <section class="picks-section">
     <div class="section-heading">
@@ -99,6 +131,29 @@ function fecha(valor) {
 const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
 let catalogoGeneralCargado = false;
 let picksGuardados = new Set();
+
+async function cargarRecomendacionesEditoriales() {
+  const contenedor = document.getElementById('recomendaciones-editoriales');
+  try {
+    const respuesta = await fetch('/api/recomendaciones', { cache: 'no-store' });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar las recomendaciones.');
+    if (!datos.recomendaciones.length) {
+      contenedor.innerHTML = '<div class="empty-state">Todavía no hemos publicado picks o parlays recomendados.</div>';
+      return;
+    }
+    contenedor.innerHTML = datos.recomendaciones.map(item => {
+      const tipo = item.tipo === 'parlay' ? 'Parlay' : 'Pick individual';
+      const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${item.resultado !== 'pendiente' ? `<span class="editorial-badge ${esc(item.resultado)}">${esc(item.resultado)}</span>` : ''}`;
+      const contenido = item.bloqueada
+        ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
+        : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => `<li class="editorial-selection"><div><strong>${esc(seleccion.evento)}</strong><span>${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div>${seleccion.cuota ? `<b>@ ${seleccion.cuota}</b>` : ''}</li>`).join('')}</ol>`;
+      return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>${item.cuota_total ? `Cuota total ${item.cuota_total}` : tipo}</strong></footer></article>`;
+    }).join('');
+  } catch (error) {
+    contenedor.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
+  }
+}
 
 function marcarPicksGeneralesGuardados() {
   document.querySelectorAll('[data-save-general]').forEach(boton => {
@@ -246,7 +301,7 @@ document.getElementById('mejores-generales').addEventListener('click', async eve
 const dialogoGeneral = document.getElementById('general-explanation-dialog');
 document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
 dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
-document.addEventListener('DOMContentLoaded', () => { cargarMejoresGenerales(); cargarHistorial(); });
+document.addEventListener('DOMContentLoaded', () => { cargarRecomendacionesEditoriales(); cargarMejoresGenerales(); cargarHistorial(); });
 window.addEventListener('futbol:picks-actualizados', cargarHistorial);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
 </script>

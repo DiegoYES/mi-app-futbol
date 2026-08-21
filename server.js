@@ -16,6 +16,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const calendarioRoutes = require('./routes/calendario');
 const picksRoutes = require('./routes/picks');
+const recomendacionesRoutes = require('./routes/recomendaciones');
 const boletasRoutes = require('./routes/boletas');
 const homeRoutes = require('./routes/home');
 const jugadoresRoutes = require('./routes/jugadores');
@@ -115,6 +116,9 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
 // El buzón solo exige sesión: también sirve para reportar problemas de acceso.
 app.use('/api/sugerencias', requireAuth, sugerenciasRoutes);
+// Una cuenta vencida puede ver el avance bloqueado; el contenido premium sólo
+// se revela usando el mismo estadoAcceso de la prueba y la suscripción actuales.
+app.use('/api/recomendaciones', requireAuth, recomendacionesRoutes);
 
 // Todos los endpoints de datos requieren sesión válida y acceso vigente
 // Las imágenes exigen sesión pero se registran antes de `protegido` para no

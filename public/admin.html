@@ -64,7 +64,31 @@
   .ticket-edit textarea { min-height:64px;resize:vertical; }
   .btn-ticket { min-height:40px;border:0;border-radius:7px;background:var(--primary);color:#fff;padding:9px 13px;cursor:pointer; }
   .ticket-empty { padding:25px;text-align:center;color:#94a3b8;background:#fff;border-radius:10px; }
-  @media(max-width:800px){.ticket-edit{grid-template-columns:1fr 1fr}.ticket-edit>div:nth-child(3){grid-column:1/-1}.admin-ticket-head{display:block}}
+  .rec-panel { display:grid;grid-template-columns:minmax(320px,.9fr) minmax(380px,1.1fr);gap:16px;align-items:start; }
+  .rec-form,.rec-card { background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:16px;box-shadow:0 2px 8px rgba(0,0,0,.05); }
+  .rec-form-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px; }
+  .rec-form label { display:block;color:#64748b;font-size:.7rem;font-weight:700; }
+  .rec-form input,.rec-form select,.rec-form textarea { width:100%;min-height:42px;margin-top:5px;padding:9px;border:1px solid #cbd5e1;border-radius:7px;font:inherit; }
+  .rec-form textarea { min-height:88px;resize:vertical; }
+  .rec-wide { grid-column:1/-1; }
+  .rec-check { display:flex!important;align-items:center;gap:8px;min-height:42px;color:#334155!important; }
+  .rec-check input { width:auto;min-height:auto;margin:0; }
+  .rec-selections { display:grid;gap:8px;margin:12px 0; }
+  .rec-selection { display:grid;grid-template-columns:1.2fr 1.2fr 80px 100px auto;gap:7px;padding:9px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px; }
+  .rec-selection input { min-width:0;margin:0; }
+  .rec-actions { display:flex;gap:8px;flex-wrap:wrap; }
+  .rec-actions button { min-height:42px;border:0;border-radius:7px;padding:9px 13px;cursor:pointer; }
+  .rec-primary { background:var(--primary);color:#fff; }
+  .rec-secondary { background:#e2e8f0;color:#334155; }
+  .rec-danger { background:#fee2e2;color:#991b1b; }
+  .rec-list { display:grid;gap:10px; }
+  .rec-card-head { display:flex;justify-content:space-between;gap:12px; }
+  .rec-card h3 { margin:5px 0;color:var(--primary);font-size:1rem; }
+  .rec-card p { margin:8px 0;color:#64748b;font-size:.8rem;white-space:pre-wrap; }
+  .rec-card ol { margin:9px 0;padding-left:20px;font-size:.8rem; }
+  .rec-card-meta { color:#64748b;font-size:.7rem; }
+  @media(max-width:900px){.rec-panel{grid-template-columns:1fr}}
+  @media(max-width:800px){.ticket-edit{grid-template-columns:1fr 1fr}.ticket-edit>div:nth-child(3){grid-column:1/-1}.admin-ticket-head{display:block}.rec-selection{grid-template-columns:1fr 1fr}.rec-selection button{grid-column:1/-1}}
   @media(max-width:600px){.wrap{padding:18px 12px}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}.ticket-edit{grid-template-columns:1fr}.ticket-edit>div:nth-child(3){grid-column:auto}}
   @media(max-width:360px){.kpis{grid-template-columns:1fr}}
 </style>
@@ -74,6 +98,33 @@
   <h1>🛠️ Panel de administración</h1>
 
   <div class="kpis" id="kpis"></div>
+
+  <div class="seccion">
+    <h2>🎯 Picks y parlays recomendados</h2>
+    <div class="rec-panel">
+      <form class="rec-form" id="rec-form">
+        <input type="hidden" id="rec-id">
+        <div class="rec-form-grid">
+          <label>Tipo<select id="rec-tipo"><option value="pick">Pick individual</option><option value="parlay">Parlay</option></select></label>
+          <label>Acceso<select id="rec-visibilidad"><option value="premium">Premium</option><option value="gratis">Gratis</option></select></label>
+          <label>Publicación<select id="rec-publicacion"><option value="borrador">Borrador</option><option value="publicada">Publicar</option></select></label>
+          <label>Resultado<select id="rec-resultado"><option value="pendiente">Pendiente</option><option value="acertado">Acertado</option><option value="fallado">Fallado</option><option value="anulado">Anulado</option></select></label>
+          <label class="rec-wide">Título<input id="rec-titulo" maxlength="140" required placeholder="Ej. Pick destacado del viernes"></label>
+          <label class="rec-wide">Análisis<textarea id="rec-descripcion" maxlength="3000" placeholder="Explica brevemente por qué lo recomendamos"></textarea></label>
+          <label>Fecha y hora límite<input id="rec-cierra" type="datetime-local" required></label>
+          <label>Cuota total<input id="rec-cuota-total" type="number" min="1" max="100000" step="0.01" placeholder="Opcional"></label>
+          <label class="rec-check rec-wide"><input id="rec-destacada" type="checkbox"> Destacar esta recomendación</label>
+        </div>
+        <div id="rec-selecciones" class="rec-selections"></div>
+        <div class="rec-actions">
+          <button class="rec-secondary" id="rec-agregar" type="button">+ Añadir selección</button>
+          <button class="rec-primary" id="rec-guardar" type="submit">Crear recomendación</button>
+          <button class="rec-secondary" id="rec-cancelar" type="button" hidden>Cancelar edición</button>
+        </div>
+      </form>
+      <div id="rec-lista" class="rec-list"><div class="ticket-empty">Cargando recomendaciones…</div></div>
+    </div>
+  </div>
 
   <div class="seccion">
     <h2>Mercados de Playdoit</h2>
@@ -140,6 +191,140 @@ function escaparHtml(valor) {
 function fecha(valor) {
   if (!valor) return '—';
   return new Date(valor).toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' });
+}
+
+function fechaLocalInput(valor) {
+  if (!valor) return '';
+  const fechaValor = new Date(valor);
+  const local = new Date(fechaValor.getTime() - fechaValor.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+function agregarSeleccion(datos = {}) {
+  const fila = document.createElement('div');
+  fila.className = 'rec-selection';
+  fila.innerHTML = `<input data-rec="evento" maxlength="140" required placeholder="Partido o evento" value="${escaparHtml(datos.evento || '')}">
+    <input data-rec="mercado" maxlength="180" required placeholder="Mercado recomendado" value="${escaparHtml(datos.mercado || '')}">
+    <input data-rec="cuota" type="number" min="1" max="1000" step="0.01" placeholder="Cuota" value="${escaparHtml(datos.cuota ?? '')}">
+    <input data-rec="casa" maxlength="80" placeholder="Casa" value="${escaparHtml(datos.casa || '')}">
+    <button class="rec-danger" type="button" data-rec-quitar>Quitar</button>`;
+  document.getElementById('rec-selecciones').appendChild(fila);
+}
+
+function ajustarSelecciones() {
+  const contenedor = document.getElementById('rec-selecciones');
+  if (!contenedor.children.length) agregarSeleccion();
+  if (document.getElementById('rec-tipo').value === 'pick') {
+    while (contenedor.children.length > 1) contenedor.lastElementChild.remove();
+  }
+  document.getElementById('rec-agregar').disabled = document.getElementById('rec-tipo').value === 'pick';
+}
+
+function limpiarRecomendacion() {
+  document.getElementById('rec-form').reset();
+  document.getElementById('rec-id').value = '';
+  document.getElementById('rec-selecciones').innerHTML = '';
+  document.getElementById('rec-guardar').textContent = 'Crear recomendación';
+  document.getElementById('rec-cancelar').hidden = true;
+  agregarSeleccion();
+  ajustarSelecciones();
+}
+
+function datosRecomendacionFormulario() {
+  const cierreLocal = document.getElementById('rec-cierra').value;
+  return {
+    tipo: document.getElementById('rec-tipo').value,
+    titulo: document.getElementById('rec-titulo').value,
+    descripcion: document.getElementById('rec-descripcion').value,
+    visibilidad: document.getElementById('rec-visibilidad').value,
+    estado_publicacion: document.getElementById('rec-publicacion').value,
+    resultado: document.getElementById('rec-resultado').value,
+    destacada: document.getElementById('rec-destacada').checked,
+    cuota_total: document.getElementById('rec-cuota-total').value,
+    cierra_en: cierreLocal ? new Date(cierreLocal).toISOString() : '',
+    selecciones: [...document.querySelectorAll('.rec-selection')].map(fila => ({
+      evento: fila.querySelector('[data-rec="evento"]').value,
+      mercado: fila.querySelector('[data-rec="mercado"]').value,
+      cuota: fila.querySelector('[data-rec="cuota"]').value,
+      casa: fila.querySelector('[data-rec="casa"]').value
+    }))
+  };
+}
+
+async function guardarRecomendacion(evento) {
+  evento.preventDefault();
+  const id = document.getElementById('rec-id').value;
+  const boton = document.getElementById('rec-guardar');
+  boton.disabled = true;
+  try {
+    const respuesta = await fetch(id ? `/api/admin/recomendaciones/${id}` : '/api/admin/recomendaciones', {
+      method: id ? 'PATCH' : 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(datosRecomendacionFormulario())
+    });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudo guardar la recomendación.');
+    limpiarRecomendacion();
+    await cargarRecomendacionesAdmin();
+  } catch (error) {
+    alert(error.message);
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+let recomendacionesAdmin = [];
+
+async function cargarRecomendacionesAdmin() {
+  const contenedor = document.getElementById('rec-lista');
+  const respuesta = await fetch('/api/admin/recomendaciones');
+  const datos = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) {
+    contenedor.innerHTML = `<div class="ticket-empty">${escaparHtml(datos.error || 'No se pudieron cargar.')}</div>`;
+    return;
+  }
+  recomendacionesAdmin = datos.recomendaciones;
+  if (!recomendacionesAdmin.length) {
+    contenedor.innerHTML = '<div class="ticket-empty">Todavía no hay picks ni parlays editoriales.</div>';
+    return;
+  }
+  contenedor.innerHTML = recomendacionesAdmin.map(item => `<article class="rec-card" data-rec-id="${item._id}">
+    <div class="rec-card-head"><div><span class="rec-card-meta">${item.tipo === 'parlay' ? 'PARLAY' : 'PICK'} · ${escaparHtml(item.visibilidad)} · ${escaparHtml(item.estado_publicacion)}</span><h3>${escaparHtml(item.titulo)}</h3></div><span class="badge ${item.resultado === 'acertado' ? 'premium' : item.resultado === 'fallado' ? 'expirado' : 'prueba'}">${escaparHtml(item.resultado)}</span></div>
+    ${item.descripcion ? `<p>${escaparHtml(item.descripcion)}</p>` : ''}
+    <ol>${item.selecciones.map(seleccion => `<li><strong>${escaparHtml(seleccion.evento)}</strong> · ${escaparHtml(seleccion.mercado)}${seleccion.cuota ? ` @ ${seleccion.cuota}` : ''}</li>`).join('')}</ol>
+    <div class="rec-card-meta">Cierra ${fecha(item.cierra_en)}${item.cuota_total ? ` · Cuota total ${item.cuota_total}` : ''}${item.destacada ? ' · ⭐ Destacada' : ''}</div>
+    <div class="rec-actions" style="margin-top:11px"><button class="rec-secondary" type="button" data-rec-editar="${item._id}">Editar</button><button class="rec-danger" type="button" data-rec-eliminar="${item._id}">Eliminar</button></div>
+  </article>`).join('');
+}
+
+function editarRecomendacion(id) {
+  const item = recomendacionesAdmin.find(recomendacion => recomendacion._id === id);
+  if (!item) return;
+  document.getElementById('rec-id').value = item._id;
+  document.getElementById('rec-tipo').value = item.tipo;
+  document.getElementById('rec-visibilidad').value = item.visibilidad;
+  document.getElementById('rec-publicacion').value = item.estado_publicacion;
+  document.getElementById('rec-resultado').value = item.resultado;
+  document.getElementById('rec-titulo').value = item.titulo;
+  document.getElementById('rec-descripcion').value = item.descripcion || '';
+  document.getElementById('rec-cierra').value = fechaLocalInput(item.cierra_en);
+  document.getElementById('rec-cuota-total').value = item.cuota_total || '';
+  document.getElementById('rec-destacada').checked = item.destacada;
+  document.getElementById('rec-selecciones').innerHTML = '';
+  item.selecciones.forEach(agregarSeleccion);
+  ajustarSelecciones();
+  document.getElementById('rec-guardar').textContent = 'Guardar cambios';
+  document.getElementById('rec-cancelar').hidden = false;
+  document.getElementById('rec-form').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+async function eliminarRecomendacion(id) {
+  if (!confirm('¿Eliminar definitivamente esta recomendación?')) return;
+  const respuesta = await fetch(`/api/admin/recomendaciones/${id}`, { method: 'DELETE' });
+  const datos = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) return alert(datos.error || 'No se pudo eliminar.');
+  if (document.getElementById('rec-id').value === id) limpiarRecomendacion();
+  cargarRecomendacionesAdmin();
 }
 
 function buscarConRetraso() {
@@ -396,9 +581,26 @@ function refrescar() {
   cargarIPsDuplicadas();
   cargarDiagnosticoMercados();
   cargarTickets();
+  cargarRecomendacionesAdmin();
 }
 
 function instalarEventos() {
+  document.getElementById('rec-form').addEventListener('submit', guardarRecomendacion);
+  document.getElementById('rec-tipo').addEventListener('change', ajustarSelecciones);
+  document.getElementById('rec-agregar').addEventListener('click', () => agregarSeleccion());
+  document.getElementById('rec-cancelar').addEventListener('click', limpiarRecomendacion);
+  document.getElementById('rec-selecciones').addEventListener('click', evento => {
+    const boton = evento.target.closest('[data-rec-quitar]');
+    if (!boton) return;
+    boton.closest('.rec-selection').remove();
+    ajustarSelecciones();
+  });
+  document.getElementById('rec-lista').addEventListener('click', evento => {
+    const editar = evento.target.closest('[data-rec-editar]');
+    const eliminar = evento.target.closest('[data-rec-eliminar]');
+    if (editar) editarRecomendacion(editar.dataset.recEditar);
+    if (eliminar) eliminarRecomendacion(eliminar.dataset.recEliminar);
+  });
   document.getElementById('actualizar-mercados').addEventListener('click', actualizarMercados);
   document.getElementById('filtro-ticket-estado').addEventListener('change', cargarTickets);
   document.getElementById('filtro-ticket-tipo').addEventListener('change', cargarTickets);
@@ -427,6 +629,7 @@ function instalarEventos() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  limpiarRecomendacion();
   instalarEventos();
   refrescar();
 });

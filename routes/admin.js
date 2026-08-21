@@ -12,10 +12,71 @@ const { obtenerApiKeys } = require('../services/apiQuota');
 const { obtenerEstadisticasCache } = require('../middleware/cache');
 const mongoose = require('mongoose');
 const { obtenerMetricasHttp } = require('../middleware/observability');
+const Recomendacion = require('../models/Recomendacion');
+const { normalizarRecomendacion } = require('../services/recomendaciones');
 
 const router = express.Router();
 
 router.use(requireAuth, requireAdmin);
+
+router.get('/recomendaciones', async (_req, res) => {
+  try {
+    const recomendaciones = await Recomendacion.find({})
+      .sort({ destacada: -1, creada_en: -1 })
+      .limit(200)
+      .lean();
+    res.json({ recomendaciones });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+router.post('/recomendaciones', async (req, res) => {
+  try {
+    const normalizada = normalizarRecomendacion(req.body);
+    if (normalizada.error) return res.status(400).json({ error: normalizada.error });
+    const datos = normalizada.datos;
+    const recomendacion = await Recomendacion.create({
+      ...datos,
+      creada_por: req.usuario._id,
+      publicada_en: datos.estado_publicacion === 'publicada' ? new Date() : null
+    });
+    res.status(201).json({ mensaje: 'Recomendación creada.', recomendacion });
+  } catch (error) {
+    if (error.name === 'ValidationError') return res.status(400).json({ error: 'Revisa los datos de la recomendación.' });
+    errorServidor(res, error);
+  }
+});
+
+router.patch('/recomendaciones/:id', async (req, res) => {
+  try {
+    const normalizada = normalizarRecomendacion(req.body);
+    if (normalizada.error) return res.status(400).json({ error: normalizada.error });
+    const actual = await Recomendacion.findById(req.params.id);
+    if (!actual) return res.status(404).json({ error: 'Recomendación no encontrada.' });
+    const antesPublicada = actual.estado_publicacion === 'publicada';
+    Object.assign(actual, normalizada.datos);
+    if (!antesPublicada && actual.estado_publicacion === 'publicada') actual.publicada_en = new Date();
+    if (actual.estado_publicacion === 'borrador') actual.publicada_en = null;
+    await actual.save();
+    res.json({ mensaje: 'Recomendación actualizada.', recomendacion: actual });
+  } catch (error) {
+    if (error.name === 'CastError') return res.status(404).json({ error: 'Recomendación no encontrada.' });
+    if (error.name === 'ValidationError') return res.status(400).json({ error: 'Revisa los datos de la recomendación.' });
+    errorServidor(res, error);
+  }
+});
+
+router.delete('/recomendaciones/:id', async (req, res) => {
+  try {
+    const eliminada = await Recomendacion.findByIdAndDelete(req.params.id);
+    if (!eliminada) return res.status(404).json({ error: 'Recomendación no encontrada.' });
+    res.json({ mensaje: 'Recomendación eliminada.' });
+  } catch (error) {
+    if (error.name === 'CastError') return res.status(404).json({ error: 'Recomendación no encontrada.' });
+    errorServidor(res, error);
+  }
+});
 
 // Listado de usuarios con búsqueda y paginación
 router.get('/usuarios', async (req, res) => {
