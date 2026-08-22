@@ -601,6 +601,7 @@ function generarVistaPorEstadisticas(partidos, limit) {
     html += crearTablaEstadistica('Faltas', partidos, 'faltas', 'faltas');
     html += crearTablaEstadistica('Tarjetas amarillas', partidos, 'amarillas', 'amarillas');
     html += crearTablaEstadistica('Tarjetas rojas', partidos, 'rojas', 'rojas');
+    html += crearTablaEstadistica('Puntos de tarjetas (roja ×2)', partidos, 'puntos_tarjetas', 'puntos_tarjetas');
     html += crearTablaEstadistica('Fueras de juego', partidos, 'offsides', 'offsides');
     return html;
 }
@@ -700,7 +701,8 @@ async function actualizarEstadisticas(lado) {
                     ${metricaAvanzada('Tiros', promedios.tirosFavor, promedios.tirosContra, promedios.tirosTotales)}
                     ${metricaAvanzada('Tiros a puerta', promedios.tirosPuertaFavor, promedios.tirosPuertaContra, promedios.tirosPuertaTotales)}
                     ${metricaAvanzada('Córners', promedios.cornersFavor, promedios.cornersContra, promedios.cornersTotales)}
-                    ${metricaAvanzada('Tarjetas registradas', promedios.tarjetasFavor, promedios.tarjetasContra, promedios.tarjetasTotales)}
+                    ${metricaAvanzada('Tarjetas registradas (conteo simple)', promedios.tarjetasFavor, promedios.tarjetasContra, promedios.tarjetasTotales)}
+                    ${metricaAvanzada('Puntos de tarjetas (roja ×2)', promedios.puntosTarjetasFavor, promedios.puntosTarjetasContra, promedios.puntosTarjetasTotales)}
                     ${metricaAvanzada('Faltas', promedios.faltasFavor, promedios.faltasContra, promedios.faltasTotales)}
                     ${metricaAvanzada('Fueras de juego', promedios.offsidesFavor, promedios.offsidesContra, promedios.offsidesTotales)}
                     <div class="advanced-metric-card advanced-tendency">
@@ -708,7 +710,7 @@ async function actualizarEstadisticas(lado) {
                         <strong>${frecuenciaPrincipal(avanzadas.cornersOver95, avanzadas.muestras?.cornersTotales ?? avanzadas.muestra)}</strong>
                         <small>${frecuenciaSecundaria(avanzadas.cornersOver95, avanzadas.muestras?.cornersTotales ?? avanzadas.muestra)} · con cobertura</small>
                     </div>
-                </div>` : '<div class="advanced-empty">Todavía no hay estadísticas avanzadas cubiertas para esta muestra. Los marcadores y tendencias de goles sí son válidos.</div>'}
+                </div><p class="advanced-source-note">Tarjetas tomadas de las estadísticas oficiales por equipo del proveedor. En “Puntos de tarjetas”, cada amarilla vale 1 y cada roja vale 2. Las reglas sobre banca, cuerpo técnico y segunda amarilla pueden variar por casa.</p>` : '<div class="advanced-empty">Todavía no hay estadísticas avanzadas cubiertas para esta muestra. Los marcadores y tendencias de goles sí son válidos.</div>'}
             </details>
             ${data.info.cobertura.estadisticas < data.info.cobertura.partidos
                 ? `<div class="warning">Estas tendencias usan marcadores confirmados. El detalle avanzado tiene cobertura de ${data.info.cobertura.estadisticas}/${data.info.cobertura.partidos}; los faltantes se muestran como “—”. Los picks combinados están en su bloque independiente.</div>`

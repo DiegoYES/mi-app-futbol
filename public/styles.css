@@ -371,6 +371,7 @@ select:disabled { cursor: not-allowed; opacity: 0.45; }
 .advanced-values strong { display: block; margin-top: 2px; font-size: 1rem; font-variant-numeric: tabular-nums; }
 .advanced-tendency > strong { display: block; color: var(--green); font-size: 1.15rem; }
 .advanced-tendency > small { color: var(--muted); font-size: .65rem; }
+.advanced-source-note { margin:0 14px 14px;color:var(--muted);font-size:.62rem;line-height:1.5; }
 .advanced-empty { margin: 0 14px 14px; padding: 13px; border: 1px dashed var(--line); border-radius: 11px; color: var(--muted); font-size: .75rem; }
 
 .metric-card, .market-card {

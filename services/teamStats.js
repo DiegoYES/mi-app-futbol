@@ -130,6 +130,9 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     tarjetasFavor: 0,
     tarjetasContra: 0,
     tarjetasTotales: 0,
+    puntosTarjetasFavor: 0,
+    puntosTarjetasContra: 0,
+    puntosTarjetasTotales: 0,
     faltasFavor: 0,
     faltasContra: 0,
     faltasTotales: 0,
@@ -174,6 +177,10 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
       ? null : statsEquipo.amarillas + statsEquipo.rojas;
     const tarjetasRival = statsRival.amarillas == null || statsRival.rojas == null
       ? null : statsRival.amarillas + statsRival.rojas;
+    const puntosTarjetasEquipo = statsEquipo.amarillas == null || statsEquipo.rojas == null
+      ? null : statsEquipo.amarillas + (statsEquipo.rojas * 2);
+    const puntosTarjetasRival = statsRival.amarillas == null || statsRival.rojas == null
+      ? null : statsRival.amarillas + (statsRival.rojas * 2);
     const total = (favor, contra) => favor == null || contra == null ? null : favor + contra;
     const tirosTotales = total(statsEquipo.tiros, statsRival.tiros);
     const tirosPuertaTotales = total(statsEquipo.tiros_puerta, statsRival.tiros_puerta);
@@ -182,6 +189,7 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     const offsidesTotales = total(statsEquipo.offsides, statsRival.offsides);
     const tarjetasTotales = tarjetasEquipo == null || tarjetasRival == null
       ? null : tarjetasEquipo + tarjetasRival;
+    const puntosTarjetasTotales = total(puntosTarjetasEquipo, puntosTarjetasRival);
     muestraAvanzada++;
     acumular('tirosFavor', statsEquipo.tiros);
     acumular('tirosContra', statsRival.tiros);
@@ -195,6 +203,9 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     acumular('tarjetasFavor', tarjetasEquipo);
     acumular('tarjetasContra', tarjetasRival);
     acumular('tarjetasTotales', tarjetasTotales);
+    acumular('puntosTarjetasFavor', puntosTarjetasEquipo);
+    acumular('puntosTarjetasContra', puntosTarjetasRival);
+    acumular('puntosTarjetasTotales', puntosTarjetasTotales);
     acumular('faltasFavor', statsEquipo.faltas);
     acumular('faltasContra', statsRival.faltas);
     acumular('faltasTotales', faltasTotales);
@@ -240,6 +251,9 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
         tarjetasFavor: promedio(sumas.tarjetasFavor, muestras.tarjetasFavor),
         tarjetasContra: promedio(sumas.tarjetasContra, muestras.tarjetasContra),
         tarjetasTotales: promedio(sumas.tarjetasTotales, muestras.tarjetasTotales),
+        puntosTarjetasFavor: promedio(sumas.puntosTarjetasFavor, muestras.puntosTarjetasFavor),
+        puntosTarjetasContra: promedio(sumas.puntosTarjetasContra, muestras.puntosTarjetasContra),
+        puntosTarjetasTotales: promedio(sumas.puntosTarjetasTotales, muestras.puntosTarjetasTotales),
         faltasFavor: promedio(sumas.faltasFavor, muestras.faltasFavor),
         faltasContra: promedio(sumas.faltasContra, muestras.faltasContra),
         faltasTotales: promedio(sumas.faltasTotales, muestras.faltasTotales),
@@ -290,10 +304,16 @@ function detallarPartido(partido, teamId, half = 0) {
     faltas: valorDetallado(statsEquipo.faltas),
     amarillas: valorDetallado(statsEquipo.amarillas),
     rojas: valorDetallado(statsEquipo.rojas),
+    puntos_tarjetas: valorDetallado(statsEquipo.amarillas == null || statsEquipo.rojas == null
+      ? null : statsEquipo.amarillas + (statsEquipo.rojas * 2)),
     offsides: valorDetallado(statsEquipo.offsides),
-    rival_estadisticas: Object.fromEntries(
-      Object.entries(statsRival).map(([clave, valor]) => [clave, valorDetallado(valor)])
-    )
+    rival_estadisticas: {
+      ...Object.fromEntries(
+        Object.entries(statsRival).map(([clave, valor]) => [clave, valorDetallado(valor)])
+      ),
+      puntos_tarjetas: valorDetallado(statsRival.amarillas == null || statsRival.rojas == null
+        ? null : statsRival.amarillas + (statsRival.rojas * 2))
+    }
   };
 }
 

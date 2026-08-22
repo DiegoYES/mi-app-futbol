@@ -64,6 +64,7 @@ test('calcula promedios avanzados solo con partidos que tienen cobertura', () =>
     corners: 7,
     faltas: 11,
     tarjetas_amarillas: 3,
+    tarjetas_rojas: 1,
     offsides: 2
   };
 
@@ -77,6 +78,10 @@ test('calcula promedios avanzados solo con partidos que tienen cobertura', () =>
   assert.equal(stats.avanzadas.promedios.cornersFavor, 5);
   assert.equal(stats.avanzadas.promedios.cornersContra, 7);
   assert.equal(stats.avanzadas.promedios.cornersTotales, 12);
+  assert.equal(stats.avanzadas.promedios.tarjetasTotales, 6);
+  assert.equal(stats.avanzadas.promedios.puntosTarjetasFavor, 2);
+  assert.equal(stats.avanzadas.promedios.puntosTarjetasContra, 5);
+  assert.equal(stats.avanzadas.promedios.puntosTarjetasTotales, 7);
   assert.equal(stats.avanzadas.promedios.faltasTotales, 19);
   assert.equal(stats.avanzadas.promedios.offsidesTotales, 3);
   assert.deepEqual(stats.avanzadas.cornersOver95, { total: 1, porcentaje: '100.0' });
@@ -146,5 +151,6 @@ test('no presenta estadísticas avanzadas faltantes como ceros reales', () => {
   assert.equal(detalle.estadisticas_disponibles, false);
   assert.equal(detalle.tiros, null);
   assert.equal(detalle.corners, null);
+  assert.equal(detalle.puntos_tarjetas, null);
   assert.equal(detalle.rival_estadisticas.tiros, null);
 });
