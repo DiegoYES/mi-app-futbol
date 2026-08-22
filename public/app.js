@@ -1,6 +1,8 @@
 let ligasDisponibles = {};
 let picksActuales = null;
 let soloRecomendadosPicks = false;
+let restaurandoEstadoUrl = true;
+const parametrosEstadoInicial = new URLSearchParams(window.location.search);
 const seleccionesBoleta = new Map();
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
@@ -355,7 +357,7 @@ function actualizarAccionesComparacion() {
     document.getElementById('save-comparison').disabled = !listoPicks;
     document.getElementById('share-comparison').disabled = !listoPicks;
     document.querySelector('.compare-action')?.classList.toggle('is-ready', listoPicks);
-    if (listoPicks) actualizarUrlComparador();
+    if (!restaurandoEstadoUrl) actualizarUrlComparador();
 
     const acceso = document.getElementById('pick-shortcut');
     const pareja = listoPicks ? `${teamA}:${teamB}:${leagueA}:${leagueB}:${seasonA}:${seasonB}` : '';
@@ -454,7 +456,7 @@ async function cargarEquipos(lado) {
 }
 
 async function preseleccionarDesdeUrl() {
-    const params = new URLSearchParams(window.location.search);
+    const params = parametrosEstadoInicial;
     const configuraciones = [
         { lado: 'a', equipo: 'local', liga: 'leagueLocal', season: 'seasonLocal', scope: 'scopeLocal', limit: 'limitLocal', half: 'halfLocal' },
         { lado: 'b', equipo: 'visitante', liga: 'leagueVisitante', season: 'seasonVisitante', scope: 'scopeVisitante', limit: 'limitVisitante', half: 'halfVisitante' }
@@ -1218,7 +1220,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     ['team-a', 'team-b'].forEach(id => prepararSelectorEquipo(document.getElementById(id)));
     configurarEventos();
     await cargarLigas();
-    await preseleccionarDesdeUrl();
+    try {
+        await preseleccionarDesdeUrl();
+    } finally {
+        restaurandoEstadoUrl = false;
+        actualizarAccionesComparacion();
+    }
 
     const accesoPicks = document.getElementById('pick-shortcut');
     const seccionPicks = document.getElementById('picks-section');
