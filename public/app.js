@@ -435,6 +435,7 @@ async function cargarEquipos(lado) {
     document.getElementById(`name-${lado}`).textContent = lado === 'a' ? 'Selecciona el local' : 'Selecciona el visitante';
     document.getElementById(`logo-${lado}`).style.display = 'none';
     document.getElementById(`stats-${lado}`).textContent = 'Selecciona competición y equipo';
+    document.getElementById(`trends-${lado}`).textContent = 'Selecciona competición y equipo';
     document.getElementById(`matches-${lado}`).innerHTML = '';
     actualizarAccionesComparacion();
     if (!leagueId || !season) return;
@@ -605,6 +606,19 @@ function generarVistaPorEstadisticas(partidos, limit) {
     html += crearTablaEstadistica('Fueras de juego', partidos, 'offsides', 'offsides');
     return html;
 }
+
+function activarPestanaEquipo(lado, nombre, enfocar = false) {
+    const botones = [...document.querySelectorAll(`[data-team-tab][data-side="${lado}"]`)];
+    const activo = botones.find(boton => boton.dataset.teamTab === nombre) || botones[0];
+    botones.forEach(boton => {
+        const seleccionado = boton === activo;
+        boton.setAttribute('aria-selected', String(seleccionado));
+        boton.tabIndex = seleccionado ? 0 : -1;
+        document.getElementById(boton.getAttribute('aria-controls')).hidden = !seleccionado;
+    });
+    if (enfocar) activo.focus();
+}
+
 async function actualizarEstadisticas(lado) {
     const teamId = document.getElementById(`team-${lado}`).value;
     const leagueId = document.getElementById(`league-${lado}`).value;
@@ -619,11 +633,13 @@ async function actualizarEstadisticas(lado) {
     const nameEl = document.getElementById(`name-${lado}`);
     const logoEl = document.getElementById(`logo-${lado}`);
     const statsDiv = document.getElementById(`stats-${lado}`);
+    const trendsDiv = document.getElementById(`trends-${lado}`);
     const matchesDiv = document.getElementById(`matches-${lado}`);
 
     nameEl.innerText = 'Cargando...';
     logoEl.style.display = 'none';
     statsDiv.innerHTML = '<div class="loader">Cargando...</div>';
+    trendsDiv.innerHTML = '<div class="loader">Cargando...</div>';
     matchesDiv.innerHTML = '';
 
     try {
@@ -638,6 +654,7 @@ async function actualizarEstadisticas(lado) {
 
         if (data.stats.jugados === 0) {
             statsDiv.innerHTML = `<div class="empty-state">No hay partidos con datos de ${data.info.periodo.toLowerCase()} para estos filtros.</div>`;
+            trendsDiv.innerHTML = statsDiv.innerHTML;
             matchesDiv.innerHTML = '';
             actualizarAccionesComparacion();
             return;
@@ -669,7 +686,8 @@ async function actualizarEstadisticas(lado) {
         const avanzadas = data.stats.avanzadas || { muestra: 0, promedios: {}, cornersOver95: { total: 0, porcentaje: '0.0' } };
         const promedios = avanzadas.promedios || {};
 
-        let html = `<p class="period-label">${data.info.periodo} · ${data.stats.jugados} partidos</p>
+        const encabezadoPeriodo = `<p class="period-label">${data.info.periodo} · ${data.stats.jugados} partidos</p>`;
+        const resumenHtml = `${encabezadoPeriodo}
             <div class="record-grid">
                 <div class="metric-card win"><span class="metric-label">Victorias</span><strong>${data.stats.ganados}</strong></div>
                 <div class="metric-card draw"><span class="metric-label">Empates</span><strong>${data.stats.empatados}</strong></div>
@@ -677,8 +695,8 @@ async function actualizarEstadisticas(lado) {
                 <div class="metric-card"><span class="metric-label">Goles a favor</span><strong>${data.stats.golesFavor}</strong></div>
                 <div class="metric-card"><span class="metric-label">Goles en contra</span><strong>${data.stats.golesContra}</strong></div>
                 <div class="metric-card"><span class="metric-label">Diferencia</span><strong>${data.stats.golesFavor - data.stats.golesContra > 0 ? '+' : ''}${data.stats.golesFavor - data.stats.golesContra}</strong></div>
-            </div>
-            <div class="trend-heading"><strong>Tendencias del equipo</strong><span>No son picks combinados</span></div>
+            </div>`;
+        const tendenciasHtml = `${encabezadoPeriodo}<div class="trend-heading"><strong>Tendencias del equipo</strong><span>No son picks combinados</span></div>
             <div class="market-grid trend-grid">
                 ${mercado('Más de 0.5 goles', data.stats.over05)}
                 ${mercado('Más de 1.5 goles', data.stats.over15)}
@@ -715,22 +733,20 @@ async function actualizarEstadisticas(lado) {
             ${data.info.cobertura.estadisticas < data.info.cobertura.partidos
                 ? `<div class="warning">Estas tendencias usan marcadores confirmados. El detalle avanzado tiene cobertura de ${data.info.cobertura.estadisticas}/${data.info.cobertura.partidos}; los faltantes se muestran como “—”. Los picks combinados están en su bloque independiente.</div>`
                 : ''}`;
-        statsDiv.innerHTML = html;
+        statsDiv.innerHTML = resumenHtml;
+        trendsDiv.innerHTML = tendenciasHtml;
 
-        if (limit === '5' || limit === '3') {
-            if (data.partidos && data.partidos.length > 0) {
-                matchesDiv.innerHTML = generarVistaPorEstadisticas(data.partidos, limit);
-            } else {
-                matchesDiv.innerHTML = '<p>No hay partidos para este filtro.</p>';
-            }
+        if (data.partidos && data.partidos.length > 0) {
+            matchesDiv.innerHTML = `<div class="history-tab-heading"><strong>${limit === 'all' ? 'Todos los partidos' : `Últimos ${limit}`}</strong><span>${data.partidos.length} en la muestra</span></div>${generarVistaPorEstadisticas(data.partidos, limit)}`;
         } else {
-            matchesDiv.innerHTML = `<div class="warning">La vista detallada por estadísticas solo está disponible para los últimos 5 o 3 partidos. Selecciona una de esas opciones para verla.</div>`;
+            matchesDiv.innerHTML = '<p>No hay partidos para este filtro.</p>';
         }
 
         actualizarAccionesComparacion();
     } catch (err) {
         nameEl.innerText = 'Error';
         statsDiv.innerHTML = 'No se pudieron cargar los datos.';
+        trendsDiv.innerHTML = 'No se pudieron cargar los datos.';
         console.error(err);
     }
 }
@@ -1112,6 +1128,20 @@ function configurarEventos() {
         boton.setAttribute('aria-pressed', String(boton.dataset.frequencyMode === formatoFrecuencia));
     });
     for (const lado of ['a', 'b']) {
+        const pestanas = [...document.querySelectorAll(`[data-team-tab][data-side="${lado}"]`)];
+        pestanas.forEach((boton, indice) => {
+            boton.addEventListener('click', () => activarPestanaEquipo(lado, boton.dataset.teamTab));
+            boton.addEventListener('keydown', event => {
+                if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+                event.preventDefault();
+                let destino = indice;
+                if (event.key === 'ArrowLeft') destino = (indice - 1 + pestanas.length) % pestanas.length;
+                if (event.key === 'ArrowRight') destino = (indice + 1) % pestanas.length;
+                if (event.key === 'Home') destino = 0;
+                if (event.key === 'End') destino = pestanas.length - 1;
+                activarPestanaEquipo(lado, pestanas[destino].dataset.teamTab, true);
+            });
+        });
         document.getElementById(`league-${lado}`).addEventListener('change', async () => {
             cargarTemporadas(lado);
             await cargarEquipos(lado);

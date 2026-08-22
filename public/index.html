@@ -11,11 +11,7 @@
     <script src="/auth-client.js"></script>
     <script src="/user-library.js"></script>
 </head>
-<<<<<<< HEAD
-<body data-product-event="comparator_view">
-=======
-<body class="comparator-page">
->>>>>>> 35ce8da (style: compactar vista del comparador)
+<body class="comparator-page" data-product-event="comparator_view">
     <div class="container">
         <div class="header">
             <div class="header-copy">
@@ -87,10 +83,16 @@
                     </div>
                     <p class="panel-role-note"><strong>Rol del pick: LOCAL.</strong> Esta condición, muestra y periodo también se usan al generar los picks.</p>
                     </details>
-                    <div class="stats-table" id="stats-a">Selecciona competición y equipo</div>
-                    <div class="last-matches" id="matches-a"></div>
-
-                    <details class="analysis-box advanced-analysis">
+                    <nav class="team-tabs" role="tablist" aria-label="Vistas del equipo local">
+                        <button type="button" role="tab" id="tab-summary-a" aria-controls="panel-summary-a" aria-selected="true" data-team-tab="summary" data-side="a">Resumen</button>
+                        <button type="button" role="tab" id="tab-trends-a" aria-controls="panel-trends-a" aria-selected="false" data-team-tab="trends" data-side="a" tabindex="-1">Tendencias</button>
+                        <button type="button" role="tab" id="tab-history-a" aria-controls="panel-history-a" aria-selected="false" data-team-tab="history" data-side="a" tabindex="-1">Historial</button>
+                        <button type="button" role="tab" id="tab-minutes-a" aria-controls="panel-minutes-a" aria-selected="false" data-team-tab="minutes" data-side="a" tabindex="-1">Por minuto</button>
+                    </nav>
+                    <section class="team-tab-panel" id="panel-summary-a" role="tabpanel" aria-labelledby="tab-summary-a"><div class="stats-table" id="stats-a">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel" id="panel-trends-a" role="tabpanel" aria-labelledby="tab-trends-a" hidden><div class="stats-table" id="trends-a">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel history-tab-panel" id="panel-history-a" role="tabpanel" aria-labelledby="tab-history-a" hidden><div class="last-matches" id="matches-a"></div></section>
+                    <section class="team-tab-panel" id="panel-minutes-a" role="tabpanel" aria-labelledby="tab-minutes-a" hidden><details class="analysis-box advanced-analysis" open>
                         <summary>📊 Analizar eventos por minuto <small>Opcional</small></summary>
                         <div class="analysis-box-body">
                         <div class="analysis-controls">
@@ -102,7 +104,7 @@
                         </div>
                         <div class="analysis-results" id="a-analysis-results"></div>
                         </div>
-                    </details>
+                    </details></section>
                 </div>
             </div>
 
@@ -146,10 +148,16 @@
                     </div>
                     <p class="panel-role-note"><strong>Rol del pick: VISITANTE.</strong> Esta condición, muestra y periodo también se usan al generar los picks.</p>
                     </details>
-                    <div class="stats-table" id="stats-b">Selecciona competición y equipo</div>
-                    <div class="last-matches" id="matches-b"></div>
-
-                    <details class="analysis-box advanced-analysis">
+                    <nav class="team-tabs" role="tablist" aria-label="Vistas del equipo visitante">
+                        <button type="button" role="tab" id="tab-summary-b" aria-controls="panel-summary-b" aria-selected="true" data-team-tab="summary" data-side="b">Resumen</button>
+                        <button type="button" role="tab" id="tab-trends-b" aria-controls="panel-trends-b" aria-selected="false" data-team-tab="trends" data-side="b" tabindex="-1">Tendencias</button>
+                        <button type="button" role="tab" id="tab-history-b" aria-controls="panel-history-b" aria-selected="false" data-team-tab="history" data-side="b" tabindex="-1">Historial</button>
+                        <button type="button" role="tab" id="tab-minutes-b" aria-controls="panel-minutes-b" aria-selected="false" data-team-tab="minutes" data-side="b" tabindex="-1">Por minuto</button>
+                    </nav>
+                    <section class="team-tab-panel" id="panel-summary-b" role="tabpanel" aria-labelledby="tab-summary-b"><div class="stats-table" id="stats-b">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel" id="panel-trends-b" role="tabpanel" aria-labelledby="tab-trends-b" hidden><div class="stats-table" id="trends-b">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel history-tab-panel" id="panel-history-b" role="tabpanel" aria-labelledby="tab-history-b" hidden><div class="last-matches" id="matches-b"></div></section>
+                    <section class="team-tab-panel" id="panel-minutes-b" role="tabpanel" aria-labelledby="tab-minutes-b" hidden><details class="analysis-box advanced-analysis" open>
                         <summary>📊 Analizar eventos por minuto <small>Opcional</small></summary>
                         <div class="analysis-box-body">
                         <div class="analysis-controls">
@@ -161,7 +169,7 @@
                         </div>
                         <div class="analysis-results" id="b-analysis-results"></div>
                         </div>
-                    </details>
+                    </details></section>
                 </div>
             </div>
         </div>

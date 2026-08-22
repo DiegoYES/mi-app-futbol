@@ -31,6 +31,7 @@ const metrics = '<p class="period-label">Partido completo · 8 partidos</p><div 
     await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
     await page.locator('#stats-a').evaluate((node, html) => { node.innerHTML = html; }, metrics);
     await page.locator('#stats-b').evaluate((node, html) => { node.innerHTML = html; }, metrics);
+    await page.locator('#tab-history-a').click();
     await page.locator('#matches-a').evaluate(node => {
       node.innerHTML = generarVistaPorEstadisticas([{
         fecha: '2026-08-09T12:00:00Z', rival: 'Rival', resultado: 'V', marcador: '2-1',
@@ -48,6 +49,11 @@ const metrics = '<p class="period-label">Partido completo · 8 partidos</p><div 
     assert.equal(puntosTarjetas[2], '4');
     assert.equal(puntosTarjetas[3], '3');
     assert.equal(puntosTarjetas[4], '7');
+    assert.equal(await page.locator('#panel-summary-a').isHidden(), true);
+    assert.equal(await page.locator('#panel-history-a').isVisible(), true);
+    await page.locator('#tab-trends-a').press('ArrowRight');
+    assert.equal(await page.locator('#tab-history-a').getAttribute('aria-selected'), 'true');
+    await page.locator('#tab-summary-a').click();
     const layout = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       columns: getComputedStyle(document.querySelector('.main-grid')).gridTemplateColumns.split(' ').length,
