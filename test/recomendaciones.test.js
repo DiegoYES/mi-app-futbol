@@ -7,7 +7,8 @@ const {
   decimalAAmericano,
   normalizarMomio,
   normalizarRecomendacion,
-  recomendacionParaUsuario
+  recomendacionParaUsuario,
+  filtroRecomendacionesPublicas
 } = require('../services/recomendaciones');
 
 const entradaBase = {
@@ -25,6 +26,14 @@ const entradaBase = {
     momio: '1.85'
   }]
 };
+
+test('la vista pública exige que la recomendación cierre después de la hora actual', () => {
+  const ahora = new Date('2026-08-22T00:00:00.000Z');
+  assert.deepEqual(filtroRecomendacionesPublicas(ahora), {
+    estado_publicacion: 'publicada',
+    cierra_en: { $gt: ahora }
+  });
+});
 
 test('normaliza un pick editorial válido sin duplicar el sistema de acceso', () => {
   const resultado = normalizarRecomendacion(entradaBase);

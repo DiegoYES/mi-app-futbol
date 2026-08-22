@@ -1,14 +1,14 @@
 const express = require('express');
 const Recomendacion = require('../models/Recomendacion');
 const { errorServidor } = require('../middleware/security');
-const { recomendacionParaUsuario } = require('../services/recomendaciones');
+const { recomendacionParaUsuario, filtroRecomendacionesPublicas } = require('../services/recomendaciones');
 
 const router = express.Router();
 
 router.get('/', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    const recomendaciones = await Recomendacion.find({ estado_publicacion: 'publicada' })
+    const recomendaciones = await Recomendacion.find(filtroRecomendacionesPublicas())
       .sort({ destacada: -1, cierra_en: -1, publicada_en: -1 })
       .limit(100)
       .lean();

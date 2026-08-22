@@ -3,6 +3,10 @@ const VISIBILIDADES = new Set(['gratis', 'premium']);
 const ESTADOS_PUBLICACION = new Set(['borrador', 'publicada']);
 const RESULTADOS = new Set(['pendiente', 'acertado', 'fallado', 'anulado']);
 
+function filtroRecomendacionesPublicas(ahora = new Date()) {
+  return { estado_publicacion: 'publicada', cierra_en: { $gt: ahora } };
+}
+
 function texto(valor, maximo) {
   return typeof valor === 'string' ? valor.trim().slice(0, maximo) : '';
 }
@@ -144,5 +148,6 @@ module.exports = {
   decimalAAmericano,
   normalizarMomio,
   normalizarRecomendacion,
-  recomendacionParaUsuario
+  recomendacionParaUsuario,
+  filtroRecomendacionesPublicas
 };
