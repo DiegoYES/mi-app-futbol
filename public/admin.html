@@ -124,12 +124,12 @@
   </section>
 
   <section class="seccion admin-section" id="admin-picks" data-admin-panel-content="picks" hidden>
-    <h2>🎯 Picks y parlays recomendados</h2>
+    <h2>🎯 Picks, combinadas y parlays recomendados</h2>
     <div class="rec-panel">
       <form class="rec-form" id="rec-form">
         <input type="hidden" id="rec-id">
         <div class="rec-form-grid">
-          <label>Tipo<select id="rec-tipo"><option value="pick">Pick individual</option><option value="parlay">Parlay</option></select></label>
+          <label>Tipo<select id="rec-tipo"><option value="pick">Pick individual</option><option value="combinada">Combinada (mismo partido)</option><option value="parlay">Parlay</option></select></label>
           <label>Acceso<select id="rec-visibilidad"><option value="premium">Premium</option><option value="gratis">Gratis</option></select></label>
           <label>Publicación<select id="rec-publicacion"><option value="borrador">Borrador</option><option value="publicada">Publicar</option></select></label>
           <label>Resultado<select id="rec-resultado"><option value="pendiente">Pendiente</option><option value="acertado">Acertado</option><option value="fallado">Fallado</option><option value="anulado">Anulado</option></select></label>
@@ -433,9 +433,12 @@ function ajustarSelecciones() {
   if (esPick) {
     while (contenedor.children.length > 1) contenedor.lastElementChild.remove();
   }
+  const tipo = document.getElementById('rec-tipo').value;
   document.getElementById('rec-agregar').title = esPick
     ? 'Al añadir otra selección se cambiará automáticamente a parlay.'
-    : 'Añadir otra selección al parlay.';
+    : tipo === 'combinada'
+      ? 'Añadir otra selección del mismo partido.'
+      : 'Añadir otra selección al parlay.';
 }
 
 function limpiarRecomendacion() {
@@ -511,11 +514,11 @@ async function cargarRecomendacionesAdmin() {
   }
   recomendacionesAdmin = datos.recomendaciones;
   if (!recomendacionesAdmin.length) {
-    contenedor.innerHTML = '<div class="ticket-empty">Todavía no hay picks ni parlays editoriales.</div>';
+    contenedor.innerHTML = '<div class="ticket-empty">Todavía no hay picks, combinadas ni parlays editoriales.</div>';
     return;
   }
   contenedor.innerHTML = recomendacionesAdmin.map(item => `<article class="rec-card" data-rec-id="${item._id}">
-    <div class="rec-card-head"><div><span class="rec-card-meta">${item.tipo === 'parlay' ? 'PARLAY' : 'PICK'} · ${escaparHtml(item.visibilidad)} · ${escaparHtml(item.estado_publicacion)}</span><h3>${escaparHtml(item.titulo)}</h3></div><span class="badge ${item.resultado === 'acertado' ? 'premium' : item.resultado === 'fallado' ? 'expirado' : 'prueba'}">${escaparHtml(item.resultado)}</span></div>
+    <div class="rec-card-head"><div><span class="rec-card-meta">${item.tipo === 'parlay' ? 'PARLAY' : item.tipo === 'combinada' ? 'COMBINADA' : 'PICK'} · ${escaparHtml(item.visibilidad)} · ${escaparHtml(item.estado_publicacion)}</span><h3>${escaparHtml(item.titulo)}</h3></div><span class="badge ${item.resultado === 'acertado' ? 'premium' : item.resultado === 'fallado' ? 'expirado' : 'prueba'}">${escaparHtml(item.resultado)}</span></div>
     ${item.descripcion ? `<p>${escaparHtml(item.descripcion)}</p>` : ''}
     <ol>${item.selecciones.map(seleccion => `<li><strong>${escaparHtml(seleccion.evento)}</strong> · ${escaparHtml(seleccion.mercado)} · ${resumenMomios(seleccion.cuota, seleccion.momio_americano)}${seleccion.casa ? ` · ${escaparHtml(seleccion.casa)}` : ''}<br><small>${fechaHora(seleccion.fecha_partido)}</small></li>`).join('')}</ol>
     <div class="rec-card-meta">Cierra ${fechaHora(item.cierra_en)} · Momio total ${resumenMomios(item.cuota_total, item.momio_total_americano)}${item.destacada ? ' · ⭐ Destacada' : ''}</div>

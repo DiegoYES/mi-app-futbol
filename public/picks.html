@@ -83,7 +83,7 @@
 
   <section class="picks-section">
     <div class="section-heading">
-      <div><p class="eyebrow">Selección de Data-Fut</p><h3>Picks y parlays recomendados</h3></div>
+      <div><p class="eyebrow">Selección de Data-Fut</p><h3>Picks, combinadas y parlays recomendados</h3></div>
       <span class="model-badge">Actualizados por nosotros</span>
     </div>
     <p>Recomendaciones editoriales publicadas desde el panel. Los picks premium están incluidos durante tus 7 días de prueba y con la membresía activa.</p>
@@ -155,11 +155,11 @@ async function cargarRecomendacionesEditoriales() {
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar las recomendaciones.');
     if (!datos.recomendaciones.length) {
-      contenedor.innerHTML = '<div class="empty-state">Todavía no hemos publicado picks o parlays recomendados.</div>';
+      contenedor.innerHTML = '<div class="empty-state">Todavía no hemos publicado picks, combinadas o parlays recomendados.</div>';
       return;
     }
     contenedor.innerHTML = datos.recomendaciones.map(item => {
-      const tipo = item.tipo === 'parlay' ? 'Parlay' : 'Pick individual';
+      const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
       const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${item.resultado !== 'pendiente' ? `<span class="editorial-badge ${esc(item.resultado)}">${esc(item.resultado)}</span>` : ''}`;
       const contenido = item.bloqueada
         ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`

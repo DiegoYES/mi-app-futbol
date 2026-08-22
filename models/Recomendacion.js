@@ -26,7 +26,7 @@ const seleccionRecomendadaSchema = new mongoose.Schema({
 }, { _id: false });
 
 const recomendacionSchema = new mongoose.Schema({
-  tipo: { type: String, enum: ['pick', 'parlay'], required: true },
+  tipo: { type: String, enum: ['pick', 'combinada', 'parlay'], required: true },
   titulo: { type: String, required: true, trim: true, maxlength: 140 },
   descripcion: { type: String, trim: true, maxlength: 3000, default: '' },
   visibilidad: { type: String, enum: ['gratis', 'premium'], default: 'premium' },
@@ -41,11 +41,12 @@ const recomendacionSchema = new mongoose.Schema({
     type: [seleccionRecomendadaSchema],
     validate: {
       validator(selecciones) {
-        return this.tipo === 'pick'
-          ? selecciones.length === 1
-          : selecciones.length >= 2 && selecciones.length <= 20;
+        if (this.tipo === 'pick') return selecciones.length === 1;
+        if (selecciones.length < 2 || selecciones.length > 20) return false;
+        return this.tipo !== 'combinada'
+          || new Set(selecciones.map(item => item.partido_api_id)).size === 1;
       },
-      message: 'Un pick requiere una selección y un parlay entre 2 y 20.'
+      message: 'Un pick requiere una selección; una combinada o parlay, entre 2 y 20. La combinada debe ser del mismo partido.'
     }
   },
   cuota_total: { type: Number, required: true, min: 1.001, max: 100000 },

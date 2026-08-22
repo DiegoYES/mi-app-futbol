@@ -1,4 +1,4 @@
-const TIPOS = new Set(['pick', 'parlay']);
+const TIPOS = new Set(['pick', 'combinada', 'parlay']);
 const VISIBILIDADES = new Set(['gratis', 'premium']);
 const ESTADOS_PUBLICACION = new Set(['borrador', 'publicada']);
 const RESULTADOS = new Set(['pendiente', 'acertado', 'fallado', 'anulado']);
@@ -84,8 +84,12 @@ function normalizarRecomendacion(entrada = {}) {
   }
   if (Number.isNaN(cierraEn.getTime())) return { error: 'La fecha límite no es válida.' };
   if ((tipo === 'pick' && selecciones.length !== 1)
-      || (tipo === 'parlay' && (selecciones.length < 2 || selecciones.length > 20))) {
-    return { error: 'Un pick requiere una selección y un parlay entre 2 y 20.' };
+      || (tipo !== 'pick' && (selecciones.length < 2 || selecciones.length > 20))) {
+    return { error: 'Un pick requiere una selección; una combinada o parlay, entre 2 y 20.' };
+  }
+  if (tipo === 'combinada'
+      && new Set(selecciones.map(item => item.partido_api_id)).size !== 1) {
+    return { error: 'Una combinada solo puede incluir selecciones del mismo partido.' };
   }
   if (selecciones.some(item => !Number.isInteger(item.partido_api_id) || !item.mercado_id)) {
     return { error: 'Cada selección necesita un partido y un mercado válidos.' };

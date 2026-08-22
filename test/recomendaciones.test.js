@@ -43,6 +43,24 @@ test('un parlay exige por lo menos dos selecciones', () => {
   assert.match(resultado.error, /entre 2 y 20/);
 });
 
+test('una combinada exige varias selecciones del mismo partido', () => {
+  const segunda = { ...entradaBase.selecciones[0], mercado_id: 'corners_total_over_8.5', momio: '1.90' };
+  const valida = normalizarRecomendacion({
+    ...entradaBase,
+    tipo: 'combinada',
+    selecciones: [...entradaBase.selecciones, segunda]
+  });
+  const otroPartido = normalizarRecomendacion({
+    ...entradaBase,
+    tipo: 'combinada',
+    selecciones: [...entradaBase.selecciones, { ...segunda, partido_api_id: 456 }]
+  });
+
+  assert.equal(valida.error, undefined);
+  assert.equal(valida.datos.tipo, 'combinada');
+  assert.match(otroPartido.error, /mismo partido/);
+});
+
 test('convierte momios americanos positivos y negativos a decimal y viceversa', () => {
   assert.equal(americanoADecimal(100), 2);
   assert.equal(Number(americanoADecimal(-110).toFixed(4)), 1.9091);
