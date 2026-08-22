@@ -120,8 +120,10 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
   const sumas = {
     tirosFavor: 0,
     tirosContra: 0,
+    tirosTotales: 0,
     tirosPuertaFavor: 0,
     tirosPuertaContra: 0,
+    tirosPuertaTotales: 0,
     cornersFavor: 0,
     cornersContra: 0,
     cornersTotales: 0,
@@ -130,8 +132,10 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     tarjetasTotales: 0,
     faltasFavor: 0,
     faltasContra: 0,
+    faltasTotales: 0,
     offsidesFavor: 0,
-    offsidesContra: 0
+    offsidesContra: 0,
+    offsidesTotales: 0
   };
   const muestras = Object.fromEntries(Object.keys(sumas).map(clave => [clave, 0]));
   const acumular = (clave, valor) => {
@@ -170,15 +174,21 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
       ? null : statsEquipo.amarillas + statsEquipo.rojas;
     const tarjetasRival = statsRival.amarillas == null || statsRival.rojas == null
       ? null : statsRival.amarillas + statsRival.rojas;
-    const cornersTotales = statsEquipo.corners == null || statsRival.corners == null
-      ? null : statsEquipo.corners + statsRival.corners;
+    const total = (favor, contra) => favor == null || contra == null ? null : favor + contra;
+    const tirosTotales = total(statsEquipo.tiros, statsRival.tiros);
+    const tirosPuertaTotales = total(statsEquipo.tiros_puerta, statsRival.tiros_puerta);
+    const cornersTotales = total(statsEquipo.corners, statsRival.corners);
+    const faltasTotales = total(statsEquipo.faltas, statsRival.faltas);
+    const offsidesTotales = total(statsEquipo.offsides, statsRival.offsides);
     const tarjetasTotales = tarjetasEquipo == null || tarjetasRival == null
       ? null : tarjetasEquipo + tarjetasRival;
     muestraAvanzada++;
     acumular('tirosFavor', statsEquipo.tiros);
     acumular('tirosContra', statsRival.tiros);
+    acumular('tirosTotales', tirosTotales);
     acumular('tirosPuertaFavor', statsEquipo.tiros_puerta);
     acumular('tirosPuertaContra', statsRival.tiros_puerta);
+    acumular('tirosPuertaTotales', tirosPuertaTotales);
     acumular('cornersFavor', statsEquipo.corners);
     acumular('cornersContra', statsRival.corners);
     acumular('cornersTotales', cornersTotales);
@@ -187,8 +197,10 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
     acumular('tarjetasTotales', tarjetasTotales);
     acumular('faltasFavor', statsEquipo.faltas);
     acumular('faltasContra', statsRival.faltas);
+    acumular('faltasTotales', faltasTotales);
     acumular('offsidesFavor', statsEquipo.offsides);
     acumular('offsidesContra', statsRival.offsides);
+    acumular('offsidesTotales', offsidesTotales);
     if (cornersTotales !== null && cornersTotales >= 10) cornersOver95++;
   }
 
@@ -218,8 +230,10 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
       promedios: {
         tirosFavor: promedio(sumas.tirosFavor, muestras.tirosFavor),
         tirosContra: promedio(sumas.tirosContra, muestras.tirosContra),
+        tirosTotales: promedio(sumas.tirosTotales, muestras.tirosTotales),
         tirosPuertaFavor: promedio(sumas.tirosPuertaFavor, muestras.tirosPuertaFavor),
         tirosPuertaContra: promedio(sumas.tirosPuertaContra, muestras.tirosPuertaContra),
+        tirosPuertaTotales: promedio(sumas.tirosPuertaTotales, muestras.tirosPuertaTotales),
         cornersFavor: promedio(sumas.cornersFavor, muestras.cornersFavor),
         cornersContra: promedio(sumas.cornersContra, muestras.cornersContra),
         cornersTotales: promedio(sumas.cornersTotales, muestras.cornersTotales),
@@ -228,8 +242,10 @@ function calcularEstadisticas(partidos, teamId, half = 0) {
         tarjetasTotales: promedio(sumas.tarjetasTotales, muestras.tarjetasTotales),
         faltasFavor: promedio(sumas.faltasFavor, muestras.faltasFavor),
         faltasContra: promedio(sumas.faltasContra, muestras.faltasContra),
+        faltasTotales: promedio(sumas.faltasTotales, muestras.faltasTotales),
         offsidesFavor: promedio(sumas.offsidesFavor, muestras.offsidesFavor),
-        offsidesContra: promedio(sumas.offsidesContra, muestras.offsidesContra)
+        offsidesContra: promedio(sumas.offsidesContra, muestras.offsidesContra),
+        offsidesTotales: promedio(sumas.offsidesTotales, muestras.offsidesTotales)
       },
       muestras,
       cornersOver95: contador(cornersOver95, muestras.cornersTotales)

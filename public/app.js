@@ -543,64 +543,67 @@ async function compartirComparacion() {
 }
 
 // Construye una tabla para una estadística concreta (ej: goles)
-function crearTablaEstadistica(titulo, partidos, datos) {
+function crearTablaEstadistica(titulo, partidos, claveEquipo, claveRival = claveEquipo) {
     const totalPartidos = partidos.length;
+    const acumulados = {
+        favor: { suma: 0, disponibles: 0 },
+        contra: { suma: 0, disponibles: 0 },
+        total: { suma: 0, disponibles: 0 }
+    };
+    const presentar = valor => Number.isFinite(valor) ? valor : '—';
+    const acumular = (grupo, valor) => {
+        if (!Number.isFinite(valor)) return;
+        acumulados[grupo].suma += valor;
+        acumulados[grupo].disponibles++;
+    };
     let html = `<div class="stat-group">
         <h4>${titulo}</h4>
-        <table class="mini-table">
-            <thead><tr><th>Fecha</th><th>Rival</th><th>${titulo}</th><th>Resultado</th></tr></thead>
+        <table class="mini-table advanced-detail-table">
+            <thead><tr><th>Fecha</th><th>Rival</th><th>A favor</th><th>En contra</th><th>Total partido</th><th>Resultado</th></tr></thead>
             <tbody>`;
-    let suma = 0;
-    let disponibles = 0;
-    partidos.forEach((p, i) => {
-        const val = datos[i].valor;
-        if (Number.isFinite(val)) {
-            suma += val;
-            disponibles++;
-        }
+    partidos.forEach(p => {
+        const favor = p[claveEquipo];
+        const contra = p.rival_estadisticas?.[claveRival];
+        const total = Number.isFinite(favor) && Number.isFinite(contra) ? favor + contra : null;
+        acumular('favor', favor);
+        acumular('contra', contra);
+        acumular('total', total);
         const claseRes = p.resultado === 'V' ? 'V' : (p.resultado === 'E' ? 'E' : 'D');
         html += `<tr>
             <td>${new Date(p.fecha).toLocaleDateString('es-MX', {day:'2-digit',month:'2-digit'})}</td>
-                <td>${escaparHtml(p.rival)}</td>
-            <td>${Number.isFinite(val) ? val : '—'}</td>
+            <td>${escaparHtml(p.rival)}</td>
+            <td>${presentar(favor)}</td>
+            <td>${presentar(contra)}</td>
+            <td><strong>${presentar(total)}</strong></td>
             <td class="resultado ${claseRes}">${p.marcador} (${p.resultado})</td>
         </tr>`;
     });
-    html += `</tbody></table>`;
-    const promedio = disponibles > 0 ? (suma / disponibles).toFixed(2) : '—';
-    html += `<div class="summary">
-        <span>Promedio: <strong>${promedio}</strong></span>
-        <span>Cobertura: <strong>${disponibles}/${totalPartidos}</strong></span>
+    const resumen = (etiqueta, grupo) => {
+        const datos = acumulados[grupo];
+        const promedio = datos.disponibles ? (datos.suma / datos.disponibles).toFixed(2) : '—';
+        return `<span>${etiqueta}: <strong>${promedio}</strong> <small>(${datos.disponibles}/${totalPartidos})</small></span>`;
+    };
+    return html + `</tbody></table><div class="summary">
+        ${resumen('Prom. a favor', 'favor')}
+        ${resumen('Prom. en contra', 'contra')}
+        ${resumen('Prom. total', 'total')}
     </div></div>`;
-    return html;
 }
 
 // Genera las tablas para todas las estadísticas a partir de los partidos detallados
 function generarVistaPorEstadisticas(partidos, limit) {
     if (partidos.length === 0) return '<p>No hay partidos para mostrar.</p>';
-
-    const goles = partidos.map(p => p.goles ?? 0);
-    const corners = partidos.map(p => p.corners);
-    const tarjetasAmarillas = partidos.map(p => p.amarillas);
-    const tarjetasRojas = partidos.map(p => p.rojas);
-    const tiros = partidos.map(p => p.tiros);
-    const tirosPuerta = partidos.map(p => p.tiros_puerta);
-    const faltas = partidos.map(p => p.faltas);
-    const offsides = partidos.map(p => p.offsides);
-
     let html = '';
-    html += crearTablaEstadistica('Goles', partidos, goles.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Tiros Totales', partidos, tiros.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Tiros a Puerta', partidos, tirosPuerta.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Córners', partidos, corners.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Faltas', partidos, faltas.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Tarjetas Amarillas', partidos, tarjetasAmarillas.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Tarjetas Rojas', partidos, tarjetasRojas.map(v => ({ valor: v })));
-    html += crearTablaEstadistica('Fueras de Juego', partidos, offsides.map(v => ({ valor: v })));
-
+    html += crearTablaEstadistica('Goles', partidos, 'goles', 'goles');
+    html += crearTablaEstadistica('Tiros', partidos, 'tiros', 'tiros');
+    html += crearTablaEstadistica('Tiros a puerta', partidos, 'tiros_puerta', 'tiros_puerta');
+    html += crearTablaEstadistica('Córners', partidos, 'corners', 'corners');
+    html += crearTablaEstadistica('Faltas', partidos, 'faltas', 'faltas');
+    html += crearTablaEstadistica('Tarjetas amarillas', partidos, 'amarillas', 'amarillas');
+    html += crearTablaEstadistica('Tarjetas rojas', partidos, 'rojas', 'rojas');
+    html += crearTablaEstadistica('Fueras de juego', partidos, 'offsides', 'offsides');
     return html;
 }
-
 async function actualizarEstadisticas(lado) {
     const teamId = document.getElementById(`team-${lado}`).value;
     const leagueId = document.getElementById(`league-${lado}`).value;
@@ -652,11 +655,12 @@ async function actualizarEstadisticas(lado) {
         const valorPromedio = valor => valor == null
             ? '—'
             : Number(valor).toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        const metricaAvanzada = (label, favor, contra, etiquetaFavor = 'A favor', etiquetaContra = 'En contra') => `<div class="advanced-metric-card">
+        const metricaAvanzada = (label, favor, contra, total) => `<div class="advanced-metric-card">
             <span class="metric-label">${label}</span>
             <div class="advanced-values">
-                <span><small>${etiquetaFavor}</small><strong>${valorPromedio(favor)}</strong></span>
-                <span><small>${etiquetaContra}</small><strong>${valorPromedio(contra)}</strong></span>
+                <span><small>A favor</small><strong>${valorPromedio(favor)}</strong></span>
+                <span><small>En contra</small><strong>${valorPromedio(contra)}</strong></span>
+                <span><small>Total partido</small><strong>${valorPromedio(total)}</strong></span>
             </div>
         </div>`;
         const golesEquipo15 = data.stats.equipoOver15 || data.stats.ttFavor15;
@@ -693,13 +697,12 @@ async function actualizarEstadisticas(lado) {
                     <span class="coverage-chip">Cobertura ${avanzadas.muestra}/${data.stats.jugados}</span>
                 </summary>
                 ${avanzadas.muestra ? `<div class="advanced-metric-grid">
-                    ${metricaAvanzada('Tiros', promedios.tirosFavor, promedios.tirosContra)}
-                    ${metricaAvanzada('Tiros a puerta', promedios.tirosPuertaFavor, promedios.tirosPuertaContra)}
-                    ${metricaAvanzada('Córners', promedios.cornersFavor, promedios.cornersContra)}
-                    ${metricaAvanzada('Tarjetas registradas', promedios.tarjetasFavor, promedios.tarjetasContra)}
-                    ${metricaAvanzada('Faltas', promedios.faltasFavor, promedios.faltasContra)}
-                    ${metricaAvanzada('Fueras de juego', promedios.offsidesFavor, promedios.offsidesContra)}
-                    ${metricaAvanzada('Totales del partido', promedios.cornersTotales, promedios.tarjetasTotales, 'Córners', 'Tarjetas')}
+                    ${metricaAvanzada('Tiros', promedios.tirosFavor, promedios.tirosContra, promedios.tirosTotales)}
+                    ${metricaAvanzada('Tiros a puerta', promedios.tirosPuertaFavor, promedios.tirosPuertaContra, promedios.tirosPuertaTotales)}
+                    ${metricaAvanzada('Córners', promedios.cornersFavor, promedios.cornersContra, promedios.cornersTotales)}
+                    ${metricaAvanzada('Tarjetas registradas', promedios.tarjetasFavor, promedios.tarjetasContra, promedios.tarjetasTotales)}
+                    ${metricaAvanzada('Faltas', promedios.faltasFavor, promedios.faltasContra, promedios.faltasTotales)}
+                    ${metricaAvanzada('Fueras de juego', promedios.offsidesFavor, promedios.offsidesContra, promedios.offsidesTotales)}
                     <div class="advanced-metric-card advanced-tendency">
                         <span class="metric-label">Más de 9.5 córners totales</span>
                         <strong>${frecuenciaPrincipal(avanzadas.cornersOver95, avanzadas.muestras?.cornersTotales ?? avanzadas.muestra)}</strong>

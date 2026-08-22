@@ -139,6 +139,7 @@ button, a, select, input { -webkit-tap-highlight-color: transparent; }
 }
 
 .team-panel {
+  min-width: 0;
   overflow: visible;
   border: 1px solid var(--line);
   border-radius: 20px;
@@ -364,7 +365,7 @@ select:disabled { cursor: not-allowed; opacity: 0.45; }
 
 .advanced-metric-card { padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-raised); }
 .advanced-metric-card > .metric-label { display: block; margin-bottom: 9px; color: var(--muted); font-size: .68rem; font-weight: 750; text-transform: uppercase; }
-.advanced-values { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.advanced-values { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
 .advanced-values span { min-width: 0; }
 .advanced-values small { display: block; color: var(--muted); font-size: .62rem; }
 .advanced-values strong { display: block; margin-top: 2px; font-size: 1rem; font-variant-numeric: tabular-nums; }
@@ -442,6 +443,7 @@ th { color: var(--muted); font-size: 0.68rem; letter-spacing: 0.06em; text-trans
 .summary { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 9px; }
 .summary span { padding: 6px 9px; border-radius: 7px; background: var(--surface-soft); color: var(--muted); font-size: 0.76rem; }
 .summary strong { color: var(--ink); }
+.summary small { color: var(--muted); font-size: .62rem; }
 
 .resultado { font-weight: 850; }
 .V { color: var(--green); }

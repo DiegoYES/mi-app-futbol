@@ -31,6 +31,19 @@ const metrics = '<p class="period-label">Partido completo · 8 partidos</p><div 
     await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
     await page.locator('#stats-a').evaluate((node, html) => { node.innerHTML = html; }, metrics);
     await page.locator('#stats-b').evaluate((node, html) => { node.innerHTML = html; }, metrics);
+    await page.locator('#matches-a').evaluate(node => {
+      node.innerHTML = generarVistaPorEstadisticas([{
+        fecha: '2026-08-09T12:00:00Z', rival: 'Rival', resultado: 'V', marcador: '2-1',
+        goles: 2, tiros: 11, tiros_puerta: 5, corners: 6, faltas: 10, amarillas: 2, rojas: 0, offsides: 1,
+        rival_estadisticas: { goles: 1, tiros: 8, tiros_puerta: 3, corners: 4, faltas: 12, amarillas: 3, rojas: 0, offsides: 2 }
+      }], 5);
+    });
+    const encabezados = await page.locator('#matches-a .advanced-detail-table').first().locator('th').allTextContents();
+    assert.deepEqual(encabezados, ['Fecha', 'Rival', 'A favor', 'En contra', 'Total partido', 'Resultado']);
+    const tiros = await page.locator('#matches-a .advanced-detail-table').nth(1).locator('tbody tr').first().locator('td').allTextContents();
+    assert.equal(tiros[2], '11');
+    assert.equal(tiros[3], '8');
+    assert.equal(tiros[4], '19');
     const layout = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       columns: getComputedStyle(document.querySelector('.main-grid')).gridTemplateColumns.split(' ').length,
