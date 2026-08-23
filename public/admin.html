@@ -28,6 +28,7 @@
   .kpi .value { font-size: 1.9rem; font-weight: 700; color: var(--primary); }
   .barra { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
   input[type=search] { flex: 1; min-width: 220px; padding: 10px; border: 1px solid #cbd5e1; border-radius: 8px; }
+  .barra select { min-height:42px;padding:9px 12px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#334155;font:inherit; }
   .table-scroll { width:100%;overflow-x:auto;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.07);-webkit-overflow-scrolling:touch; }
   table { width: 100%; min-width:900px; background: #fff; border-collapse: collapse; }
   th { background: var(--primary); color: #fff; padding: 11px; text-align: left; font-size: .82rem; }
@@ -48,6 +49,7 @@
   .btn-desbloquear-ip { background: #ede9fe; color: #5b21b6; }
   .btn-off { background: #fee2e2; color: #991b1b; }
   .btn-on { background: #dcfce7; color: #166534; }
+  .btn-rol { background:#ede9fe;color:#5b21b6; }
   .vacio { text-align: center; padding: 32px; color: #94a3b8; }
   .ip-text { font-size: .75rem; color: #64748b; font-family: monospace; }
   .seccion { margin-top: 20px; }
@@ -177,6 +179,12 @@
     <h2>👥 Usuarios y suscripciones</h2>
   <div class="barra">
     <input type="search" id="busqueda" placeholder="Buscar por email o nombre...">
+    <select id="filtro-usuario-estado" aria-label="Filtrar usuarios por estado">
+      <option value="">Todos los estados</option><option value="premium">Premium</option>
+      <option value="prueba">En prueba</option><option value="expirado">Expirados</option>
+      <option value="suspendido">Suspendidos</option><option value="desactivado">Desactivados</option>
+      <option value="bloqueado_ip">Bloqueados por IP</option><option value="admin">Administradores</option>
+    </select>
   </div>
 
   <div class="table-scroll"><table>
@@ -568,15 +576,15 @@ async function cargarResumen() {
   const resp = await fetch('/api/admin/resumen');
   if (!resp.ok) return;
   const d = await resp.json();
-  const cortesias = d.mesesCortesia || 0;
-  const ingresoReal = Math.max(0, d.premium - cortesias) * 50;
+  const cortesias = d.diasCortesia || 0;
+  const ingresoReal = Math.max(0, d.premium - (d.mesesCortesia || 0)) * 50;
   document.getElementById('kpis').innerHTML = `
     <div class="kpi"><div class="label">Usuarios</div><div class="value">${d.total}</div></div>
     <div class="kpi"><div class="label">Premium</div><div class="value">${d.premium}</div></div>
     <div class="kpi"><div class="label">En prueba</div><div class="value">${d.enPrueba}</div></div>
     <div class="kpi"><div class="label">Expirados</div><div class="value">${d.expirados}</div></div>
     <div class="kpi"><div class="label">Ingreso mensual real</div><div class="value">$${ingresoReal}</div></div>
-    <div class="kpi"><div class="label">Cortesías activas</div><div class="value">${cortesias}</div></div>
+    <div class="kpi"><div class="label">Días de cortesía otorgados</div><div class="value">${cortesias}</div></div>
     <div class="kpi"><div class="label">API hoy</div><div class="value">${d.cuotaApi.usadas}/${d.cuotaApi.disponibles_para_uso}</div></div>
     <div class="kpi"><div class="label">Tickets abiertos</div><div class="value">${d.ticketsAbiertos || 0}</div></div>`;
 }
@@ -653,10 +661,12 @@ async function actualizarTicket(id, boton) {
 
 async function cargarUsuarios() {
   const q = document.getElementById('busqueda').value.trim();
-  const resp = await fetch('/api/admin/usuarios?limite=200&q=' + encodeURIComponent(q));
+  const estado = document.getElementById('filtro-usuario-estado').value;
+  const parametros = new URLSearchParams({ limite: '200', q, estado });
+  const resp = await fetch('/api/admin/usuarios?' + parametros.toString());
   if (!resp.ok) return;
 
-  const { usuarios } = await resp.json();
+  const { usuarios, puedeGestionarAdmins } = await resp.json();
   const tbody = document.getElementById('tbody');
 
   if (!usuarios.length) {
@@ -690,6 +700,8 @@ async function cargarUsuarios() {
         ${esSuspendido
           ? `<button type="button" class="btn-levantar" data-accion="levantar" data-usuario="${u.id}">✅ Levantar</button>`
           : `<button type="button" class="btn-suspender" data-accion="suspender" data-usuario="${u.id}">⏸ Suspender</button>`}
+        ${puedeGestionarAdmins && !u.esAdministradorPrincipal && u.rol !== 'admin' ? `<button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="admin">Dar admin</button>` : ''}
+        ${puedeGestionarAdmins && !u.esAdministradorPrincipal && u.rol === 'admin' ? `<button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="usuario">Quitar admin</button>` : ''}
         ${esBloqIP ? `<button type="button" class="btn-desbloquear-ip" data-accion="desbloquear-ip" data-usuario="${u.id}">🔓 Desbloquear IP</button>` : ''}
         <button type="button" class="${u.activo ? 'btn-off' : 'btn-on'}" data-accion="alternar" data-usuario="${u.id}" data-activo="${!u.activo}">${u.activo ? 'Desactivar' : 'Activar'}</button>
       </td>
@@ -709,8 +721,23 @@ async function extender(id, meses) {
 }
 
 async function cortesia(id) {
-  if (!confirm('¿Aplicar 1 mes de cortesía? No se contará como ingreso.')) return;
-  const resp = await fetch(`/api/admin/usuarios/${id}/cortesia`, { method: 'POST' });
+  const entrada = prompt('¿Cuántos días de cortesía quieres otorgar? (1-3650)');
+  if (entrada === null || !entrada.trim()) return;
+  const dias = Number(entrada);
+  if (!Number.isInteger(dias) || dias < 1 || dias > 3650) return alert('Ingresa un número entero entre 1 y 3650.');
+  if (!confirm(`¿Otorgar ${dias} día(s) de cortesía? No se contará como ingreso.`)) return;
+  const resp = await fetch(`/api/admin/usuarios/${id}/cortesia`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ dias })
+  });
+  const d = await resp.json();
+  if (!resp.ok) return alert(d.error);
+  refrescar();
+}
+
+async function cambiarRol(id, rol) {
+  const accion = rol === 'admin' ? 'dar permisos de administrador' : 'quitar los permisos de administrador';
+  if (!confirm(`¿Seguro que quieres ${accion} a este usuario?`)) return;
+  const resp = await fetch(`/api/admin/usuarios/${id}/rol`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rol }) });
   const d = await resp.json();
   if (!resp.ok) return alert(d.error);
   refrescar();
@@ -847,6 +874,7 @@ function instalarEventos() {
   document.getElementById('filtro-ticket-estado').addEventListener('change', cargarTickets);
   document.getElementById('filtro-ticket-tipo').addEventListener('change', cargarTickets);
   document.getElementById('busqueda').addEventListener('input', buscarConRetraso);
+  document.getElementById('filtro-usuario-estado').addEventListener('change', cargarUsuarios);
 
   document.getElementById('admin-tickets').addEventListener('click', evento => {
     const boton = evento.target.closest('[data-accion="guardar-ticket"]');
@@ -862,6 +890,7 @@ function instalarEventos() {
     switch (boton.dataset.accion) {
       case 'extender': extender(id, Number(boton.dataset.meses)); break;
       case 'cortesia': cortesia(id); break;
+      case 'rol': cambiarRol(id, boton.dataset.rol); break;
       case 'suspender': suspender(id); break;
       case 'levantar': levantarSuspension(id); break;
       case 'desbloquear-ip': desbloquearIP(id); break;

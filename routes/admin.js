@@ -22,6 +22,12 @@ const router = express.Router();
 
 router.use(requireAuth, requireAdmin);
 
+async function esAdministradorPrincipal(usuario) {
+  const primerAdmin = await Usuario.findOne({ rol: 'admin' })
+    .sort({ fecha_registro: 1, _id: 1 }).select('_id').lean();
+  return Boolean(primerAdmin && String(primerAdmin._id) === String(usuario._id));
+}
+
 const CAMPOS_PARTIDO_RECOMENDACION = [
   'api_id', 'fecha', 'estado',
   'liga.id', 'liga.nombre',
@@ -170,25 +176,45 @@ router.get('/usuarios', async (req, res) => {
     const pagina = Math.max(parseInt(req.query.pagina) || 1, 1);
     const porPagina = Math.min(parseInt(req.query.limite) || 50, 200);
     const busqueda = textoDeConsulta(req.query.q, 80);
+    const estado = textoDeConsulta(req.query.estado, 30);
+    const estadosPermitidos = new Set(['premium', 'prueba', 'expirado', 'suspendido', 'desactivado', 'bloqueado_ip', 'admin']);
+    const ahora = new Date();
 
     const patron = escaparRegex(busqueda);
-    const filtro = busqueda
-      ? { $or: [
-          { email: { $regex: patron, $options: 'i' } },
-          { nombre: { $regex: patron, $options: 'i' } }
-        ] }
-      : {};
+    const condiciones = [];
+    if (busqueda) condiciones.push({ $or: [
+      { email: { $regex: patron, $options: 'i' } },
+      { nombre: { $regex: patron, $options: 'i' } }
+    ] });
+    if (estadosPermitidos.has(estado)) {
+      const disponible = { activo: { $ne: false }, suspendido_hasta: { $not: { $gt: ahora } } };
+      const sinSuscripcion = { $or: [{ suscripcion_termina: null }, { suscripcion_termina: { $exists: false } }, { suscripcion_termina: { $lte: ahora } }] };
+      const porEstado = {
+        premium: { ...disponible, rol: { $ne: 'admin' }, suscripcion_termina: { $gt: ahora } },
+        prueba: { ...disponible, rol: { $ne: 'admin' }, bloqueado_ip_duplicada: { $ne: true }, prueba_termina: { $gt: ahora }, ...sinSuscripcion },
+        expirado: { ...disponible, rol: { $ne: 'admin' }, bloqueado_ip_duplicada: { $ne: true }, prueba_termina: { $not: { $gt: ahora } }, ...sinSuscripcion },
+        suspendido: { activo: { $ne: false }, suspendido_hasta: { $gt: ahora } },
+        desactivado: { activo: false },
+        bloqueado_ip: { ...disponible, bloqueado_ip_duplicada: true, ...sinSuscripcion },
+        admin: { ...disponible, rol: 'admin' }
+      };
+      condiciones.push(porEstado[estado]);
+    }
+    const filtro = condiciones.length ? { $and: condiciones } : {};
 
-    const [usuarios, total] = await Promise.all([
+    const [usuarios, total, puedeGestionarAdmins] = await Promise.all([
       Usuario.find(filtro).sort({ fecha_registro: -1 }).skip((pagina - 1) * porPagina).limit(porPagina),
-      Usuario.countDocuments(filtro)
+      Usuario.countDocuments(filtro),
+      esAdministradorPrincipal(req.usuario)
     ]);
 
     res.json({
       total,
       pagina,
       porPagina,
+      puedeGestionarAdmins,
       usuarios: usuarios.map(u => ({
+        esAdministradorPrincipal: puedeGestionarAdmins && String(u._id) === String(req.usuario._id),
         ...u.aJSON(),
         activo: u.activo,
         ultimo_acceso: u.ultimo_acceso,
@@ -218,7 +244,7 @@ router.get('/resumen', async (req, res) => {
     ]);
 
     const mesesCortesia = totalCortesia[0]?.total || 0;
-    res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, mesesCortesia, cuotaApi, ticketsAbiertos });
+    res.json({ total, premium, enPrueba, expirados: total - premium - enPrueba, mesesCortesia, diasCortesia: Math.round(mesesCortesia * 30), cuotaApi, ticketsAbiertos });
   } catch (error) {
     errorServidor(res, error);
   }
@@ -343,9 +369,13 @@ router.post('/usuarios/:id/suscripcion', async (req, res) => {
   }
 });
 
-// Cortesía: extiende 1 mes sin contar como ingreso
+// Cortesía: extiende una cantidad exacta de días sin contar como ingreso
 router.post('/usuarios/:id/cortesia', async (req, res) => {
   try {
+    const dias = Number.parseInt(req.body.dias, 10);
+    if (!Number.isInteger(dias) || dias < 1 || dias > 3650) {
+      return res.status(400).json({ error: 'Los días deben ser un entero entre 1 y 3650' });
+    }
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
 
@@ -354,18 +384,34 @@ router.post('/usuarios/:id/cortesia', async (req, res) => {
       ? new Date(usuario.suscripcion_termina)
       : ahora;
 
-    base.setMonth(base.getMonth() + 1);
+    base.setUTCDate(base.getUTCDate() + dias);
     usuario.suscripcion_termina = base;
     usuario.plan = 'premium';
-    usuario.meses_cortesia = (usuario.meses_cortesia || 0) + 1;
+    usuario.meses_cortesia = (usuario.meses_cortesia || 0) + (dias / 30);
     await usuario.save();
 
-    res.json({ mensaje: 'Cortesía de 1 mes aplicada', usuario: usuario.aJSON() });
+    res.json({ mensaje: `Cortesía de ${dias} día(s) aplicada`, usuario: usuario.aJSON() });
   } catch (error) {
     errorServidor(res, error);
   }
 });
 
+
+router.patch('/usuarios/:id/rol', async (req, res) => {
+  try {
+    if (!(await esAdministradorPrincipal(req.usuario))) return res.status(403).json({ error: 'Solo el administrador principal puede gestionar administradores' });
+    const rol = req.body?.rol;
+    if (!['usuario', 'admin'].includes(rol)) return res.status(400).json({ error: 'Rol no válido' });
+    const usuario = await Usuario.findById(req.params.id);
+    if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
+    if (usuario._id.equals(req.usuario._id)) return res.status(400).json({ error: 'No puedes cambiar tu propio rol' });
+    usuario.rol = rol;
+    await usuario.save();
+    res.json({ mensaje: rol === 'admin' ? 'Permisos de administrador otorgados' : 'Permisos de administrador retirados', usuario: usuario.aJSON() });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
 
 router.delete('/usuarios/:id/suscripcion', async (req, res) => {
   try {
