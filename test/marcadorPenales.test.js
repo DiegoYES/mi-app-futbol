@@ -101,6 +101,14 @@ test('etiquetaEstado usa la hora como alternativa en partidos por jugarse', () =
   assert.equal(marcador.etiquetaEstado({ estado: '2H' }, '19:00'), 'En vivo');
 });
 
+test('un NS cuya hora pasó deja de presentarse como no empezado', () => {
+  const partido = { estado: 'NS', fecha: '2026-08-24T01:00:00Z' };
+  assert.equal(marcador.esEstadoAtrasado(partido, '2026-08-24T04:00:00Z'), true);
+  assert.equal(marcador.esEstadoAtrasado(partido, '2026-08-24T02:59:59Z'), false);
+  assert.equal(marcador.etiquetaEstado(partido, '19:00'), 'Sin confirmar');
+  assert.equal(marcador.esEstadoAtrasado({ ...partido, estado: 'PST' }, '2026-08-25T04:00:00Z'), false);
+});
+
 test('textoPenales sólo aparece cuando hubo tanda', () => {
   const conTanda = { local: { goles: 1 }, visitante: { goles: 1 }, penales: { local: 3, visitante: 4 } };
   assert.equal(marcador.textoMarcador(conTanda), '1 - 1', 'el marcador principal excluye la tanda');

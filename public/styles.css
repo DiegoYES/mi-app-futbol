@@ -32,7 +32,7 @@ body {
 }
 
 .site-legal-footer { width:min(1180px,calc(100% - 32px));margin:34px auto 20px;padding:18px 20px;border-top:1px solid var(--line);color:var(--muted);font-size:.66rem;line-height:1.65;text-align:center; }
-.site-legal-footer p { margin:4px 0; }.site-legal-footer strong { color:var(--ink); }.site-legal-footer a { color:var(--cyan); }
+.site-legal-footer p { margin:4px 0; }.site-social-links,.landing-social-links { display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:0 0 13px; }.social-link { display:grid;place-items:center;width:38px;height:38px;padding:0;border:1px solid var(--line);border-radius:9px;color:var(--ink)!important;text-decoration:none; }.social-link:hover { border-color:var(--green);color:var(--green)!important; }.social-link svg { width:17px;height:17px; }.site-legal-footer strong { color:var(--ink); }.site-legal-footer a { color:var(--cyan); }
 
 button, select, input { font: inherit; }
 button, a, select, input { -webkit-tap-highlight-color: transparent; }

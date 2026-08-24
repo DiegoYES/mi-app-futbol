@@ -1,5 +1,7 @@
 require('dotenv').config({ quiet: true });
+
 const mongoose = require('mongoose');
+const { invalidarCacheDatosPartidos } = require('../services/syncCache');
 const axios = require('axios');
 const https = require('https');
 const Partido = require('../models/partido');
@@ -193,6 +195,7 @@ async function main() {
     console.log('\n🎉 Reparación terminada');
     console.log(JSON.stringify({ llamadas, recibidos, finalizados, siguenPendientes, ausentes }, null, 2));
     console.log('Estado de cuota:', JSON.stringify(controlTraficoApi.estado(), null, 2));
+    if (recibidos || canceladosMalEscritos) await invalidarCacheDatosPartidos();
   } finally {
     await mongoose.disconnect();
   }

@@ -18,6 +18,7 @@ const seleccionRecomendadaSchema = new mongoose.Schema({
   evento: { type: String, required: true, trim: true, maxlength: 140 },
   mercado_id: { type: String, required: true, trim: true, maxlength: 120 },
   mercado: { type: String, required: true, trim: true, maxlength: 180 },
+  periodo: { type: Number, enum: [0, 1, 2], default: 0 },
   cuota: { type: Number, required: true, min: 1.001, max: 1000 },
   momio_americano: { type: Number, required: true, min: -100000, max: 100000 },
   formato_momio: { type: String, enum: ['decimal', 'americano'], required: true },

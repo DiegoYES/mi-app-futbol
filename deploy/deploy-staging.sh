@@ -70,7 +70,7 @@ if [ ! -d "${STAGING_DIR}/.git" ]; then
   if [ -d "${STAGING_DIR}" ]; then
     while IFS= read -r ENTRADA; do
       case "${ENTRADA}" in
-        .env|DEPLOYED_COMMIT|VALIDATED_COMMIT|var) : ;;
+        .env|DEPLOYED_COMMIT|VALIDATED_COMMIT|RELEASE_COMMIT|var) : ;;
         *) fallo "${STAGING_DIR} contiene '${ENTRADA}', que no es un artefacto esperado de staging; resuélvelo manualmente antes de desplegar." ;;
       esac
     done < <(ls -A "${STAGING_DIR}")
@@ -108,6 +108,7 @@ echo "Instalando dependencias de producción (npm ci --omit=dev)..."
 (cd "${STAGING_DIR}" && npm ci --omit=dev --no-audit --no-fund)
 mkdir -p "${STAGING_DIR}/var"
 printf '%s\n' "${SHA}" > "${STAGING_DIR}/DEPLOYED_COMMIT"
+printf '%s\n' "${SHA}" > "${STAGING_DIR}/RELEASE_COMMIT"
 
 if [ "${SKIP_RESTART:-0}" = "1" ]; then
   echo "SKIP_RESTART=1: no se toca PM2."
@@ -142,12 +143,13 @@ esperar_ready() {
   local APP="$1" PUERTO="$2"
   echo "Esperando a que ${APP} responda /health/ready en 127.0.0.1:${PUERTO}..."
   for intento in $(seq 1 20); do
-    if curl -fsS "http://127.0.0.1:${PUERTO}/health/ready" >/dev/null 2>&1; then
+    if curl -fsS "http://127.0.0.1:${PUERTO}/health/ready" >/dev/null 2>&1 \
+      && curl -fsS "http://127.0.0.1:${PUERTO}/health/version/${SHA}" >/dev/null 2>&1; then
       return 0
     fi
     sleep 2
   done
-  fallo "${APP} no respondió /health/ready; revisa: pm2 logs ${APP}"
+  fallo "${APP} no respondió ready con la versión ${SHA}; revisa: pm2 logs ${APP}"
 }
 
 esperar_ready "${STAGING_PM2_APP}" "${STAGING_PORT}"

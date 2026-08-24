@@ -17,10 +17,52 @@ const { normalizarRecomendacion } = require('../services/recomendaciones');
 const Partido = require('../models/partido');
 const { obtenerMercado } = require('../services/marketCatalog');
 const { analizarPartido } = require('./picks');
+const EnlaceSocial = require('../models/EnlaceSocial');
+const { ICONOS_SOCIALES, normalizarEnlaceSocial } = require('../services/socialLinks');
 
 const router = express.Router();
 
 router.use(requireAuth, requireAdmin);
+
+router.get('/redes-sociales', async (_req, res) => {
+  try {
+    const enlaces = await EnlaceSocial.find({}).sort({ orden: 1, creado_en: 1 }).lean();
+    res.json({ enlaces, iconos: ICONOS_SOCIALES });
+  } catch (error) { errorServidor(res, error); }
+});
+
+router.post('/redes-sociales', async (req, res) => {
+  try {
+    const normalizado = normalizarEnlaceSocial(req.body);
+    if (normalizado.error) return res.status(400).json({ error: normalizado.error });
+    const enlace = await EnlaceSocial.create(normalizado.datos);
+    res.status(201).json({ mensaje: 'Enlace social creado.', enlace });
+  } catch (error) { errorServidor(res, error); }
+});
+
+router.patch('/redes-sociales/:id', async (req, res) => {
+  try {
+    const normalizado = normalizarEnlaceSocial(req.body);
+    if (normalizado.error) return res.status(400).json({ error: normalizado.error });
+    const enlace = await EnlaceSocial.findByIdAndUpdate(req.params.id, { $set: normalizado.datos }, { new: true, runValidators: true });
+    if (!enlace) return res.status(404).json({ error: 'Enlace no encontrado.' });
+    res.json({ mensaje: 'Enlace actualizado.', enlace });
+  } catch (error) {
+    if (error.name === 'CastError') return res.status(404).json({ error: 'Enlace no encontrado.' });
+    errorServidor(res, error);
+  }
+});
+
+router.delete('/redes-sociales/:id', async (req, res) => {
+  try {
+    const enlace = await EnlaceSocial.findByIdAndDelete(req.params.id);
+    if (!enlace) return res.status(404).json({ error: 'Enlace no encontrado.' });
+    res.json({ mensaje: 'Enlace eliminado.' });
+  } catch (error) {
+    if (error.name === 'CastError') return res.status(404).json({ error: 'Enlace no encontrado.' });
+    errorServidor(res, error);
+  }
+});
 
 async function esAdministradorPrincipal(usuario) {
   const primerAdmin = await Usuario.findOne({ rol: 'admin' })
@@ -62,11 +104,13 @@ router.get('/recomendaciones/partidos', async (req, res) => {
 router.get('/recomendaciones/partidos/:id/mercados', async (req, res) => {
   try {
     const partidoId = Number.parseInt(req.params.id, 10);
+    const periodo = Number.parseInt(req.query.periodo ?? '0', 10);
     if (!Number.isInteger(partidoId)) return res.status(400).json({ error: 'Partido inválido.' });
+    if (![0, 1, 2].includes(periodo)) return res.status(400).json({ error: 'El período debe ser partido completo, primer tiempo o segundo tiempo.' });
     const partido = await Partido.findOne({ api_id: partidoId });
     if (!partido) return res.status(404).json({ error: 'Partido no encontrado.' });
-    const analisis = await analizarPartido(partido.toObject(), 10, 0);
-    res.json({ mercados: analisis.mercados.map(mercado => ({
+    const analisis = await analizarPartido(partido.toObject(), 10, periodo);
+    res.json({ periodo, mercados: analisis.mercados.map(mercado => ({
       id: mercado.id,
       nombre: mercado.mercado,
       categoria: mercado.categoria,
@@ -92,6 +136,7 @@ async function enriquecerRecomendacion(datos) {
     if (partido.fecha > datos.cierra_en) {
       return { error: 'Todos los partidos deben comenzar antes de la fecha límite.' };
     }
+    const periodo = [1, 2].includes(seleccion.periodo) ? seleccion.periodo : 0;
     const mercado = obtenerMercado(seleccion.mercado_id);
     if (!mercado) return { error: 'Uno de los mercados seleccionados no es válido.' };
     selecciones.push({
@@ -101,7 +146,8 @@ async function enriquecerRecomendacion(datos) {
       local: { id: partido.equipo_local.id, nombre: partido.equipo_local.nombre },
       visitante: { id: partido.equipo_visitante.id, nombre: partido.equipo_visitante.nombre },
       evento: `${partido.equipo_local.nombre} vs ${partido.equipo_visitante.nombre}`,
-      mercado: mercado.nombre
+      periodo,
+      mercado: mercado.nombre + (periodo ? ` · ${periodo}T` : ``)
     });
   }
   return { datos: { ...datos, selecciones } };

@@ -39,6 +39,7 @@ const partidoSchema = new mongoose.Schema({
   api_id: { type: Number, required: true, unique: true },
   fecha: { type: Date, required: true },
   estado: String,
+  estado_consultado_en: { type: Date, default: null },
   minuto_juego: Number,
   arbitro: String,
   liga: {

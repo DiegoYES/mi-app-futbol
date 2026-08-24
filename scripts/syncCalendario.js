@@ -1,5 +1,7 @@
 require('dotenv').config();
+
 const mongoose = require('mongoose');
+const { invalidarCacheDatosPartidos } = require('../services/syncCache');
 const axios = require('axios');
 const https = require('https');
 const Partido = require('../models/partido');
@@ -356,6 +358,7 @@ async function main() {
   await completarEstadisticasDePartidos(todosFinalizados);
   await completarTiemposDePartidos(todosFinalizados);
 
+  await invalidarCacheDatosPartidos();
   console.log('\n🎉 Calendario sincronizado.');
   await mongoose.disconnect();
 }

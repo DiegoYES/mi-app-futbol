@@ -24,6 +24,7 @@ const sugerenciasRoutes = require('./routes/sugerencias');
 const systemRoutes = require('./routes/system');
 const billingRoutes = require('./routes/billing');
 const productEventsRoutes = require('./routes/productEvents');
+const socialLinksRoutes = require('./routes/socialLinks');
 const mercadoPagoWebhookRoutes = require('./routes/mercadoPagoWebhook');
 const { protegido, requireAuth, requireAdmin, usuarioDeSesion } = require('./middleware/auth');
 const { resumirEventosPorMinuto } = require('./services/minuteRangeAnalysis');
@@ -95,6 +96,7 @@ const RUTA_IMAGEN = /^\/(equipos\/\d+\/escudo|ligas\/\d+\/logo)\/?$/;
 app.use('/api', validarOrigenNavegador, (req, res, next) =>
   RUTA_IMAGEN.test(req.path) ? limiteEscudos(req, res, next) : limiteApi(req, res, next));
 
+app.use("/api/social-links", socialLinksRoutes);
 // La raíz es pública para visitantes y conserva el panel como inicio de quien
 // ya tiene sesión. El comparador vive en una ruta explícita.
 // enviarHtml añade el banner "ENTORNO DE PRUEBA" sólo si APP_ENVIRONMENT=staging.

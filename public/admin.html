@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Panel de administración</title>
 <link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
-<script src="/auth-client.js"></script>
+<script src="/auth-client.js?v=20260824-admin-cleanup"></script>
 <script src="/search-utils.js"></script>
 <style>
   :root { --primary: #0a2540; --accent: #00d4ff; --bg: #f3f4f6; }
@@ -82,9 +82,10 @@
   .rec-selection input,.rec-selection select { min-width:0;min-height:42px;margin:0;padding:8px;border:1px solid #cbd5e1;border-radius:7px;background:#fff;font:inherit; }
   .rec-selection [data-rec="partido"],.rec-selection [data-rec="mercado"] { grid-column:span 6; }
   .rec-selection [data-rec="buscar-partido"],.rec-selection [data-rec="buscar-mercado"] { grid-column:span 6;background:#fffef5; }
-  .rec-selection [data-rec="formato"] { grid-column:span 3; }
-  .rec-selection [data-rec="momio"] { grid-column:span 3; }
-  .rec-selection [data-rec="casa"] { grid-column:span 4; }
+  .rec-selection [data-rec="periodo"] { grid-column:span 3; }
+  .rec-selection [data-rec="formato"] { grid-column:span 2; }
+  .rec-selection [data-rec="momio"] { grid-column:span 2; }
+  .rec-selection [data-rec="casa"] { grid-column:span 3; }
   .rec-selection [data-rec-quitar] { grid-column:span 2; }
   .rec-partidos-status { grid-column:1/-1;margin:-2px 0 2px;color:#64748b;font-size:.69rem; }
   .momio-group { display:grid;grid-template-columns:125px minmax(0,1fr);gap:6px;margin-top:5px; }
@@ -105,6 +106,7 @@
   @media(max-width:800px){.ticket-edit{grid-template-columns:1fr 1fr}.ticket-edit>div:nth-child(3){grid-column:1/-1}.admin-ticket-head{display:block}.rec-selection{grid-template-columns:1fr 1fr}.rec-selection [data-rec]{grid-column:auto}.rec-selection [data-rec="partido"],.rec-selection [data-rec="mercado"],.rec-selection button{grid-column:1/-1}}
   @media(max-width:600px){.wrap{padding:18px 12px}.admin-heading{align-items:start}.admin-heading p{font-size:.78rem}.admin-menu{top:58px;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));overflow:visible;margin-left:-4px;margin-right:-4px}.admin-menu button{min-width:0;min-height:42px;padding:8px 4px;font-size:.73rem}.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.kpi{padding:13px}.barra{flex-direction:column}input[type=search]{width:100%;min-width:0;min-height:44px}.acciones button{min-height:44px}.ticket-edit{grid-template-columns:1fr}.ticket-edit>div:nth-child(3){grid-column:auto}}
   @media(max-width:360px){.kpis{grid-template-columns:1fr}}
+  .social-admin-help{color:#64748b;font-size:.8rem}.social-admin-form{display:grid;grid-template-columns:1fr 2fr 1fr 100px;gap:10px;padding:16px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc}.social-admin-form label{font-size:.72rem;font-weight:700}.social-admin-form input,.social-admin-form select{width:100%;margin-top:5px;padding:10px;border:1px solid #cbd5e1;border-radius:7px;background:#fff}.social-admin-form .social-active,.social-admin-form .rec-actions{grid-column:1/-1}.social-admin-form .social-active{display:flex;align-items:center;gap:8px}.social-admin-form .social-active input{width:auto;margin:0}.social-admin-list{display:grid;gap:9px;margin-top:14px}.social-admin-card{display:grid;grid-template-columns:42px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px;border:1px solid #e2e8f0;border-radius:9px}.social-admin-icon{display:grid;width:40px;height:40px;place-items:center;border-radius:9px;background:#0f172a;color:#fff}.social-admin-icon svg{width:21px;height:21px}.social-admin-card small{display:block;color:#64748b;overflow-wrap:anywhere}.social-admin-actions{display:flex;gap:6px}.social-admin-actions button{padding:8px;border:0;border-radius:6px;cursor:pointer}@media(max-width:700px){.social-admin-form{grid-template-columns:1fr}.social-admin-form .social-active,.social-admin-form .rec-actions{grid-column:auto}.social-admin-card{grid-template-columns:42px 1fr}.social-admin-actions{grid-column:1/-1}}
 </style>
 </head>
 <body>
@@ -117,6 +119,7 @@
     <button type="button" data-admin-panel="picks" aria-controls="admin-picks">🎯 Picks</button>
     <button type="button" data-admin-panel="usuarios" aria-controls="admin-usuarios">👥 Usuarios</button>
     <button type="button" data-admin-panel="tickets" aria-controls="admin-tickets-panel">💡 Tickets</button>
+    <button type="button" data-admin-panel="redes" aria-controls="admin-redes">📣 Redes</button>
     <button type="button" data-admin-panel="seguridad" aria-controls="admin-seguridad">🛡️ Seguridad</button>
   </nav>
 
@@ -151,6 +154,21 @@
       </form>
       <div id="rec-lista" class="rec-list"><div class="ticket-empty">Cargando recomendaciones…</div></div>
     </div>
+  </section>
+
+  <section class="seccion admin-section" id="admin-redes" data-admin-panel-content="redes" hidden>
+    <h2>📣 Redes sociales</h2>
+    <p class="social-admin-help">Añade enlaces públicos y elige un icono local. Desactívalos temporalmente o elimínalos.</p>
+    <form id="social-form" class="social-admin-form">
+      <input type="hidden" id="social-id">
+      <label>Nombre<input id="social-nombre" maxlength="50" required placeholder="Instagram"></label>
+      <label>URL<input id="social-url" type="url" maxlength="500" required placeholder="https://..."></label>
+      <label>Icono<select id="social-icono"></select></label>
+      <label>Orden<input id="social-orden" type="number" min="0" max="999" value="0"></label>
+      <label class="social-active"><input id="social-activo" type="checkbox" checked> Visible públicamente</label>
+      <div class="rec-actions"><button class="rec-primary" type="submit" id="social-guardar">Añadir enlace</button><button class="rec-secondary" type="button" id="social-cancelar" hidden>Cancelar edición</button></div>
+    </form>
+    <div id="social-lista" class="social-admin-list"><div class="ticket-empty">Cargando enlaces…</div></div>
   </section>
 
   <section class="seccion admin-section" id="admin-tickets-panel" data-admin-panel-content="tickets" hidden>
@@ -201,9 +219,11 @@
   </section>
 </div>
 
+<script src="/social-icons.js?v=20260824-social"></script>
+<script src="/admin-social.js?v=20260824-social"></script>
 <script>
 let temporizador;
-const PANELES_ADMIN = new Set(['resumen', 'picks', 'usuarios', 'tickets', 'seguridad']);
+const PANELES_ADMIN = new Set(['resumen', 'picks', 'usuarios', 'tickets', 'redes', 'seguridad']);
 
 function mostrarPanelAdmin(nombre, actualizarUrl = true) {
   const panel = PANELES_ADMIN.has(nombre) ? nombre : 'resumen';
@@ -330,7 +350,8 @@ function pintarMercadosFila(fila, seleccionado = '', nombreLegado = '') {
   const partidoId = Number(fila.querySelector('[data-rec="partido"]').value);
   const select = fila.querySelector('[data-rec="mercado"]');
   const busqueda = fila.querySelector('[data-rec="buscar-mercado"]')?.value || '';
-  const todos = mercadosRecomendacion.get(partidoId) || [];
+  const periodo = Number(fila.querySelector('[data-rec="periodo"]').value) || 0;
+  const todos = mercadosRecomendacion.get(`${partidoId}:${periodo}`) || [];
   const mercados = FutbolSearch.ordenar(todos, busqueda, mercado => `${mercado.nombre} ${mercado.categoria}`);
   const mercadoSeleccionado = todos.find(mercado => mercado.id === seleccionado);
   if (mercadoSeleccionado && !mercados.some(mercado => mercado.id === seleccionado)) mercados.unshift(mercadoSeleccionado);
@@ -343,6 +364,8 @@ function pintarMercadosFila(fila, seleccionado = '', nombreLegado = '') {
 
 async function cargarMercadosFila(fila, seleccionado = '', nombreLegado = '') {
   const partidoId = Number(fila.querySelector('[data-rec="partido"]').value);
+  const periodo = Number(fila.querySelector('[data-rec="periodo"]').value) || 0;
+  const claveMercados = `${partidoId}:${periodo}`;
   const select = fila.querySelector('[data-rec="mercado"]');
   if (!partidoId) {
     select.innerHTML = '<option value="">Primero selecciona un partido</option>';
@@ -352,11 +375,11 @@ async function cargarMercadosFila(fila, seleccionado = '', nombreLegado = '') {
   select.disabled = true;
   select.innerHTML = '<option value="">Cargando mercados…</option>';
   try {
-    if (!mercadosRecomendacion.has(partidoId)) {
-      const respuesta = await fetch(`/api/admin/recomendaciones/partidos/${partidoId}/mercados`);
+    if (!mercadosRecomendacion.has(claveMercados)) {
+      const respuesta = await fetch(`/api/admin/recomendaciones/partidos/${partidoId}/mercados?periodo=${periodo}`);
       const datos = await respuesta.json().catch(() => ({}));
       if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar los mercados.');
-      mercadosRecomendacion.set(partidoId, datos.mercados);
+      mercadosRecomendacion.set(claveMercados, datos.mercados);
     }
     if (Number(fila.querySelector('[data-rec="partido"]').value) !== partidoId) return;
     pintarMercadosFila(fila, seleccionado, nombreLegado);
@@ -372,6 +395,7 @@ function agregarSeleccion(datos = {}) {
     <input data-rec="buscar-mercado" type="search" placeholder="Buscar mercado…">
     <select data-rec="partido" required></select>
     <select data-rec="mercado" required disabled><option value="">Primero selecciona un partido</option></select>
+    <select data-rec="periodo" aria-label="Período del mercado"><option value="0" ${!datos.periodo ? 'selected' : ''}>Partido completo</option><option value="1" ${datos.periodo === 1 ? 'selected' : ''}>Primer tiempo</option><option value="2" ${datos.periodo === 2 ? 'selected' : ''}>Segundo tiempo</option></select>
     <select data-rec="formato"><option value="decimal" ${datos.formato_momio !== 'americano' ? 'selected' : ''}>Decimal</option><option value="americano" ${datos.formato_momio === 'americano' ? 'selected' : ''}>Americano</option></select>
     <input data-rec="momio" inputmode="text" maxlength="20" required placeholder="Momio" value="${escaparHtml(datos.momio_capturado ?? datos.cuota ?? '')}">
     <input data-rec="casa" maxlength="80" placeholder="Casa (opcional)" value="${escaparHtml(datos.casa || '')}">
@@ -481,6 +505,7 @@ function datosRecomendacionFormulario() {
     selecciones: [...document.querySelectorAll('.rec-selection')].map(fila => ({
       partido_api_id: Number(fila.querySelector('[data-rec="partido"]').value),
       mercado_id: fila.querySelector('[data-rec="mercado"]').value,
+      periodo: Number(fila.querySelector('[data-rec="periodo"]').value) || 0,
       formato_momio: fila.querySelector('[data-rec="formato"]').value,
       momio: fila.querySelector('[data-rec="momio"]').value,
       casa: fila.querySelector('[data-rec="casa"]').value
@@ -836,7 +861,7 @@ function instalarEventos() {
   document.getElementById('rec-selecciones').addEventListener('change', evento => {
     const fila = evento.target.closest('.rec-selection');
     if (!fila) return;
-    if (evento.target.matches('[data-rec="partido"]')) cargarMercadosFila(fila);
+    if (evento.target.matches('[data-rec="partido"], [data-rec="periodo"]')) cargarMercadosFila(fila);
     if (evento.target.matches('[data-rec="formato"]')) {
       normalizarCienAmericano(fila.querySelector('[data-rec="momio"]'), evento.target.value);
       actualizarMomioTotal();

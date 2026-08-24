@@ -46,6 +46,13 @@ test('normaliza un pick editorial válido sin duplicar el sistema de acceso', ()
   assert.ok(resultado.datos.cierra_en instanceof Date);
 });
 
+test(`conserva el período elegido y usa partido completo por defecto`, () => {
+  const primerTiempo = normalizarRecomendacion({ ...entradaBase, selecciones: [{ ...entradaBase.selecciones[0], periodo: 1 }] });
+  const completo = normalizarRecomendacion(entradaBase);
+  assert.equal(primerTiempo.datos.selecciones[0].periodo, 1);
+  assert.equal(completo.datos.selecciones[0].periodo, 0);
+});
+
 test('un parlay exige por lo menos dos selecciones', () => {
   const resultado = normalizarRecomendacion({ ...entradaBase, tipo: 'parlay' });
 

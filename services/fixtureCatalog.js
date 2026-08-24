@@ -49,6 +49,7 @@ function documentoFixture(fixture, nombresLigas = {}) {
     liga: {
       id: fixture.league.id,
       nombre: nombresLigas[fixture.league.id]?.nombre || fixture.league.name,
+      pais: nombresLigas[fixture.league.id]?.pais || fixture.league.country || '',
       temporada: fixture.league.season,
       jornada: fixture.league.round
     },

@@ -301,6 +301,10 @@ let datosVisitante = null;
 let datosPicksPartido = null;
 const filtrosMercado = { categoria: 'todas', familia: 'todas', alcance: '', tipo: '', linea: '', periodo: 0 };
 let temporadaPartido = null;
+const INTERVALO_ACTUALIZACION_PARTIDO_MS = 120000;
+let ultimaCargaPartido = 0;
+let estadoPartidoActual = null;
+let refrescandoPartido = false;
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
 
@@ -443,6 +447,8 @@ async function cargarCabecera() {
   let partido = null;
   if (ID_PARTIDO) partido = await pedir(`/api/partidos/${ID_PARTIDO}/estadisticas`);
   temporadaPartido = Number.isInteger(Number(partido?.temporada)) ? Number(partido.temporada) : null;
+  estadoPartidoActual = partido?.estado || null;
+  ultimaCargaPartido = Date.now();
 
   const nombreL = partido?.equipo_local?.nombre || datosLocal?.info?.equipo || 'Local';
   const nombreV = partido?.equipo_visitante?.nombre || datosVisitante?.info?.equipo || 'Visitante';
@@ -463,7 +469,7 @@ async function cargarCabecera() {
        ${tanda ? `<div class="res-penales">${tanda.local} - ${tanda.visitante} en penales</div>` : ''}
        ${prorroga && !tanda ? `<div class="res-penales">${prorroga.local} - ${prorroga.visitante} en la prórroga</div>` : ''}
        <div class="meta">${detalleFinal}</div>`
-    : `<div class="vs">VS</div><div class="meta">Por jugarse</div>`;
+    : `<div class="vs">VS</div><div class="meta">${FutbolMarcador.esEstadoAtrasado(partido) ? 'Estado sin confirmar' : 'Por jugarse'}</div>`;
 
   document.title = `${nombreL} vs ${nombreV} · Match Center`;
   cont.innerHTML = `
@@ -962,6 +968,15 @@ document.addEventListener('DOMContentLoaded', () => {
   dialogoExplicacion.addEventListener('click', event => { if (event.target === dialogoExplicacion) dialogoExplicacion.close(); });
   cargarTodo();
   cargarPicks();
+  const refrescarPartido = async () => {
+    if (document.hidden || refrescandoPartido || FutbolMarcador.esFinalizado(estadoPartidoActual)) return;
+    refrescandoPartido = true;
+    try { await cargarCabecera(); } finally { refrescandoPartido = false; }
+  };
+  setInterval(refrescarPartido, INTERVALO_ACTUALIZACION_PARTIDO_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - ultimaCargaPartido >= INTERVALO_ACTUALIZACION_PARTIDO_MS) refrescarPartido();
+  });
 });
 window.addEventListener('pageshow', event => {
   if (event.persisted && ID_PARTIDO) cargarPicks();

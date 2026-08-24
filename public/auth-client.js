@@ -8,6 +8,7 @@
   const esPaginaSuscripcion = window.location.pathname === '/suscripcion.html';
   const esPaginaSoporte = window.location.pathname === '/sugerencias.html';
   const esPaginaConfiguracion = window.location.pathname === '/configuracion.html';
+  const esPaginaAdmin = window.location.pathname === '/admin.html';
   const CLAVE_FORMATO_MOMIO = 'datafut:formato-momio';
 
   function escaparHtml(valor) {
@@ -339,13 +340,23 @@
     actualizarPicksFlotantes();
   }
 
+  function cargarRedesSociales() {
+    const iniciar = () => window.FutbolSocial?.cargar("[data-social-links]");
+    if (window.FutbolSocial) return iniciar();
+    if (document.querySelector("script[data-social-icons]")) return;
+    const script = document.createElement("script");
+    script.src = "/social-icons.js?v=20260824-social"; script.dataset.socialIcons = "true"; script.onload = iniciar;
+    document.head.appendChild(script);
+  }
+
   function pintarAvisoLegal() {
     if (document.getElementById('site-legal-footer')) return;
     const pie = document.createElement('footer');
     pie.id = 'site-legal-footer';
     pie.className = 'site-legal-footer';
-    pie.innerHTML = `<p><strong>Sitio independiente.</strong> No está afiliado, patrocinado ni respaldado por las ligas, clubes, jugadores o casas mostradas. Nombres, marcas, escudos y fotografías pertenecen a sus respectivos titulares y se usan únicamente para identificación e información estadística.</p><p>Las estimaciones son frecuencias históricas, no garantizan resultados ni constituyen asesoría financiera. Verifica mercados y juega responsablemente. Sólo para mayores de 18 años. <a href="/legal.html">Aviso legal y fuentes</a>.</p>`;
+    pie.innerHTML = `<div class="site-social-links" data-social-links hidden></div><p><strong>Sitio independiente.</strong> No está afiliado, patrocinado ni respaldado por las ligas, clubes, jugadores o casas mostradas. Nombres, marcas, escudos y fotografías pertenecen a sus respectivos titulares y se usan únicamente para identificación e información estadística.</p><p>Las estimaciones son frecuencias históricas, no garantizan resultados ni constituyen asesoría financiera. Verifica mercados y juega responsablemente. Sólo para mayores de 18 años. <a href="/legal.html">Aviso legal y fuentes</a>.</p>`;
     document.body.appendChild(pie);
+    cargarRedesSociales();
   }
 
   // Validar la sesión contra el servidor al cargar
@@ -357,7 +368,7 @@
       const { usuario } = await resp.json();
       actualizarUsuarioInterfaz(usuario);
       window.dispatchEvent(new CustomEvent('futbol:usuario-cargado', { detail: usuario }));
-      pintarAvisoLegal();
+      if (!esPaginaAdmin) pintarAvisoLegal();
       if (!esPaginaConfiguracion) crearWidgetPicks();
       const parametros = new URLSearchParams(window.location.search);
       const registroLimitado = parametros.get('registro') === 'ip_duplicada';

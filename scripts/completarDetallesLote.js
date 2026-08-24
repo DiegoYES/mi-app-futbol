@@ -1,5 +1,7 @@
 require('dotenv').config({ quiet: true });
+
 const mongoose = require('mongoose');
+const { invalidarCacheDatosPartidos } = require('../services/syncCache');
 const axios = require('axios');
 const https = require('https');
 const Partido = require('../models/partido');
@@ -126,6 +128,7 @@ async function main() {
       }
       await completarLiga(liga, season);
     }
+    if (solicitudesUsadas > 0) await invalidarCacheDatosPartidos();
   } finally {
     await mongoose.disconnect();
   }

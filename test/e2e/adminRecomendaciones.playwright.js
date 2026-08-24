@@ -54,7 +54,8 @@ async function main() {
     ]);
     await pagina.goto('/admin.html', { waitUntil: 'networkidle' });
 
-    const paneles = ['resumen', 'picks', 'usuarios', 'tickets', 'seguridad'];
+    const paneles = ['resumen', 'picks', 'usuarios', 'tickets', 'redes', 'seguridad'];
+    if (await pagina.locator('#site-legal-footer').count()) throw new Error('El aviso legal público no debe montarse en el panel administrativo.');
     const menu = pagina.locator('#admin-menu [data-admin-panel]');
     if (await menu.count() !== paneles.length) throw new Error('El menú no contiene todas las secciones administrativas.');
     if (await pagina.getByText('Playdoit', { exact: false }).count()) {

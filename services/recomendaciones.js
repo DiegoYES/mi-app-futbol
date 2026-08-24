@@ -65,6 +65,7 @@ function normalizarRecomendacion(entrada = {}) {
         return {
           partido_api_id: Number(item?.partido_api_id),
           mercado_id: texto(item?.mercado_id, 120),
+          periodo: [1, 2].includes(Number(item?.periodo)) ? Number(item.periodo) : 0,
           cuota: momio?.cuota,
           momio_americano: momio?.americano,
           formato_momio: momio?.formato,

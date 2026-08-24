@@ -162,6 +162,7 @@
       <button class="status-filter" type="button" data-status-filter="terminado">Terminados</button>
       <button class="status-filter" type="button" data-status-filter="en_juego">En juego</button>
       <button class="status-filter" type="button" data-status-filter="no_iniciado">No empezados</button>
+      <button class="status-filter" type="button" data-status-filter="sin_confirmar">Sin confirmar</button>
       <button class="status-filter" type="button" data-status-filter="favoritos">★ Favoritos</button>
     </div>
     <div class="calendar-filter-group hour-filter" aria-label="Rango de hora local">
@@ -181,6 +182,8 @@
 let fechaActual = hoyISO();
 let cargaPicksId = 0;
 let cargaCalendarioId = 0;
+const INTERVALO_ACTUALIZACION_MS = 120000;
+let ultimaCargaCalendario = 0;
 let calendario = null;
 let filtroActivo = null;
 let filtroEstado = 'todos';
@@ -360,6 +363,7 @@ const ESTADOS_EN_JUEGO = new Set(['1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'IN
 function categoriaEstado(partido) {
   if (partido.finalizado) return 'terminado';
   if (ESTADOS_EN_JUEGO.has(String(partido.estado || '').toUpperCase())) return 'en_juego';
+  if (FutbolMarcador.esEstadoAtrasado(partido)) return 'sin_confirmar';
   return 'no_iniciado';
 }
 
@@ -496,6 +500,7 @@ async function cargarCalendario() {
     const datos = await resp.json();
     if (carga !== cargaCalendarioId) return;
     calendario = datos;
+    ultimaCargaCalendario = Date.now();
     pintarCalendario();
     pintarResultadosBusqueda();
   } catch (err) {
@@ -580,6 +585,10 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
   cargarCalendario();
+  setInterval(() => { if (!document.hidden) cargarCalendario(); }, INTERVALO_ACTUALIZACION_MS);
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && Date.now() - ultimaCargaCalendario >= INTERVALO_ACTUALIZACION_MS) cargarCalendario();
+  });
 });
 </script>
 <script src="/product-events.js" defer></script>
