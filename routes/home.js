@@ -7,6 +7,7 @@ const Boleta = require('../models/Boleta');
 const config = require('../config/leagues');
 const { etiquetaTemporada } = require('../services/seasonLabel');
 const { construirCatalogo } = require('../services/competitionCatalog');
+const { construirIndiceEquipos } = require('../services/globalTeamIndex');
 const { cacheMiddleware, obtenerOCrearCache } = require('../middleware/cache');
 
 const router = express.Router();
@@ -97,6 +98,33 @@ router.get('/competiciones', cacheMiddleware, async (_req, res) => {
       total: competiciones.length,
       temporadas_guardadas: filas.length
     });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+router.get('/equipos', cacheMiddleware, async (_req, res) => {
+  try {
+    const filas = await Partido.aggregate([
+      { $project: {
+        liga_id: '$liga.id', temporada: '$liga.temporada', liga_nombre: '$liga.nombre',
+        equipos: [
+          { id: '$equipo_local.id', nombre: '$equipo_local.nombre', logo: '$equipo_local.logo' },
+          { id: '$equipo_visitante.id', nombre: '$equipo_visitante.nombre', logo: '$equipo_visitante.logo' }
+        ]
+      } },
+      { $unwind: '$equipos' },
+      { $match: { 'equipos.id': { $type: 'number' } } },
+      { $group: {
+        _id: { liga: '$liga_id', temporada: '$temporada', equipo: '$equipos.id' },
+        liga_nombre: { $first: '$liga_nombre' },
+        nombre: { $first: '$equipos.nombre' },
+        logo: { $first: '$equipos.logo' }
+      } },
+      { $sort: { '_id.liga': 1, '_id.temporada': -1, nombre: 1 } }
+    ]);
+    const equipos = construirIndiceEquipos(filas, config.ligas, etiquetaTemporada);
+    res.json({ equipos, total: equipos.length });
   } catch (error) {
     errorServidor(res, error);
   }

@@ -41,6 +41,26 @@ async function validar(nombre, opciones = {}) {
   if (!csp.includes('nonce-') || csp.includes("'unsafe-inline'")) errores.push('CSP no usa nonce limpio');
   if (!(await pagina.locator('meta[name="csp-nonce"]').getAttribute('content'))) errores.push('falta meta nonce');
 
+  let peticionesIndice = 0;
+  let peticionesLegadas = 0;
+  pagina.on('request', peticion => {
+    const ruta = new URL(peticion.url()).pathname;
+    if (ruta === '/api/home/equipos') peticionesIndice++;
+    if (/^\/api\/ligas\/\d+\/equipos$/.test(ruta)) peticionesLegadas++;
+  });
+  const esperaIndice = pagina.waitForResponse(r => new URL(r.url()).pathname === '/api/home/equipos', { timeout: 30000 });
+  await pagina.locator('#home-team-search').fill('ta');
+  const respuestaIndice = await esperaIndice;
+  const datosIndice = await respuestaIndice.json();
+  const equipoPrueba = datosIndice.equipos?.find(equipo => equipo.nombre?.length >= 2);
+  if (!respuestaIndice.ok() || !equipoPrueba) errores.push('índice global de equipos no disponible');
+  else {
+    await pagina.locator('#home-team-search').fill(equipoPrueba.nombre);
+    await pagina.waitForFunction(nombre => document.querySelector('#home-team-results')?.textContent.includes(nombre), equipoPrueba.nombre);
+  }
+  if (peticionesIndice !== 1) errores.push('el índice global se pidió ' + peticionesIndice + ' veces');
+  if (peticionesLegadas !== 0) errores.push('el buscador conserva ' + peticionesLegadas + ' peticiones N+1');
+
   const admin = await pagina.goto('/admin.html', { waitUntil: 'domcontentloaded' });
   if (!admin?.ok()) errores.push(`admin ${admin?.status()}`);
   await pagina.waitForSelector('#admin-menu');
