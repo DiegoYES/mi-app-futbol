@@ -58,7 +58,7 @@
   </section>
 
   <section class="seccion admin-section" id="admin-calidad" data-admin-panel-content="calidad" hidden>
-    <div class="quality-heading"><div><h2>🩺 Calidad de datos</h2><p>Diagnóstico operativo de sólo lectura. Las reparaciones requieren confirmación explícita.</p></div><button class="rec-secondary" type="button" id="quality-refresh">Actualizar</button></div>
+    <div class="quality-heading"><div><h2>🩺 Calidad de datos</h2><p>El diagnóstico es de sólo lectura; cada reparación exige confirmación explícita y tiene un límite.</p></div><button class="rec-secondary" type="button" id="quality-refresh">Actualizar</button></div>
     <div id="quality-summary" class="quality-grid"><div class="ticket-empty">Abre esta sección para cargar el diagnóstico.</div></div>
     <div class="quality-detail" id="quality-detail"></div>
     <form class="quality-revalidate" id="quality-revalidate-form"><label>Revalidar un partido por API ID<input id="quality-api-id" type="number" min="1" required placeholder="123456"></label><button class="rec-danger" type="submit">Revalidar por ID</button><span id="quality-action-status">Consume una consulta del proveedor y actualiza únicamente ese partido.</span></form>
@@ -130,10 +130,10 @@
 <script src="/social-icons.js?v=20260824-social"></script>
 <script src="/admin-core.js?v=20260824-components"></script>
 <script src="/admin-picks.js?v=20260824-components"></script>
-<script src="/admin-quality.js?v=20260824-components"></script>
+<script src="/admin-quality.js?v=20260824-quality-actions"></script>
 <script src="/admin-tickets.js?v=20260824-components"></script>
 <script src="/admin-users.js?v=20260824-components"></script>
 <script src="/admin-social.js?v=20260824-social"></script>
-<script src="/admin.js?v=20260824-components"></script>
+<script src="/admin.js?v=20260824-quality-actions"></script>
 </body>
 </html>

@@ -33,6 +33,19 @@ function filtroPartidosPasadosSinResultado(ahora = new Date()) {
   };
 }
 
+function resumirCobertura(fila = {}) {
+  const total = Number(fila.total || 0);
+  const completos = Number(fila.completos || 0);
+  const noDisponibles = Number(fila.no_disponibles || 0);
+  const pendientes = Math.max(0, total - completos - noDisponibles);
+  const obtenibles = Math.max(0, total - noDisponibles);
+  return {
+    total, completos, pendientes, no_disponibles: noDisponibles,
+    porcentaje_total: total ? Math.round(completos * 1000 / total) / 10 : 100,
+    porcentaje_obtenible: obtenibles ? Math.round(completos * 1000 / obtenibles) / 10 : 100
+  };
+}
+
 function puertosPool(env = process.env) { return String(env.APP_POOL_PORTS || (env.APP_ENVIRONMENT === 'staging' ? '3100,3101' : '3000,3001')).split(/[ ,]+/).map(Number).filter(Boolean); }
 
 function consultarVersionPuerto(puerto, timeoutMs = 1200) {
@@ -55,9 +68,12 @@ async function obtenerCalidadDatos({ ahora = new Date(), modelo = Partido, env =
   const hace6h = new Date(ahora - 6 * 3600000);
   const hace7d = new Date(ahora - 7 * 86400000);
   const hace30d = new Date(ahora - 30 * 86400000);
-  const [atrasados, sinEstadisticas, estadosSinActualizar, ligas, cuota, instancias, suscripciones] = await Promise.all([
+  const [atrasados, coberturaFilas, estadosSinActualizar, ligas, cuota, instancias, suscripciones] = await Promise.all([
     modelo.countDocuments({ estado: 'NS', fecha: { $gte: hace7d, $lt: hace2h } }),
-    modelo.countDocuments({ estado: { $in: FINALIZADOS }, fecha: { $gte: hace30d }, estadisticas_completas: { $ne: true }, estadisticas_no_disponibles: { $ne: true } }),
+    modelo.aggregate([
+      { $match: { estado: { $in: FINALIZADOS }, fecha: { $gte: hace30d, $lt: ahora } } },
+      { $group: { _id: null, total: { $sum: 1 }, completos: { $sum: { $cond: [{ $eq: ['$estadisticas_completas', true] }, 1, 0] } }, no_disponibles: { $sum: { $cond: [{ $and: [{ $ne: ['$estadisticas_completas', true] }, { $eq: ['$estadisticas_no_disponibles', true] }] }, 1, 0] } } } }
+    ]),
     modelo.countDocuments({ estado: { $in: ACTIVOS }, fecha: { $gte: hace7d, $lt: ahora }, $or: [{ estado_consultado_en: { $lt: hace6h } }, { estado_consultado_en: null }, { estado_consultado_en: { $exists: false } }] }),
     modelo.aggregate([
       { $match: filtroPartidosPasadosSinResultado(ahora) },
@@ -71,14 +87,16 @@ async function obtenerCalidadDatos({ ahora = new Date(), modelo = Partido, env =
   const usuariosSuscritos = suscripciones.length ? await Usuario.find({ _id: { $in: suscripciones.map(item => item.usuario) } }).select('suscripcion_termina').lean() : [];
   const finPorUsuario = new Map(usuariosSuscritos.map(item => [String(item._id), item.suscripcion_termina]));
   const discrepanciasSuscripcion = suscripciones.filter(item => { const local = finPorUsuario.get(String(item.usuario)); return !local || !item.periodo_fin || Math.abs(new Date(local) - new Date(item.periodo_fin)) > 3600000; }).length;
+  const coberturaEstadisticas = resumirCobertura(coberturaFilas[0]);
   const commit = obtenerVersionRelease();
   const cron = leerEstadoCron(env);
   const ligasAtrasadas = ligas.slice(0, 12);
   const versionesDiferentes = instancias.some(item => !item.disponible || item.commit !== commit);
   return {
     generado_en: ahora.toISOString(),
-    problemas: { partidos_ns_atrasados: atrasados, finalizados_sin_estadisticas: sinEstadisticas, estados_sin_actualizar: estadosSinActualizar, ligas_atrasadas: ligas.length },
+    problemas: { partidos_ns_atrasados: atrasados, finalizados_sin_estadisticas: coberturaEstadisticas.pendientes, estados_sin_actualizar: estadosSinActualizar, ligas_atrasadas: ligas.length },
     ligas_atrasadas: ligasAtrasadas,
+    cobertura_estadisticas: coberturaEstadisticas,
     cron,
     cuota,
     redis: estadoRedis(),
@@ -87,4 +105,4 @@ async function obtenerCalidadDatos({ ahora = new Date(), modelo = Partido, env =
   };
 }
 
-module.exports = { ACTIVOS, FINALIZADOS, filtroPartidosPasadosSinResultado, consultarVersionPuerto, obtenerCalidadDatos, puertosPool };
+module.exports = { ACTIVOS, FINALIZADOS, filtroPartidosPasadosSinResultado, consultarVersionPuerto, obtenerCalidadDatos, puertosPool, resumirCobertura };

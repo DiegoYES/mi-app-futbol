@@ -157,6 +157,8 @@ test('el panel de administración conecta sus controles sin eventos inline bloqu
   assert.match(html, /data-accion="guardar-ticket"/);
   assert.match(html, /data-accion="cortesia"/);
   assert.match(html, /data-accion="extender"/);
+  assert.match(html, /data-quality-retry-stats/);
+  assert.match(html, /manejarAccionCalidad/);
 });
 
 test('el creador editorial tokeniza partidos y mercados y muestra el nombre completo de Audax', () => {

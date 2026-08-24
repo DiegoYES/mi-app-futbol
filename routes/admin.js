@@ -21,7 +21,7 @@ const EnlaceSocial = require('../models/EnlaceSocial');
 const { ICONOS_SOCIALES, normalizarEnlaceSocial } = require('../services/socialLinks');
 const { obtenerCalidadDatos } = require('../services/dataQuality');
 const { evaluarAlertas } = require('../services/operationalAlerts');
-const { revalidarPartidoPorId } = require('../services/fixtureRevalidation');
+const { reintentarEstadisticasPendientes, revalidarPartidoPorId, revalidarPendientesLiga } = require('../services/fixtureRevalidation');
 
 const router = express.Router();
 
@@ -43,6 +43,25 @@ router.post('/calidad-datos/revalidar/:apiId', async (req, res) => {
     const resultado = await revalidarPartidoPorId(apiId);
     if (!resultado.encontrado) return res.status(404).json({ error: 'Partido no encontrado.' });
     res.json({ mensaje: 'Partido revalidado.', resultado });
+  } catch (error) { errorServidor(res, error); }
+});
+
+router.post('/calidad-datos/revalidar-liga/:ligaId', async (req, res) => {
+  try {
+    const ligaId = Number.parseInt(req.params.ligaId, 10);
+    const temporada = Number.parseInt(req.body?.temporada, 10);
+    if (!Number.isInteger(ligaId) || ligaId <= 0 || !Number.isInteger(temporada)) return res.status(400).json({ error: 'Liga o temporada inválida.' });
+    if (req.body?.confirmacion !== 'REVALIDAR LIGA') return res.status(400).json({ error: 'Escribe REVALIDAR LIGA para confirmar hasta 10 consultas.' });
+    const resultado = await revalidarPendientesLiga(ligaId, temporada);
+    res.json({ mensaje: `${resultado.consultados} partido(s) revalidados.`, resultado });
+  } catch (error) { errorServidor(res, error); }
+});
+
+router.post('/calidad-datos/reintentar-estadisticas', async (req, res) => {
+  try {
+    if (req.body?.confirmacion !== 'REINTENTAR 10') return res.status(400).json({ error: 'Escribe REINTENTAR 10 para confirmar hasta 10 consultas.' });
+    const resultado = await reintentarEstadisticasPendientes();
+    res.json({ mensaje: `${resultado.consultados} partido(s) consultados para completar estadísticas.`, resultado });
   } catch (error) { errorServidor(res, error); }
 });
 

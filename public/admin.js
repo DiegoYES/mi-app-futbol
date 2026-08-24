@@ -68,6 +68,7 @@ function instalarEventos() {
   });
   document.getElementById('quality-refresh').addEventListener('click', cargarCalidadDatos);
   document.getElementById('quality-revalidate-form').addEventListener('submit', revalidarDesdeCalidad);
+  document.getElementById('quality-detail').addEventListener('click', manejarAccionCalidad);
   document.getElementById('filtro-ticket-estado').addEventListener('change', cargarTickets);
   document.getElementById('filtro-ticket-tipo').addEventListener('change', cargarTickets);
   document.getElementById('busqueda').addEventListener('input', buscarConRetraso);
