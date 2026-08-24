@@ -24,12 +24,6 @@ async function revalidarPartidoPorId(apiId) {
   let cobertura = null;
   if (ESTADOS_FINALIZADOS.has(fixture.fixture.status.short)) {
     cobertura = await guardarDetalleFixture(fixture, partido);
-    if (cobertura.estadisticas) {
-      await Partido.updateOne({ api_id: apiId }, { $set: { estadisticas_no_disponibles: false } });
-    } else {
-      const intentos = (partido.estadisticas_intentos || 0) + 1;
-      await Partido.updateOne({ api_id: apiId }, { $set: { estadisticas_intentos: intentos, estadisticas_no_disponibles: intentos >= 3 } });
-    }
   }
   await invalidarCacheDatosPartidos();
   return { encontrado: true, recibido: true, estado_anterior: partido.estado, estado: fixture.fixture.status.short, cobertura };

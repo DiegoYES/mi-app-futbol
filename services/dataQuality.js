@@ -38,9 +38,11 @@ function resumirCobertura(fila = {}) {
   const completos = Number(fila.completos || 0);
   const noDisponibles = Number(fila.no_disponibles || 0);
   const pendientes = Math.max(0, total - completos - noDisponibles);
+  const porConsultar = Math.min(pendientes, Math.max(0, Number(fila.por_consultar || 0)));
+  const enReintento = Math.max(0, pendientes - porConsultar);
   const obtenibles = Math.max(0, total - noDisponibles);
   return {
-    total, completos, pendientes, no_disponibles: noDisponibles,
+    total, completos, pendientes, por_consultar: porConsultar, en_reintento: enReintento, no_disponibles: noDisponibles,
     porcentaje_total: total ? Math.round(completos * 1000 / total) / 10 : 100,
     porcentaje_obtenible: obtenibles ? Math.round(completos * 1000 / obtenibles) / 10 : 100
   };
@@ -72,7 +74,17 @@ async function obtenerCalidadDatos({ ahora = new Date(), modelo = Partido, env =
     modelo.countDocuments({ estado: 'NS', fecha: { $gte: hace7d, $lt: hace2h } }),
     modelo.aggregate([
       { $match: { estado: { $in: FINALIZADOS }, fecha: { $gte: hace30d, $lt: ahora } } },
-      { $group: { _id: null, total: { $sum: 1 }, completos: { $sum: { $cond: [{ $eq: ['$estadisticas_completas', true] }, 1, 0] } }, no_disponibles: { $sum: { $cond: [{ $and: [{ $ne: ['$estadisticas_completas', true] }, { $eq: ['$estadisticas_no_disponibles', true] }] }, 1, 0] } } } }
+      { $group: {
+        _id: null,
+        total: { $sum: 1 },
+        completos: { $sum: { $cond: [{ $eq: ['$estadisticas_completas', true] }, 1, 0] } },
+        no_disponibles: { $sum: { $cond: [{ $and: [{ $ne: ['$estadisticas_completas', true] }, { $eq: ['$estadisticas_no_disponibles', true] }] }, 1, 0] } },
+        por_consultar: { $sum: { $cond: [{ $and: [
+          { $ne: ['$estadisticas_completas', true] },
+          { $ne: ['$estadisticas_no_disponibles', true] },
+          { $lte: [{ $ifNull: ['$estadisticas_intentos', 0] }, 0] }
+        ] }, 1, 0] } }
+      } }
     ]),
     modelo.countDocuments({ estado: { $in: ACTIVOS }, fecha: { $gte: hace7d, $lt: ahora }, $or: [{ estado_consultado_en: { $lt: hace6h } }, { estado_consultado_en: null }, { estado_consultado_en: { $exists: false } }] }),
     modelo.aggregate([

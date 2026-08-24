@@ -9,6 +9,7 @@ const { valorEstadistica, tieneMetricasBasicas } = require('../services/statValu
 const config = require('../config/leagues');
 const { instalarControlCuotaAxios, obtenerApiKeys } = require('../services/apiQuota');
 const { construirMarcador } = require('../services/fixtureCatalog');
+const { resolverCoberturaEstadisticas } = require('../services/statisticsCoverage');
 instalarControlCuotaAxios(axios);
 
 const httpsAgent = new https.Agent({ family: 4 });
@@ -118,9 +119,10 @@ async function completarEstadisticasDePartidos(finalizados) {
     {
       api_id: { $in: apiIds },
       estadisticas_completas: { $ne: true },
+      estadisticas_no_disponibles: { $ne: true },
       $or: [
-        { estadisticas_no_disponibles: { $ne: true } },
-        { estadisticas_intentos: { $lt: 3 } }
+        { estadisticas_intentos: { $lt: 3 } },
+        { estadisticas_intentos: { $exists: false } }
       ]
     },
     { api_id: 1, estadisticas_intentos: 1 }
@@ -177,14 +179,15 @@ async function completarEstadisticasDePartidos(finalizados) {
 
       if (Object.keys(update).length > 0) {
         update.estadisticas_completas = tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats);
+        Object.assign(update, resolverCoberturaEstadisticas(p, update.estadisticas_completas));
         await Partido.updateOne({ api_id: p.api_id }, { $set: update });
-        completados++;
-        console.log(`   ✅ ${p.api_id} con estadísticas.`);
+        if (update.estadisticas_completas) completados++;
+        else sinDisponibles++;
+        console.log(`   ${update.estadisticas_completas ? '✅' : '↻'} ${p.api_id} ${update.estadisticas_completas ? 'con estadísticas completas' : 'con respuesta parcial'}.`);
       } else {
-        const intentos = (p.estadisticas_intentos || 0) + 1;
         await Partido.updateOne(
           { api_id: p.api_id },
-          { $set: { estadisticas_no_disponibles: intentos >= 3 }, $inc: { estadisticas_intentos: 1 } }
+          { $set: resolverCoberturaEstadisticas(p, false) }
         );
         sinDisponibles++;
       }

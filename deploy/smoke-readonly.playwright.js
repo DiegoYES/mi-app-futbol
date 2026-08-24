@@ -53,7 +53,10 @@ async function validar(nombre, opciones = {}) {
   if (await pagina.locator('.quality-card').count() !== 4) errores.push('calidad no muestra cuatro indicadores');
   if (!(await pagina.locator('#quality-revalidate-form').isVisible())) errores.push('revalidación controlada no visible');
   if (!(await pagina.locator('[data-quality-retry-stats]').isVisible())) errores.push('reintento acotado de estadísticas no visible');
-  if (!(await pagina.locator('#quality-detail').textContent()).includes('Sin datos del proveedor')) errores.push('cobertura del proveedor no renderizada');
+  const textoCalidad = await pagina.locator('#quality-detail').textContent();
+  for (const etiqueta of ['Por consultar:', 'En reintento (1–2 consultas):', 'Sin cobertura tras 3 consultas:']) {
+    if (!textoCalidad.includes(etiqueta)) errores.push('estado de cobertura no renderizado: ' + etiqueta);
+  }
 
   await pagina.goto('/picks.html', { waitUntil: 'domcontentloaded' });
   await pagina.waitForSelector('#analytics-segments');

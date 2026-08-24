@@ -1,6 +1,7 @@
 const Partido = require('../models/partido');
 const JugadorPartido = require('../models/JugadorPartido');
 const { valorEstadistica, tieneMetricasBasicas } = require('./statValue');
+const { resolverCoberturaEstadisticas } = require('./statisticsCoverage');
 
 function numero(valor) {
   if (valor === null || valor === undefined || valor === '') return 0;
@@ -188,6 +189,7 @@ async function guardarDetalleFixture(detalle, partido, {
     alineaciones: Array.isArray(detalle.lineups) && detalle.lineups.length > 0,
     jugadores: jugadores.length > 0
   };
+  Object.assign(update, resolverCoberturaEstadisticas(partido, update.estadisticas_completas === true));
   await modeloPartido.updateOne({ api_id: partido.api_id }, { $set: update });
   return { estadisticas: update.estadisticas_completas === true, eventos: update.eventos_completos === true, jugadores: jugadores.length };
 }
