@@ -10,7 +10,7 @@
 #   batch2: 06:00 → recoger partidos nocturnos y preparar el día
 #   batch3: 18:00 → inicia el nuevo día UTC/cuota y recoge detalles con jugadores
 # =============================================================================
-set -u
+set -euo pipefail
 BATCH="${1:-hourly}"
 APP_DIR="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$APP_DIR"
@@ -25,6 +25,19 @@ fi
 if [ "${SYNC_LOCK_HELD:-0}" != "1" ]; then
   exec node scripts/ejecutarConBloqueo.js "cron:$BATCH" -- "$APP_DIR/scripts/cronSync.sh" "$BATCH"
 fi
+
+CRON_FINALIZADO=0
+node scripts/registrarEstadoCron.js ejecutando "$BATCH"
+al_salir() {
+  local CODIGO=$?
+  trap - EXIT
+  if [ "$CRON_FINALIZADO" != "1" ]; then
+    node scripts/registrarEstadoCron.js fallido "$BATCH" || true
+    node scripts/verificarAlertas.js || true
+  fi
+  exit "$CODIGO"
+}
+trap al_salir EXIT
 
 # El plan Pro permite 300/min y 5/s. El interceptor central serializa a 4/s;
 # esta pausa adicional mantiene los lotes secuenciales cerca de 3.3/s.
@@ -173,7 +186,10 @@ fi
 
 echo ""
 echo "▸ Estado final de cuota:"
-node scripts/estadoCuota.js 2>/dev/null | grep -E '"usadas"|"restantes"|"agotada"' | tr -d ' '
+node scripts/estadoCuota.js 2>/dev/null | grep -E '"usadas"|"restantes"|"agotada"' | tr -d ' ' || true
 
 echo ""
 echo "✅ Cron $BATCH finalizado — $(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+node scripts/registrarEstadoCron.js exitoso "$BATCH"
+CRON_FINALIZADO=1
+node scripts/verificarAlertas.js || true

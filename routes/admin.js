@@ -19,10 +19,32 @@ const { obtenerMercado } = require('../services/marketCatalog');
 const { analizarPartido } = require('./picks');
 const EnlaceSocial = require('../models/EnlaceSocial');
 const { ICONOS_SOCIALES, normalizarEnlaceSocial } = require('../services/socialLinks');
+const { obtenerCalidadDatos } = require('../services/dataQuality');
+const { evaluarAlertas } = require('../services/operationalAlerts');
+const { revalidarPartidoPorId } = require('../services/fixtureRevalidation');
 
 const router = express.Router();
 
 router.use(requireAuth, requireAdmin);
+
+router.get('/calidad-datos', async (_req, res) => {
+  try {
+    const calidad = await obtenerCalidadDatos();
+    res.set('Cache-Control', 'no-store');
+    res.json({ ...calidad, alertas: evaluarAlertas(calidad, obtenerMetricasHttp()) });
+  } catch (error) { errorServidor(res, error); }
+});
+
+router.post('/calidad-datos/revalidar/:apiId', async (req, res) => {
+  try {
+    const apiId = Number.parseInt(req.params.apiId, 10);
+    if (!Number.isInteger(apiId) || apiId <= 0) return res.status(400).json({ error: 'ID de partido inválido.' });
+    if (req.body?.confirmacion !== 'REVALIDAR') return res.status(400).json({ error: 'Escribe REVALIDAR para confirmar una consulta al proveedor.' });
+    const resultado = await revalidarPartidoPorId(apiId);
+    if (!resultado.encontrado) return res.status(404).json({ error: 'Partido no encontrado.' });
+    res.json({ mensaje: 'Partido revalidado.', resultado });
+  } catch (error) { errorServidor(res, error); }
+});
 
 router.get('/redes-sociales', async (_req, res) => {
   try {
@@ -114,6 +136,9 @@ router.get('/recomendaciones/partidos/:id/mercados', async (req, res) => {
       id: mercado.id,
       nombre: mercado.mercado,
       categoria: mercado.categoria,
+      alcance: mercado.alcance,
+      tipo: mercado.tipo,
+      linea: mercado.linea,
       estimacion: mercado.estimacion,
       confianza: mercado.confianza,
       muestra: mercado.muestra

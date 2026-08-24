@@ -3,7 +3,7 @@ const { errorServidor } = require('../middleware/security');
 const Partido = require('../models/partido');
 const PickGuardado = require('../models/PickGuardado');
 const { explicarMercado, generarPicks } = require('../services/pickEngine');
-const { evaluarMercado, idMercadoPeriodo, resumirRendimiento } = require('../services/pickTracking');
+const { evaluarMercado, idMercadoPeriodo, resumirRendimientoSegmentado } = require('../services/pickTracking');
 
 const router = express.Router();
 const ESTADOS_FINALIZADOS = new Set(['FT', 'AET', 'PEN']);
@@ -211,7 +211,8 @@ router.get('/seguimiento', async (req, res) => {
     await liquidarPendientes(req.usuario._id);
     const picks = await PickGuardado.find({ usuario: req.usuario._id })
       .sort({ fecha_partido: -1, creado_en: -1 }).limit(200).lean();
-    res.json({ resumen: resumirRendimiento(picks), picks });
+    const analitica = resumirRendimientoSegmentado(picks);
+    res.json({ ...analitica, picks });
   } catch (error) {
     errorServidor(res, error);
   }

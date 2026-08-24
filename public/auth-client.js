@@ -99,6 +99,7 @@
   function inyectarEstilosBarra() {
     if (document.getElementById('estilos-barra-sesion')) return;
     const estilos = document.createElement('style');
+    estilos.nonce = document.querySelector('meta[name="csp-nonce"]')?.content || '';
     estilos.id = 'estilos-barra-sesion';
     estilos.textContent = `
       .barra-sesion { background:rgba(8,19,15,.96);color:#fff;backdrop-filter:blur(16px);
@@ -238,6 +239,7 @@
   function instalarEstilosPicks() {
     if (document.getElementById('global-picks-styles')) return;
     const estilos = document.createElement('style');
+    estilos.nonce = document.querySelector('meta[name="csp-nonce"]')?.content || '';
     estilos.id = 'global-picks-styles';
     estilos.textContent = `
       .global-picks-widget{position:fixed;right:18px;bottom:18px;z-index:140;font-family:Inter,system-ui,sans-serif;color:#eef8f2}

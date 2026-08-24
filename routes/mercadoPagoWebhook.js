@@ -3,6 +3,7 @@ const EventoPago = require('../models/EventoPago');
 const Suscripcion = require('../models/Suscripcion');
 const Usuario = require('../models/Usuario');
 const { firmaWebhookValida, obtenerPagoAutorizado, obtenerSuscripcion } = require('../services/mercadoPago');
+const { registrarFalloWebhookPago } = require('../services/operationalState');
 
 const router = express.Router();
 
@@ -77,6 +78,7 @@ router.post('/mercadopago', async (req, res) => {
     }
     return res.status(200).json({ recibido: true });
   } catch (error) {
+    registrarFalloWebhookPago();
     await EventoPago.deleteOne({ proveedor: 'mercadopago', clave });
     console.error(`[webhook mercadopago ${requestId}]`, error);
     return res.status(500).json({ error: 'No se pudo procesar la notificación.' });

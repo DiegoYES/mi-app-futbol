@@ -763,3 +763,5 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   button,.feature-link { min-height:44px; }
   button:hover:not(:disabled) { filter:none;transform:none; }
 }
+
+.metric-pass{color:green}.metric-fail{color:red}

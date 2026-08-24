@@ -16,8 +16,8 @@ test('documentoFixture conserva el país de la liga', () => {
 });
 
 test('las vistas dinámicas refrescan sólo cuando están visibles', () => {
-  for (const archivo of ['public/calendario.html', 'public/partido.html']) {
-    const fuente = fs.readFileSync(archivo, 'utf8');
+  for (const archivos of [['public/calendario.html', 'public/calendario.js'], ['public/partido.html', 'public/partido.js']]) {
+    const fuente = archivos.map(archivo => fs.readFileSync(archivo, 'utf8')).join(String.fromCharCode(10));
     assert.match(fuente, /visibilitychange/);
     assert.match(fuente, /document\.hidden/);
   }

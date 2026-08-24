@@ -60,9 +60,9 @@ logs, capturas ni respuestas HTTP.
   `Secure` y sin HSTS; sin `TRUST_PROXY` detrás de Nginx o Cloudflare todas las
   peticiones comparten IP y el límite de intentos de login deja de aislar a un
   atacante.
-- CSP en modo compatible bloquea scripts remotos, objetos, iframes y conexiones
-  externas. Como la interfaz conserva JavaScript inline, el siguiente refuerzo
-  será moverlo a archivos o nonces para retirar `'unsafe-inline'`.
+- CSP bloquea scripts remotos, objetos, iframes y conexiones externas. Los
+  bloques inline heredados reciben un nonce por respuesta y los estilos de
+  atributo fijos usan hashes; ya no se permite unsafe-inline.
 - Caché Redis compartido con fallback local y coalescencia dentro de cada
   proceso: solicitudes idénticas simultáneas comparten una consulta en lugar
   de golpear MongoDB varias veces. Los rate limits usan el mismo backend con

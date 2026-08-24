@@ -168,7 +168,7 @@ test('ninguna ruta devuelve el mensaje interno de error al cliente', () => {
 });
 
 test('el frontend escapa los nombres de equipo del aviso de correlación', () => {
-  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const codigo = ['app.js', 'app-picks.js'].map(archivo => fs.readFileSync(path.join(__dirname, '..', 'public', archivo), 'utf8')).join(String.fromCharCode(10));
   const linea = codigo.split('\n').find(item => item.includes('bet-slip-correlation') === false
     && item.includes('Atención a la correlación'));
 

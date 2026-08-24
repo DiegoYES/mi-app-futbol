@@ -151,7 +151,7 @@ test('el calendario expone la tanda al cliente', () => {
 });
 
 test('el calendario ya no rotula todo partido finalizado como "Final"', () => {
-  const html = require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  const html = ['calendario.html', 'calendario.js'].map(archivo => require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'public', archivo), 'utf8')).join(String.fromCharCode(10));
   assert.ok(!/p\.finalizado \? 'Final'/.test(html), 'quedó la etiqueta fija anterior');
   assert.match(html, /FutbolMarcador\.etiquetaEstado/);
   assert.match(html, /<script src="\/match-score\.js">/);
