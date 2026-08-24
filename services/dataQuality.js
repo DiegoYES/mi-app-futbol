@@ -11,6 +11,8 @@ const { obtenerEstadoOperativo } = require('./operationalState');
 const FINALIZADOS = ['FT', 'AET', 'PEN'];
 const ACTIVOS = ['NS', 'TBD', '1H', 'HT', '2H', 'ET', 'BT', 'P', 'LIVE', 'INT', 'SUSP'];
 
+function puertosPool(env = process.env) { return String(env.APP_POOL_PORTS || (env.APP_ENVIRONMENT === 'staging' ? '3100,3101' : '3000,3001')).split(/[ ,]+/).map(Number).filter(Boolean); }
+
 function consultarVersionPuerto(puerto, timeoutMs = 1200) {
   return new Promise(resolve => {
     const peticion = http.get(`http://127.0.0.1:${puerto}/health/version`, { timeout: timeoutMs }, respuesta => {
@@ -41,7 +43,7 @@ async function obtenerCalidadDatos({ ahora = new Date(), modelo = Partido, env =
       { $sort: { ultima_actualizacion: 1 } }, { $limit: 12 }
     ]),
     crearControlCuota().consultar(),
-        Promise.all(String(env.APP_POOL_PORTS || (env.APP_ENVIRONMENT === 'staging' ? '3100,3101' : '3000,3001')).split(',').map(Number).filter(Boolean).map(consultarVersionPuerto)),
+        Promise.all(puertosPool(env).map(puerto => consultarVersionPuerto(puerto))),
     Suscripcion.find({ estado: 'autorizada' }).select('usuario periodo_fin').limit(500).lean()
   ]);
   const usuariosSuscritos = suscripciones.length ? await Usuario.find({ _id: { $in: suscripciones.map(item => item.usuario) } }).select('suscripcion_termina').lean() : [];
@@ -63,4 +65,4 @@ async function obtenerCalidadDatos({ ahora = new Date(), modelo = Partido, env =
   };
 }
 
-module.exports = { ACTIVOS, FINALIZADOS, consultarVersionPuerto, obtenerCalidadDatos };
+module.exports = { ACTIVOS, FINALIZADOS, consultarVersionPuerto, obtenerCalidadDatos, puertosPool };
