@@ -60,7 +60,7 @@ async function validar(nombre, opciones = {}) {
   if (!(await pagina.locator('#analytics-calibration').textContent()).includes('50% real')) errores.push('calibración no renderizada');
 
   const overflow = await pagina.evaluate(() => document.documentElement.scrollWidth > document.documentElement.clientWidth + 2);
-  if (overflow) errores.push('overflow horizontal en picks');
+  if (overflow) { const medida = await pagina.evaluate(() => ({ ancho: document.documentElement.scrollWidth, viewport: document.documentElement.clientWidth })); errores.push('overflow horizontal en picks (' + medida.ancho + ' > ' + medida.viewport + ')'); }
   await pagina.waitForTimeout(500);
   await navegador.close();
   if (errores.length) throw new Error(`${nombre}:\n- ${errores.join('\n- ')}`);
