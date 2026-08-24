@@ -10,12 +10,12 @@ async function cargarCalidadDatos() {
   const p = datos.problemas;
   resumen.innerHTML = [
     ['NS atrasados', p.partidos_ns_atrasados], ['Finales sin stats', p.finalizados_sin_estadisticas],
-    ['Estados sin actualizar', p.estados_sin_actualizar], ['Ligas atrasadas', p.ligas_atrasadas]
+    ['Estados sin actualizar', p.estados_sin_actualizar], ['Calendarios por revisar', p.ligas_atrasadas]
   ].map(([nombre, valor]) => `<article class="quality-card ${estadoCalidad(valor)}"><span>${nombre}</span><strong>${valor}</strong></article>`).join('');
   const instancias = datos.version.instancias.map(item => `<li>Puerto ${item.puerto}: <b>${item.disponible ? escaparHtml(item.commit?.slice(0, 8)) : 'no disponible'}</b></li>`).join('');
-  const ligas = datos.ligas_atrasadas.length ? datos.ligas_atrasadas.map(item => `<li>${escaparHtml(item.nombre || item._id)} · ${item.ultima_actualizacion ? fechaHora(item.ultima_actualizacion) : 'sin fecha'}</li>`).join('') : '<li>Ninguna en la ventana reciente</li>';
+  const ligas = datos.ligas_atrasadas.length ? datos.ligas_atrasadas.map(item => `<li><b>${escaparHtml(item.nombre || item._id?.id || item._id)}</b><br>Próximo: ${fechaHora(item.proximo_partido)} · Último dato: ${fechaHora(item.ultima_actualizacion)} · ${item.partidos_proximos || 0} programados</li>`).join('') : '<li>Ningún calendario próximo requiere revisión</li>';
   const alertas = datos.alertas?.length ? `<article class="quality-alerts"><h3>Alertas activas</h3><ul>${datos.alertas.map(a => `<li><b>${escaparHtml(a.codigo)}</b> · ${escaparHtml(typeof a.detalle === 'object' ? JSON.stringify(a.detalle) : a.detalle)}</li>`).join('')}</ul></article>` : '';
-  detalle.innerHTML = `<article><h3>Cron</h3><p>Estado: <b>${escaparHtml(datos.cron.estado)}</b><br>Último éxito: ${datos.cron.ultima_ejecucion_exitosa ? fechaHora(datos.cron.ultima_ejecucion_exitosa) : 'sin registro'}</p></article><article><h3>Proveedor y Redis</h3><p>Cuota: <b>${datos.cuota.restantes} restantes</b><br>Redis: ${escaparHtml(datos.redis)}</p></article><article><h3>Pool</h3><ul>${instancias}</ul></article><article><h3>Ligas atrasadas</h3><ul>${ligas}</ul></article>${alertas}`;
+  detalle.innerHTML = `<article><h3>Cron</h3><p>Estado: <b>${escaparHtml(datos.cron.estado)}</b><br>Último éxito: ${datos.cron.ultima_ejecucion_exitosa ? fechaHora(datos.cron.ultima_ejecucion_exitosa) : 'sin registro'}</p></article><article><h3>Proveedor y Redis</h3><p>Cuota: <b>${datos.cuota.restantes} restantes</b><br>Redis: ${escaparHtml(datos.redis)}</p></article><article><h3>Pool</h3><ul>${instancias}</ul></article><article><h3>Calendarios por revisar</h3><p>Incluye sólo ligas con partidos en los próximos 30 días cuyo calendario lleva demasiado tiempo sin cambiar.</p><ul>${ligas}</ul></article>${alertas}`;
 }
 
 async function revalidarDesdeCalidad(evento) {
