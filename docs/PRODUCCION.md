@@ -259,6 +259,23 @@ de siete días. Esta capa protege contra errores lógicos, pero no contra pérdi
 completa de la VM: añade después una copia cifrada fuera de IONOS y ejecuta un
 simulacro de restauración en una base aislada.
 
+### Copia offsite en equipo personal
+
+`deploy/descargar-backup-laptop.ps1` añade esa segunda capa: descarga a una
+carpeta local de Windows el respaldo más reciente, verifica su checksum
+SHA-256 contra el `.sha256` del servidor y conserva las siete copias más
+recientes. La transferencia usa SSH con el alias del equipo administrador y
+`sudo` sin contraseña; primero intenta lectura directa y, si falla, un staging
+temporal en `/tmp` seguido de `scp`. Descarga siempre a un archivo temporal y
+solo reemplaza la copia anterior si el checksum coincide. Cada corrida queda
+registrada en `estado-descarga.txt` junto al respaldo.
+
+Requisitos en el equipo cliente: alias SSH funcional y `ssh-agent` con la
+llave cargada (`ssh-add`). Prográmalo con el Programador de Tareas de Windows;
+activa "Ejecutar lo antes posible tras un inicio perdido" para cubrir días con
+el equipo apagado. El script no contiene secretos: la autorización vive
+exclusivamente en la llave privada del cliente.
+
 ## Escalado
 
 Una VM con un proceso web y un worker es el punto de partida más sencillo. El
