@@ -1,0 +1,24 @@
+{
+  "name": "Data-Fut · Football Intelligence",
+  "short_name": "Data-Fut",
+  "description": "Estadísticas avanzadas, modelos y comparador de fútbol profesional.",
+  "start_url": "/inicio.html",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#07100d",
+  "theme_color": "#07100d",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/brand-social-avatar.png",
+      "sizes": "192x192 512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/brand-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}
