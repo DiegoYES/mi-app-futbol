@@ -44,22 +44,33 @@ test('genera picks ordenados y conserva la evidencia de ambos equipos', () => {
 });
 
 test('proyecta al local solo con partidos en casa y al visitante solo con salidas', () => {
-  const localEnCasa = partido(1, 10, 2, 30, 0);
+  const localEnCasa = [
+    partido(1, 10, 2, 30, 0),
+    partido(5, 10, 1, 31, 1),
+    partido(6, 10, 3, 32, 0)
+  ];
   const localFuera = partido(2, 30, 4, 10, 0);
-  const visitanteFuera = partido(3, 40, 0, 20, 2);
+  const visitanteFuera = [
+    partido(3, 40, 0, 20, 2),
+    partido(7, 41, 1, 20, 2),
+    partido(8, 42, 0, 20, 3)
+  ];
   const visitanteEnCasa = partido(4, 20, 4, 40, 0);
   const explicacion = explicarMercado({
-    partidosLocal: [localFuera, localEnCasa],
+    partidosLocal: [...localEnCasa, localFuera],
     teamLocal: 10,
-    partidosVisitante: [visitanteEnCasa, visitanteFuera],
+    partidosVisitante: [...visitanteFuera, visitanteEnCasa],
     teamVisitante: 20,
     mercadoId: 'over_1_5',
     detalle: 5
   });
 
-  assert.deepEqual(explicacion.detalle_fuentes[0].partidos.map(item => item.api_id), [1]);
-  assert.deepEqual(explicacion.detalle_fuentes[1].partidos.map(item => item.api_id), [3]);
+  // Con muestra suficiente por rol la condición efectiva se mantiene.
+  assert.equal(explicacion.detalle_fuentes[0].condicion_efectiva, 'local');
+  assert.deepEqual(explicacion.detalle_fuentes[0].partidos.map(item => item.api_id), [1, 5, 6]);
   assert.equal(explicacion.detalle_fuentes[0].partidos[0].condicion_referencia, 'local');
+  assert.equal(explicacion.detalle_fuentes[1].condicion_efectiva, 'visitante');
+  assert.deepEqual(explicacion.detalle_fuentes[1].partidos.map(item => item.api_id), [3, 7, 8]);
   assert.equal(explicacion.detalle_fuentes[1].partidos[0].condicion_referencia, 'visitante');
 });
 
@@ -78,9 +89,11 @@ test('respeta condiciones independientes elegidas en el comparador', () => {
   });
 
   assert.ok(resultado.mercados.length > 0);
-  assert.deepEqual(resultado.filtros.local, { condicion: 'visitante', limite: null, periodo: 0 });
-  assert.deepEqual(resultado.filtros.visitante, { condicion: 'local', limite: null, periodo: 0 });
-  assert.equal(resultado.mercados.find(item => item.id === 'over_1_5').fuentes, 2);
+  assert.deepEqual(resultado.filtros.local, { condicion: 'visitante', condicion_efectiva: 'visitante', limite: null, periodo: 0 });
+  assert.deepEqual(resultado.filtros.visitante, { condicion: 'local', condicion_efectiva: 'local', limite: null, periodo: 0 });
+  const over15 = resultado.mercados.find(item => item.id === 'over_1_5');
+  assert.equal(over15.fuentes, 2);
+  assert.equal(over15.evidencia_parcial, false);
 });
 
 test('usa el periodo elegido para calcular las frecuencias de picks', () => {
@@ -195,4 +208,55 @@ test('calcula tarjetas registradas como amarillas más rojas simples', () => {
   const datos = frecuencia([completo], 10);
   assert.equal(datos.tarjetas_registradas_total_over_2_5.aciertos, 1);
   assert.equal(datos.tarjetas_registradas_total_under_3_5.aciertos, 1);
+});
+
+test('cae a la forma general cuando la muestra por rol es menor al umbral', () => {
+  // El equipo 10 aparece 2 veces como local y 5 como visitante: la condición
+  // 'local' no alcanza el umbral y el motor debe usar los 7 partidos.
+  const comoLocal = Array.from({ length: 2 }, (_, i) => partido(i, 10, 1, 60 + i, 0));
+  const comoVisitante = Array.from({ length: 5 }, (_, i) => partido(30 + i, 70 + i, 0, 10, 2));
+  const resultado = generarPicks({
+    partidosLocal: [...comoLocal, ...comoVisitante],
+    teamLocal: 10,
+    partidosVisitante: [],
+    teamVisitante: 20
+  });
+
+  const over05 = resultado.mercados.find(item => item.id === 'over_0_5');
+  assert.ok(over05);
+  assert.equal(over05.detalle_fuentes[0].condicion_efectiva, 'general');
+  assert.equal(resultado.filtros.local.condicion_efectiva, 'general');
+});
+
+test('marca evidencia parcial y no recomienda mercados de un solo lado', () => {
+  const local = Array.from({ length: 8 }, (_, i) => partido(i, 10, 3, 80 + i, 0));
+  const resultado = generarPicks({
+    partidosLocal: local,
+    teamLocal: 10,
+    partidosVisitante: [],
+    teamVisitante: 20
+  });
+
+  const over05 = resultado.mercados.find(item => item.id === 'over_0_5');
+  assert.ok(over05);
+  assert.equal(over05.fuentes, 1);
+  assert.equal(over05.evidencia_parcial, true);
+  assert.ok(!resultado.recomendados.some(item => item.id === 'over_0_5'));
+  assert.ok(resultado.recomendados.every(item => item.fuentes === 2 && !item.evidencia_parcial));
+});
+
+test('conserva la condición por rol cuando hay muestra suficiente', () => {
+  const local = Array.from({ length: 6 }, (_, i) => partido(i, 10, 2, 90 + i, 1));
+  const visita = Array.from({ length: 6 }, (_, i) => partido(40 + i, 95 + i, 1, 20, 1));
+  const resultado = generarPicks({
+    partidosLocal: local,
+    teamLocal: 10,
+    partidosVisitante: visita,
+    teamVisitante: 20
+  });
+
+  assert.equal(resultado.filtros.local.condicion_efectiva, 'local');
+  assert.equal(resultado.filtros.visitante.condicion_efectiva, 'visitante');
+  const over15 = resultado.mercados.find(item => item.id === 'over_1_5');
+  assert.equal(over15.evidencia_parcial, false);
 });

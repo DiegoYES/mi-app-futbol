@@ -492,6 +492,9 @@ function pintarPicksPartido() {
               : `los partidos recientes de ${nombre}`;
           return `<li><strong>Fuente ${rol}</strong>: ${esc(lectura)} cumplió el mercado ${fuente.aciertos}/${fuente.total} veces (${fuente.frecuencia_observada}%); con suavizado: <b>${fuente.tasa_suavizada}%</b>.</li>`;
         }).join('');
+        const notaParcial = item.evidencia_parcial
+          ? '<li class="evidencia-parcial"><strong>Evidencia parcial</strong>: el rival no aportó muestras suficientes; la estimación se apoya en un solo lado.</li>'
+          : '';
         let accion = '';
         if (datos.guardable) {
           accion = item.guardado
@@ -511,7 +514,7 @@ function pintarPicksPartido() {
           <button type="button" class="pick-why" data-explicar-pick="${esc(item.id)}" aria-haspopup="dialog">¿Por qué ${item.estimacion}%?</button>
           <div class="pick-reason" data-razon-pick="${esc(item.id)}" hidden>
             <strong>De dónde sale</strong>
-            <ul>${detalle}</ul>
+            <ul>${notaParcial}${detalle}</ul>
             <div class="pick-cases" data-casos-pick="${esc(item.id)}"><span class="pick-cases-hint">Ábrelo para ver los últimos 3 partidos de cada fuente.</span></div>
             <p>Promediamos ${item.fuentes === 2 ? 'ambas tasas suavizadas' : 'la fuente disponible'}. Fórmula: <code>(aciertos + 2) / (partidos + 4)</code>.</p>
           </div>

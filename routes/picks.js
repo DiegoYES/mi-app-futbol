@@ -13,6 +13,9 @@ function esFinalizado(partido) {
 }
 
 async function obtenerHistoricos(partido) {
+  // Historial reciente del equipo en cualquier rol: en torneos cortos un equipo
+  // puede acumular todos sus partidos como local o visitante, y restringir por
+  // rol dejaría al motor sin la mitad de la ecuación.
   const filtroBase = {
     'liga.id': partido.liga.id,
     'liga.temporada': partido.liga.temporada,
@@ -21,8 +24,20 @@ async function obtenerHistoricos(partido) {
     api_id: { $ne: partido.api_id }
   };
   return Promise.all([
-    Partido.find({ ...filtroBase, 'equipo_local.id': partido.equipo_local.id }).sort({ fecha: -1 }).lean(),
-    Partido.find({ ...filtroBase, 'equipo_visitante.id': partido.equipo_visitante.id }).sort({ fecha: -1 }).lean()
+    Partido.find({
+      ...filtroBase,
+      $or: [
+        { 'equipo_local.id': partido.equipo_local.id },
+        { 'equipo_visitante.id': partido.equipo_local.id }
+      ]
+    }).sort({ fecha: -1 }).limit(40).lean(),
+    Partido.find({
+      ...filtroBase,
+      $or: [
+        { 'equipo_local.id': partido.equipo_visitante.id },
+        { 'equipo_visitante.id': partido.equipo_visitante.id }
+      ]
+    }).sort({ fecha: -1 }).limit(40).lean()
   ]);
 }
 
