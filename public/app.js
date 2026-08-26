@@ -510,6 +510,42 @@ function activarPestanaEquipo(lado, nombre, enfocar = false) {
     if (enfocar) activo.focus();
 }
 
+function renderRachaReciente(partidos) {
+    if (!partidos || !partidos.length) return '';
+    const ultimos = partidos.slice(0, 5);
+    const badges = ultimos.map(p => {
+        const tipo = p.resultado === 'V' ? 'win' : (p.resultado === 'E' ? 'draw' : 'loss');
+        const etiqueta = p.resultado || '—';
+        const titulo = p.resultado === 'V' ? 'Victoria' : (p.resultado === 'E' ? 'Empate' : 'Derrota');
+        return `<span class="streak-badge ${tipo}" title="${titulo}: ${p.marcador || ''} vs ${p.rival || ''}">${etiqueta}</span>`;
+    }).join('');
+    return `<div class="team-streak-container"><span class="streak-label">Racha reciente:</span><div class="team-streak">${badges}</div></div>`;
+}
+
+function renderDistribucionMinutos(distribucion) {
+    if (!distribucion || !distribucion.length) return '';
+    const totalGf = distribucion.reduce((sum, t) => sum + (t.goles_favor || 0), 0);
+    const totalGc = distribucion.reduce((sum, t) => sum + (t.goles_contra || 0), 0);
+    if (totalGf === 0 && totalGc === 0) return '';
+
+    const columnas = distribucion.map(t => `
+        <div class="minute-card">
+            <span class="minute-tag">${t.etiqueta}</span>
+            <div class="minute-stat-row goals-for" title="Goles a favor"><span>GF</span><b>${t.goles_favor}</b></div>
+            <div class="minute-stat-row goals-against" title="Goles en contra"><span>GC</span><b>${t.goles_contra}</b></div>
+            <div class="minute-stat-row cards" title="Tarjetas amarillas"><span>TA</span><b>${t.amarillas}</b></div>
+        </div>
+    `).join('');
+
+    return `<div class="minute-dist-section">
+        <div class="minute-dist-head">
+            <strong>Distribución por tramos de 15'</strong>
+            <span>GF: Favor · GC: Contra · TA: Tarjetas</span>
+        </div>
+        <div class="minute-grid">${columnas}</div>
+    </div>`;
+}
+
 async function actualizarEstadisticas(lado) {
     const teamId = document.getElementById(`team-${lado}`).value;
     const leagueId = document.getElementById(`league-${lado}`).value;
@@ -578,7 +614,10 @@ async function actualizarEstadisticas(lado) {
         const promedios = avanzadas.promedios || {};
 
         const encabezadoPeriodo = `<p class="period-label">${data.info.periodo} · ${data.stats.jugados} partidos</p>`;
+        const rachaHtml = renderRachaReciente(data.partidos);
+        const distribucionHtml = renderDistribucionMinutos(data.stats.distribucion_minutos);
         const resumenHtml = `${encabezadoPeriodo}
+            ${rachaHtml}
             <div class="record-grid">
                 <div class="metric-card win"><span class="metric-label">Victorias</span><strong>${data.stats.ganados}</strong></div>
                 <div class="metric-card draw"><span class="metric-label">Empates</span><strong>${data.stats.empatados}</strong></div>
@@ -587,6 +626,8 @@ async function actualizarEstadisticas(lado) {
                 <div class="metric-card"><span class="metric-label">Goles en contra</span><strong>${data.stats.golesContra}</strong></div>
                 <div class="metric-card"><span class="metric-label">Diferencia</span><strong>${data.stats.golesFavor - data.stats.golesContra > 0 ? '+' : ''}${data.stats.golesFavor - data.stats.golesContra}</strong></div>
             </div>
+            ${distribucionHtml}`;
+        const tendenciasHtml = `${encabezadoPeriodo}<div class="trend-heading"><strong>Tendencias del equipo</strong><span>No son picks combinados</span></div>
             <div class="market-grid trend-grid">
                 ${mercado('Más de 0.5 goles', data.stats.over05)}
                 ${mercado('Más de 1.5 goles', data.stats.over15)}
