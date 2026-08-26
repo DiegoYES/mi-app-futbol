@@ -85,6 +85,10 @@ function construirUpdatePartido(detalle, partido) {
     Object.assign(update, camposEstadisticas('equipo_local', homeStats));
     Object.assign(update, camposEstadisticas('equipo_visitante', awayStats));
     update.estadisticas_completas = tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats);
+  } else {
+    Object.assign(update, camposEstadisticas("equipo_local", { statistics: [] }));
+    Object.assign(update, camposEstadisticas("equipo_visitante", { statistics: [] }));
+    update.estadisticas_completas = false;
   }
 
   if (Array.isArray(detalle.events)) {

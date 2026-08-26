@@ -4,7 +4,7 @@ const { valorEstadistica, tieneMetricasBasicas } = require('../services/statValu
 
 test('distingue cero explícito de una métrica ausente', () => {
   assert.equal(valorEstadistica([{ type: 'Corner Kicks', value: 0 }], 'Corner Kicks'), 0);
-  assert.equal(valorEstadistica([{ type: 'Corner Kicks', value: null }], 'Corner Kicks'), 0);
+  assert.equal(valorEstadistica([{ type: 'Corner Kicks', value: null }], 'Corner Kicks'), null);
   assert.equal(valorEstadistica([], 'Corner Kicks'), null);
 });
 
