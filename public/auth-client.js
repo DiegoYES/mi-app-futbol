@@ -361,8 +361,17 @@
     cargarRedesSociales();
   }
 
+  function cargarPwaInstall() {
+    if (document.querySelector('script[src*="pwa-install.js"]')) return;
+    const script = document.createElement('script');
+    script.src = '/pwa-install.js?v=20260826-pwa';
+    script.defer = true;
+    document.head.appendChild(script);
+  }
+
   // Validar la sesión contra el servidor al cargar
   document.addEventListener('DOMContentLoaded', async () => {
+    cargarPwaInstall();
     try {
       const resp = await fetchOriginal('/api/auth/me');
       if (!resp.ok) return cerrarSesion();

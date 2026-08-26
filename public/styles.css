@@ -875,3 +875,105 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   .minute-grid { grid-template-columns: repeat(3, 1fr); }
 }
 
+/* Banner flotante de instalación PWA */
+.pwa-install-banner {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%) translateY(120%);
+  z-index: 9999;
+  width: min(520px, calc(100vw - 32px));
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 18px;
+  border: 1px solid rgba(84, 227, 142, 0.4);
+  border-radius: 18px;
+  background: rgba(16, 26, 23, 0.96);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.pwa-install-banner.visible {
+  transform: translateX(-50%) translateY(0);
+}
+.pwa-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+.pwa-banner-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 11px;
+  object-fit: cover;
+  flex-shrink: 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+.pwa-banner-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.pwa-banner-info strong {
+  font-size: .84rem;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.pwa-banner-info span {
+  font-size: .68rem;
+  color: var(--muted);
+  line-height: 1.35;
+}
+.pwa-banner-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.pwa-btn-install {
+  min-height: 38px;
+  padding: 0 16px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--green);
+  color: #07100d;
+  font-size: .78rem;
+  font-weight: 900;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.pwa-btn-install:hover {
+  filter: brightness(1.08);
+}
+.pwa-btn-close {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: .75rem;
+  cursor: pointer;
+}
+.pwa-btn-close:hover {
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.1);
+}
+.pwa-share-svg {
+  display: inline-block;
+  vertical-align: -2px;
+  margin: 0 2px;
+  color: var(--green);
+}
+
+

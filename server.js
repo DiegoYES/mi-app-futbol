@@ -77,6 +77,8 @@ app.use(helmet({
     imgSrc: ["'self'", 'data:', 'https://media.api-sports.io'],
     connectSrc: ["'self'"],
     fontSrc: ["'self'", 'data:'],
+    workerSrc: ["'self'"],
+    manifestSrc: ["'self'"],
     objectSrc: ["'none'"],
     baseUri: ["'self'"],
     formAction: ["'self'"],
