@@ -765,3 +765,113 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
 }
 
 .metric-pass{color:green}.metric-fail{color:red}
+
+/* Racha reciente (Form Guide) */
+.team-streak-container {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--surface-soft);
+}
+.streak-label {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.team-streak {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.streak-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  font-size: .68rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  user-select: none;
+}
+.streak-badge.win {
+  background: rgba(84, 227, 142, 0.18);
+  border: 1px solid rgba(84, 227, 142, 0.45);
+  color: var(--green);
+}
+.streak-badge.draw {
+  background: rgba(245, 190, 91, 0.16);
+  border: 1px solid rgba(245, 190, 91, 0.4);
+  color: var(--amber);
+}
+.streak-badge.loss {
+  background: rgba(255, 124, 120, 0.16);
+  border: 1px solid rgba(255, 124, 120, 0.4);
+  color: var(--red);
+}
+
+/* Distribución por tramos de 15 minutos */
+.minute-dist-section {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-raised);
+}
+.minute-dist-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.minute-dist-head strong {
+  font-size: .88rem;
+  color: var(--ink);
+}
+.minute-dist-head span {
+  color: var(--muted);
+  font-size: .68rem;
+}
+.minute-grid {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 6px;
+}
+.minute-card {
+  padding: 10px 6px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-soft);
+  text-align: center;
+}
+.minute-card span.minute-tag {
+  display: block;
+  font-size: .62rem;
+  font-weight: 800;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+.minute-stat-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: .66rem;
+  padding: 2px 4px;
+  border-radius: 4px;
+}
+.minute-stat-row.goals-for { color: var(--green); }
+.minute-stat-row.goals-against { color: var(--red); }
+.minute-stat-row.cards { color: var(--amber); }
+.minute-stat-row b { font-weight: 900; }
+@media (max-width: 600px) {
+  .minute-grid { grid-template-columns: repeat(3, 1fr); }
+}
+

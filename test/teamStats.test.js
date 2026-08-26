@@ -154,3 +154,44 @@ test('no presenta estadísticas avanzadas faltantes como ceros reales', () => {
   assert.equal(detalle.puntos_tarjetas, null);
   assert.equal(detalle.rival_estadisticas.tiros, null);
 });
+
+test('calcula la distribución de goles y tarjetas por tramos de 15 minutos', () => {
+  const partidosConEventos = [
+    {
+      api_id: 101,
+      fecha: new Date('2026-02-01'),
+      equipo_local: {
+        id: 10,
+        nombre: 'Local',
+        goles: 2,
+        eventos: [
+          { minuto: 12, tipo_evento: 'Gol' },
+          { minuto: 88, tipo_evento: 'Gol' },
+          { minuto: 25, tipo_evento: 'Tarjeta', detalle: 'Yellow Card' }
+        ]
+      },
+      equipo_visitante: {
+        id: 20,
+        nombre: 'Visitante',
+        goles: 1,
+        eventos: [
+          { minuto: 55, tipo_evento: 'Gol' }
+        ]
+      }
+    }
+  ];
+
+  const stats = calcularEstadisticas(partidosConEventos, 10, 0);
+  assert.ok(Array.isArray(stats.distribucion_minutos));
+  assert.equal(stats.distribucion_minutos.length, 6);
+
+  const tramo015 = stats.distribucion_minutos.find(t => t.clave === '0_15');
+  const tramo1630 = stats.distribucion_minutos.find(t => t.clave === '16_30');
+  const tramo4660 = stats.distribucion_minutos.find(t => t.clave === '46_60');
+  const tramo7690 = stats.distribucion_minutos.find(t => t.clave === '76_90');
+
+  assert.equal(tramo015.goles_favor, 1);
+  assert.equal(tramo1630.amarillas, 1);
+  assert.equal(tramo4660.goles_contra, 1);
+  assert.equal(tramo7690.goles_favor, 1);
+});
