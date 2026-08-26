@@ -102,6 +102,14 @@ escribir_marcador() {
   printf '%s\n' "${VALOR}" > "${TMP}"
   chmod 644 "${TMP}"
   mv -f "${TMP}" "${RELEASES_DIR}/DEPLOYED_COMMIT"
+  # Espejo en el repositorio: permite que las verificaciones corridas desde
+  # REPO_DIR (cron, scripts manuales) conozcan el release vigente.
+  if [ -d "${REPO_DIR}" ] && [ -w "${REPO_DIR}" ]; then
+    local TMP_REPO="${REPO_DIR}/.RELEASE_COMMIT.$$"
+    printf '%s\n' "${VALOR}" > "${TMP_REPO}"
+    chmod 644 "${TMP_REPO}"
+    mv -f "${TMP_REPO}" "${REPO_DIR}/RELEASE_COMMIT"
+  fi
 }
 saludable() {
   local PUERTO="$1"
