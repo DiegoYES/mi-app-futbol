@@ -254,9 +254,21 @@ function actualizarAccionesComparacion() {
 // Carga inicial de ligas (ahora recibe un array ordenado)
 async function cargarLigas() {
     try {
-        const res = await fetch('/api/ligas');
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const ligasArray = await res.json();
+        let ligasArray = null;
+        try {
+            const cache = sessionStorage.getItem('datafut_ligas');
+            if (cache) {
+                const parseado = JSON.parse(cache);
+                if (Array.isArray(parseado) && parseado.length) ligasArray = parseado;
+            }
+        } catch {}
+
+        if (!ligasArray) {
+            const res = await fetch('/api/ligas');
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+            ligasArray = await res.json();
+            try { sessionStorage.setItem('datafut_ligas', JSON.stringify(ligasArray)); } catch {}
+        }
         ligasDisponibles = {};
         ligasArray.forEach(l => { ligasDisponibles[l.id] = l; });
 
