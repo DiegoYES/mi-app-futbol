@@ -254,7 +254,7 @@ function pintarCompeticiones(competiciones, fechaRef) {
         const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
         const favorito = FutbolLibrary.esPartidoFavorito(p.api_id);
         return `<div class="match-shell"><div class="match" role="link" tabindex="0" data-match-open="${esc(url)}">
-          <div class="hora">${esc(estadoVisible)}</div>
+          <div class="hora ${enJuego ? 'live-badge' : ''}">${enJuego ? '<span class="live-dot"></span>' : ''}${esc(estadoVisible)}</div>
           <div class="equipo">
             <img src="/api/equipos/${p.local.id}/escudo" alt="" loading="lazy" decoding="async">
             <span>${esc(p.local.nombre)}</span>

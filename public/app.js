@@ -6,6 +6,7 @@ const parametrosEstadoInicial = new URLSearchParams(window.location.search);
 const seleccionesBoleta = new Map();
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
+const datosComparacion = { a: null, b: null };
 
 const NOMBRES_CATEGORIAS = {
     goles: 'Goles', resultado: 'Resultado', corners: 'Córners', tarjetas: 'Tarjetas',
@@ -631,13 +632,93 @@ async function actualizarEstadisticas(lado) {
             matchesDiv.innerHTML = '<p>No hay partidos para este filtro.</p>';
         }
 
+        datosComparacion[lado] = data;
+        actualizarConfrontacionDirecta();
         actualizarAccionesComparacion();
     } catch (err) {
         nameEl.innerText = 'Error';
         statsDiv.innerHTML = 'No se pudieron cargar los datos.';
         trendsDiv.innerHTML = 'No se pudieron cargar los datos.';
+        datosComparacion[lado] = null;
+        actualizarConfrontacionDirecta();
         console.error(err);
     }
+}
+
+function actualizarConfrontacionDirecta() {
+    const cont = document.getElementById('h2h-visual-section');
+    if (!cont) return;
+    const da = datosComparacion.a;
+    const db = datosComparacion.b;
+    if (!da || !db || !da.stats || !db.stats || da.stats.jugados === 0 || db.stats.jugados === 0) {
+        cont.style.display = 'none';
+        return;
+    }
+
+    const sa = da.stats;
+    const sb = db.stats;
+    const pa = sa.avanzadas?.promedios || {};
+    const pb = sb.avanzadas?.promedios || {};
+
+    const gfA = sa.jugados ? (sa.golesFavor / sa.jugados).toFixed(2) : '0';
+    const gfB = sb.jugados ? (sb.golesFavor / sb.jugados).toFixed(2) : '0';
+    const gcA = sa.jugados ? (sa.golesContra / sa.jugados).toFixed(2) : '0';
+    const gcB = sb.jugados ? (sb.golesContra / sb.jugados).toFixed(2) : '0';
+
+    const tpA = pa.tirosPuertaFavor != null ? Number(pa.tirosPuertaFavor).toFixed(2) : null;
+    const tpB = pb.tirosPuertaFavor != null ? Number(pb.tirosPuertaFavor).toFixed(2) : null;
+
+    const corA = pa.cornersFavor != null ? Number(pa.cornersFavor).toFixed(2) : null;
+    const corB = pb.cornersFavor != null ? Number(pb.cornersFavor).toFixed(2) : null;
+
+    const tarA = pa.tarjetasFavor != null ? Number(pa.tarjetasFavor).toFixed(2) : null;
+    const tarB = pb.tarjetasFavor != null ? Number(pb.tarjetasFavor).toFixed(2) : null;
+
+    function filaMetrica(titulo, valA, valB, esPorcentaje = false) {
+        const numA = Number(String(valA).replace('%', ''));
+        const numB = Number(String(valB).replace('%', ''));
+        const validos = Number.isFinite(numA) && Number.isFinite(numB) && (numA > 0 || numB > 0);
+        let pctA = 50;
+        let pctB = 50;
+        if (validos) {
+            const total = numA + numB;
+            pctA = Math.max(10, Math.min(90, Math.round((numA / total) * 100)));
+            pctB = 100 - pctA;
+        }
+
+        return `<div class="h2h-metric-row">
+            <span class="h2h-val-local">${escaparHtml(String(valA))}</span>
+            <div class="h2h-bar-wrapper">
+                <span class="h2h-metric-name">${titulo}</span>
+                <div class="h2h-dual-track">
+                    <div class="h2h-fill-local" style="width:${pctA}%"></div>
+                    <div class="h2h-fill-away" style="width:${pctB}%"></div>
+                </div>
+            </div>
+            <span class="h2h-val-away">${escaparHtml(String(valB))}</span>
+        </div>`;
+    }
+
+    const metricas = [
+        filaMetrica('Goles a favor / partido', gfA, gfB),
+        filaMetrica('Goles en contra / partido', gcA, gcB),
+        ...(tpA !== null && tpB !== null ? [filaMetrica('Tiros a puerta / partido', tpA, tpB)] : []),
+        ...(corA !== null && corB !== null ? [filaMetrica('Córners a favor / partido', corA, corB)] : []),
+        ...(tarA !== null && tarB !== null ? [filaMetrica('Tarjetas / partido', tarA, tarB)] : []),
+        filaMetrica('Frecuencia Ambos Anotan', `${sa.btts?.porcentaje ?? 0}%`, `${sb.btts?.porcentaje ?? 0}%`, true),
+        filaMetrica('Más de 1.5 goles totales', `${sa.over15?.porcentaje ?? 0}%`, `${sb.over15?.porcentaje ?? 0}%`, true),
+    ];
+
+    cont.innerHTML = `
+        <div class="h2h-comparison-head">
+            <strong>⚔️ Confrontación Directa de Medias</strong>
+            <span><b style="color:var(--green)">${escaparHtml(da.info.equipo)}</b> vs <b style="color:var(--cyan)">${escaparHtml(db.info.equipo)}</b></span>
+        </div>
+        <div class="h2h-metrics-grid">
+            ${metricas.join('')}
+        </div>
+    `;
+    cont.style.display = 'block';
 }
 
 async function analizarPanel(lado) {

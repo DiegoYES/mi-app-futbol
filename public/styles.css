@@ -976,4 +976,288 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   color: var(--green);
 }
 
+/* Indicador EN VIVO con pulso */
+@keyframes live-pulse {
+  0% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 77, 79, 0.7); }
+  70% { transform: scale(1); box-shadow: 0 0 0 6px rgba(255, 77, 79, 0); }
+  100% { transform: scale(0.95); box-shadow: 0 0 0 0 rgba(255, 77, 79, 0); }
+}
+
+.live-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: #ff4d4f !important;
+  font-weight: 900 !important;
+}
+
+.live-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #ff4d4f;
+  animation: live-pulse 1.8s infinite;
+}
+
+.live-score-pulse {
+  color: var(--green);
+  text-shadow: 0 0 10px rgba(84, 227, 142, 0.4);
+}
+
+.live-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: #ff4d4f !important;
+  font-weight: 900 !important;
+}
+
+/* Confrontación Directa Cara a Cara (Head-to-Head Visual) */
+.h2h-comparison-section {
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--surface-raised);
+}
+.h2h-comparison-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.h2h-comparison-head strong {
+  font-size: .88rem;
+  color: var(--ink);
+}
+.h2h-comparison-head span {
+  font-size: .68rem;
+  color: var(--muted);
+}
+.h2h-metrics-grid {
+  display: grid;
+  gap: 12px;
+}
+.h2h-metric-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 48px;
+  align-items: center;
+  gap: 10px;
+}
+.h2h-val-local {
+  font-size: .85rem;
+  font-weight: 900;
+  color: var(--green);
+  text-align: left;
+}
+.h2h-val-away {
+  font-size: .85rem;
+  font-weight: 900;
+  color: var(--cyan);
+  text-align: right;
+}
+.h2h-bar-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.h2h-metric-name {
+  font-size: .64rem;
+  font-weight: 800;
+  color: var(--muted);
+  text-align: center;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+}
+.h2h-dual-track {
+  position: relative;
+  display: flex;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--surface-soft);
+  overflow: hidden;
+}
+.h2h-fill-local {
+  height: 100%;
+  background: var(--green);
+  transition: width 300ms ease;
+}
+.h2h-fill-away {
+  height: 100%;
+  background: var(--cyan);
+  transition: width 300ms ease;
+}
+
+/* Filtro de categorías de mercado */
+.market-filter-tabs {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 4px 0 12px;
+  scrollbar-width: none;
+}
+.market-filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+.market-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--surface-raised);
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 750;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 160ms ease;
+}
+.market-tab-btn:hover {
+  border-color: rgba(84, 227, 142, 0.4);
+  color: var(--ink);
+}
+.market-tab-btn.active {
+  border-color: var(--green);
+  background: rgba(84, 227, 142, 0.12);
+  color: var(--green);
+  font-weight: 900;
+}
+
+/* Spotlight Search (Cmd+K) Modal */
+.spotlight-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: clamp(20px, 12vh, 120px) 16px 20px;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 200ms ease;
+}
+.spotlight-backdrop.open {
+  opacity: 1;
+  pointer-events: auto;
+}
+.spotlight-modal {
+  width: min(600px, 100%);
+  border: 1px solid rgba(84, 227, 142, 0.35);
+  border-radius: 18px;
+  background: #0d1714;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  transform: translateY(-10px) scale(0.98);
+  transition: transform 200ms ease;
+}
+.spotlight-backdrop.open .spotlight-modal {
+  transform: translateY(0) scale(1);
+}
+.spotlight-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--line);
+}
+.spotlight-search-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--muted);
+}
+.spotlight-input {
+  flex: 1;
+  border: 0;
+  outline: none;
+  background: transparent;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-family: inherit;
+}
+.spotlight-input::placeholder {
+  color: var(--muted);
+  opacity: 0.7;
+}
+.spotlight-shortcut-chip {
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--surface-soft);
+  color: var(--muted);
+  font-size: .62rem;
+  font-weight: 800;
+}
+.spotlight-results {
+  max-height: min(380px, 50vh);
+  overflow-y: auto;
+  padding: 8px;
+}
+.spotlight-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ink);
+  text-decoration: none;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+.spotlight-item:hover, .spotlight-item.active {
+  background: rgba(84, 227, 142, 0.12);
+}
+.spotlight-item-icon {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 7px;
+  background: #f4f8f5;
+  padding: 2px;
+}
+.spotlight-item-text {
+  flex: 1;
+  min-width: 0;
+}
+.spotlight-item-title {
+  display: block;
+  font-size: .84rem;
+  font-weight: 800;
+  color: var(--ink);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.spotlight-item-sub {
+  display: block;
+  font-size: .64rem;
+  color: var(--muted);
+}
+.spotlight-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--muted);
+  font-size: .78rem;
+}
+.spotlight-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 18px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--muted);
+  font-size: .64rem;
+}
+
+
 

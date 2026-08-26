@@ -167,7 +167,9 @@ async function cargarCabecera() {
   document.getElementById('labelAlcanceVisitante').textContent = `Condición de ${nombreV}`;
 
   const tieneMarcador = partido?.equipo_local?.goles != null && partido?.equipo_visitante?.goles != null;
-  const jugado = Boolean(partido && (FutbolMarcador.esFinalizado(partido.estado) || tieneMarcador));
+  const enJuego = Boolean(partido && FutbolMarcador.esEnVivo(partido.estado));
+  const finalizado = Boolean(partido && FutbolMarcador.esFinalizado(partido.estado));
+  const jugado = Boolean(partido && (finalizado || tieneMarcador));
   // El marcador grande nunca incluye la tanda: los penales deciden quién
   // avanza, no el resultado con el que se liquidan los mercados.
   const tanda = FutbolMarcador.penalesDe(partido);
@@ -175,12 +177,19 @@ async function cargarCabecera() {
   const detalleFinal = partido?.estado === 'PEN'
     ? 'Definido en penales'
     : partido?.estado === 'AET' ? 'Finalizado en tiempo extra' : 'Finalizado';
-  const centro = jugado
-    ? `<div class="res">${partido.equipo_local.goles} - ${partido.equipo_visitante.goles}</div>
+
+  let centro = '';
+  if (enJuego) {
+    centro = `<div class="res live-score-pulse">${partido.equipo_local?.goles ?? 0} - ${partido.equipo_visitante?.goles ?? 0}</div>
+       <div class="meta live-meta"><span class="live-dot"></span> EN VIVO · ${FutbolMarcador.etiquetaEstado(partido, 'En juego')}</div>`;
+  } else if (jugado) {
+    centro = `<div class="res">${partido.equipo_local.goles} - ${partido.equipo_visitante.goles}</div>
        ${tanda ? `<div class="res-penales">${tanda.local} - ${tanda.visitante} en penales</div>` : ''}
        ${prorroga && !tanda ? `<div class="res-penales">${prorroga.local} - ${prorroga.visitante} en la prórroga</div>` : ''}
-       <div class="meta">${detalleFinal}</div>`
-    : `<div class="vs">VS</div><div class="meta">${FutbolMarcador.esEstadoAtrasado(partido) ? 'Estado sin confirmar' : 'Por jugarse'}</div>`;
+       <div class="meta">${detalleFinal}</div>`;
+  } else {
+    centro = `<div class="vs">VS</div><div class="meta">${FutbolMarcador.esEstadoAtrasado(partido) ? 'Estado sin confirmar' : 'Por jugarse'}</div>`;
+  }
 
   document.title = `${nombreL} vs ${nombreV} · Match Center`;
   cont.innerHTML = `
@@ -450,6 +459,10 @@ function pintarPicksPartido() {
     <section class="market-explorer">
       <h4>Explora los picks de este partido</h4>
       <p>Elige la categoría, dirección y línea exacta que viste en tu casa para comparar la estimación del modelo.</p>
+      <div class="market-filter-tabs" role="tablist" aria-label="Filtrar por categoría">
+        <button type="button" class="market-tab-btn ${filtrosMercado.categoria === 'todas' ? 'active' : ''}" data-category-tab="todas">Todas</button>
+        ${categoriasExplorables.map(item => `<button type="button" class="market-tab-btn ${item === filtrosMercado.categoria ? 'active' : ''}" data-category-tab="${esc(item)}">${esc(NOMBRES_CATEGORIAS[item] || item)}</button>`).join('')}
+      </div>
       <div class="market-explorer-controls">
         <label>Categoría<select id="categoriaPicksPartido" aria-label="Categoría de mercado">
           <option value="todas" ${filtrosMercado.categoria === 'todas' ? 'selected' : ''}>Todas</option>
@@ -649,6 +662,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (detalle) { const copia=detalle.cloneNode(true);copia.hidden=false;cuerpoDialogo.replaceChildren(copia); }
       else cuerpoDialogo.innerHTML = '<div class="warning">No hay explicación disponible.</div>';
       document.getElementById('match-explanation-dialog').showModal();
+      return;
+    }
+    const categoryTab = event.target.closest('[data-category-tab]');
+    if (categoryTab) {
+      filtrosMercado.categoria = categoryTab.dataset.categoryTab;
+      filtrosMercado.familia = 'todas';
+      filtrosMercado.linea = '';
+      pintarPicksPartido();
       return;
     }
     const boton = event.target.closest('[data-guardar-pick]');
