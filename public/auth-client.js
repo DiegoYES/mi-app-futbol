@@ -263,25 +263,52 @@
       .global-picks-trigger:hover{border-color:#54e38e;transform:translateY(-1px)}
       .global-picks-trigger>span:first-child{width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:rgba(84,227,142,.14);color:#54e38e}
       .global-picks-count{min-width:22px;height:22px;display:grid;place-items:center;padding:0 6px;border-radius:999px;background:#54e38e;color:#07100d;font-size:.67rem}
-      .global-picks-panel{position:absolute;right:0;bottom:62px;width:min(390px,calc(100vw - 28px));max-height:min(68vh,610px);overflow:hidden;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#101a17;box-shadow:0 28px 80px rgba(0,0,0,.72)}
+      .global-picks-panel{position:absolute;right:0;bottom:62px;width:min(390px,calc(100vw - 24px));max-height:min(78vh,580px);display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#101a17;box-shadow:0 28px 80px rgba(0,0,0,.72)}
       .global-picks-panel[hidden]{display:none}
-      .global-picks-head{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 16px;border-bottom:1px solid rgba(255,255,255,.1);background:#14241f}
+      .global-picks-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);background:#14241f}
       .global-picks-head span{display:block;color:#54e38e;font-size:.57rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.global-picks-head strong{display:block;margin-top:2px;font-size:.9rem}
       .global-picks-close{width:31px;min-height:31px;padding:0;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:transparent;color:#9db1a8;cursor:pointer}
-      .global-picks-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:11px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
-      .global-picks-summary div{padding:8px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
-      .global-picks-list{max-height:390px;display:grid;gap:7px;overflow:auto;padding:10px 12px}
+      .global-picks-summary{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
+      .global-picks-summary div{padding:7px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
+      .global-picks-list{flex:1 1 auto;min-height:70px;max-height:270px;display:grid;gap:7px;overflow-y:auto;padding:10px 12px}
       .global-pick-item{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:9px;padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(255,255,255,.025)}
       .global-pick-item img{width:32px;height:32px;object-fit:contain;padding:3px;border-radius:8px;background:#f4f8f5}.global-pick-item a{min-width:0;color:#eef8f2;text-decoration:none}.global-pick-item strong,.global-pick-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.global-pick-item strong{font-size:.68rem}.global-pick-item small{margin-top:2px;color:#9db1a8;font-size:.58rem}
       .global-pick-meta{text-align:right}.global-pick-meta b{display:block;color:#68d9e7;font-size:.73rem}.global-pick-meta em{font-size:.55rem;font-style:normal;text-transform:uppercase}.global-pick-meta .pendiente{color:#f5be5b}.global-pick-meta .acertado{color:#54e38e}.global-pick-meta .fallado{color:#ff7c78}
       .global-pick-delete{grid-column:2/-1;justify-self:end;min-height:27px;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:transparent;color:#9db1a8;font-size:.58rem;cursor:pointer}
-      .global-picks-empty{padding:24px 14px;color:#9db1a8;font-size:.7rem;line-height:1.5;text-align:center}
-      .global-picks-actions{padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:#14241f}
-      .btn-create-boleta{width:100%;min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(84,227,142,.45);border-radius:10px;background:rgba(84,227,142,.12);color:#54e38e;font-size:.76rem;font-weight:850;cursor:pointer;transition:all .15s ease}
+      .global-picks-empty{padding:20px 14px;color:#9db1a8;font-size:.7rem;line-height:1.5;text-align:center}
+      .global-picks-actions{flex-shrink:0;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:#14241f}
+      .btn-create-boleta{width:100%;min-height:42px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(84,227,142,.45);border-radius:10px;background:rgba(84,227,142,.15);color:#54e38e;font-size:.78rem;font-weight:850;cursor:pointer;transition:all .15s ease}
       .btn-create-boleta:hover{background:#54e38e;color:#07100d;border-color:#54e38e}
-      .global-picks-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid rgba(255,255,255,.09);background:#14241f}.global-picks-footer a{color:#54e38e;font-size:.66rem;font-weight:850}.global-picks-footer span{color:#9db1a8;font-size:.57rem}
+      .global-picks-footer{flex-shrink:0;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 14px;border-top:1px solid rgba(255,255,255,.09);background:#14241f}.global-picks-footer a{color:#54e38e;font-size:.66rem;font-weight:850}.global-picks-footer span{color:#9db1a8;font-size:.57rem}
       body.global-picks-open .bet-slip,body.global-picks-open .pick-shortcut{opacity:.2;pointer-events:none}
-      @media(max-width:560px){.global-picks-widget{right:10px;bottom:10px}.global-picks-panel{right:0;bottom:60px;width:calc(100vw - 20px);max-height:72vh}.global-picks-trigger{min-height:46px;padding:0 12px}.global-picks-trigger>span:nth-child(2){display:none}}
+      
+      .global-boleta-dialog{border:0;padding:0;background:transparent;max-width:440px;width:calc(100vw - 32px);margin:auto;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.8)}
+      .global-boleta-dialog::backdrop{background:rgba(4,9,7,.82);backdrop-filter:blur(8px)}
+      .global-boleta-card{padding:22px 24px;border:1px solid rgba(84,227,142,.35);border-radius:20px;background:#0f1d18;color:#eef8f2}
+      .global-boleta-header{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+      .global-boleta-header span{display:block;color:#54e38e;font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase}
+      .global-boleta-header h3{margin:3px 0 0;font-size:1.2rem}
+      .global-boleta-modal-close{width:32px;height:32px;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:transparent;color:#9db1a8;font-size:1.1rem;cursor:pointer}
+      .global-boleta-modal-close:hover{border-color:#54e38e;color:#54e38e}
+      .global-boleta-info{margin:0 0 14px;color:#9db1a8;font-size:.78rem;line-height:1.45}
+      .global-boleta-info b{color:#54e38e}
+      .global-boleta-field{display:grid;gap:6px;margin-bottom:18px}
+      .global-boleta-field span{color:#9db1a8;font-size:.7rem;font-weight:750}
+      .global-boleta-field input{width:100%;min-height:44px;padding:0 13px;border:1px solid rgba(84,227,142,.3);border-radius:11px;background:#14241f;color:#eef8f2;font:inherit;font-size:.88rem;outline:none}
+      .global-boleta-field input:focus{border-color:#54e38e;box-shadow:0 0 0 3px rgba(84,227,142,.2)}
+      .global-boleta-actions-btns{display:grid;grid-template-columns:1fr 1.3fr;gap:10px}
+      .btn-boleta-sec{min-height:42px;padding:0 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:transparent;color:#9db1a8;font:inherit;font-size:.8rem;font-weight:750;cursor:pointer}
+      .btn-boleta-sec:hover{border-color:#9db1a8;color:#fff}
+      .btn-boleta-pri{min-height:42px;padding:0 16px;border:1px solid #54e38e;border-radius:10px;background:#54e38e;color:#07100d;font:inherit;font-size:.82rem;font-weight:900;cursor:pointer;transition:transform .15s ease}
+      .btn-boleta-pri:hover{transform:translateY(-1px)}
+
+      @media(max-width:560px){
+        .global-picks-widget{right:10px;bottom:max(10px,env(safe-area-inset-bottom))}
+        .global-picks-panel{right:0;bottom:58px;width:calc(100vw - 20px);max-height:calc(85vh - env(safe-area-inset-bottom))}
+        .global-picks-trigger{min-height:46px;padding:0 12px}
+        .global-picks-trigger>span:nth-child(2){display:none}
+        .global-picks-list{max-height:230px}
+      }
     `;
     document.head.appendChild(estilos);
   }
@@ -353,10 +380,32 @@
         <div id="global-picks-actions" class="global-picks-actions" hidden></div>
         <footer class="global-picks-footer"><span>Se actualiza en todas las páginas</span><a href="/picks.html">Ver historial completo →</a></footer>
       </section>
-      <button id="global-picks-trigger" class="global-picks-trigger" type="button" aria-expanded="false" aria-controls="global-picks-panel"><span>✓</span><span>Mis picks</span><b id="global-picks-count" class="global-picks-count">0</b></button>`;
+      <button id="global-picks-trigger" class="global-picks-trigger" type="button" aria-expanded="false" aria-controls="global-picks-panel"><span>✓</span><span>Mis picks</span><b id="global-picks-count" class="global-picks-count">0</b></button>
+      
+      <dialog id="global-boleta-modal" class="global-boleta-dialog">
+        <div class="global-boleta-card">
+          <div class="global-boleta-header">
+            <div><span>Crear Boleta / Parlay</span><h3>Nombrar boleta</h3></div>
+            <button id="global-boleta-modal-close" class="global-boleta-modal-close" type="button" aria-label="Cerrar">×</button>
+          </div>
+          <p class="global-boleta-info">Empaqueta tus <b id="global-boleta-modal-count">0</b> selecciones pendientes en un ticket combinable.</p>
+          <label class="global-boleta-field">
+            <span>Nombre del ticket</span>
+            <input id="global-boleta-modal-input" type="text" maxlength="60" placeholder="Ej. Parlay Fin de Semana" autocomplete="off">
+          </label>
+          <div class="global-boleta-actions-btns">
+            <button id="global-boleta-modal-cancel" class="btn-boleta-sec" type="button">Cancelar</button>
+            <button id="global-boleta-modal-confirm" class="btn-boleta-pri" type="button">Guardar Boleta ✓</button>
+          </div>
+        </div>
+      </dialog>`;
     document.body.appendChild(widget);
     const panel = document.getElementById('global-picks-panel');
     const trigger = document.getElementById('global-picks-trigger');
+    const modal = document.getElementById('global-boleta-modal');
+    const inputNombre = document.getElementById('global-boleta-modal-input');
+    const countSpan = document.getElementById('global-boleta-modal-count');
+
     const cerrar = () => { panel.hidden = true;trigger.setAttribute('aria-expanded', 'false');document.body.classList.remove('global-picks-open'); };
     trigger.addEventListener('click', () => {
       panel.hidden = !panel.hidden;
@@ -365,48 +414,64 @@
       if (!panel.hidden) actualizarPicksFlotantes();
     });
     document.getElementById('global-picks-close').addEventListener('click', cerrar);
+
+    const cerrarModal = () => { modal.close(); };
+    document.getElementById('global-boleta-modal-close')?.addEventListener('click', cerrarModal);
+    document.getElementById('global-boleta-modal-cancel')?.addEventListener('click', cerrarModal);
+
+    document.getElementById('global-boleta-modal-confirm')?.addEventListener('click', async () => {
+      const confirmBtn = document.getElementById('global-boleta-modal-confirm');
+      const pendientes = ultimosPicksCargados.filter(item => item.estado === 'pendiente');
+      if (!pendientes.length) return cerrarModal();
+      const nombrePorDefecto = `Boleta ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
+      const nombre = (inputNombre.value || '').trim() || nombrePorDefecto;
+      confirmBtn.disabled = true;
+      confirmBtn.textContent = 'Guardando...';
+      try {
+        const payload = {
+          nombre,
+          selecciones: pendientes.map(pick => ({
+            team_local: pick.local.id,
+            team_visitante: pick.visitante.id,
+            league_local: pick.liga.id,
+            league_visitante: pick.liga.id,
+            temporada_local: pick.liga.temporada,
+            temporada_visitante: pick.liga.temporada,
+            condicion_local: 'local',
+            condicion_visitante: 'visitante',
+            limite_local: 10,
+            limite_visitante: 10,
+            periodo_local: pick.mercado?.periodo || 0,
+            periodo_visitante: pick.mercado?.periodo || 0,
+            mercado_id: pick.mercado?.base_id || pick.mercado?.id
+          }))
+        };
+        const resp = await fetch('/api/boletas', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const resData = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
+        window.location.href = '/boletas.html';
+      } catch (err) {
+        alert('Error: ' + err.message);
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Guardar Boleta ✓';
+      }
+    });
+
     document.getElementById('global-picks-panel').addEventListener('click', async event => {
       const botonBoleta = event.target.closest('#global-picks-to-boleta');
       if (botonBoleta) {
         const pendientes = ultimosPicksCargados.filter(item => item.estado === 'pendiente');
         if (!pendientes.length) return;
         const nombrePorDefecto = `Boleta ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
-        const nombre = prompt('Escribe un nombre para tu Boleta / Parlay:', nombrePorDefecto);
-        if (nombre === null) return;
-        botonBoleta.disabled = true;
-        botonBoleta.textContent = 'Guardando boleta...';
-        try {
-          const payload = {
-            nombre: nombre.trim() || nombrePorDefecto,
-            selecciones: pendientes.map(pick => ({
-              team_local: pick.local.id,
-              team_visitante: pick.visitante.id,
-              league_local: pick.liga.id,
-              league_visitante: pick.liga.id,
-              temporada_local: pick.liga.temporada,
-              temporada_visitante: pick.liga.temporada,
-              condicion_local: 'local',
-              condicion_visitante: 'visitante',
-              limite_local: 10,
-              limite_visitante: 10,
-              periodo_local: pick.mercado?.periodo || 0,
-              periodo_visitante: pick.mercado?.periodo || 0,
-              mercado_id: pick.mercado?.base_id || pick.mercado?.id
-            }))
-          };
-          const resp = await fetch('/api/boletas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const resData = await resp.json().catch(() => ({}));
-          if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
-          window.location.href = '/boletas.html';
-        } catch (err) {
-          alert('Error: ' + err.message);
-          botonBoleta.disabled = false;
-          botonBoleta.textContent = `📋 Guardar como Boleta (${pendientes.length})`;
-        }
+        inputNombre.value = nombrePorDefecto;
+        countSpan.textContent = pendientes.length;
+        modal.showModal();
+        inputNombre.focus();
+        inputNombre.select();
         return;
       }
       const boton = event.target.closest('[data-global-pick-delete]');

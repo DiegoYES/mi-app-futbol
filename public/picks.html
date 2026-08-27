@@ -292,43 +292,17 @@ async function cargarHistorial() {
     if (pendientes.length > 0) {
       btnBoleta.hidden = false;
       btnBoleta.textContent = `📋 Guardar pendientes como Boleta (${pendientes.length})`;
-      btnBoleta.onclick = async () => {
+      btnBoleta.onclick = () => {
+        const modal = document.getElementById('global-boleta-modal');
+        const inputNombre = document.getElementById('global-boleta-modal-input');
+        const countSpan = document.getElementById('global-boleta-modal-count');
         const nombrePorDefecto = `Boleta ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
-        const nombre = prompt('Escribe un nombre para tu Boleta / Parlay:', nombrePorDefecto);
-        if (nombre === null) return;
-        btnBoleta.disabled = true;
-        btnBoleta.textContent = 'Guardando boleta...';
-        try {
-          const payload = {
-            nombre: nombre.trim() || nombrePorDefecto,
-            selecciones: pendientes.map(pick => ({
-              team_local: pick.local.id,
-              team_visitante: pick.visitante.id,
-              league_local: pick.liga.id,
-              league_visitante: pick.liga.id,
-              temporada_local: pick.liga.temporada,
-              temporada_visitante: pick.liga.temporada,
-              condicion_local: 'local',
-              condicion_visitante: 'visitante',
-              limite_local: 10,
-              limite_visitante: 10,
-              periodo_local: pick.mercado?.periodo || 0,
-              periodo_visitante: pick.mercado?.periodo || 0,
-              mercado_id: pick.mercado?.base_id || pick.mercado?.id
-            }))
-          };
-          const resp = await fetch('/api/boletas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload)
-          });
-          const resData = await resp.json().catch(() => ({}));
-          if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
-          window.location.href = '/boletas.html';
-        } catch (err) {
-          alert('Error: ' + err.message);
-          btnBoleta.disabled = false;
-          btnBoleta.textContent = `📋 Guardar pendientes como Boleta (${pendientes.length})`;
+        if (modal && inputNombre) {
+          inputNombre.value = nombrePorDefecto;
+          if (countSpan) countSpan.textContent = pendientes.length;
+          modal.showModal();
+          inputNombre.focus();
+          inputNombre.select();
         }
       };
     } else {
