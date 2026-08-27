@@ -13,9 +13,9 @@
   // 1. Registro de Service Worker
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('/sw.js').catch(err => {
-        // En navegadores antiguos o entornos restringidos se omite silenciosamente
-      });
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        reg.update();
+      }).catch(() => {});
     });
   }
 
