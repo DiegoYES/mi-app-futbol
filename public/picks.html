@@ -13,7 +13,7 @@
 <link rel="apple-touch-icon" href="/brand-mark.svg">
 <meta name="theme-color" content="#07100d">
 <link rel="stylesheet" href="/styles.css">
-<script src="/auth-client.js?v=20260827-v10"></script>
+<script src="/auth-client.js?v=20260827-v11"></script>
 <style>
   .page-nav { display:flex; gap:16px; margin-bottom:24px; }
   .page-nav a { color:var(--green); text-decoration:none; font-size:.85rem; }
@@ -84,9 +84,9 @@
   <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/calendario.html">Calendario</a></nav>
   <header class="header">
     <div class="header-copy">
-      <p class="eyebrow">Registro verificable</p>
-      <h1>Mis <span>picks.</span></h1>
-      <p>Aquí no cuentan retrospectivas: solamente pronósticos guardados antes del inicio y liquidados contra el marcador final.</p>
+      <p class="eyebrow">Selección y probabilidades</p>
+      <h1>Mejores <span>picks.</span></h1>
+      <p>Picks recomendados del día por nuestro equipo y explorador de mercados con mayor respaldo estadístico de la jornada.</p>
     </div>
   </header>
 
@@ -95,16 +95,16 @@
       <div><p class="eyebrow">Selección de Data-Fut</p><h3>Picks, combinadas y parlays recomendados</h3></div>
       <span class="model-badge">Actualizados por nosotros</span>
     </div>
-    <p>Recomendaciones editoriales publicadas desde el panel. Los picks premium están incluidos durante tus 7 días de prueba y con la membresía activa.</p>
+    <p>Recomendaciones editoriales del día publicadas por nuestro equipo. Los picks premium están incluidos en tus 7 días de prueba y membresía activa.</p>
     <div id="recomendaciones-editoriales" class="editorial-grid"><div class="loader">Cargando recomendaciones…</div></div>
   </section>
 
   <section class="picks-section">
     <div class="section-heading">
-      <div><p class="eyebrow">Próximos 7 días</p><h3>Mejores picks generales</h3></div>
+      <div><p class="eyebrow">Próximos 7 días</p><h3>Mejores picks generales por probabilidad</h3></div>
       <span class="model-badge">Evidencia mínima</span>
     </div>
-    <p>Compara los candidatos más sólidos de todos los próximos partidos y busca la línea exacta que ofrece tu casa.</p>
+    <p>Compara los candidatos con mayor porcentaje de acierto de todos los próximos partidos y busca la línea exacta que ofrece tu casa.</p>
     <div class="general-controls">
       <label>Categoría<select id="general-categoria"><option value="">Todas</option></select></label>
       <label>Dirección<select id="general-direccion"><option value="">Over y Under</option></select></label>
@@ -115,19 +115,9 @@
 
   <section id="resumen" class="pick-kpis"><div class="loader">Cargando rendimiento...</div></section>
   <section class="picks-section analytics-panel">
-    <div class="analytics-toolbar"><div><p class="eyebrow">Resultados segmentados</p><h3>Rendimiento y calibración</h3></div><label>Segmentar por <select id="analytics-dimension"><option value="mercado">Mercado</option><option value="liga">Liga</option><option value="alcance">Local/visitante</option><option value="periodo">Periodo</option><option value="confianza">Confianza</option><option value="muestra">Tamaño de muestra</option><option value="mes">Mes</option><option value="temporada">Temporada</option></select></label></div>
+    <div class="analytics-toolbar"><div><p class="eyebrow">Resultados segmentados</p><h3>Rendimiento y calibración del modelo</h3></div><label>Segmentar por <select id="analytics-dimension"><option value="mercado">Mercado</option><option value="liga">Liga</option><option value="alcance">Local/visitante</option><option value="periodo">Periodo</option><option value="confianza">Confianza</option><option value="muestra">Tamaño de muestra</option><option value="mes">Mes</option><option value="temporada">Temporada</option></select></label></div>
     <div id="analytics-segments"><div class="loader">Calculando segmentos…</div></div>
     <div id="analytics-calibration" class="calibration-grid"></div>
-  </section>
-  <section class="picks-section">
-    <div class="section-heading">
-      <div><p class="eyebrow">Historial</p><h3>Pronósticos guardados</h3></div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <button id="btn-crear-boleta-historial" type="button" class="general-save" style="margin:0;min-height:36px;padding:0 12px;font-size:.72rem;font-weight:800;" hidden>📋 Guardar como Boleta</button>
-        <span class="model-badge">Auditable</span>
-      </div>
-    </div>
-    <div id="historial" class="history-list"><div class="loader">Liquidando resultados pendientes...</div></div>
   </section>
 </main>
 <dialog id="general-explanation-dialog" class="explanation-dialog" aria-labelledby="general-explanation-title">
@@ -270,71 +260,22 @@ function pintarAnaliticaPicks() {
   document.getElementById('analytics-calibration').innerHTML = (analiticaPicks.calibracion || []).map(p => `<article class="calibration-point"><span>Estimados ${esc(p.etiqueta)}</span><b>${p.efectividad == null ? '—' : `${p.efectividad}% real`}</b><small>Media ${p.estimacion_media}% · ${p.resueltos} resueltos</small></article>`).join('');
 }
 
-async function cargarHistorial() {
+async function cargarMetricasPicks() {
   const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
   if (!respuesta.ok) return;
   const datos = await respuesta.json();
   picksGuardados = new Set(datos.picks.map(pick => `${pick.partido_api_id}:${pick.mercado.id}`));
   marcarPicksGeneralesGuardados();
-  analiticaPicks = datos; pintarAnaliticaPicks();
+  analiticaPicks = datos;
+  pintarAnaliticaPicks();
   const r = datos.resumen;
   document.getElementById('resumen').innerHTML = `
-    <article class="pick-kpi"><span>Total</span><strong>${r.total}</strong></article>
+    <article class="pick-kpi"><span>Total analizados</span><strong>${r.total}</strong></article>
     <article class="pick-kpi"><span>Pendientes</span><strong>${r.pendientes}</strong></article>
     <article class="pick-kpi"><span>Acertados</span><strong>${r.acertados}</strong></article>
     <article class="pick-kpi"><span>Efectividad</span><strong>${r.efectividad ?? '—'}${r.efectividad == null ? '' : '%'}</strong></article>
     <article class="pick-kpi"><span>Brier ↓</span><strong>${r.brier ?? '—'}</strong></article>`;
-
-  const historial = document.getElementById('historial');
-  const btnBoleta = document.getElementById('btn-crear-boleta-historial');
-  const pendientes = datos.picks.filter(p => p.estado === 'pendiente');
-  if (btnBoleta) {
-    if (pendientes.length > 0) {
-      btnBoleta.hidden = false;
-      btnBoleta.textContent = `📋 Guardar pendientes como Boleta (${pendientes.length})`;
-      btnBoleta.onclick = () => {
-        const modal = document.getElementById('global-boleta-modal');
-        const inputNombre = document.getElementById('global-boleta-modal-input');
-        const countSpan = document.getElementById('global-boleta-modal-count');
-        const nombrePorDefecto = `Boleta ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
-        if (modal && inputNombre) {
-          inputNombre.value = nombrePorDefecto;
-          if (countSpan) countSpan.textContent = pendientes.length;
-          modal.showModal();
-          inputNombre.focus();
-          inputNombre.select();
-        }
-      };
-    } else {
-      btnBoleta.hidden = true;
-    }
-  }
-
-  if (!datos.picks.length) {
-    historial.innerHTML = '<div class="empty-state">Todavía no tienes picks. Abre un partido futuro desde el calendario y guarda un mercado antes de que comience.</div>';
-    return;
-  }
-  historial.innerHTML = datos.picks.map(pick => {
-    const enlace = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}`;
-    const marcador = pick.marcador_final?.local != null
-      ? ` · ${pick.marcador_final.local}-${pick.marcador_final.visitante}` : '';
-    return `<article class="history-item">
-      <div class="history-match"><strong>${esc(pick.local.nombre)} vs ${esc(pick.visitante.nombre)}</strong><span>${fecha(pick.fecha_partido)} · ${esc(pick.liga.nombre)}${marcador}</span></div>
-      <div class="history-market"><strong>${esc(pick.mercado.nombre)}</strong><span>Confianza ${esc(pick.confianza)} · muestra ${pick.muestra}</span></div>
-      <div class="history-prob">${pick.estimacion}%</div>
-      <div><a class="status status-${esc(pick.estado)}" href="${enlace}">${esc(pick.estado)}</a>${pick.estado === 'pendiente' ? `<button class="delete-pick" data-delete="${esc(pick._id)}" type="button">Quitar</button>` : ''}</div>
-    </article>`;
-  }).join('');
 }
-
-document.getElementById('historial').addEventListener('click', async event => {
-  const boton = event.target.closest('[data-delete]');
-  if (!boton) return;
-  const respuesta = await fetch(`/api/picks/seguimiento/${boton.dataset.delete}`, { method: 'DELETE' });
-  if (respuesta.ok) {
-    window.FutbolPicks?.notificarCambio?.();
-  }
-});
 
 document.getElementById('analytics-dimension').addEventListener('change', pintarAnaliticaPicks);
 document.querySelector('.general-controls').addEventListener('change', cargarMejoresGenerales);
@@ -368,10 +309,10 @@ document.getElementById('mejores-generales').addEventListener('click', async eve
 const dialogoGeneral = document.getElementById('general-explanation-dialog');
 document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
 dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
-document.addEventListener('DOMContentLoaded', () => { cargarRecomendacionesEditoriales(); cargarMejoresGenerales(); cargarHistorial(); });
+document.addEventListener('DOMContentLoaded', () => { cargarRecomendacionesEditoriales(); cargarMejoresGenerales(); cargarMetricasPicks(); });
 window.addEventListener('futbol:usuario-cargado', cargarRecomendacionesEditoriales);
-window.addEventListener('futbol:picks-actualizados', cargarHistorial);
-window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
+window.addEventListener('futbol:picks-actualizados', cargarMetricasPicks);
+window.addEventListener('pageshow', event => { if (event.persisted) cargarMetricasPicks(); });
 </script>
 </body>
 </html>

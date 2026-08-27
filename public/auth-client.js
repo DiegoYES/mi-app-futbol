@@ -81,11 +81,11 @@
     { href: '/', texto: 'Inicio', icono: '🏠' },
     { href: '/calendario.html', texto: 'Calendario', icono: '📅' },
     { href: '/comparador.html', texto: 'Comparador', icono: '⚽' },
-    { href: '/picks.html', texto: 'Mis picks', icono: '🎯' },
-    { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' },
-    { href: '/suscripcion.html', texto: 'Mi suscripción', icono: '💳' }
+    { href: '/picks.html', texto: 'Mejores picks', icono: '🎯' },
+    { href: '/boletas.html', texto: 'Mis boletas', icono: '🧾' }
   ];
   const ENLACES_CUENTA = [
+    { href: '/suscripcion.html', texto: 'Mi suscripción', icono: '💳' },
     { href: '/configuracion.html', texto: 'Configuración', icono: '⚙️' },
     { href: '/guia.html', texto: 'Guía', icono: '📖' },
     { href: '/sugerencias.html', texto: 'Sugerencias', icono: '💡' }
@@ -593,7 +593,6 @@
       window.dispatchEvent(new CustomEvent('futbol:usuario-cargado', { detail: usuario }));
       if (!esPaginaAdmin) pintarAvisoLegal();
       if (!esPaginaAdmin && !esPaginaConfiguracion) crearWidgetPicks();
-      const parametros = new URLSearchParams(window.location.search);
       const registroLimitado = parametros.get('registro') === 'ip_duplicada';
       if (!usuario.tieneAcceso || registroLimitado) mostrarPaywall(registroLimitado ? 'ip_duplicada' : usuario.motivo);
       if (registroLimitado) {
