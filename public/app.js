@@ -347,13 +347,19 @@ async function cargarEquipos(lado) {
 async function preseleccionarDesdeUrl() {
     const params = parametrosEstadoInicial;
     const configuraciones = [
-        { lado: 'a', equipo: 'local', liga: 'leagueLocal', season: 'seasonLocal', scope: 'scopeLocal', limit: 'limitLocal', half: 'halfLocal' },
-        { lado: 'b', equipo: 'visitante', liga: 'leagueVisitante', season: 'seasonVisitante', scope: 'scopeVisitante', limit: 'limitVisitante', half: 'halfVisitante' }
+        { lado: 'a', equipos: ['local', 'teamLocal', 'equipo_a', 'team_a'], ligas: ['leagueLocal', 'ligaLocal', 'league_a', 'league', 'liga'], season: 'seasonLocal', scope: 'scopeLocal', limit: 'limitLocal', half: 'halfLocal' },
+        { lado: 'b', equipos: ['visitante', 'teamVisitante', 'equipo_b', 'team_b'], ligas: ['leagueVisitante', 'ligaVisitante', 'league_b', 'league', 'liga'], season: 'seasonVisitante', scope: 'scopeVisitante', limit: 'limitVisitante', half: 'halfVisitante' }
     ];
 
     for (const config of configuraciones) {
-        const leagueId = params.get(config.liga);
-        const teamId = params.get(config.equipo);
+        let leagueId = null;
+        for (const clave of config.ligas) {
+            if (params.get(clave)) { leagueId = params.get(clave); break; }
+        }
+        let teamId = null;
+        for (const clave of config.equipos) {
+            if (params.get(clave)) { teamId = params.get(clave); break; }
+        }
         if (!leagueId) continue;
 
         const leagueSelect = document.getElementById(`league-${config.lado}`);

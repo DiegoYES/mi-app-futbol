@@ -85,8 +85,123 @@ async function cargarBoletas() {
       <strong>${esc(item.mercado.nombre)}<br><small>Confianza ${esc(item.confianza)} · muestra ${item.muestra} · ${item.fuentes}/2 fuentes</small></strong>
       <div class="boleta-prob">${item.estimacion}%</div>
     </div>`).join('')}</div>
-    <div class="boleta-actions"><button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button><button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button><a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a><button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button></div>
+    <div class="boleta-actions"><button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button><button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button><button type="button" data-download-image="${esc(boleta._id)}">🖼️ Guardar imagen</button><a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a><button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button></div>
   </article>`).join('');
+}
+
+function descargarImagenBoleta(boleta) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const selecciones = boleta.selecciones || [];
+
+  const width = 800;
+  const padding = 40;
+  const itemHeight = 78;
+  const headerHeight = 160;
+  const footerHeight = 70;
+  const height = headerHeight + (selecciones.length * itemHeight) + footerHeight;
+
+  canvas.width = width;
+  canvas.height = height;
+
+  // Fondo oscuro con degradado
+  const grad = ctx.createLinearGradient(0, 0, width, height);
+  grad.addColorStop(0, '#07120e');
+  grad.addColorStop(1, '#0c1d17');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0, 0, width, height);
+
+  // Borde y acento superior verde
+  ctx.strokeStyle = 'rgba(84, 227, 142, 0.4)';
+  ctx.lineWidth = 4;
+  ctx.strokeRect(10, 10, width - 20, height - 20);
+
+  ctx.fillStyle = '#54e38e';
+  ctx.fillRect(10, 10, width - 20, 6);
+
+  // Encabezado
+  ctx.fillStyle = '#54e38e';
+  ctx.font = 'bold 15px sans-serif';
+  ctx.fillText('DATAFUT · BOLETA DE ANÁLISIS', padding, 52);
+
+  ctx.fillStyle = '#ffffff';
+  ctx.font = 'bold 28px sans-serif';
+  ctx.fillText(boleta.nombre || 'Mi Boleta', padding, 90);
+
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '14px sans-serif';
+  const fechaStr = new Date(boleta.creada_en).toLocaleDateString('es-MX', { dateStyle: 'long' });
+  ctx.fillText(`${fechaStr}  ·  ${selecciones.length} selección(es) combinada(s)`, padding, 120);
+
+  // Línea separadora
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(padding, 142);
+  ctx.lineTo(width - padding, 142);
+  ctx.stroke();
+
+  // Dibujar cada selección
+  let currentY = 165;
+  selecciones.forEach((item, idx) => {
+    // Tarjeta de selección
+    ctx.fillStyle = 'rgba(16, 26, 23, 0.75)';
+    ctx.fillRect(padding, currentY, width - (padding * 2), itemHeight - 12);
+    ctx.strokeStyle = 'rgba(84, 227, 142, 0.2)';
+    ctx.strokeRect(padding, currentY, width - (padding * 2), itemHeight - 12);
+
+    // Número
+    ctx.fillStyle = '#54e38e';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(`${idx + 1}.`, padding + 14, currentY + 40);
+
+    // Equipos y Competición
+    ctx.fillStyle = '#94a3b8';
+    ctx.font = '13px sans-serif';
+    const liga = item.liga?.nombre || 'Competición';
+    ctx.fillText(`${item.local.nombre} vs ${item.visitante.nombre}  (${liga})`, padding + 42, currentY + 28);
+
+    // Nombre del Mercado
+    ctx.fillStyle = '#f8fafc';
+    ctx.font = 'bold 16px sans-serif';
+    ctx.fillText(item.mercado.nombre, padding + 42, currentY + 52);
+
+    // Badge de Porcentaje
+    const badgeWidth = 90;
+    const badgeHeight = 36;
+    const badgeX = width - padding - badgeWidth - 14;
+    const badgeY = currentY + ((itemHeight - 12 - badgeHeight) / 2);
+
+    ctx.fillStyle = 'rgba(84, 227, 142, 0.15)';
+    ctx.fillRect(badgeX, badgeY, badgeWidth, badgeHeight);
+    ctx.strokeStyle = 'rgba(84, 227, 142, 0.45)';
+    ctx.strokeRect(badgeX, badgeY, badgeWidth, badgeHeight);
+
+    ctx.fillStyle = '#54e38e';
+    ctx.font = 'bold 17px sans-serif';
+    ctx.textAlign = 'center';
+    ctx.fillText(`${item.estimacion}%`, badgeX + (badgeWidth / 2), badgeY + 24);
+    ctx.textAlign = 'left';
+
+    currentY += itemHeight;
+  });
+
+  // Pie de imagen
+  ctx.fillStyle = '#64748b';
+  ctx.font = '13px sans-serif';
+  ctx.fillText('📊 Analizado en https://data-fut.com  ·  Estadísticas y tendencias en tiempo real', padding, height - 30);
+
+  // Descarga del PNG
+  canvas.toBlob(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `boleta-${(boleta.nombre || 'datafut').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 'image/png');
 }
 
 document.getElementById('boletas').addEventListener('click', async event => {
@@ -97,6 +212,16 @@ document.getElementById('boletas').addEventListener('click', async event => {
     const original = copiar.textContent;
     copiar.textContent = 'Copiado ✓';
     setTimeout(() => { copiar.textContent = original; }, 2000);
+    return;
+  }
+  const imagen = event.target.closest('[data-download-image]');
+  if (imagen) {
+    const boleta = boletasPorId.get(imagen.dataset.downloadImage);
+    descargarImagenBoleta(boleta);
+    const original = imagen.textContent;
+    imagen.textContent = 'Generando...';
+    setTimeout(() => { imagen.textContent = '¡Descargada! ✓'; }, 1000);
+    setTimeout(() => { imagen.textContent = original; }, 3000);
     return;
   }
   const compartir = event.target.closest('[data-share]');
