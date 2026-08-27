@@ -132,9 +132,10 @@
       .barra-sesion .cuenta-separador { height:1px;margin:6px 5px;background:rgba(255,255,255,.1); }
       .barra-sesion .cuenta-panel .btn-salir { color:#ffaaa6; }
       .barra-sesion .cuenta-panel .btn-salir:hover { background:rgba(255,124,120,.1);color:#ff7c78; }
-      .barra-sesion .btn-spotlight-nav { display:inline-flex;align-items:center;gap:5px;padding:6px 11px;border:1px solid rgba(84,227,142,.25);border-radius:9px;background:rgba(84,227,142,.08);color:#54e38e;font:inherit;font-size:.74rem;font-weight:750;cursor:pointer;margin-left:6px;transition:all .15s ease; }
+      .barra-sesion .btn-spotlight-nav { display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid rgba(84,227,142,.25);border-radius:9px;background:rgba(84,227,142,.08);color:#54e38e;font:inherit;font-size:.74rem;font-weight:750;cursor:pointer;margin-left:6px;transition:all .15s ease; }
       .barra-sesion .btn-spotlight-nav:hover { background:rgba(84,227,142,.18);border-color:rgba(84,227,142,.5); }
       .barra-sesion .btn-spotlight-nav .spotlight-badge-key { padding:1px 5px;border-radius:5px;background:rgba(0,0,0,.35);font-size:.62rem;color:rgba(255,255,255,.85); }
+      .barra-sesion .btn-spotlight-nav .spotlight-mobile-label { display:none; }
       @media (max-width: 720px) {
         .barra-sesion { gap:0;padding:0 12px; }
         .barra-sesion .cuenta-menu { width:100%;min-width:0; }
@@ -146,7 +147,9 @@
         .barra-sesion nav::-webkit-scrollbar { display:none; }
         .barra-sesion nav a { display:inline-flex;align-items:center;gap:5px;flex:0 0 auto;padding:9px 8px;font-size:.7rem;scroll-snap-align:start; }
         .barra-sesion nav a .ico { font-size:.88rem; }
-        .barra-sesion .btn-spotlight-nav { margin:4px 4px 4px 0;padding:5px 8px;font-size:.68rem; }
+        .barra-sesion .btn-spotlight-nav { margin:4px 4px 4px 0;padding:6px 10px;font-size:.72rem;min-height:36px; }
+        .barra-sesion .btn-spotlight-nav .spotlight-badge-key { display:none; }
+        .barra-sesion .btn-spotlight-nav .spotlight-mobile-label { display:inline;font-size:.72rem;font-weight:750; }
       }`;
     document.head.appendChild(estilos);
   }
@@ -203,7 +206,7 @@
         ${enlaces}
         ${enlaceAdmin}
         <button type="button" class="btn-spotlight-nav" id="btn-spotlight-nav" aria-label="Abrir buscador global" title="Buscar (${shortcutText})">
-          <span>🔍</span><span class="spotlight-badge-key">${shortcutText}</span>
+          <span>🔍</span><span class="spotlight-badge-key">${shortcutText}</span><span class="spotlight-mobile-label">Buscar</span>
         </button>
       </nav>`;
     document.body.prepend(barra);

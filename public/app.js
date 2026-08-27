@@ -1020,6 +1020,46 @@ function configurarEventos() {
         const partido = event.target.closest('.h2h-match');
         if (partido) toggleEstadisticasPartido(partido, Number(partido.dataset.partidoId));
     });
+    window.addEventListener('scroll', actualizarBarraSticky, { passive: true });
+}
+
+function actualizarBarraSticky() {
+    const barra = document.getElementById('comparator-sticky-bar');
+    if (!barra) return;
+    const da = datosComparacion.a;
+    const db = datosComparacion.b;
+    if (!da || !db) {
+        barra.classList.remove('visible');
+        return;
+    }
+
+    const nameA = document.getElementById('sticky-name-a');
+    const nameB = document.getElementById('sticky-name-b');
+    const logoA = document.getElementById('sticky-logo-a');
+    const logoB = document.getElementById('sticky-logo-b');
+
+    if (nameA) nameA.textContent = da.info?.equipo || 'Local';
+    if (nameB) nameB.textContent = db.info?.equipo || 'Visitante';
+    if (logoA) {
+        const teamIdA = document.getElementById('team-a')?.value;
+        if (teamIdA) {
+            logoA.src = `/api/equipos/${teamIdA}/escudo`;
+            logoA.style.display = 'block';
+        }
+    }
+    if (logoB) {
+        const teamIdB = document.getElementById('team-b')?.value;
+        if (teamIdB) {
+            logoB.src = `/api/equipos/${teamIdB}/escudo`;
+            logoB.style.display = 'block';
+        }
+    }
+
+    if (window.scrollY > 360) {
+        barra.classList.add('visible');
+    } else {
+        barra.classList.remove('visible');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', async () => {

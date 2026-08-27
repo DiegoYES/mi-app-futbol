@@ -1259,5 +1259,119 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   font-size: .64rem;
 }
 
+/* ==========================================================================
+   Navegación Secundaria Unificada y Ergonómica (Pastillas / Pills Táctiles)
+   ========================================================================== */
+.catalog-nav, .team-nav, .page-nav, .match-topbar-links {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 24px;
+}
+.catalog-nav a, .team-nav a, .page-nav a, .match-topbar-links a, .match-topbar-links button {
+  display: inline-flex;
+  align-items: center;
+  min-height: 38px;
+  padding: 0 14px;
+  border-radius: 10px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-size: .76rem;
+  font-weight: 750;
+  text-decoration: none;
+  transition: all .15s ease;
+  cursor: pointer;
+}
+.catalog-nav a:hover, .team-nav a:hover, .page-nav a:hover, .match-topbar-links a:hover, .match-topbar-links button:hover {
+  background: var(--surface-raised);
+  border-color: rgba(84, 227, 142, 0.35);
+  color: var(--ink);
+}
+.catalog-nav a:first-child, .team-nav a:first-child, .page-nav a:first-child {
+  color: var(--green);
+  border-color: rgba(84, 227, 142, 0.25);
+  background: rgba(84, 227, 142, 0.06);
+}
+
+/* Zona segura inferior para móvil (evita que el botón flotante cubra contenido) */
+@media (max-width: 768px) {
+  .main-grid, .page-container, .catalog, .team-page, .picks-container, .container {
+    padding-bottom: 96px;
+  }
+}
+
+/* ==========================================================================
+   Barra Sticky de Contexto en Comparador (Desktop)
+   ========================================================================== */
+.comparator-sticky-bar {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  transform: translate(-50%, -10px);
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 7px 18px;
+  border-radius: 999px;
+  background: rgba(7, 16, 13, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(84, 227, 142, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+}
+.comparator-sticky-bar.visible {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translate(-50%, 0);
+}
+.sticky-team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sticky-team img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+  border-radius: 5px;
+  background: #f4f8f5;
+  padding: 2px;
+}
+.sticky-team strong {
+  font-size: .8rem;
+  font-weight: 800;
+  color: var(--ink);
+  max-width: 160px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sticky-team-local strong { color: var(--green); }
+.sticky-team-visitante strong { color: var(--cyan); }
+.sticky-vs {
+  font-size: .66rem;
+  font-weight: 900;
+  color: var(--muted);
+}
+.sticky-badge {
+  font-size: .56rem;
+  font-weight: 850;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+.sticky-badge.local { background: rgba(84, 227, 142, 0.15); color: var(--green); }
+.sticky-badge.visitante { background: rgba(56, 189, 248, 0.15); color: var(--cyan); }
+@media (max-width: 768px) {
+  .comparator-sticky-bar { display: none !important; }
+}
+
+
 
 

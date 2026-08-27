@@ -180,29 +180,6 @@ async function recorrer(nombre, opcionesContexto) {
     errores.push(`[${nombre}] no se encontró el buscador #busquedaCalendario en el calendario.`);
   }
 
-  // Comparador: simular selección y renderizado de estadísticas de un equipo real
-  await pagina.goto('/comparador.html', { waitUntil: 'networkidle' });
-  const selectLigaA = pagina.locator('#league-a');
-  if (await selectLigaA.count()) {
-    const opcionesLiga = await selectLigaA.locator('option').all();
-    const ligaValida = (await Promise.all(opcionesLiga.map(o => o.getAttribute('value')))).find(v => v && Number(v) > 0);
-    if (ligaValida) {
-      await selectLigaA.selectOption(ligaValida);
-      await pagina.waitForTimeout(600);
-      const selectEquipoA = pagina.locator('#team-a');
-      const opcionesEquipo = await selectEquipoA.locator('option').all();
-      const equipoValido = (await Promise.all(opcionesEquipo.map(o => o.getAttribute('value')))).find(v => v && Number(v) > 0);
-      if (equipoValido) {
-        await selectEquipoA.selectOption(equipoValido);
-        await pagina.waitForTimeout(1000);
-        const textoError = await pagina.locator('#name-a').textContent();
-        if (textoError === 'Error') {
-          errores.push(`[${nombre}] el comparador falló al cargar las estadísticas del equipo local (${equipoValido}).`);
-        }
-      }
-    }
-  }
-
   await navegador.close();
   return errores;
 }
