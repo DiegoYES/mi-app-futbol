@@ -764,7 +764,6 @@ function actualizarConfrontacionDirecta() {
     });
     cont.style.display = 'block';
 }
-
 async function analizarPanel(lado) {
     const teamId = document.getElementById(`team-${lado}`).value;
     const leagueId = document.getElementById(`league-${lado}`).value;
@@ -780,7 +779,6 @@ async function analizarPanel(lado) {
         return;
     }
 
-    resultsDiv.innerHTML = '<div class="loader">Calculando...</div>';
 
     const url = `/api/analisis/rangos?team=${teamId}&league=${leagueId}&season=${season}&scope=${scope}&limit=${limit}&min_inicio=${minInicio}&min_fin=${minFin}`;
     try {
@@ -883,7 +881,6 @@ async function mostrarH2H() {
         html += `</ul>`;
         document.getElementById('h2h-content').innerHTML = html;
     } catch (err) {
-        document.getElementById('h2h-content').innerHTML = 'Error al cargar historial.';
         console.error(err);
     }
 }

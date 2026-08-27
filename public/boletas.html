@@ -60,9 +60,9 @@ function fecha(valor) {
 
 function textoBoleta(boleta) {
   const lineas = boleta.selecciones.map((item, indice) => (
-    `${indice + 1}. ${item.local.nombre} (L) vs ${item.visitante.nombre} (V) — ${item.mercado.nombre} [${item.estimacion}%]`
+    `⚽ ${indice + 1}. ${item.local.nombre} vs ${item.visitante.nombre}\n   👉 ${item.mercado.nombre} (${item.estimacion}% efectividad)`
   ));
-  return `${boleta.nombre}\n${lineas.join('\n')}\n\nConfirma líneas y cuotas antes de apostar.`;
+  return `📋 ${boleta.nombre}\n\n${lineas.join('\n\n')}\n\n📊 Analizado en https://data-fut.com`;
 }
 
 async function cargarBoletas() {
@@ -85,7 +85,7 @@ async function cargarBoletas() {
       <strong>${esc(item.mercado.nombre)}<br><small>Confianza ${esc(item.confianza)} · muestra ${item.muestra} · ${item.fuentes}/2 fuentes</small></strong>
       <div class="boleta-prob">${item.estimacion}%</div>
     </div>`).join('')}</div>
-    <div class="boleta-actions"><button type="button" data-copy="${esc(boleta._id)}">Copiar lista</button><a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a><button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button></div>
+    <div class="boleta-actions"><button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button><button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button><a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a><button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button></div>
   </article>`).join('');
 }
 
@@ -94,7 +94,26 @@ document.getElementById('boletas').addEventListener('click', async event => {
   if (copiar) {
     const boleta = boletasPorId.get(copiar.dataset.copy);
     await navigator.clipboard.writeText(textoBoleta(boleta));
+    const original = copiar.textContent;
     copiar.textContent = 'Copiado ✓';
+    setTimeout(() => { copiar.textContent = original; }, 2000);
+    return;
+  }
+  const compartir = event.target.closest('[data-share]');
+  if (compartir) {
+    const boleta = boletasPorId.get(compartir.dataset.share);
+    const texto = textoBoleta(boleta);
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: boleta.nombre, text: texto, url: 'https://data-fut.com' });
+      } catch (e) {
+        if (e.name !== 'AbortError') {
+          window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
+        }
+      }
+    } else {
+      window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(texto)}`, '_blank');
+    }
     return;
   }
   const eliminar = event.target.closest('[data-delete]');
