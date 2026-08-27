@@ -59,6 +59,8 @@
   .editorial-badge.premium { background:rgba(104,217,231,.1);color:var(--cyan); }
   .editorial-badge.acertado { background:rgba(84,227,142,.12);color:var(--green); }
   .editorial-badge.fallado { background:rgba(255,124,120,.12);color:var(--red); }
+  .btn-eliminar-rec { padding:4px 9px;border:1px solid rgba(255,124,120,.45);border-radius:999px;background:rgba(255,124,120,.12);color:var(--red);font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .15s,color .15s; }
+  .btn-eliminar-rec:hover { background:var(--red);color:#07100d; }
   .editorial-analysis { margin:0;color:var(--muted);font-size:.77rem;line-height:1.65;white-space:pre-wrap; }
   .editorial-selections { display:grid;gap:8px;margin:0;padding:0;list-style:none; }
   .editorial-selection { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:11px 12px;border-left:3px solid var(--green);border-radius:0 9px 9px 0;background:rgba(84,227,142,.07); }
@@ -154,6 +156,7 @@ function mostrarMomio(decimal, americano) {
 const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
 let catalogoGeneralCargado = false;
 let picksGuardados = new Set();
+let esAdmin = false;
 
 async function cargarRecomendacionesEditoriales() {
   const contenedor = document.getElementById('recomendaciones-editoriales');
@@ -167,7 +170,10 @@ async function cargarRecomendacionesEditoriales() {
     }
     contenedor.innerHTML = datos.recomendaciones.map(item => {
       const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
-      const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${item.resultado !== 'pendiente' ? `<span class="editorial-badge ${esc(item.resultado)}">${esc(item.resultado)}</span>` : ''}`;
+      const botonEliminar = esAdmin
+        ? `<button type="button" class="btn-eliminar-rec" data-delete-rec="${item._id}" title="Eliminar recomendación del día">🗑️ Quitar</button>`
+        : '';
+      const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${item.resultado !== 'pendiente' ? `<span class="editorial-badge ${esc(item.resultado)}">${esc(item.resultado)}</span>` : ''}${botonEliminar}`;
       const contenido = item.bloqueada
         ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
         : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => `<li class="editorial-selection"><div><strong>${esc(seleccion.evento)}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b></li>`).join('')}</ol>`;
@@ -309,8 +315,43 @@ document.getElementById('mejores-generales').addEventListener('click', async eve
 const dialogoGeneral = document.getElementById('general-explanation-dialog');
 document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
 dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
-document.addEventListener('DOMContentLoaded', () => { cargarRecomendacionesEditoriales(); cargarMejoresGenerales(); cargarMetricasPicks(); });
-window.addEventListener('futbol:usuario-cargado', cargarRecomendacionesEditoriales);
+document.getElementById('recomendaciones-editoriales')?.addEventListener('click', async event => {
+  const btn = event.target.closest('[data-delete-rec]');
+  if (!btn) return;
+  const id = btn.dataset.deleteRec;
+  if (!confirm('¿Seguro que deseas eliminar este pick recomendado del día? Se quitará de la vista de todos los usuarios.')) return;
+  btn.disabled = true;
+  btn.textContent = 'Quitando...';
+  try {
+    const resp = await fetch(`/api/admin/recomendaciones/${id}`, { method: 'DELETE' });
+    const datos = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(datos.error || 'No se pudo eliminar la recomendación.');
+    await cargarRecomendacionesEditoriales();
+  } catch (err) {
+    alert('Error al eliminar: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '🗑️ Quitar';
+  }
+});
+
+window.addEventListener('futbol:usuario-cargado', (e) => {
+  if (e.detail?.rol === 'admin') {
+    esAdmin = true;
+    cargarRecomendacionesEditoriales();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/auth/me').then(r => r.json()).then(d => {
+    if (d.usuario?.rol === 'admin') {
+      esAdmin = true;
+    }
+  }).finally(() => {
+    cargarRecomendacionesEditoriales();
+    cargarMejoresGenerales();
+    cargarMetricasPicks();
+  });
+});
 window.addEventListener('futbol:picks-actualizados', cargarMetricasPicks);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarMetricasPicks(); });
 </script>
