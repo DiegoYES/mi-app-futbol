@@ -276,6 +276,9 @@
       .global-pick-meta{text-align:right}.global-pick-meta b{display:block;color:#68d9e7;font-size:.73rem}.global-pick-meta em{font-size:.55rem;font-style:normal;text-transform:uppercase}.global-pick-meta .pendiente{color:#f5be5b}.global-pick-meta .acertado{color:#54e38e}.global-pick-meta .fallado{color:#ff7c78}
       .global-pick-delete{grid-column:2/-1;justify-self:end;min-height:27px;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:transparent;color:#9db1a8;font-size:.58rem;cursor:pointer}
       .global-picks-empty{padding:24px 14px;color:#9db1a8;font-size:.7rem;line-height:1.5;text-align:center}
+      .global-picks-actions{padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:#14241f}
+      .btn-create-boleta{width:100%;min-height:40px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(84,227,142,.45);border-radius:10px;background:rgba(84,227,142,.12);color:#54e38e;font-size:.76rem;font-weight:850;cursor:pointer;transition:all .15s ease}
+      .btn-create-boleta:hover{background:#54e38e;color:#07100d;border-color:#54e38e}
       .global-picks-footer{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:11px 14px;border-top:1px solid rgba(255,255,255,.09);background:#14241f}.global-picks-footer a{color:#54e38e;font-size:.66rem;font-weight:850}.global-picks-footer span{color:#9db1a8;font-size:.57rem}
       body.global-picks-open .bet-slip,body.global-picks-open .pick-shortcut{opacity:.2;pointer-events:none}
       @media(max-width:560px){.global-picks-widget{right:10px;bottom:10px}.global-picks-panel{right:0;bottom:60px;width:calc(100vw - 20px);max-height:72vh}.global-picks-trigger{min-height:46px;padding:0 12px}.global-picks-trigger>span:nth-child(2){display:none}}
@@ -283,11 +286,15 @@
     document.head.appendChild(estilos);
   }
 
+  let ultimosPicksCargados = [];
+
   function pintarContenidoPicks(datos) {
     const panel = document.getElementById('global-picks-panel');
     const lista = document.getElementById('global-picks-list');
+    const acciones = document.getElementById('global-picks-actions');
     if (!panel || !lista) return;
     const picks = datos.picks || [];
+    ultimosPicksCargados = picks;
     const resumen = datos.resumen || {};
     const pendientes = picks.filter(item => item.estado === 'pendiente');
     const visibles = [...pendientes, ...picks.filter(item => item.estado !== 'pendiente')].slice(0, 7);
@@ -305,6 +312,16 @@
         ${pick.estado === 'pendiente' ? `<button type="button" class="global-pick-delete" data-global-pick-delete="${escaparHtml(pick._id)}">Quitar</button>` : ''}
       </article>`;
     }).join('') : '<div class="global-picks-empty">Todavía no tienes picks guardados. Abre un partido futuro y guarda un mercado para verlo aquí en cualquier página.</div>';
+
+    if (acciones) {
+      if (pendientes.length > 0) {
+        acciones.innerHTML = `<button id="global-picks-to-boleta" class="btn-create-boleta" type="button">📋 Guardar como Boleta (${pendientes.length})</button>`;
+        acciones.hidden = false;
+      } else {
+        acciones.innerHTML = '';
+        acciones.hidden = true;
+      }
+    }
   }
 
   async function actualizarPicksFlotantes() {
@@ -333,6 +350,7 @@
         <header class="global-picks-head"><div><span>Seguimiento personal</span><strong>Mis picks</strong></div><button id="global-picks-close" class="global-picks-close" type="button" aria-label="Cerrar">×</button></header>
         <div id="global-picks-summary" class="global-picks-summary"></div>
         <div id="global-picks-list" class="global-picks-list"></div>
+        <div id="global-picks-actions" class="global-picks-actions" hidden></div>
         <footer class="global-picks-footer"><span>Se actualiza en todas las páginas</span><a href="/picks.html">Ver historial completo →</a></footer>
       </section>
       <button id="global-picks-trigger" class="global-picks-trigger" type="button" aria-expanded="false" aria-controls="global-picks-panel"><span>✓</span><span>Mis picks</span><b id="global-picks-count" class="global-picks-count">0</b></button>`;
@@ -347,7 +365,50 @@
       if (!panel.hidden) actualizarPicksFlotantes();
     });
     document.getElementById('global-picks-close').addEventListener('click', cerrar);
-    document.getElementById('global-picks-list').addEventListener('click', async event => {
+    document.getElementById('global-picks-panel').addEventListener('click', async event => {
+      const botonBoleta = event.target.closest('#global-picks-to-boleta');
+      if (botonBoleta) {
+        const pendientes = ultimosPicksCargados.filter(item => item.estado === 'pendiente');
+        if (!pendientes.length) return;
+        const nombrePorDefecto = `Boleta ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
+        const nombre = prompt('Escribe un nombre para tu Boleta / Parlay:', nombrePorDefecto);
+        if (nombre === null) return;
+        botonBoleta.disabled = true;
+        botonBoleta.textContent = 'Guardando boleta...';
+        try {
+          const payload = {
+            nombre: nombre.trim() || nombrePorDefecto,
+            selecciones: pendientes.map(pick => ({
+              team_local: pick.local.id,
+              team_visitante: pick.visitante.id,
+              league_local: pick.liga.id,
+              league_visitante: pick.liga.id,
+              temporada_local: pick.liga.temporada,
+              temporada_visitante: pick.liga.temporada,
+              condicion_local: 'local',
+              condicion_visitante: 'visitante',
+              limite_local: 10,
+              limite_visitante: 10,
+              periodo_local: pick.mercado?.periodo || 0,
+              periodo_visitante: pick.mercado?.periodo || 0,
+              mercado_id: pick.mercado?.base_id || pick.mercado?.id
+            }))
+          };
+          const resp = await fetch('/api/boletas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const resData = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
+          window.location.href = '/boletas.html';
+        } catch (err) {
+          alert('Error: ' + err.message);
+          botonBoleta.disabled = false;
+          botonBoleta.textContent = `📋 Guardar como Boleta (${pendientes.length})`;
+        }
+        return;
+      }
       const boton = event.target.closest('[data-global-pick-delete]');
       if (!boton) return;
       boton.disabled = true;

@@ -122,7 +122,10 @@
   <section class="picks-section">
     <div class="section-heading">
       <div><p class="eyebrow">Historial</p><h3>Pronósticos guardados</h3></div>
-      <span class="model-badge">Auditable</span>
+      <div style="display:flex;align-items:center;gap:10px;">
+        <button id="btn-crear-boleta-historial" type="button" class="general-save" style="margin:0;min-height:36px;padding:0 12px;font-size:.72rem;font-weight:800;" hidden>📋 Guardar como Boleta</button>
+        <span class="model-badge">Auditable</span>
+      </div>
     </div>
     <div id="historial" class="history-list"><div class="loader">Liquidando resultados pendientes...</div></div>
   </section>
@@ -283,6 +286,56 @@ async function cargarHistorial() {
     <article class="pick-kpi"><span>Brier ↓</span><strong>${r.brier ?? '—'}</strong></article>`;
 
   const historial = document.getElementById('historial');
+  const btnBoleta = document.getElementById('btn-crear-boleta-historial');
+  const pendientes = datos.picks.filter(p => p.estado === 'pendiente');
+  if (btnBoleta) {
+    if (pendientes.length > 0) {
+      btnBoleta.hidden = false;
+      btnBoleta.textContent = `📋 Guardar pendientes como Boleta (${pendientes.length})`;
+      btnBoleta.onclick = async () => {
+        const nombrePorDefecto = `Boleta ${new Date().toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}`;
+        const nombre = prompt('Escribe un nombre para tu Boleta / Parlay:', nombrePorDefecto);
+        if (nombre === null) return;
+        btnBoleta.disabled = true;
+        btnBoleta.textContent = 'Guardando boleta...';
+        try {
+          const payload = {
+            nombre: nombre.trim() || nombrePorDefecto,
+            selecciones: pendientes.map(pick => ({
+              team_local: pick.local.id,
+              team_visitante: pick.visitante.id,
+              league_local: pick.liga.id,
+              league_visitante: pick.liga.id,
+              temporada_local: pick.liga.temporada,
+              temporada_visitante: pick.liga.temporada,
+              condicion_local: 'local',
+              condicion_visitante: 'visitante',
+              limite_local: 10,
+              limite_visitante: 10,
+              periodo_local: pick.mercado?.periodo || 0,
+              periodo_visitante: pick.mercado?.periodo || 0,
+              mercado_id: pick.mercado?.base_id || pick.mercado?.id
+            }))
+          };
+          const resp = await fetch('/api/boletas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+          });
+          const resData = await resp.json().catch(() => ({}));
+          if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
+          window.location.href = '/boletas.html';
+        } catch (err) {
+          alert('Error: ' + err.message);
+          btnBoleta.disabled = false;
+          btnBoleta.textContent = `📋 Guardar pendientes como Boleta (${pendientes.length})`;
+        }
+      };
+    } else {
+      btnBoleta.hidden = true;
+    }
+  }
+
   if (!datos.picks.length) {
     historial.innerHTML = '<div class="empty-state">Todavía no tienes picks. Abre un partido futuro desde el calendario y guarda un mercado antes de que comience.</div>';
     return;
