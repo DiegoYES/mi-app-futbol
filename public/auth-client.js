@@ -268,7 +268,7 @@
       .global-picks-panel[hidden]{display:none !important}
       .global-picks-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);background:#14241f}
       .global-picks-head span{display:block;color:#54e38e;font-size:.57rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.global-picks-head strong{display:block;margin-top:2px;font-size:.9rem}
-      .global-picks-close{width:36px;height:36px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(255,255,255,.06);color:#9db1a8;font-size:1.3rem;line-height:1;cursor:pointer;touch-action:manipulation}
+      .global-picks-close{position:relative;z-index:1;width:36px;height:36px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(255,255,255,.06);color:#9db1a8;font-size:1.3rem;line-height:1;cursor:pointer;touch-action:manipulation}
       .global-picks-close:hover,.global-picks-close:active{background:rgba(255,255,255,.15);color:#fff;border-color:#54e38e}
       .global-picks-summary{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
       .global-picks-summary div{padding:7px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
@@ -449,16 +449,24 @@
       else cerrar();
     });
 
-    document.getElementById('global-picks-close').addEventListener('click', (e) => {
+    const cerrarDesdeControl = (e) => {
       e.stopPropagation();
       cerrar();
-    });
+    };
+    const botonCerrar = document.getElementById('global-picks-close');
+    botonCerrar.addEventListener('click', cerrarDesdeControl);
+    // En algunos navegadores móviles el `click` puede retrasarse o perderse al
+    // desplazar el panel. Cerrar al soltar el toque lo hace inmediato y fiable.
+    botonCerrar.addEventListener('pointerup', cerrarDesdeControl);
 
-    document.addEventListener('click', (e) => {
+    const cerrarAlTocarFuera = (e) => {
       if (!widget.contains(e.target) && !panel.hidden) {
         cerrar();
       }
-    });
+    };
+
+    document.addEventListener('click', cerrarAlTocarFuera);
+    document.addEventListener('pointerdown', cerrarAlTocarFuera);
 
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape' && !panel.hidden) {

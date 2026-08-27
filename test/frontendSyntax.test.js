@@ -108,6 +108,8 @@ test('auth-client.js contiene JavaScript válido y monta Mis picks globales', ()
   assert.doesNotThrow(() => new Function(codigo));
   assert.match(codigo, /global-picks-widget/);
   assert.match(codigo, /futbol:picks-actualizados/);
+  assert.match(codigo, /botonCerrar\.addEventListener\('pointerup', cerrarDesdeControl\)/);
+  assert.match(codigo, /document\.addEventListener\('pointerdown', cerrarAlTocarFuera\)/);
   assert.match(codigo, /id="cuenta-menu-trigger"/);
   assert.match(codigo, /const ENLACES_CUENTA/);
 });
