@@ -264,18 +264,13 @@
       .global-picks-trigger>span:first-child{width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:rgba(84,227,142,.14);color:#54e38e}
       .global-picks-count{min-width:22px;height:22px;display:grid;place-items:center;padding:0 6px;border-radius:999px;background:#54e38e;color:#07100d;font-size:.67rem}
       .global-picks-panel{position:absolute;right:0;bottom:62px;width:min(390px,calc(100vw - 24px));max-height:min(78vh,580px);display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#101a17;box-shadow:0 28px 80px rgba(0,0,0,.72)}
-      .global-picks-panel[hidden]{display:none}
       .global-picks-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);background:#14241f}
       .global-picks-head span{display:block;color:#54e38e;font-size:.57rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.global-picks-head strong{display:block;margin-top:2px;font-size:.9rem}
-      .global-picks-close{width:31px;min-height:31px;padding:0;border:1px solid rgba(255,255,255,.12);border-radius:9px;background:transparent;color:#9db1a8;cursor:pointer}
       .global-picks-summary{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
       .global-picks-summary div{padding:7px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
       .global-picks-list{flex:1 1 auto;min-height:70px;max-height:270px;display:grid;gap:7px;overflow-y:auto;padding:10px 12px}
       .global-pick-item{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:9px;padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(255,255,255,.025)}
       .global-pick-item img{width:32px;height:32px;object-fit:contain;padding:3px;border-radius:8px;background:#f4f8f5}.global-pick-item a{min-width:0;color:#eef8f2;text-decoration:none}.global-pick-item strong,.global-pick-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.global-pick-item strong{font-size:.68rem}.global-pick-item small{margin-top:2px;color:#9db1a8;font-size:.58rem}
-      .global-pick-meta{text-align:right}.global-pick-meta b{display:block;color:#68d9e7;font-size:.73rem}.global-pick-meta em{font-size:.55rem;font-style:normal;text-transform:uppercase}.global-pick-meta .pendiente{color:#f5be5b}.global-pick-meta .acertado{color:#54e38e}.global-pick-meta .fallado{color:#ff7c78}
-      .global-pick-delete{grid-column:2/-1;justify-self:end;min-height:27px;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:7px;background:transparent;color:#9db1a8;font-size:.58rem;cursor:pointer}
-      .global-picks-empty{padding:20px 14px;color:#9db1a8;font-size:.7rem;line-height:1.5;text-align:center}
       .global-picks-actions{flex-shrink:0;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:#14241f}
       .btn-create-boleta{width:100%;min-height:42px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(84,227,142,.45);border-radius:10px;background:rgba(84,227,142,.15);color:#54e38e;font-size:.78rem;font-weight:850;cursor:pointer;transition:all .15s ease}
       .btn-create-boleta:hover{background:#54e38e;color:#07100d;border-color:#54e38e}
@@ -320,7 +315,7 @@
     const lista = document.getElementById('global-picks-list');
     const acciones = document.getElementById('global-picks-actions');
     if (!panel || !lista) return;
-    const picks = datos.picks || [];
+    const picks = datos?.picks || [];
     ultimosPicksCargados = picks;
     const resumen = datos.resumen || {};
     const pendientes = picks.filter(item => item.estado === 'pendiente');
@@ -514,11 +509,10 @@
   function cargarSpotlightSearch() {
     if (document.querySelector('script[src*="spotlight-search.js"]')) return;
     const script = document.createElement('script');
-    script.src = '/spotlight-search.js?v=20260826-spotlight';
+    script.src = '/spotlight-search.js?v=20260824-spotlight';
     script.defer = true;
     document.head.appendChild(script);
   }
-
   // Validar la sesión contra el servidor al cargar
   document.addEventListener('DOMContentLoaded', async () => {
     cargarPwaInstall();
