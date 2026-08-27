@@ -263,9 +263,13 @@
       .global-picks-trigger:hover{border-color:#54e38e;transform:translateY(-1px)}
       .global-picks-trigger>span:first-child{width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:rgba(84,227,142,.14);color:#54e38e}
       .global-picks-count{min-width:22px;height:22px;display:grid;place-items:center;padding:0 6px;border-radius:999px;background:#54e38e;color:#07100d;font-size:.67rem}
-      .global-picks-panel{position:absolute;right:0;bottom:62px;width:min(390px,calc(100vw - 24px));max-height:min(78vh,580px);display:flex;flex-direction:column;overflow:hidden;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#101a17;box-shadow:0 28px 80px rgba(0,0,0,.72)}
+      .global-picks-panel{display:none;position:absolute;right:0;bottom:62px;width:min(390px,calc(100vw - 24px));max-height:min(78vh,580px);flex-direction:column;overflow:hidden;border:1px solid rgba(255,255,255,.13);border-radius:18px;background:#101a17;box-shadow:0 28px 80px rgba(0,0,0,.72)}
+      .global-picks-panel:not([hidden]){display:flex !important}
+      .global-picks-panel[hidden]{display:none !important}
       .global-picks-head{flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 16px;border-bottom:1px solid rgba(255,255,255,.1);background:#14241f}
       .global-picks-head span{display:block;color:#54e38e;font-size:.57rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.global-picks-head strong{display:block;margin-top:2px;font-size:.9rem}
+      .global-picks-close{width:36px;height:36px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(255,255,255,.06);color:#9db1a8;font-size:1.3rem;line-height:1;cursor:pointer;touch-action:manipulation}
+      .global-picks-close:hover,.global-picks-close:active{background:rgba(255,255,255,.15);color:#fff;border-color:#54e38e}
       .global-picks-summary{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
       .global-picks-summary div{padding:7px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
       .global-picks-list{flex:1 1 auto;min-height:70px;max-height:270px;display:grid;gap:7px;overflow-y:auto;padding:10px 12px}
@@ -427,11 +431,13 @@
 
     const cerrar = () => {
       panel.hidden = true;
+      panel.setAttribute('hidden', '');
       trigger.setAttribute('aria-expanded', 'false');
       document.body.classList.remove('global-picks-open');
     };
     const abrir = () => {
       panel.hidden = false;
+      panel.removeAttribute('hidden');
       trigger.setAttribute('aria-expanded', 'true');
       document.body.classList.add('global-picks-open');
       actualizarPicksFlotantes();
