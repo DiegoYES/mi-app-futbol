@@ -269,8 +269,22 @@
       .global-picks-summary{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
       .global-picks-summary div{padding:7px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
       .global-picks-list{flex:1 1 auto;min-height:70px;max-height:270px;display:grid;gap:7px;overflow-y:auto;padding:10px 12px}
-      .global-pick-item{position:relative;display:grid;grid-template-columns:34px minmax(0,1fr) auto;align-items:center;gap:9px;padding:10px;border:1px solid rgba(255,255,255,.09);border-radius:11px;background:rgba(255,255,255,.025)}
-      .global-pick-item img{width:32px;height:32px;object-fit:contain;padding:3px;border-radius:8px;background:#f4f8f5}.global-pick-item a{min-width:0;color:#eef8f2;text-decoration:none}.global-pick-item strong,.global-pick-item small{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.global-pick-item strong{font-size:.68rem}.global-pick-item small{margin-top:2px;color:#9db1a8;font-size:.58rem}
+      .global-pick-item{display:flex;flex-direction:column;gap:8px;padding:10px 12px;border:1px solid rgba(255,255,255,.09);border-radius:12px;background:rgba(255,255,255,.025);transition:border-color .15s ease}
+      .global-pick-item:hover{border-color:rgba(84,227,142,.3)}
+      .global-pick-top{display:flex;align-items:center;gap:10px}
+      .global-pick-logo{width:32px;height:32px;flex-shrink:0;object-fit:contain;padding:3px;border-radius:8px;background:#f4f8f5}
+      .global-pick-info{min-width:0;flex:1;color:#eef8f2;text-decoration:none}
+      .global-pick-info strong{display:block;font-size:.75rem;font-weight:800;color:#eef8f2;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .global-pick-info small{display:block;margin-top:2px;color:#9db1a8;font-size:.62rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+      .global-pick-bottom{display:flex;align-items:center;justify-content:space-between;gap:8px;padding-top:6px;border-top:1px solid rgba(255,255,255,.05)}
+      .global-pick-meta{display:flex;align-items:center;gap:7px}
+      .global-pick-pct{font-size:.8rem;font-weight:900;color:#68d9e7}
+      .global-pick-badge{display:inline-block;padding:2px 7px;border-radius:6px;font-size:.58rem;font-weight:850;letter-spacing:.04em;text-transform:uppercase}
+      .global-pick-badge.pendiente{background:rgba(245,190,91,.15);color:#f5be5b;border:1px solid rgba(245,190,91,.3)}
+      .global-pick-badge.acertado{background:rgba(84,227,142,.15);color:#54e38e;border:1px solid rgba(84,227,142,.3)}
+      .global-pick-badge.fallado{background:rgba(255,124,120,.15);color:#ff7c78;border:1px solid rgba(255,124,120,.3)}
+      .global-pick-delete{min-height:26px;padding:0 10px;border:1px solid rgba(255,124,120,.3);border-radius:7px;background:rgba(255,124,120,.08);color:#ff7c78;font-size:.62rem;font-weight:750;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease}
+      .global-pick-delete:hover{background:#ff7c78;color:#07100d;border-color:#ff7c78}
       .global-picks-actions{flex-shrink:0;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:#14241f}
       .btn-create-boleta{width:100%;min-height:42px;display:flex;align-items:center;justify-content:center;gap:7px;border:1px solid rgba(84,227,142,.45);border-radius:10px;background:rgba(84,227,142,.15);color:#54e38e;font-size:.78rem;font-weight:850;cursor:pointer;transition:all .15s ease}
       .btn-create-boleta:hover{background:#54e38e;color:#07100d;border-color:#54e38e}
@@ -328,10 +342,20 @@
     lista.innerHTML = visibles.length ? visibles.map(pick => {
       const url = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`;
       return `<article class="global-pick-item">
-        <img src="/api/equipos/${pick.local.id}/escudo" alt="">
-        <a href="${url}"><strong>${escaparHtml(pick.mercado.nombre)}</strong><small>${escaparHtml(pick.local.nombre)} vs ${escaparHtml(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small></a>
-        <span class="global-pick-meta"><b>${pick.estimacion}%</b><em class="${escaparHtml(pick.estado)}">${escaparHtml(pick.estado)}</em></span>
-        ${pick.estado === 'pendiente' ? `<button type="button" class="global-pick-delete" data-global-pick-delete="${escaparHtml(pick._id)}">Quitar</button>` : ''}
+        <div class="global-pick-top">
+          <img src="/api/equipos/${pick.local.id}/escudo" alt="" class="global-pick-logo">
+          <a href="${url}" class="global-pick-info">
+            <strong>${escaparHtml(pick.mercado.nombre)}</strong>
+            <small>${escaparHtml(pick.local.nombre)} vs ${escaparHtml(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small>
+          </a>
+        </div>
+        <div class="global-pick-bottom">
+          <div class="global-pick-meta">
+            <span class="global-pick-pct">${pick.estimacion}%</span>
+            <span class="global-pick-badge ${escaparHtml(pick.estado)}">${escaparHtml(pick.estado)}</span>
+          </div>
+          ${pick.estado === 'pendiente' ? `<button type="button" class="global-pick-delete" data-global-pick-delete="${escaparHtml(pick._id)}">✕ Quitar</button>` : ''}
+        </div>
       </article>`;
     }).join('') : '<div class="global-picks-empty">Todavía no tienes picks guardados. Abre un partido futuro y guarda un mercado para verlo aquí en cualquier página.</div>';
 
