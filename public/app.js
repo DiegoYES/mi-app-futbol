@@ -1028,7 +1028,9 @@ function actualizarBarraSticky() {
     if (!barra) return;
     const da = datosComparacion.a;
     const db = datosComparacion.b;
-    if (!da || !db) {
+    // Solo activar en pantallas desktop (> 768px) cuando ambos equipos estén listos
+    if (!da || !db || (typeof window !== 'undefined' && window.innerWidth <= 768)) {
+        barra.style.display = 'none';
         barra.classList.remove('visible');
         return;
     }
@@ -1038,8 +1040,8 @@ function actualizarBarraSticky() {
     const logoA = document.getElementById('sticky-logo-a');
     const logoB = document.getElementById('sticky-logo-b');
 
-    if (nameA) nameA.textContent = da.info?.equipo || 'Local';
-    if (nameB) nameB.textContent = db.info?.equipo || 'Visitante';
+    if (nameA) nameA.textContent = da.info?.equipo || '';
+    if (nameB) nameB.textContent = db.info?.equipo || '';
     if (logoA) {
         const teamIdA = document.getElementById('team-a')?.value;
         if (teamIdA) {
@@ -1055,8 +1057,11 @@ function actualizarBarraSticky() {
         }
     }
 
-    if (window.scrollY > 360) {
-        barra.classList.add('visible');
+    if (window.scrollY > 380) {
+        barra.style.display = 'flex';
+        requestAnimationFrame(() => {
+            barra.classList.add('visible');
+        });
     } else {
         barra.classList.remove('visible');
     }
