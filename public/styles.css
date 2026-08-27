@@ -1088,6 +1088,10 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   background: var(--cyan);
   transition: width 300ms ease;
 }
+.h2h-name-a { color: var(--green); }
+.h2h-name-b { color: var(--cyan); }
+.error-notice { color: var(--red); }
+.is-hidden { display: none !important; }
 
 /* Filtro de categorías de mercado */
 .market-filter-tabs {

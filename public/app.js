@@ -732,8 +732,8 @@ function actualizarConfrontacionDirecta() {
             <div class="h2h-bar-wrapper">
                 <span class="h2h-metric-name">${titulo}</span>
                 <div class="h2h-dual-track">
-                    <div class="h2h-fill-local" style="width:${pctA}%"></div>
-                    <div class="h2h-fill-away" style="width:${pctB}%"></div>
+                    <div class="h2h-fill-local" data-h2h-pct="${pctA}"></div>
+                    <div class="h2h-fill-away" data-h2h-pct="${pctB}"></div>
                 </div>
             </div>
             <span class="h2h-val-away">${escaparHtml(String(valB))}</span>
@@ -753,12 +753,15 @@ function actualizarConfrontacionDirecta() {
     cont.innerHTML = `
         <div class="h2h-comparison-head">
             <strong>⚔️ Confrontación Directa de Medias</strong>
-            <span><b style="color:var(--green)">${escaparHtml(da.info.equipo)}</b> vs <b style="color:var(--cyan)">${escaparHtml(db.info.equipo)}</b></span>
+            <span><b class="h2h-name-a">${escaparHtml(da.info.equipo)}</b> vs <b class="h2h-name-b">${escaparHtml(db.info.equipo)}</b></span>
         </div>
         <div class="h2h-metrics-grid">
             ${metricas.join('')}
         </div>
     `;
+    cont.querySelectorAll('[data-h2h-pct]').forEach(el => {
+        el.style.width = `${el.dataset.h2hPct}%`;
+    });
     cont.style.display = 'block';
 }
 
@@ -773,7 +776,7 @@ async function analizarPanel(lado) {
     const resultsDiv = document.getElementById(`${lado}-analysis-results`);
 
     if (!teamId || !leagueId || !season) {
-        resultsDiv.innerHTML = '<p style="color:red;">Selecciona competición y equipo primero.</p>';
+        resultsDiv.innerHTML = '<p class="error-notice">Selecciona competición y equipo primero.</p>';
         return;
     }
 
@@ -840,7 +843,7 @@ async function toggleEstadisticasPartido(elemento, partidoId) {
 
             statsDiv.innerHTML = html;
         } catch (err) {
-            statsDiv.innerHTML = '<p style="color:red;">Error al cargar estadísticas.</p>';
+            statsDiv.innerHTML = '<p class="error-notice">Error al cargar estadísticas.</p>';
         }
     } else {
         statsDiv.style.display = 'none';
@@ -874,7 +877,7 @@ async function mostrarH2H() {
         data.ultimos.forEach(p => {
             html += `<li class="h2h-match" data-partido-id="${Number(p.api_id)}">
                 ${new Date(p.fecha).toLocaleDateString('es-MX')}: ${escaparHtml(p.local)} ${escaparHtml(p.marcador)} ${escaparHtml(p.visitante)} (${escaparHtml(p.liga || 'amistoso')})
-                <div class="match-stats" id="match-stats-${p.api_id}" style="display:none;"></div>
+                <div class="match-stats is-hidden" id="match-stats-${p.api_id}"></div>
             </li>`;
         });
         html += `</ul>`;
