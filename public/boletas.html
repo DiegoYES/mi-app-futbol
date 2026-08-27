@@ -56,7 +56,7 @@
 </head>
 <body>
 <main class="container">
-  <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/picks.html">Mejores picks</a></nav>
+  <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/picks.html">Mis picks</a></nav>
   <header class="header">
     <div class="header-copy">
       <p class="eyebrow">Borradores personales</p>
@@ -107,10 +107,6 @@
         </select>
       </label>
     </div>
-    <label class="rec-modal-field">
-      <span>Fecha y hora límite de cierre (expiración del pick)</span>
-      <input id="rec-modal-cierra-en" type="datetime-local" required>
-    </label>
     <label class="rec-modal-field">
       <span>Análisis / Justificación (opcional)</span>
       <textarea id="rec-modal-descripcion" placeholder="Explica brevemente la lógica de la recomendación..."></textarea>
@@ -291,13 +287,22 @@ formRec?.addEventListener('submit', async (e) => {
   btn.textContent = 'Publicando...';
 
   try {
+    const rawFecha = document.getElementById('rec-modal-cierra-en').value;
+    let fechaIso = null;
+    if (rawFecha) {
+      const parsedDate = new Date(rawFecha);
+      if (!isNaN(parsedDate.getTime())) {
+        fechaIso = parsedDate.toISOString();
+      }
+    }
+
     const payload = {
       titulo: document.getElementById('rec-modal-titulo').value,
       visibilidad: document.getElementById('rec-modal-visibilidad').value,
       estado_publicacion: document.getElementById('rec-modal-estado').value,
       momio_total: document.getElementById('rec-modal-momio').value,
       destacada: document.getElementById('rec-modal-destacada').value === 'true',
-      cierra_en: document.getElementById('rec-modal-cierra-en').value,
+      cierra_en: fechaIso,
       descripcion: document.getElementById('rec-modal-descripcion').value
     };
 
@@ -330,18 +335,8 @@ document.getElementById('boletas').addEventListener('click', async event => {
     document.getElementById('rec-modal-momio').value = cuotaSugerida.toFixed(2);
     document.getElementById('rec-modal-descripcion').value = '';
 
-    // Calcular fecha límite por defecto
-    let fechaLimite = null;
-    const selecciones = boleta.selecciones || [];
-    const fechas = selecciones
-      .map(s => s.fecha_partido ? new Date(s.fecha_partido) : null)
-      .filter(d => d && !isNaN(d.getTime()) && d > new Date());
-    if (fechas.length > 0) {
-      fechaLimite = new Date(Math.min(...fechas.map(d => d.getTime())));
-    } else {
-      fechaLimite = new Date(Date.now() + 24 * 3600 * 1000);
-    }
-    const localISO = new Date(fechaLimite.getTime() - (fechaLimite.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
+    const defaultFecha = new Date(Date.now() + 24 * 3600 * 1000);
+    const localISO = new Date(defaultFecha.getTime() - (defaultFecha.getTimezoneOffset() * 60000)).toISOString().slice(0, 16);
     document.getElementById('rec-modal-cierra-en').value = localISO;
 
     modalRec.showModal();
