@@ -592,7 +592,7 @@
       actualizarUsuarioInterfaz(usuario);
       window.dispatchEvent(new CustomEvent('futbol:usuario-cargado', { detail: usuario }));
       if (!esPaginaAdmin) pintarAvisoLegal();
-      if (!esPaginaConfiguracion) crearWidgetPicks();
+      if (!esPaginaAdmin && !esPaginaConfiguracion) crearWidgetPicks();
       const parametros = new URLSearchParams(window.location.search);
       const registroLimitado = parametros.get('registro') === 'ip_duplicada';
       if (!usuario.tieneAcceso || registroLimitado) mostrarPaywall(registroLimitado ? 'ip_duplicada' : usuario.motivo);
