@@ -7,8 +7,13 @@ const paginas = [
   'index.html', 'inicio.html', 'login.html', 'admin.html', 'calendario.html',
   'partido.html', 'picks.html', 'boletas.html', 'equipos.html', 'equipo.html', 'jugadores.html',
   'competiciones.html', 'competicion.html', 'jugador.html', 'arbitros.html', 'guia.html', 'sugerencias.html',
-  'suscripcion.html'
+  'suscripcion.html', 'configuracion.html'
 ];
+
+const directorioPublico = path.join(__dirname, '..', 'public');
+const fuentePublica = (...archivos) => archivos
+  .map(archivo => fs.readFileSync(path.join(directorioPublico, archivo), 'utf8'))
+  .join(String.fromCharCode(10));
 
 for (const pagina of paginas) {
   test(`${pagina} contiene JavaScript inline válido`, () => {
@@ -29,6 +34,12 @@ test('app.js contiene JavaScript válido', () => {
   assert.doesNotThrow(() => new Function(codigo));
 });
 
+for (const archivo of ['app-picks.js', 'admin-core.js', 'admin-picks.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js', 'calendario.js', 'partido.js']) {
+  test(archivo + ' contiene JavaScript válido', () => {
+    assert.doesNotThrow(() => new Function(fuentePublica(archivo)));
+  });
+}
+
 test('market-search.js contiene JavaScript válido', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'market-search.js'), 'utf8');
   assert.doesNotThrow(() => new Function(codigo));
@@ -47,13 +58,13 @@ test('el comparador permite buscar competiciones por país y equipos por nombre'
 });
 
 test('el calendario pluraliza correctamente la palabra competición', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  const html = fuentePublica('calendario.html', 'calendario.js');
   assert.doesNotMatch(html, /competición\$\{competiciones\.length === 1 \? '' : 'es'\}/);
   assert.match(html, /\? 'competición' : 'competiciones'/);
 });
 
 test('el calendario evita ligas duplicadas y permite contraer sus grupos', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  const html = fuentePublica('calendario.html', 'calendario.js');
   assert.doesNotMatch(html, /const susLigas =/);
   assert.match(html, /data-league-group/);
   assert.match(html, /data-leagues-action="expandir"/);
@@ -62,7 +73,7 @@ test('el calendario evita ligas duplicadas y permite contraer sus grupos', () =>
 });
 
 test('el calendario permite filtrar por estado y rango de hora local', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'calendario.html'), 'utf8');
+  const html = fuentePublica('calendario.html', 'calendario.js');
   assert.match(html, /data-status-filter="terminado"/);
   assert.match(html, /data-status-filter="en_juego"/);
   assert.match(html, /data-status-filter="no_iniciado"/);
@@ -74,7 +85,7 @@ test('el calendario permite filtrar por estado y rango de hora local', () => {
 });
 
 test('los picks del comparador reciben los filtros visibles de ambos equipos', () => {
-  const codigo = fs.readFileSync(path.join(__dirname, '..', 'public', 'app.js'), 'utf8');
+  const codigo = fuentePublica('app.js', 'app-picks.js');
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.match(codigo, /scope1: document\.getElementById\('scope-a'\)\.value/);
   assert.match(codigo, /limit2: document\.getElementById\('limit-b'\)\.value/);
@@ -83,7 +94,7 @@ test('los picks del comparador reciben los filtros visibles de ambos equipos', (
 });
 
 test('partido y comparador permiten filtrar todas las categorías y líneas exactas', () => {
-  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  const partido = fuentePublica('partido.html', 'partido.js');
   const comparador = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
   assert.match(partido, />Todas<\/option>/);
   assert.match(partido, /Todas las líneas/);
@@ -97,6 +108,10 @@ test('auth-client.js contiene JavaScript válido y monta Mis picks globales', ()
   assert.doesNotThrow(() => new Function(codigo));
   assert.match(codigo, /global-picks-widget/);
   assert.match(codigo, /futbol:picks-actualizados/);
+  assert.match(codigo, /botonCerrar\.addEventListener\('pointerup', cerrarDesdeControl\)/);
+  assert.match(codigo, /document\.addEventListener\('pointerdown', cerrarAlTocarFuera\)/);
+  assert.match(codigo, /id="cuenta-menu-trigger"/);
+  assert.match(codigo, /const ENLACES_CUENTA/);
 });
 
 test('los eventos anónimos del embudo tienen sintaxis válida y cobertura de vistas', () => {
@@ -138,23 +153,33 @@ test('la prueba y el checkout enlazan condiciones y exigen consentimiento', () =
 });
 
 test('el panel de administración conecta sus controles sin eventos inline bloqueados por CSP', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'admin.html'), 'utf8');
+  const html = fuentePublica('admin.html', 'admin-core.js', 'admin-picks.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js');
   assert.doesNotMatch(html, /\son(?:click|change|input|submit)=/i);
   assert.match(html, /function instalarEventos\(\)/);
   assert.match(html, /data-accion="guardar-ticket"/);
   assert.match(html, /data-accion="cortesia"/);
   assert.match(html, /data-accion="extender"/);
+  assert.match(html, /data-quality-retry-stats/);
+  assert.match(html, /manejarAccionCalidad/);
+});
+
+test('el creador editorial tokeniza partidos y mercados y muestra el nombre completo de Audax', () => {
+  const html = fuentePublica('admin.html', 'admin-core.js', 'admin-picks.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js');
+  assert.match(html, /<script src="\/search-utils\.js"><\/script>/);
+  assert.match(html, /\[2329, 'Audax Italiano'\]/);
+  assert.match(html, /FutbolSearch\.ordenar\(partidosRecomendacion/);
+  assert.match(html, /FutbolSearch\.ordenar\(todos/);
 });
 
 test('los enfrentamientos del centro de partido exponen detalles desplegables', () => {
-  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  const html = fuentePublica('partido.html', 'partido.js');
   assert.match(html, /data-h2h-details/);
   assert.match(html, /alternarDetalleH2H/);
   assert.match(html, /Ver estadísticas/);
 });
 
 test('la ficha ofrece las estadísticas como una opción propia del partido', () => {
-  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  const partido = fuentePublica('partido.html', 'partido.js');
   assert.match(partido, /data-match-tab="estadisticas"/);
   assert.doesNotMatch(partido, /data-match-tab="estadisticas" hidden/);
   assert.match(partido, /id="estadisticasPartido"/);
@@ -169,7 +194,7 @@ test('la ficha ofrece las estadísticas como una opción propia del partido', ()
 });
 
 test('la ficha permite buscar manualmente líneas sin depender de una casa', () => {
-  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  const partido = fuentePublica('partido.html', 'partido.js');
   assert.match(partido, /id="periodoMercadoPartido"/);
   assert.match(partido, />Ambos equipos</);
   assert.match(partido, /id="tipoMercadoPartido"/);
@@ -193,7 +218,7 @@ test('Mis picks permite explorar candidatos generales por línea', () => {
 });
 
 test('la ficha explora por línea exacta sin duplicar un ranking automático', () => {
-  const partido = fs.readFileSync(path.join(__dirname, '..', 'public', 'partido.html'), 'utf8');
+  const partido = fuentePublica('partido.html', 'partido.js');
   assert.match(partido, /Explora los picks de este partido/);
   assert.match(partido, /linea === null \|\| item\.linea === linea/);
   assert.doesNotMatch(partido, /Mejores picks del partido/);

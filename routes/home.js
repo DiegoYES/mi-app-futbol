@@ -7,6 +7,7 @@ const Boleta = require('../models/Boleta');
 const config = require('../config/leagues');
 const { etiquetaTemporada } = require('../services/seasonLabel');
 const { construirCatalogo } = require('../services/competitionCatalog');
+const { construirIndiceEquipos } = require('../services/globalTeamIndex');
 const { cacheMiddleware, obtenerOCrearCache } = require('../middleware/cache');
 
 const router = express.Router();
@@ -30,7 +31,7 @@ async function obtenerCompeticiones() {
   ]);
 }
 
-function construirResumenGlobal(competiciones, jugadores) {
+function construirResumenGlobal(competiciones, totalJugadores) {
   const idsLigas = new Set();
   const temporadas = new Set();
   let partidos = 0;
@@ -47,10 +48,16 @@ function construirResumenGlobal(competiciones, jugadores) {
     if (item.hasta && (!hasta || item.hasta > hasta)) hasta = item.hasta;
   }
 
+  const cantidadJugadores = typeof totalJugadores === 'number'
+    ? totalJugadores
+    : Array.isArray(totalJugadores)
+      ? totalJugadores.length
+      : Number(totalJugadores) || 0;
+
   return {
     partidos,
     con_estadisticas: conEstadisticas,
-    jugadores: jugadores.length,
+    jugadores: cantidadJugadores,
     ligas: idsLigas.size,
     competiciones: idsLigas.size,
     temporadas_guardadas: competiciones.length,
@@ -59,13 +66,21 @@ function construirResumenGlobal(competiciones, jugadores) {
   };
 }
 
+async function contarJugadores() {
+  const resultado = await JugadorPartido.aggregate([
+    { $group: { _id: '$jugador.id' } },
+    { $count: 'total' }
+  ]);
+  return resultado[0]?.total || 0;
+}
+
 async function obtenerResumenGlobal() {
   return obtenerOCrearCache(CACHE_RESUMEN_GLOBAL, async () => {
-    const [competiciones, jugadores] = await Promise.all([
+    const [competiciones, totalJugadores] = await Promise.all([
       obtenerCompeticiones(),
-      JugadorPartido.distinct('jugador.id')
+      contarJugadores()
     ]);
-    return construirResumenGlobal(competiciones, jugadores);
+    return construirResumenGlobal(competiciones, totalJugadores);
   }, TTL_RESUMEN_GLOBAL);
 }
 
@@ -97,6 +112,56 @@ router.get('/competiciones', cacheMiddleware, async (_req, res) => {
       total: competiciones.length,
       temporadas_guardadas: filas.length
     });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+async function obtenerFilasEquipos() {
+  const competiciones = await obtenerCompeticiones();
+  const ultimaPorLiga = new Map();
+  for (const item of competiciones) {
+    const lid = Number(item._id?.id);
+    const temp = Number(item._id?.temporada);
+    if (!ultimaPorLiga.has(lid) || temp > ultimaPorLiga.get(lid)) {
+      ultimaPorLiga.set(lid, temp);
+    }
+  }
+
+  const condiciones = [...ultimaPorLiga.entries()].map(([lid, temp]) => ({
+    'liga.id': lid,
+    'liga.temporada': temp
+  }));
+
+  const matchStage = condiciones.length > 0 ? { $match: { $or: condiciones } } : null;
+  const pipeline = [
+    ...(matchStage ? [matchStage] : []),
+    { $project: {
+      liga_id: '$liga.id', temporada: '$liga.temporada', liga_nombre: '$liga.nombre',
+      equipos: [
+        { id: '$equipo_local.id', nombre: '$equipo_local.nombre', logo: '$equipo_local.logo' },
+        { id: '$equipo_visitante.id', nombre: '$equipo_visitante.nombre', logo: '$equipo_visitante.logo' }
+      ]
+    } },
+    { $unwind: '$equipos' },
+    { $match: { 'equipos.id': { $type: 'number' } } },
+    { $group: {
+      _id: { liga: '$liga_id', temporada: '$temporada', equipo: '$equipos.id' },
+      liga_nombre: { $first: '$liga_nombre' },
+      nombre: { $first: '$equipos.nombre' },
+      logo: { $first: '$equipos.logo' }
+    } },
+    { $sort: { '_id.liga': 1, '_id.temporada': -1, nombre: 1 } }
+  ];
+
+  return Partido.aggregate(pipeline);
+}
+
+router.get('/equipos', cacheMiddleware, async (_req, res) => {
+  try {
+    const filas = await obtenerFilasEquipos();
+    const equipos = construirIndiceEquipos(filas, config.ligas, etiquetaTemporada);
+    res.json({ equipos, total: equipos.length });
   } catch (error) {
     errorServidor(res, error);
   }

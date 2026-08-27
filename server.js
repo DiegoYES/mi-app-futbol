@@ -2,6 +2,7 @@ require('dotenv').config();
 const express = require('express');
 const helmet = require('helmet');
 const path = require('path');
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const config = require('./config/leagues');
 const { etiquetaTemporada } = require('./services/seasonLabel');
@@ -16,6 +17,7 @@ const authRoutes = require('./routes/auth');
 const adminRoutes = require('./routes/admin');
 const calendarioRoutes = require('./routes/calendario');
 const picksRoutes = require('./routes/picks');
+const recomendacionesRoutes = require('./routes/recomendaciones');
 const boletasRoutes = require('./routes/boletas');
 const homeRoutes = require('./routes/home');
 const jugadoresRoutes = require('./routes/jugadores');
@@ -23,6 +25,7 @@ const sugerenciasRoutes = require('./routes/sugerencias');
 const systemRoutes = require('./routes/system');
 const billingRoutes = require('./routes/billing');
 const productEventsRoutes = require('./routes/productEvents');
+const socialLinksRoutes = require('./routes/socialLinks');
 const mercadoPagoWebhookRoutes = require('./routes/mercadoPagoWebhook');
 const { protegido, requireAuth, requireAdmin, usuarioDeSesion } = require('./middleware/auth');
 const { resumirEventosPorMinuto } = require('./services/minuteRangeAnalysis');
@@ -40,6 +43,7 @@ const {
 const { observarHttp } = require('./middleware/observability');
 const { crearEnviadorHtml, bannerEstatico } = require('./middleware/entornoBanner');
 const { cerrarRedis, conectarRedis } = require('./services/redisBackend');
+const { crearHashesEstilosInline } = require('./services/csp');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -52,11 +56,13 @@ const cacheEscudos = new Map();
 // llenarse se descarta el más antiguo; el navegador igual cachea 7 días.
 const MAX_ESCUDOS_CACHE = 2000;
 const TEMPORADA_MIN_ANALISIS = Number.parseInt(process.env.ANALYSIS_MIN_SEASON || '2025', 10);
+const HASHES_ESTILOS_INLINE = crearHashesEstilosInline(path.join(__dirname, 'public'));
 
 app.disable('x-powered-by');
 configurarProxy(app);
 app.use(asignarIdSolicitud);
 app.use(observarHttp);
+app.use((_req, res, next) => { res.locals.cspNonce = crypto.randomBytes(18).toString('base64'); next(); });
 app.use(helmet({
   // Compatibilidad temporal con scripts/estilos inline existentes. Aun así se
   // bloquean scripts remotos, iframes, objetos y conexiones a otros orígenes.
@@ -64,12 +70,15 @@ app.use(helmet({
   // (onclick="...", onsubmit="...") NO se ejecutan. Usa addEventListener.
   contentSecurityPolicy: { directives: {
     defaultSrc: ["'self'"],
-    scriptSrc: ["'self'", "'unsafe-inline'"],
+    scriptSrc: ["'self'", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
     scriptSrcAttr: ["'none'"],
-    styleSrc: ["'self'", "'unsafe-inline'"],
+    styleSrc: ["'self'", (_req, res) => `'nonce-${res.locals.cspNonce}'`],
+    styleSrcAttr: ["'unsafe-hashes'", ...HASHES_ESTILOS_INLINE],
     imgSrc: ["'self'", 'data:', 'https://media.api-sports.io'],
     connectSrc: ["'self'"],
     fontSrc: ["'self'", 'data:'],
+    workerSrc: ["'self'"],
+    manifestSrc: ["'self'"],
     objectSrc: ["'none'"],
     baseUri: ["'self'"],
     formAction: ["'self'"],
@@ -94,6 +103,7 @@ const RUTA_IMAGEN = /^\/(equipos\/\d+\/escudo|ligas\/\d+\/logo)\/?$/;
 app.use('/api', validarOrigenNavegador, (req, res, next) =>
   RUTA_IMAGEN.test(req.path) ? limiteEscudos(req, res, next) : limiteApi(req, res, next));
 
+app.use("/api/social-links", socialLinksRoutes);
 // La raíz es pública para visitantes y conserva el panel como inicio de quien
 // ya tiene sesión. El comparador vive en una ruta explícita.
 // enviarHtml añade el banner "ENTORNO DE PRUEBA" sólo si APP_ENVIRONMENT=staging.
@@ -104,7 +114,10 @@ app.get(['/', '/index.html'], async (req, res) => {
   return enviarHtml(res, usuario ? 'inicio.html' : 'landing.html');
 });
 app.get('/comparador.html', (_req, res) => enviarHtml(res, 'index.html'));
-app.use(paginasPrivadas({ '/admin.html': ['admin'] }, path.join(__dirname, 'public')));
+app.use(paginasPrivadas({
+  '/admin.html': ['admin'],
+  '/configuracion.html': ['usuario', 'admin']
+}, path.join(__dirname, 'public'), enviarHtml));
 app.use(bannerEstatico(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
@@ -115,6 +128,9 @@ app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
 // El buzón solo exige sesión: también sirve para reportar problemas de acceso.
 app.use('/api/sugerencias', requireAuth, sugerenciasRoutes);
+// Una cuenta vencida puede ver el avance bloqueado; el contenido premium sólo
+// se revela usando el mismo estadoAcceso de la prueba y la suscripción actuales.
+app.use('/api/recomendaciones', requireAuth, recomendacionesRoutes);
 
 // Todos los endpoints de datos requieren sesión válida y acceso vigente
 // Las imágenes exigen sesión pero se registran antes de `protegido` para no

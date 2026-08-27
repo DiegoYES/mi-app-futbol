@@ -116,16 +116,17 @@
 - [x] Barra superior unificada con enlace a Calendario y resaltado de página activa.
 - [x] Calendario con vista de próximos 7 días.
 - [ ] Unificar `index.html` e `inicio.html`: hoy conviven dos portadas distintas.
-- [ ] Extraer los estilos embebidos de cada HTML a `styles.css` (hoy hay CSS duplicado en 5 páginas).
+- [ ] Extraer los estilos embebidos de cada HTML a `styles.css` (quedan bloques
+  locales en `inicio.html` y `picks.html`; el resto ya migró).
 - [ ] Estado de carga y error consistente en todas las vistas (hoy cada página lo resuelve a su manera).
 - [ ] Página 404 propia en lugar del error por defecto de Express.
 
 ### Fase 2 — Experiencia de consulta
-- [ ] Buscador global en la barra superior (equipos, ligas y partidos) con atajo `/`.
+- [x] Buscador global (portada, calendario, equipos, jugadores, árbitros y admin).
 - [ ] Filtro por competición dentro del calendario (hoy solo se puede filtrar por API).
 - [ ] Marcar en el calendario los partidos con estadísticas disponibles frente a los que no las tienen.
 - [ ] Vista de tabla de posiciones por liga y temporada.
-- [ ] Ficha de equipo con racha, local/visitante y promedios (existe `equipo.html` casi vacío).
+- [x] Ficha de equipo con forma reciente, racha, local/visitante y partidos (`equipo.html`).
 - [ ] Historial de enfrentamientos ampliado con filtros por temporada y localía.
 
 ### Fase 3 — Producto de pago
@@ -142,9 +143,12 @@
 - [ ] Modo oscuro y claro conmutable (hoy solo existe el tema oscuro).
 - [ ] Accesibilidad: foco visible, etiquetas ARIA y contraste revisado.
 
-### Fase 5 — Producción
-- [ ] Migrar de WSL a VPS con PM2 y arranque automático.
-- [ ] HTTPS con Let's Encrypt y dominio propio.
-- [ ] Respaldos automáticos de MongoDB.
-- [ ] Cron diario de `sync:calendario` para mantener los próximos días al día.
-- [ ] Monitoreo de errores y de consumo de la cuota de la API.
+### Fase 5 — Producción ✅ completada (verificada 25 ago 2026)
+- [x] Migración a VPS superada: producción corre con releases inmutables bajo
+  systemd, dos instancias Node (3000/3001) balanceadas por Nginx con `least_conn`.
+- [x] HTTPS con dominio propio `data-fut.com`.
+- [x] Respaldos automáticos de MongoDB (`data-fut-mongo-backup.timer`, diario a
+  las 03:35 UTC; restauración de prueba validada el 2026-08-15).
+- [x] Cron de sincronización (`cronSync.sh` horario en el minuto 7).
+- [x] Monitoreo cada 5 minutos (`data-fut-monitor.timer`) y panel de cuota de la
+  API en administración.

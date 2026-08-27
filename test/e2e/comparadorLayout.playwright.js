@@ -27,10 +27,46 @@ const metrics = '<p class="period-label">Partido completo · 8 partidos</p><div 
   ]) {
     const context = await browser.newContext(config);
     const page = await context.newPage();
-    await page.route('**/api/**', route => route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ usuario: { id: 1, nombre: 'QA', rol: 'admin', tieneAcceso: true } }) }));
+    await page.route('**/api/**', route => {
+      const url = new URL(route.request().url());
+      let body = { usuario: { id: 1, nombre: 'QA', rol: 'admin', tieneAcceso: true } };
+      if (url.pathname === '/api/ligas') body = [{
+        id: 140, nombre: 'La Liga', pais: 'España', temporada: 2026, temporada_analisis: 2026,
+        disponible: true, temporadas_analisis: [{ temporada: 2026, etiqueta: '2026-27', finalizados: 10 }]
+      }];
+      if (url.pathname === '/api/ligas/140/equipos') body = [{ id: 1, nombre: 'Athletic Club' }, { id: 2, nombre: 'Alaves' }];
+      if (/^\/api\/equipos\/\d+\/estadisticas-detalladas$/.test(url.pathname)) body = {
+        info: { equipo: url.pathname.includes('/1/') ? 'Athletic Club' : 'Alaves', periodo: 'Partido completo', cobertura: { partidos: 0, estadisticas: 0 } },
+        stats: { jugados: 0 }
+      };
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify(body) });
+    });
     await page.goto(`http://127.0.0.1:${server.address().port}/index.html`);
     await page.locator('#stats-a').evaluate((node, html) => { node.innerHTML = html; }, metrics);
     await page.locator('#stats-b').evaluate((node, html) => { node.innerHTML = html; }, metrics);
+    await page.locator('#tab-history-a').click();
+    await page.locator('#matches-a').evaluate(node => {
+      node.innerHTML = generarVistaPorEstadisticas([{
+        fecha: '2026-08-09T12:00:00Z', rival: 'Rival', resultado: 'V', marcador: '2-1',
+        goles: 2, tiros: 11, tiros_puerta: 5, corners: 6, faltas: 10, amarillas: 2, rojas: 1, puntos_tarjetas: 4, offsides: 1,
+        rival_estadisticas: { goles: 1, tiros: 8, tiros_puerta: 3, corners: 4, faltas: 12, amarillas: 3, rojas: 0, puntos_tarjetas: 3, offsides: 2 }
+      }], 5);
+    });
+    const encabezados = await page.locator('#matches-a .advanced-detail-table').first().locator('th').allTextContents();
+    assert.deepEqual(encabezados, ['Fecha', 'Rival', 'A favor', 'En contra', 'Total partido', 'Resultado']);
+    const tiros = await page.locator('#matches-a .advanced-detail-table').nth(1).locator('tbody tr').first().locator('td').allTextContents();
+    assert.equal(tiros[2], '11');
+    assert.equal(tiros[3], '8');
+    assert.equal(tiros[4], '19');
+    const puntosTarjetas = await page.locator('#matches-a .advanced-detail-table').nth(7).locator('tbody tr').first().locator('td').allTextContents();
+    assert.equal(puntosTarjetas[2], '4');
+    assert.equal(puntosTarjetas[3], '3');
+    assert.equal(puntosTarjetas[4], '7');
+    assert.equal(await page.locator('#panel-summary-a').isHidden(), true);
+    assert.equal(await page.locator('#panel-history-a').isVisible(), true);
+    await page.locator('#tab-trends-a').press('ArrowRight');
+    assert.equal(await page.locator('#tab-history-a').getAttribute('aria-selected'), 'true');
+    await page.locator('#tab-summary-a').click();
     const layout = await page.evaluate(() => ({
       overflow: document.documentElement.scrollWidth > document.documentElement.clientWidth,
       columns: getComputedStyle(document.querySelector('.main-grid')).gridTemplateColumns.split(' ').length,
@@ -52,6 +88,15 @@ const metrics = '<p class="period-label">Partido completo · 8 partidos</p><div 
       assert.equal(layout.metricColumns, 3);
     }
     await page.screenshot({ path: `/tmp/comparador-${config.name}.png`, fullPage: true });
+
+    const estado = '?local=1&leagueLocal=140&seasonLocal=2026&scopeLocal=local&limitLocal=5&halfLocal=0&visitante=2&leagueVisitante=140&seasonVisitante=2026&scopeVisitante=visitante&limitVisitante=3&halfVisitante=0';
+    await page.goto(`http://127.0.0.1:${server.address().port}/index.html${estado}`);
+    await page.reload();
+    await page.waitForFunction(() => document.querySelector('#team-a').value === '1' && document.querySelector('#team-b').value === '2');
+    assert.equal(await page.locator('#team-a').inputValue(), '1');
+    assert.equal(await page.locator('#team-b').inputValue(), '2');
+    assert.match(page.url(), /local=1/);
+    assert.match(page.url(), /visitante=2/);
     await context.close();
   }
   await browser.close();

@@ -102,6 +102,14 @@ escribir_marcador() {
   printf '%s\n' "${VALOR}" > "${TMP}"
   chmod 644 "${TMP}"
   mv -f "${TMP}" "${RELEASES_DIR}/DEPLOYED_COMMIT"
+  # Espejo en el repositorio: permite que las verificaciones corridas desde
+  # REPO_DIR (cron, scripts manuales) conozcan el release vigente.
+  if [ -d "${REPO_DIR}" ] && [ -w "${REPO_DIR}" ]; then
+    local TMP_REPO="${REPO_DIR}/.RELEASE_COMMIT.$$"
+    printf '%s\n' "${VALOR}" > "${TMP_REPO}"
+    chmod 644 "${TMP_REPO}"
+    mv -f "${TMP_REPO}" "${REPO_DIR}/RELEASE_COMMIT"
+  fi
 }
 saludable() {
   local PUERTO="$1"
@@ -109,9 +117,11 @@ saludable() {
   return 1
 }
 reiniciar_pool() {
+  local VERSION_ESPERADA="$1"
   for INDICE in "${!POOL_SERVICES[@]}"; do
     systemctl restart "${POOL_SERVICES[${INDICE}]}" || return 1
     saludable "${POOL_PORTS[${INDICE}]}" || return 1
+    curl -fsS "http://127.0.0.1:${POOL_PORTS[${INDICE}]}/health/version/${VERSION_ESPERADA}" >/dev/null 2>&1 || return 1
     if [ "${INDICE}" -lt "$(("${#POOL_SERVICES[@]}" - 1))" ] && [ "${POOL_SETTLE_SECONDS}" -gt 0 ]; then
       sleep "${POOL_SETTLE_SECONDS}"
     fi
@@ -124,13 +134,13 @@ restaurar() {
     echo "RESTAURANDO ${ACTUAL}..." >&2
     ln -s "${CURRENT_REAL}" "${LINK_TMP}" && mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"
     escribir_marcador "${ACTUAL}"
-    reiniciar_pool && echo "Restauración saludable en todo el pool." >&2 \
+    reiniciar_pool "${ACTUAL}" && echo "Restauración saludable en todo el pool." >&2 \
       || echo "INTERVENCIÓN URGENTE: restauración incompleta en el pool." >&2
   fi
 }
 trap restaurar EXIT
 ln -s "${TARGET}" "${LINK_TMP}"; mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"; ENLACE_CAMBIADO=1
-reiniciar_pool || fallo "el rollback no respondió en todo el pool; se restaura ${ACTUAL}."
+reiniciar_pool "${OBJETIVO}" || fallo "el rollback no respondió en todo el pool; se restaura ${ACTUAL}."
 escribir_marcador "${OBJETIVO}"
 printf '%s rollback -> %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${OBJETIVO}" >> "${HISTORIAL}"
 OK=1; trap - EXIT

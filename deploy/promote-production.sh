@@ -93,6 +93,14 @@ escribir_marcador() {
   printf '%s\n' "${VALOR}" > "${TMP}"
   chmod 644 "${TMP}"
   mv -f "${TMP}" "${RELEASES_DIR}/DEPLOYED_COMMIT"
+  # Espejo en el repositorio: permite que las verificaciones corridas desde
+  # REPO_DIR (cron, scripts manuales) conozcan el release vigente.
+  if [ -d "${REPO_DIR}" ] && [ -w "${REPO_DIR}" ]; then
+    local TMP_REPO="${REPO_DIR}/.RELEASE_COMMIT.$$"
+    printf '%s\n' "${VALOR}" > "${TMP_REPO}"
+    chmod 644 "${TMP_REPO}"
+    mv -f "${TMP_REPO}" "${REPO_DIR}/RELEASE_COMMIT"
+  fi
 }
 saludable() {
   local PUERTO="$1"
@@ -100,9 +108,11 @@ saludable() {
   return 1
 }
 reiniciar_pool() {
+  local VERSION_ESPERADA="$1"
   for INDICE in "${!POOL_SERVICES[@]}"; do
     systemctl restart "${POOL_SERVICES[${INDICE}]}" || return 1
     saludable "${POOL_PORTS[${INDICE}]}" || return 1
+    curl -fsS "http://127.0.0.1:${POOL_PORTS[${INDICE}]}/health/version/${VERSION_ESPERADA}" >/dev/null 2>&1 || return 1
     if [ "${INDICE}" -lt "$(("${#POOL_SERVICES[@]}" - 1))" ] && [ "${POOL_SETTLE_SECONDS}" -gt 0 ]; then
       sleep "${POOL_SETTLE_SECONDS}"
     fi
@@ -117,7 +127,7 @@ restaurar() {
     echo "RESTAURANDO ${BASE}..." >&2
     ln -s "${CURRENT_REAL}" "${LINK_TMP}" && mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"
     escribir_marcador "${BASE}"
-    reiniciar_pool && echo "Restauración saludable en todo el pool." >&2 \
+    reiniciar_pool "${BASE}" && echo "Restauración saludable en todo el pool." >&2 \
       || echo "INTERVENCIÓN URGENTE: restauración incompleta en el pool." >&2
   fi
 }
@@ -127,11 +137,12 @@ if [ ! -d "${RELEASE_DIR}" ]; then
   "${GIT[@]}" archive "${SHA}" | tar -x -C "${BUILD_DIR}"
   [ -f "${BUILD_DIR}/server.js" ] || fallo "el commit no contiene server.js."
   (cd "${BUILD_DIR}" && npm ci --omit=dev --no-audit --no-fund)
+  printf '%s\n' "${SHA}" > "${BUILD_DIR}/RELEASE_COMMIT"
   mkdir -p "${BUILD_DIR}/var"; touch "${BUILD_DIR}/.release-ok"
   chown -R "${PROD_USER}:${PROD_USER}" "${BUILD_DIR}"; mv "${BUILD_DIR}" "${RELEASE_DIR}"
 fi
 ln -s "${RELEASE_DIR}" "${LINK_TMP}"; mv -Tf "${LINK_TMP}" "${RELEASES_DIR}/current"; ENLACE_CAMBIADO=1
-reiniciar_pool || fallo "el release nuevo no respondió en todo el pool; se restaura ${BASE}."
+reiniciar_pool "${SHA}" || fallo "el release nuevo no respondió en todo el pool; se restaura ${BASE}."
 escribir_marcador "${SHA}"
 printf '%s promote -> %s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)" "${SHA}" >> "${RELEASES_DIR}/RELEASE_HISTORY"
 OK=1; trap - EXIT

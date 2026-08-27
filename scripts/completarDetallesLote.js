@@ -1,5 +1,7 @@
 require('dotenv').config({ quiet: true });
+
 const mongoose = require('mongoose');
+const { invalidarCacheDatosPartidos } = require('../services/syncCache');
 const axios = require('axios');
 const https = require('https');
 const Partido = require('../models/partido');
@@ -54,10 +56,11 @@ async function completarLiga(leagueId, season) {
           {
             $and: [
               { detalle_consultado_en: { $lt: reintentarAntesDe } },
+              { estadisticas_completas: { $ne: true } },
+              { estadisticas_no_disponibles: { $ne: true } },
               { $or: [
-                { estadisticas_completas: { $ne: true } },
-                { eventos_completos: { $ne: true } },
-                { jugadores_completos: { $ne: true } }
+                { estadisticas_intentos: { $lt: 3 } },
+                { estadisticas_intentos: { $exists: false } }
               ] }
             ]
           }
@@ -126,6 +129,7 @@ async function main() {
       }
       await completarLiga(liga, season);
     }
+    if (solicitudesUsadas > 0) await invalidarCacheDatosPartidos();
   } finally {
     await mongoose.disconnect();
   }

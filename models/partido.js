@@ -39,6 +39,7 @@ const partidoSchema = new mongoose.Schema({
   api_id: { type: Number, required: true, unique: true },
   fecha: { type: Date, required: true },
   estado: String,
+  estado_consultado_en: { type: Date, default: null },
   minuto_juego: Number,
   arbitro: String,
   liga: {
@@ -110,6 +111,9 @@ const partidoSchema = new mongoose.Schema({
   estadisticas_completas: { type: Boolean, default: false },
   estadisticas_no_disponibles: { type: Boolean, default: false },
   estadisticas_intentos: { type: Number, default: 0 },
+  estadisticas_estado: { type: String, default: 'pendiente' },
+  estadisticas_ausencia_motivo: { type: String, default: null },
+  estadisticas_ultimo_intento_en: { type: Date, default: null },
   tiempos_completos: { type: Boolean, default: false },
   tiempos_consultados_en: { type: Date, default: null },
   tiempos_disponibles: { type: Boolean, default: null },

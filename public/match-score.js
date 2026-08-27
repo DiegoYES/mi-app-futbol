@@ -12,6 +12,7 @@
   if (root) root.FutbolMarcador = api;
 })(typeof globalThis !== 'undefined' ? globalThis : this, function crearMarcador() {
   const ESTADOS_FINALIZADOS = ['FT', 'AET', 'PEN'];
+  const ESTADOS_EN_VIVO = ['1H', '1T', 'HT', '2H', '2T', 'ET', 'BT', 'P', 'LIVE', 'IN_PLAY'];
 
   const ETIQUETAS_ESTADO = {
     PST: 'Aplazado',
@@ -24,11 +25,15 @@
     INT: 'Interrumpido',
     TBD: 'Por confirmar',
     '1H': 'En vivo',
+    '1T': 'En vivo',
     HT: 'Descanso',
     '2H': 'En vivo',
+    '2T': 'En vivo',
     ET: 'Prórroga',
     BT: 'Pausa',
-    P: 'Penales'
+    P: 'Penales',
+    LIVE: 'En vivo',
+    IN_PLAY: 'En vivo'
   };
 
   function normalizarEstado(estado) {
@@ -37,6 +42,19 @@
 
   function esFinalizado(estado) {
     return ESTADOS_FINALIZADOS.includes(normalizarEstado(estado));
+  }
+
+  function esEnVivo(estado) {
+    return ESTADOS_EN_VIVO.includes(normalizarEstado(estado));
+  }
+
+  function esEstadoAtrasado(partido, ahora = new Date(), horasGracia = 2) {
+    const estado = normalizarEstado(partido && partido.estado);
+    if (!['NS', 'TBD'].includes(estado)) return false;
+    const inicio = new Date(partido && partido.fecha);
+    const referencia = new Date(ahora);
+    if (!Number.isFinite(inicio.getTime()) || !Number.isFinite(referencia.getTime())) return false;
+    return referencia.getTime() >= inicio.getTime() + (horasGracia * 3600000);
   }
 
   function numeroONulo(valor) {
@@ -74,6 +92,7 @@
     if (estado === 'PEN') return 'Penales';
     if (estado === 'AET') return 'Final (pró.)';
     if (estado === 'FT') return 'Final';
+    if (esEstadoAtrasado(partido)) return 'Sin confirmar';
     return ETIQUETAS_ESTADO[estado] || alternativa || estado || '';
   }
 
@@ -102,8 +121,11 @@
 
   return {
     ESTADOS_FINALIZADOS,
+    ESTADOS_EN_VIVO,
     ETIQUETAS_ESTADO,
     esFinalizado,
+    esEnVivo,
+    esEstadoAtrasado,
     penalesDe,
     prorrogaDe,
     ganadorPenales,

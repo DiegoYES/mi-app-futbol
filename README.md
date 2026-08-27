@@ -106,24 +106,31 @@ lado del comparador, por lo que no mezcla campañas silenciosamente.
 `ANALYSIS_MIN_SEASON=2025` mantiene 2022-24 fuera de picks y comparación de forma,
 pero conserva ese archivo para H2H, perfiles de jugadores y tablas históricas.
 
-## Cobertura prioritaria al 26 de julio de 2026
+## Cobertura al 26 de agosto de 2026
 
-- Base total: 15,173 partidos, 302 equipos y 11,299 jugadores, sin inconsistencias de marcador,
-  total de goles, ambos-anotan ni identificadores.
-- Temporada API 2025 completa para Liga MX, MLS, Brasileirão, Premier League,
-  LaLiga, Ligue 1, Serie A y Bundesliga.
-- Temporada API 2026 actual para Liga MX, MLS y Brasileirão, incluyendo los
-  partidos finalizados disponibles a la fecha.
-- Campaña europea 2026-27 preparada con sus fixtures futuros; el detalle se irá
-  incorporando conforme terminen los encuentros.
-- Estadísticas, eventos y jugadores completos en todos los finalizados de este
-  bloque salvo un fixture de Brasileirão cuyo proveedor no entregó jugadores.
-- Archivo 2022-23, 2023-24 y 2024-25 de las ocho ligas prioritarias: 9,035
-  finalizados con estadísticas y eventos completos; seis no incluyen jugadores
-  porque el proveedor no entregó ese bloque.
+- Base total: 198,559 partidos de 116 competiciones, 4,432 equipos y
+  4,298,097 actuaciones de jugador.
+- Ocho ligas prioritarias (Liga MX, MLS, Brasileirão, Premier League, LaLiga,
+  Ligue 1, Serie A y Bundesliga) con temporadas API 2021-2025 completas y la
+  temporada vigente al día mediante el cron horario.
+- Pirámides completas de Inglaterra, Francia y Alemania hasta tercera/cuarta
+  división; segundas divisiones de España, Italia, Portugal, Países Bajos,
+  Bélgica y Turquía entre otras.
+- Bloque femenil: Liga MX Femenil, Women's Super League, Serie A Women,
+  Première Ligue, Frauen-Bundesliga, Liga F, Brasileirão Femenino, A-League
+  Women, NWSL, Damallsvenskan y UEFA Champions League Women (2017-2026).
+- Selecciones y copas: Mundial 2026, Euro 2024, Copa América 2024, Libertadores,
+  Sudamericana, Concachampions, Leagues Cup y Mundial de Clubes 2025.
+- Torneos incorporados el 26 de agosto de 2026: FIFA Club World Cup 2025 y
+  CONCACAF Gold Cup 2025 con estadísticas, eventos y jugadores al 100 %;
+  Copa América Femenina 2025 con marcadores y eventos, sin estadísticas
+  avanzadas porque el proveedor no las ofrece para ese torneo.
 
 La interfaz representa estadísticas avanzadas ausentes con `—`; nunca las
 convierte en cero. Las ligas sin partidos guardados aparecen deshabilitadas.
+El endpoint `/leagues` del proveedor declara por temporada qué cobertura
+entrega (`coverage.fixtures.statistics_fixtures`); conviene consultarlo antes
+de planear una sincronización.
 
 ## Mantenimiento
 

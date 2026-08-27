@@ -5,9 +5,15 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Mis picks</title>
 <link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Data-Fut">
+<link rel="apple-touch-icon" href="/brand-mark.svg">
 <meta name="theme-color" content="#07100d">
 <link rel="stylesheet" href="/styles.css">
-<script src="/auth-client.js"></script>
+<script src="/auth-client.js?v=20260827-v11"></script>
 <style>
   .page-nav { display:flex; gap:16px; margin-bottom:24px; }
   .page-nav a { color:var(--green); text-decoration:none; font-size:.85rem; }
@@ -15,6 +21,7 @@
   .pick-kpi { padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
   .pick-kpi span { display:block; color:var(--muted); font-size:.7rem; text-transform:uppercase; }
   .pick-kpi strong { display:block; margin-top:3px; font-size:1.6rem; }
+  .analytics-panel{margin-bottom:20px}.analytics-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.analytics-toolbar select{min-height:40px;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}.analytics-table{width:100%;border-collapse:collapse;font-size:.72rem}.analytics-table th,.analytics-table td{padding:9px;border-bottom:1px solid var(--line);text-align:left}.analytics-table th{color:var(--muted);font-size:.62rem;text-transform:uppercase}.calibration-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-top:14px}.calibration-point{padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.calibration-point span,.calibration-point b,.calibration-point small{display:block}.calibration-point span{color:var(--muted);font-size:.6rem}.calibration-point b{margin:4px 0;font-size:1rem}.calibration-point small{font-size:.58rem;color:var(--muted)}
   .history-list { display:grid; gap:10px; }
   .history-item { display:grid; grid-template-columns:minmax(210px,1.4fr) minmax(160px,1fr) auto auto; align-items:center; gap:16px; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
   .history-match strong, .history-market strong { display:block; }
@@ -41,10 +48,37 @@
   .general-save.saved { border-color:var(--line); background:var(--surface-soft); color:var(--muted); }
   .general-actions { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
   .general-actions .pick-why,.general-actions .general-save { min-height:42px; margin:4px 0 0; }
+  .editorial-grid { display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px; }
+  .editorial-card { position:relative;display:flex;flex-direction:column;gap:12px;padding:19px;border:1px solid var(--line);border-radius:16px;background:var(--surface-raised);overflow:hidden; }
+  .editorial-card.featured { border-color:rgba(245,190,91,.55);box-shadow:0 12px 34px rgba(0,0,0,.18); }
+  .editorial-head { display:flex;justify-content:space-between;gap:14px;align-items:flex-start; }
+  .editorial-head small { display:block;color:var(--muted);font-size:.62rem;font-weight:850;letter-spacing:.07em;text-transform:uppercase; }
+  .editorial-head h4 { margin:5px 0 0;font-size:1.08rem;line-height:1.35; }
+  .editorial-badges { display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end; }
+  .editorial-badge { padding:5px 8px;border-radius:999px;background:rgba(84,227,142,.1);color:var(--green);font-size:.58rem;font-weight:900;text-transform:uppercase;white-space:nowrap; }
+  .editorial-badge.premium { background:rgba(104,217,231,.1);color:var(--cyan); }
+  .editorial-badge.acertado { background:rgba(84,227,142,.12);color:var(--green); }
+  .editorial-badge.fallado { background:rgba(255,124,120,.12);color:var(--red); }
+  .btn-eliminar-rec { padding:4px 9px;border:1px solid rgba(255,124,120,.45);border-radius:999px;background:rgba(255,124,120,.12);color:var(--red);font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .15s,color .15s; }
+  .btn-eliminar-rec:hover { background:var(--red);color:#07100d; }
+  .editorial-analysis { margin:0;color:var(--muted);font-size:.77rem;line-height:1.65;white-space:pre-wrap; }
+  .editorial-selections { display:grid;gap:8px;margin:0;padding:0;list-style:none; }
+  .editorial-selection { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:11px 12px;border-left:3px solid var(--green);border-radius:0 9px 9px 0;background:rgba(84,227,142,.07); }
+  .editorial-selection strong,.editorial-selection span { display:block; }
+  .editorial-selection strong { font-size:.78rem; }
+  .editorial-selection span { margin-top:3px;color:var(--muted);font-size:.68rem; }
+  .editorial-selection b { color:var(--green);font-size:.86rem;white-space:nowrap; }
+  .editorial-footer { display:flex;justify-content:space-between;gap:12px;margin-top:auto;padding-top:11px;border-top:1px solid var(--line);color:var(--muted);font-size:.65rem; }
+  .editorial-lock { padding:20px;border:1px dashed rgba(104,217,231,.4);border-radius:12px;background:rgba(104,217,231,.05);text-align:center; }
+  .editorial-lock strong,.editorial-lock span { display:block; }
+  .editorial-lock span { margin:7px 0 12px;color:var(--muted);font-size:.72rem; }
+  .editorial-lock a { color:var(--green);font-size:.72rem;font-weight:900; }
+  .analytics-panel{min-width:0}.analytics-panel .table-scroll{max-width:100%;overflow-x:auto}.analytics-table{min-width:620px}
+  @media (max-width:520px) { .analytics-toolbar{align-items:stretch;flex-direction:column}.analytics-toolbar label,.analytics-toolbar select{width:100%;min-width:0} }
   @media (max-width:520px) { .general-actions{grid-template-columns:1fr} }
   @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:minmax(0,1fr) auto;gap:12px; } }
-  @media (max-width:800px) { .general-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid{grid-template-columns:1fr}.general-card{min-height:155px} }
+  @media (max-width:800px) { .general-grid,.editorial-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
+  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px} }
 </style>
 </head>
 <body>
@@ -52,18 +86,27 @@
   <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/calendario.html">Calendario</a></nav>
   <header class="header">
     <div class="header-copy">
-      <p class="eyebrow">Registro verificable</p>
-      <h1>Mis <span>picks.</span></h1>
-      <p>Aquí no cuentan retrospectivas: solamente pronósticos guardados antes del inicio y liquidados contra el marcador final.</p>
+      <p class="eyebrow">Selección y probabilidades</p>
+      <h1>Mejores <span>picks.</span></h1>
+      <p>Picks recomendados del día por nuestro equipo y explorador de mercados con mayor respaldo estadístico de la jornada.</p>
     </div>
   </header>
 
   <section class="picks-section">
     <div class="section-heading">
-      <div><p class="eyebrow">Próximos 7 días</p><h3>Mejores picks generales</h3></div>
+      <div><p class="eyebrow">Selección de Data-Fut</p><h3>Picks, combinadas y parlays recomendados</h3></div>
+      <span class="model-badge">Actualizados por nosotros</span>
+    </div>
+    <p>Recomendaciones editoriales del día publicadas por nuestro equipo. Los picks premium están incluidos en tus 7 días de prueba y membresía activa.</p>
+    <div id="recomendaciones-editoriales" class="editorial-grid"><div class="loader">Cargando recomendaciones…</div></div>
+  </section>
+
+  <section class="picks-section">
+    <div class="section-heading">
+      <div><p class="eyebrow">Próximos 7 días</p><h3>Mejores picks generales por probabilidad</h3></div>
       <span class="model-badge">Evidencia mínima</span>
     </div>
-    <p>Compara los candidatos más sólidos de todos los próximos partidos y busca la línea exacta que ofrece tu casa.</p>
+    <p>Compara los candidatos con mayor porcentaje de acierto de todos los próximos partidos y busca la línea exacta que ofrece tu casa.</p>
     <div class="general-controls">
       <label>Categoría<select id="general-categoria"><option value="">Todas</option></select></label>
       <label>Dirección<select id="general-direccion"><option value="">Over y Under</option></select></label>
@@ -73,12 +116,10 @@
   </section>
 
   <section id="resumen" class="pick-kpis"><div class="loader">Cargando rendimiento...</div></section>
-  <section class="picks-section">
-    <div class="section-heading">
-      <div><p class="eyebrow">Historial</p><h3>Pronósticos guardados</h3></div>
-      <span class="model-badge">Auditable</span>
-    </div>
-    <div id="historial" class="history-list"><div class="loader">Liquidando resultados pendientes...</div></div>
+  <section class="picks-section analytics-panel">
+    <div class="analytics-toolbar"><div><p class="eyebrow">Resultados segmentados</p><h3>Rendimiento y calibración del modelo</h3></div><label>Segmentar por <select id="analytics-dimension"><option value="mercado">Mercado</option><option value="liga">Liga</option><option value="alcance">Local/visitante</option><option value="periodo">Periodo</option><option value="confianza">Confianza</option><option value="muestra">Tamaño de muestra</option><option value="mes">Mes</option><option value="temporada">Temporada</option></select></label></div>
+    <div id="analytics-segments"><div class="loader">Calculando segmentos…</div></div>
+    <div id="analytics-calibration" class="calibration-grid"></div>
   </section>
 </main>
 <dialog id="general-explanation-dialog" class="explanation-dialog" aria-labelledby="general-explanation-title">
@@ -96,9 +137,52 @@ function fecha(valor) {
   return new Date(valor).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
+function mostrarMomio(decimal, americano) {
+  if (!decimal) return '';
+  const cuota = Number(decimal);
+  const recibido = Number(americano);
+  const calculado = Number.isFinite(recibido)
+    ? recibido
+    : cuota >= 2 ? Math.round((cuota - 1) * 100) : Math.round(-100 / (cuota - 1));
+  const valorAmericano = calculado === -100 ? 100 : calculado;
+  const americanoTexto = `${valorAmericano > 0 ? '+' : ''}${valorAmericano}`;
+  let formato = 'ambos';
+  try { formato = localStorage.getItem('datafut:formato-momio') || 'ambos'; } catch {}
+  if (formato === 'decimal') return Number(decimal).toFixed(2);
+  if (formato === 'americano') return americanoTexto;
+  return `${Number(decimal).toFixed(2)} (${americanoTexto})`;
+}
+
 const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
 let catalogoGeneralCargado = false;
 let picksGuardados = new Set();
+let esAdmin = false;
+
+async function cargarRecomendacionesEditoriales() {
+  const contenedor = document.getElementById('recomendaciones-editoriales');
+  try {
+    const respuesta = await fetch('/api/recomendaciones', { cache: 'no-store' });
+    const datos = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar las recomendaciones.');
+    if (!datos.recomendaciones.length) {
+      contenedor.innerHTML = '<div class="empty-state">Todavía no hemos publicado picks, combinadas o parlays recomendados.</div>';
+      return;
+    }
+    contenedor.innerHTML = datos.recomendaciones.map(item => {
+      const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
+      const botonEliminar = esAdmin
+        ? `<button type="button" class="btn-eliminar-rec" data-delete-rec="${item._id}" title="Eliminar recomendación del día">🗑️ Quitar</button>`
+        : '';
+      const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${item.resultado !== 'pendiente' ? `<span class="editorial-badge ${esc(item.resultado)}">${esc(item.resultado)}</span>` : ''}${botonEliminar}`;
+      const contenido = item.bloqueada
+        ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
+        : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => `<li class="editorial-selection"><div><strong>${esc(seleccion.evento)}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b></li>`).join('')}</ol>`;
+      return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>Momio total ${mostrarMomio(item.cuota_total, item.momio_total_americano)}</strong></footer></article>`;
+    }).join('');
+  } catch (error) {
+    contenedor.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
+  }
+}
 
 function marcarPicksGeneralesGuardados() {
   document.querySelectorAll('[data-save-general]').forEach(boton => {
@@ -174,47 +258,32 @@ async function abrirAnalisisGeneral(boton) {
   }
 }
 
-async function cargarHistorial() {
+let analiticaPicks = { segmentos: {}, calibracion: [] };
+function pintarAnaliticaPicks() {
+  const dimension = document.getElementById('analytics-dimension').value;
+  const filas = analiticaPicks.segmentos?.[dimension] || [];
+  document.getElementById('analytics-segments').innerHTML = filas.length ? `<div class="table-scroll"><table class="analytics-table"><thead><tr><th>Segmento</th><th>Total</th><th>Resueltos</th><th>Aciertos</th><th>Efectividad</th><th>Brier</th></tr></thead><tbody>${filas.map(f => `<tr><td><strong>${esc(f.etiqueta)}</strong></td><td>${f.total}</td><td>${f.resueltos}</td><td>${f.acertados}</td><td>${f.efectividad == null ? '—' : `${f.efectividad}%`}</td><td>${f.brier ?? '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state">Aún no hay muestra para este segmento.</div>';
+  document.getElementById('analytics-calibration').innerHTML = (analiticaPicks.calibracion || []).map(p => `<article class="calibration-point"><span>Estimados ${esc(p.etiqueta)}</span><b>${p.efectividad == null ? '—' : `${p.efectividad}% real`}</b><small>Media ${p.estimacion_media}% · ${p.resueltos} resueltos</small></article>`).join('');
+}
+
+async function cargarMetricasPicks() {
   const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
   if (!respuesta.ok) return;
   const datos = await respuesta.json();
   picksGuardados = new Set(datos.picks.map(pick => `${pick.partido_api_id}:${pick.mercado.id}`));
   marcarPicksGeneralesGuardados();
+  analiticaPicks = datos;
+  pintarAnaliticaPicks();
   const r = datos.resumen;
   document.getElementById('resumen').innerHTML = `
-    <article class="pick-kpi"><span>Total</span><strong>${r.total}</strong></article>
+    <article class="pick-kpi"><span>Total analizados</span><strong>${r.total}</strong></article>
     <article class="pick-kpi"><span>Pendientes</span><strong>${r.pendientes}</strong></article>
     <article class="pick-kpi"><span>Acertados</span><strong>${r.acertados}</strong></article>
     <article class="pick-kpi"><span>Efectividad</span><strong>${r.efectividad ?? '—'}${r.efectividad == null ? '' : '%'}</strong></article>
     <article class="pick-kpi"><span>Brier ↓</span><strong>${r.brier ?? '—'}</strong></article>`;
-
-  const historial = document.getElementById('historial');
-  if (!datos.picks.length) {
-    historial.innerHTML = '<div class="empty-state">Todavía no tienes picks. Abre un partido futuro desde el calendario y guarda un mercado antes de que comience.</div>';
-    return;
-  }
-  historial.innerHTML = datos.picks.map(pick => {
-    const enlace = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}`;
-    const marcador = pick.marcador_final?.local != null
-      ? ` · ${pick.marcador_final.local}-${pick.marcador_final.visitante}` : '';
-    return `<article class="history-item">
-      <div class="history-match"><strong>${esc(pick.local.nombre)} vs ${esc(pick.visitante.nombre)}</strong><span>${fecha(pick.fecha_partido)} · ${esc(pick.liga.nombre)}${marcador}</span></div>
-      <div class="history-market"><strong>${esc(pick.mercado.nombre)}</strong><span>Confianza ${esc(pick.confianza)} · muestra ${pick.muestra}</span></div>
-      <div class="history-prob">${pick.estimacion}%</div>
-      <div><a class="status status-${esc(pick.estado)}" href="${enlace}">${esc(pick.estado)}</a>${pick.estado === 'pendiente' ? `<button class="delete-pick" data-delete="${esc(pick._id)}" type="button">Quitar</button>` : ''}</div>
-    </article>`;
-  }).join('');
 }
 
-document.getElementById('historial').addEventListener('click', async event => {
-  const boton = event.target.closest('[data-delete]');
-  if (!boton) return;
-  const respuesta = await fetch(`/api/picks/seguimiento/${boton.dataset.delete}`, { method: 'DELETE' });
-  if (respuesta.ok) {
-    window.FutbolPicks?.notificarCambio?.();
-  }
-});
-
+document.getElementById('analytics-dimension').addEventListener('change', pintarAnaliticaPicks);
 document.querySelector('.general-controls').addEventListener('change', cargarMejoresGenerales);
 document.getElementById('mejores-generales').addEventListener('click', async event => {
   const explicacion = event.target.closest('[data-explain-general]');
@@ -246,9 +315,45 @@ document.getElementById('mejores-generales').addEventListener('click', async eve
 const dialogoGeneral = document.getElementById('general-explanation-dialog');
 document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
 dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
-document.addEventListener('DOMContentLoaded', () => { cargarMejoresGenerales(); cargarHistorial(); });
-window.addEventListener('futbol:picks-actualizados', cargarHistorial);
-window.addEventListener('pageshow', event => { if (event.persisted) cargarHistorial(); });
+document.getElementById('recomendaciones-editoriales')?.addEventListener('click', async event => {
+  const btn = event.target.closest('[data-delete-rec]');
+  if (!btn) return;
+  const id = btn.dataset.deleteRec;
+  if (!confirm('¿Seguro que deseas eliminar este pick recomendado del día? Se quitará de la vista de todos los usuarios.')) return;
+  btn.disabled = true;
+  btn.textContent = 'Quitando...';
+  try {
+    const resp = await fetch(`/api/admin/recomendaciones/${id}`, { method: 'DELETE' });
+    const datos = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(datos.error || 'No se pudo eliminar la recomendación.');
+    await cargarRecomendacionesEditoriales();
+  } catch (err) {
+    alert('Error al eliminar: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '🗑️ Quitar';
+  }
+});
+
+window.addEventListener('futbol:usuario-cargado', (e) => {
+  if (e.detail?.rol === 'admin') {
+    esAdmin = true;
+    cargarRecomendacionesEditoriales();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/auth/me').then(r => r.json()).then(d => {
+    if (d.usuario?.rol === 'admin') {
+      esAdmin = true;
+    }
+  }).finally(() => {
+    cargarRecomendacionesEditoriales();
+    cargarMejoresGenerales();
+    cargarMetricasPicks();
+  });
+});
+window.addEventListener('futbol:picks-actualizados', cargarMetricasPicks);
+window.addEventListener('pageshow', event => { if (event.persisted) cargarMetricasPicks(); });
 </script>
 </body>
 </html>

@@ -13,6 +13,7 @@ const Sugerencia = require('../models/Sugerencia');
 const BloqueoTrabajo = require('../models/BloqueoTrabajo');
 const Suscripcion = require('../models/Suscripcion');
 const EventoPago = require('../models/EventoPago');
+const Recomendacion = require('../models/Recomendacion');
 
 async function main() {
   if (!process.env.MONGODB_URI) throw new Error('Falta MONGODB_URI.');
@@ -32,9 +33,10 @@ async function main() {
       Sugerencia.createIndexes(),
       BloqueoTrabajo.createIndexes(),
       Suscripcion.createIndexes(),
-      EventoPago.createIndexes()
+      EventoPago.createIndexes(),
+      Recomendacion.createIndexes()
     ]);
-    console.log('✅ Índices verificados: datos deportivos, usuarios, pagos, cuota API, picks, boletas, mercados y sugerencias.');
+    console.log('✅ Índices verificados: datos deportivos, usuarios, pagos, cuota API, picks, boletas, recomendaciones, mercados y sugerencias.');
   } finally {
     await mongoose.disconnect();
   }

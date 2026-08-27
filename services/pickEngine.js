@@ -95,7 +95,22 @@ function partidosEnCondicion(partidos, teamId, condicion) {
   return partidos.filter(partido => partido?.[campo]?.id === teamId);
 }
 
-function combinar(mercado, a, b) {
+// Muestras mínimas por condición antes de caer a la forma general del equipo.
+const UMBRAL_CONDICION = 3;
+
+function seleccionarMuestra(partidos, teamId, condicion) {
+  if (condicion === 'general') {
+    return { partidos: partidosEnCondicion(partidos, teamId, 'general'), condicion };
+  }
+  const porRol = partidosEnCondicion(partidos, teamId, condicion);
+  if (porRol.length >= UMBRAL_CONDICION) return { partidos: porRol, condicion };
+  const general = partidosEnCondicion(partidos, teamId, 'general');
+  return general.length > porRol.length
+    ? { partidos: general, condicion: 'general' }
+    : { partidos: porRol, condicion };
+}
+
+function combinar(mercado, a, b, condiciones = {}) {
   const disponibles = [
     { rol: 'local', dato: a },
     { rol: 'visitante', dato: b }
@@ -116,9 +131,11 @@ function combinar(mercado, a, b) {
     confianza: confianza(muestra),
     muestra,
     fuentes: disponibles.length,
+    evidencia_parcial: disponibles.length < 2,
     evidencia: disponibles.map(item => `${item.dato.aciertos}/${item.dato.total}`),
     detalle_fuentes: disponibles.map(item => ({
       rol: item.rol,
+      condicion_efectiva: condiciones[item.rol] || item.rol,
       lectura: mercado.alcance === 'total'
         ? 'partidos_del_equipo'
         : mercado.alcance === item.rol
@@ -141,12 +158,15 @@ function explicarMercado({
 }) {
   const mercado = obtenerMercado(mercadoId);
   if (!mercado) return null;
-  const registrosLocal = registrosPartidos(partidosEnCondicion(partidosLocal, teamLocal, condicionLocal), teamLocal, halfLocal);
-  const registrosVisitante = registrosPartidos(partidosEnCondicion(partidosVisitante, teamVisitante, condicionVisitante), teamVisitante, halfVisitante);
+  const seleccionLocal = seleccionarMuestra(partidosLocal, teamLocal, condicionLocal);
+  const seleccionVisitante = seleccionarMuestra(partidosVisitante, teamVisitante, condicionVisitante);
+  const registrosLocal = registrosPartidos(seleccionLocal.partidos, teamLocal, halfLocal);
+  const registrosVisitante = registrosPartidos(seleccionVisitante.partidos, teamVisitante, halfVisitante);
   return combinar(
     mercado,
     frecuenciaMercado(registrosLocal, 'local', mercado, limiteLocal, detalle),
-    frecuenciaMercado(registrosVisitante, 'visitante', mercado, limiteVisitante, detalle)
+    frecuenciaMercado(registrosVisitante, 'visitante', mercado, limiteVisitante, detalle),
+    { local: seleccionLocal.condicion, visitante: seleccionVisitante.condicion }
   );
 }
 
@@ -156,14 +176,20 @@ function generarPicks({
   condicionLocal = 'local', condicionVisitante = 'visitante',
   halfLocal = 0, halfVisitante = 0
 }) {
-  const local = frecuencia(partidosEnCondicion(partidosLocal, teamLocal, condicionLocal), teamLocal, 'local', limiteLocal, halfLocal);
-  const visitante = frecuencia(partidosEnCondicion(partidosVisitante, teamVisitante, condicionVisitante), teamVisitante, 'visitante', limiteVisitante, halfVisitante);
+  const seleccionLocal = seleccionarMuestra(partidosLocal, teamLocal, condicionLocal);
+  const seleccionVisitante = seleccionarMuestra(partidosVisitante, teamVisitante, condicionVisitante);
+  const local = frecuencia(seleccionLocal.partidos, teamLocal, 'local', limiteLocal, halfLocal);
+  const visitante = frecuencia(seleccionVisitante.partidos, teamVisitante, 'visitante', limiteVisitante, halfVisitante);
+  const condicionesEfectivas = { local: seleccionLocal.condicion, visitante: seleccionVisitante.condicion };
   const mercados = MERCADOS
-    .map(mercado => combinar(mercado, local[mercado.id], visitante[mercado.id]))
+    .map(mercado => combinar(mercado, local[mercado.id], visitante[mercado.id], condicionesEfectivas))
     .filter(Boolean)
+    .map(item => ({ ...item, evidencia_parcial: item.fuentes < 2 }))
     .sort((a, b) => b.estimacion - a.estimacion || a.mercado.localeCompare(b.mercado, 'es'));
+  // Un pick solo se recomienda con evidencia de ambos lados: un mercado de
+  // total construido con una sola fuente describe media ecuación.
   const recomendados = mercados.filter(item => (
-    item.estimacion >= 65 && item.muestra >= 5 && item.fuentes === 2
+    item.estimacion >= 65 && item.muestra >= 5 && item.fuentes === 2 && !item.evidencia_parcial
   ));
 
   return {
@@ -171,10 +197,10 @@ function generarPicks({
     recomendados,
     categorias: [...new Set(mercados.map(item => item.categoria))],
     filtros: {
-      local: { condicion: condicionLocal, limite: limiteLocal, periodo: halfLocal },
-      visitante: { condicion: condicionVisitante, limite: limiteVisitante, periodo: halfVisitante }
+      local: { condicion: condicionLocal, condicion_efectiva: condicionesEfectivas.local, limite: limiteLocal, periodo: halfLocal },
+      visitante: { condicion: condicionVisitante, condicion_efectiva: condicionesEfectivas.visitante, limite: limiteVisitante, periodo: halfVisitante }
     },
-    metodologia: `Frecuencia histórica suavizada con la muestra elegida: local proyectado (${condicionLocal}, periodo ${halfLocal}) y visitante proyectado (${condicionVisitante}, periodo ${halfVisitante}); las estadísticas avanzadas excluyen partidos sin cobertura. Esto no es una probabilidad calibrada ni garantiza resultados.`
+    metodologia: `Frecuencia histórica suavizada con la muestra elegida: local proyectado (${condicionesEfectivas.local}, periodo ${halfLocal}) y visitante proyectado (${condicionesEfectivas.visitante}, periodo ${halfVisitante}); si la muestra por condición es menor a ${UMBRAL_CONDICION} partidos se usa la forma general del equipo. Las estadísticas avanzadas excluyen partidos sin cobertura y un mercado con evidencia de un solo lado se marca como parcial. Esto no es una probabilidad calibrada ni garantiza resultados.`
   };
 }
 

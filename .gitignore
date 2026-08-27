@@ -14,6 +14,7 @@ var/playdoit/
 /artifacts/
 /DEPLOYED_COMMIT
 /RELEASE_HISTORY
+/RELEASE_COMMIT
 
 # Relevo privado y placeholders operativos locales
 /docs/CONTEXTO_OPERATIVO_CODEX.md

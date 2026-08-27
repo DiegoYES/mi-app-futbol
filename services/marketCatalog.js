@@ -23,7 +23,7 @@ const MERCADOS_GOLES = [
 ];
 
 const FAMILIAS_AVANZADAS = [
-  { categoria: 'corners', estadistica: 'corners', etiqueta: 'córners', total: [6.5, 7.5, 8.5, 9.5, 10.5, 11.5], equipo: [2.5, 3.5, 4.5, 5.5, 6.5] },
+  { categoria: 'corners', estadistica: 'corners', etiqueta: 'córners', total: [4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5], equipo: [2.5, 3.5, 4.5, 5.5, 6.5] },
   { categoria: 'tarjetas', estadistica: 'amarillas', etiqueta: 'tarjetas amarillas', total: [1.5, 2.5, 3.5, 4.5, 5.5], equipo: [0.5, 1.5, 2.5, 3.5] },
   { categoria: 'tarjetas', estadistica: 'rojas', etiqueta: 'tarjetas rojas', total: [0.5], equipo: [0.5] },
   { categoria: 'tiros', estadistica: 'tiros', etiqueta: 'tiros', total: [17.5, 19.5, 21.5, 23.5, 25.5, 27.5], equipo: [7.5, 8.5, 9.5, 10.5, 11.5, 12.5, 13.5] },

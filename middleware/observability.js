@@ -2,6 +2,7 @@ const iniciadoEn = Date.now();
 const metricas = {
   solicitudes: 0,
   activas: 0,
+  respuestas_429: 0,
   duracion_total_ms: 0,
   duracion_maxima_ms: 0,
   por_estado: { '2xx': 0, '3xx': 0, '4xx': 0, '5xx': 0 }
@@ -21,6 +22,7 @@ function observarHttp(_req, res, next) {
     metricas.duracion_maxima_ms = Math.max(metricas.duracion_maxima_ms, duracion);
     const familia = `${Math.floor(res.statusCode / 100)}xx`;
     if (familia in metricas.por_estado) metricas.por_estado[familia] += 1;
+    if (res.statusCode === 429) metricas.respuestas_429 += 1;
   };
   res.once('finish', finalizar);
   res.once('close', finalizar);
@@ -32,6 +34,7 @@ function obtenerMetricasHttp() {
     uptime_segundos: Math.floor((Date.now() - iniciadoEn) / 1000),
     solicitudes: metricas.solicitudes,
     activas: metricas.activas,
+    respuestas_429: metricas.respuestas_429,
     duracion_promedio_ms: metricas.solicitudes
       ? Number((metricas.duracion_total_ms / metricas.solicitudes).toFixed(2))
       : 0,

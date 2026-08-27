@@ -5,11 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Centro de análisis de fútbol</title>
 <link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
+  <link rel="manifest" href="/site.webmanifest">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Data-Fut">
+  <link rel="apple-touch-icon" href="/brand-mark.svg">
   <meta name="theme-color" content="#07100d">
   <link rel="stylesheet" href="/styles.css">
-  <script src="/auth-client.js"></script>
+  <script src="/auth-client.js?v=20260827-v11"></script>
   <script src="/search-utils.js"></script>
   <script src="/user-library.js"></script>
+  <script src="/pwa-install.js" defer></script>
   <style>
     .home { width:min(1280px,calc(100% - 32px));margin:auto;padding:32px 0 70px; }
     .home-brand { margin-bottom:22px; }
@@ -90,10 +97,34 @@
     .radar-card { display:flex;flex-direction:column;min-height:208px;padding:15px;border:1px solid var(--line);border-radius:15px;background:var(--surface-raised);color:var(--ink);text-decoration:none; }.radar-card:hover { border-color:rgba(84,227,142,.35); }
     .radar-meta { display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.6rem;text-transform:uppercase; }.radar-teams { display:grid;gap:8px;margin:15px 0; }.radar-team { display:flex;align-items:center;gap:9px;font-size:.76rem;font-weight:800; }.radar-team img { width:25px;height:25px;object-fit:contain;padding:2px;border-radius:7px;background:#f4f8f5; }.radar-team b { margin-left:auto;font-size:.9rem; }
     .radar-pick { margin-top:auto;padding-top:12px;border-top:1px solid var(--line); }.radar-pick span { display:block;color:var(--muted);font-size:.65rem; }.radar-pick strong { display:flex;justify-content:space-between;gap:10px;margin-top:3px;font-size:.76rem; }.radar-pick em { color:var(--green);font-size:1rem;font-style:normal; }.radar-outcome { margin-top:6px;color:var(--muted);font-size:.6rem; }
-    .radar-empty { grid-column:1/-1;padding:30px;border:1px dashed var(--line);border-radius:13px;color:var(--muted);text-align:center;font-size:.75rem; }
+    .home-picks-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:24px; }
+    .home-rec-card { display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--surface-raised);box-shadow:var(--shadow);transition:border-color .18s,transform .18s; }
+    .home-rec-card:hover { border-color:rgba(84,227,142,.4);transform:translateY(-2px); }
+    .home-rec-card.destacada { border-color:rgba(245,190,91,.5);box-shadow:0 12px 36px rgba(0,0,0,.25); }
+    .home-rec-head { display:flex;justify-content:space-between;align-items:flex-start;gap:12px; }
+    .home-rec-head small { color:var(--muted);font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase; }
+    .home-rec-head h3 { margin:4px 0 0;font-size:1.1rem; }
+    .home-rec-badges { display:flex;gap:6px;flex-wrap:wrap; }
+    .home-rec-badge { padding:4px 8px;border-radius:999px;font-size:.58rem;font-weight:900;text-transform:uppercase; }
+    .home-rec-badge.tipo { background:rgba(84,227,142,.12);color:var(--green); }
+    .home-rec-badge.destacada { background:rgba(245,190,91,.15);color:var(--amber); }
+    .home-rec-badge.premium { background:rgba(104,217,231,.12);color:var(--cyan); }
+    .home-rec-del { padding:3px 7px;border:1px solid rgba(255,124,120,.45);border-radius:999px;background:rgba(255,124,120,.12);color:var(--red);font-size:.56rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px; }
+    .home-rec-del:hover { background:var(--red);color:#07100d; }
+    .home-rec-selections { display:grid;gap:7px;margin:0;padding:0;list-style:none; }
+    .home-rec-item { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border-left:3px solid var(--green);border-radius:0 10px 10px 0;background:rgba(84,227,142,.06);font-size:.78rem; }
+    .home-rec-item strong { display:block;color:var(--ink); }
+    .home-rec-item span { display:block;margin-top:2px;color:var(--muted);font-size:.66rem; }
+    .home-rec-item b { color:var(--green);font-size:.85rem; }
+    .home-rec-footer { display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:12px;border-top:1px solid var(--line); }
+    .home-rec-odd { display:flex;align-items:baseline;gap:6px; }
+    .home-rec-odd span { color:var(--muted);font-size:.68rem;text-transform:uppercase; }
+    .home-rec-odd strong { color:var(--green);font-size:1.3rem;font-weight:900; }
+    .home-rec-cta { color:var(--cyan);font-size:.75rem;font-weight:850;text-decoration:none; }
+    .home-rec-empty { grid-column:1/-1;padding:24px;border:1px dashed var(--line);border-radius:16px;color:var(--muted);font-size:.75rem;text-align:center; }
     @media(max-width:980px){.home-hero{grid-template-columns:1fr}.portal-grid{grid-template-columns:repeat(3,1fr)}.tool-grid{grid-template-columns:repeat(3,1fr)}.radar-grid{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:700px){.hero-actions{grid-template-columns:1fr 1fr}.hero-actions .primary{grid-column:1/-1}.hero-actions a{justify-content:center}.portal-grid{grid-template-columns:1fr}.tool-grid{grid-template-columns:repeat(2,1fr)}}
-    @media(max-width:600px){.home{width:min(100% - 20px,1280px);padding-top:20px}.hero-copy{padding:28px 20px}.hero-copy h1{font-size:clamp(2.45rem,13vw,3.5rem)}.hero-copy>p:not(.eyebrow){margin-top:18px;font-size:.92rem}.snapshot,.radar{padding:18px}.workflow,.radar-grid,.personal-grid{grid-template-columns:1fr}.portal{min-height:150px}.home-title,.radar-head{align-items:start;flex-direction:column}.snapshot-grid{grid-template-columns:1fr 1fr}.home-search input{font-size:1rem}.home-search-label>span{display:none}.home-search-results{max-height:270px}.home-search-result{grid-template-columns:38px minmax(0,1fr) auto;padding:9px}.home-search-result img{width:38px;height:38px}.radar-date{white-space:normal}.personal-item{grid-template-columns:38px minmax(0,1fr) auto}}
+    @media(max-width:600px){.home{width:min(100% - 20px,1280px);padding-top:20px}.hero-copy{padding:28px 20px}.hero-copy h1{font-size:clamp(2.45rem,13vw,3.5rem)}.hero-copy>p:not(.eyebrow){margin-top:18px;font-size:.92rem}.snapshot,.radar{padding:18px}.workflow,.radar-grid,.personal-grid,.home-picks-grid{grid-template-columns:1fr}.portal{min-height:150px}.home-title,.radar-head{align-items:start;flex-direction:column}.snapshot-grid{grid-template-columns:1fr 1fr}.home-search input{font-size:1rem}.home-search-label>span{display:none}.home-search-results{max-height:270px}.home-search-result{grid-template-columns:38px minmax(0,1fr) auto;padding:9px}.home-search-result img{width:38px;height:38px}.radar-date{white-space:normal}.personal-item{grid-template-columns:38px minmax(0,1fr) auto}}
     @media(max-width:430px){.hero-actions,.tool-grid{grid-template-columns:1fr}.hero-actions .primary{grid-column:auto}.tool-link{min-height:84px}.home-title{margin-top:32px}}
     @media(max-width:360px){.snapshot-grid{grid-template-columns:1fr}.snapshot-grid div{display:flex;align-items:center;justify-content:space-between}.snapshot-grid strong{margin:0}.hero-copy,.snapshot,.radar{border-radius:18px}}
   </style>
@@ -135,6 +166,17 @@
     </aside>
   </section>
 
+  <section class="picks-del-dia-portada" id="picks-del-dia-seccion" aria-labelledby="picks-del-dia-title">
+    <div class="home-title" style="margin-top:20px;">
+      <div>
+        <p class="eyebrow" style="color:var(--green);font-size:.65rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px;">Selección de Data-Fut</p>
+        <h2 id="picks-del-dia-title">🌟 Picks y Parlays Recomendados del Día</h2>
+      </div>
+      <a href="/picks.html" style="color:var(--green);font-size:.8rem;font-weight:800;text-decoration:none;">Ver todos los picks →</a>
+    </div>
+    <div id="home-picks-grid" class="home-picks-grid"><div class="loader">Cargando recomendaciones del día...</div></div>
+  </section>
+
   <section class="radar" aria-labelledby="radar-title">
     <div class="radar-head"><div><p class="eyebrow">Radar de partidos</p><h2 id="radar-title">Lecturas destacadas de la jornada</h2><p id="radar-copy">Buscando partidos disponibles y tendencias con respaldo histórico.</p></div><span class="radar-date" id="radar-date">Cargando</span></div>
     <div class="radar-filters" id="radar-filters" aria-label="Filtrar mercados"></div>
@@ -159,7 +201,7 @@
     <a class="tool-link" href="/competiciones.html"><span>◎ COBERTURA</span><strong>Competiciones</strong></a>
     <a class="tool-link" href="/jugadores.html"><span>10 RENDIMIENTO</span><strong>Jugadores</strong></a>
     <a class="tool-link" href="/arbitros.html"><span>▣ DISCIPLINA</span><strong>Árbitros</strong></a>
-    <a class="tool-link" href="/picks.html"><span>✓ SEGUIMIENTO</span><strong>Mis picks</strong></a>
+    <a class="tool-link" href="/picks.html"><span>🎯 TENDENCIAS</span><strong>Mejores picks</strong></a>
     <a class="tool-link" href="/boletas.html"><span>＋ BORRADORES</span><strong>Mis boletas</strong></a>
   </section>
 
@@ -187,9 +229,106 @@ function pintarRadar(categoria='goles'){
 async function cargarRadar(){try{const rangoResp=await fetch('/api/calendario/rango');const rango=await rangoResp.json();if(!rango.hasta)throw new Error('No hay calendario almacenado');const ahora=new Date();const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;const dentro=hoy>=rango.desde&&hoy<=rango.hasta;const objetivo=dentro?hoy:rango.hasta;const diaResp=await fetch(`/api/calendario/dia?fecha=${objetivo}`);const dia=await diaResp.json();const planos=dia.competiciones.flatMap(liga=>liga.partidos.map(partido=>({liga,partido}))).slice(0,6);radarPartidos=await Promise.all(planos.map(async item=>{try{const r=await fetch(`/api/picks/partido/${item.partido.api_id}`);return {...item,analisis:r.ok?await r.json():null}}catch{return {...item,analisis:null}}}));const categorias=[...new Set(radarPartidos.flatMap(x=>x.analisis?.categorias||[]))];const fechaEl=document.getElementById('radar-date');fechaEl.textContent=dentro?'Partidos de hoy':'Última jornada guardada';fechaEl.dataset.fecha=objetivo;document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${planos.length} partidos · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;const filtros=document.getElementById('radar-filters');filtros.innerHTML=categorias.map(c=>`<button type="button" data-radar-category="${esc(c)}">${esc(radarCategorias[c]||c)}</button>`).join('');filtros.onclick=e=>{const b=e.target.closest('[data-radar-category]');if(b)pintarRadar(b.dataset.radarCategory)};pintarRadar(categorias.includes('goles')?'goles':categorias[0]);}catch(error){document.getElementById('radar-date').textContent='Sin datos';document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`}}
 function estadoBusqueda(texto, abierta=false){document.getElementById('home-search-status').textContent=texto;document.getElementById('home-team-search').setAttribute('aria-expanded',String(abierta))}
 function cerrarBusqueda(){const salida=document.getElementById('home-team-results');const consulta=document.getElementById('home-team-search').value.trim();salida.hidden=true;document.getElementById('home-team-search').removeAttribute('aria-activedescendant');estadoBusqueda(consulta.length>=2?'Pulsa para ver resultados':'Escribe 2 letras o más')}
-async function cargarIndiceEquipos(){if(indiceEquipos)return indiceEquipos;const salida=document.getElementById('home-team-results');salida.hidden=false;estadoBusqueda('Preparando equipos…',true);salida.innerHTML='<div class="home-search-empty">Preparando índice local…</div>';const r=await fetch('/api/home/competiciones');if(!r.ok)throw new Error('No se pudieron cargar las competiciones');const d=await r.json();const porLiga=new Map();for(const liga of d.competiciones||[]){const temporadas=Array.isArray(liga.temporadas)?liga.temporadas:[{temporada:liga.temporada,etiqueta:liga.temporada_etiqueta}];const temporada=temporadas.find(t=>Number(t.temporada)>=2025)||temporadas[0];if(!temporada)continue;const candidata={...liga,temporada:Number(temporada.temporada),temporada_etiqueta:temporada.etiqueta};const actual=porLiga.get(Number(liga.id));if(!actual||candidata.temporada>actual.temporada)porLiga.set(Number(liga.id),candidata)}const competiciones=[...porLiga.values()];const respuestas=await Promise.all(competiciones.map(async liga=>{const respuesta=await fetch(`/api/ligas/${liga.id}/equipos?season=${liga.temporada}`);if(!respuesta.ok)return {liga,equipos:[]};return {liga,equipos:await respuesta.json()}}));const mapa=new Map();for(const {liga,equipos} of respuestas){for(const equipo of equipos){const actual=mapa.get(equipo.id);const etiqueta=`${liga.nombre} ${liga.temporada_etiqueta||liga.temporada}`;if(!actual){mapa.set(equipo.id,{...equipo,league:liga.id,season:liga.temporada,competiciones:[etiqueta],principal:liga.principal});continue}if(!actual.competiciones.includes(etiqueta))actual.competiciones.push(etiqueta);if((liga.principal&&!actual.principal)||(liga.principal===actual.principal&&liga.temporada>actual.season)){actual.league=liga.id;actual.season=liga.temporada;actual.principal=liga.principal}}}indiceEquipos=[...mapa.values()];return indiceEquipos}
+async function cargarIndiceEquipos(){if(indiceEquipos)return indiceEquipos;try{const cache=sessionStorage.getItem('datafut_indice_equipos');if(cache){const parseado=JSON.parse(cache);if(Array.isArray(parseado)&&parseado.length){indiceEquipos=parseado;return indiceEquipos}}}catch{}const salida=document.getElementById('home-team-results');salida.hidden=false;estadoBusqueda('Preparando equipos…',true);salida.innerHTML='<div class="home-search-empty">Preparando índice local…</div>';const r=await fetch('/api/home/equipos');const d=await r.json().catch(()=>({}));if(!r.ok||!Array.isArray(d.equipos))throw new Error(d.error||'No se pudo cargar el índice de equipos');indiceEquipos=d.equipos;try{sessionStorage.setItem('datafut_indice_equipos',JSON.stringify(indiceEquipos))}catch{}return indiceEquipos}
 async function buscarEquipoGlobal(){const input=document.getElementById('home-team-search');const salida=document.getElementById('home-team-results');const consulta=input.value.trim();document.getElementById('home-search-clear').hidden=!consulta;if(consulta.length<2){cerrarBusqueda();return}try{const equipos=await cargarIndiceEquipos();if(input.value.trim()!==consulta)return;const encontrados=FutbolSearch.ordenar(equipos,consulta,e=>e.nombre).slice(0,8);salida.hidden=false;estadoBusqueda(encontrados.length===1?'1 resultado':`${encontrados.length} resultados`,true);salida.innerHTML=encontrados.map((e,i)=>`<a id="home-team-option-${i}" class="home-search-result" role="option" aria-selected="false" href="/equipo.html?id=${e.id}&league=${e.league}&season=${e.season}"><img src="/api/equipos/${e.id}/escudo" alt=""><div><strong>${esc(e.nombre)}</strong><span>${esc(e.competiciones.join(' · '))}</span></div><span class="home-search-result-arrow" aria-hidden="true">→</span></a>`).join('')||'<div class="home-search-empty">No encontramos equipos con ese nombre. Prueba con menos palabras.</div>'}catch(error){salida.hidden=false;estadoBusqueda('Búsqueda no disponible',true);salida.innerHTML='<div class="home-search-empty">No se pudo preparar la búsqueda. Inténtalo de nuevo.</div>'}}
+let esAdmin = false;
+
+async function cargarPicksRecomendadosPortada() {
+  const cont = document.getElementById('home-picks-grid');
+  if (!cont) return;
+  try {
+    const resp = await fetch('/api/recomendaciones', { cache: 'no-store' });
+    if (!resp.ok) throw new Error('No se pudieron cargar las recomendaciones');
+    const { recomendaciones } = await resp.json();
+    if (!recomendaciones || !recomendaciones.length) {
+      cont.innerHTML = '<div class="home-rec-empty">No hay picks recomendados publicados para hoy todavía. <a href="/picks.html" style="color:var(--green);font-weight:800;">Explora los mejores picks por porcentaje →</a></div>';
+      return;
+    }
+    const visibles = recomendaciones.slice(0, 4);
+    cont.innerHTML = visibles.map(rec => {
+      const cuota = rec.cuota_total ? Number(rec.cuota_total).toFixed(2) : '—';
+      const momioAmericano = rec.momio_total_americano ? (rec.momio_total_americano > 0 ? `+${rec.momio_total_americano}` : rec.momio_total_americano) : '';
+      const momioDisplay = momioAmericano ? `${cuota} (${momioAmericano})` : cuota;
+      const botonDel = esAdmin ? `<button type="button" class="home-rec-del" data-delete-rec-home="${rec._id}" title="Eliminar recomendación">🗑️ Quitar</button>` : '';
+      return `<article class="home-rec-card ${rec.destacada ? 'destacada' : ''}">
+        <div class="home-rec-head">
+          <div>
+            <small>Cierra: ${rec.cierra_en ? new Date(rec.cierra_en).toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' }) : 'Próximamente'}</small>
+            <h3>${esc(rec.titulo)}</h3>
+          </div>
+          <div class="home-rec-badges">
+            ${rec.destacada ? '<span class="home-rec-badge destacada">⭐ Destacada</span>' : ''}
+            <span class="home-rec-badge tipo">${esc(rec.tipo)}</span>
+            <span class="home-rec-badge ${rec.visibilidad}">${esc(rec.visibilidad)}</span>
+            ${botonDel}
+          </div>
+        </div>
+        ${rec.descripcion ? `<p style="margin:0;color:var(--muted);font-size:.73rem;line-height:1.5;">${esc(rec.descripcion)}</p>` : ''}
+        ${rec.bloqueada ? `
+          <div style="padding:14px;border:1px dashed rgba(104,217,231,.4);border-radius:10px;background:rgba(104,217,231,.05);text-align:center;">
+            <span style="display:block;color:var(--cyan);font-size:.72rem;font-weight:800;">🔒 Contenido Premium</span>
+            <small style="color:var(--muted);font-size:.65rem;">Incluido en tu suscripción de Data-Fut</small>
+          </div>
+        ` : `
+          <ul class="home-rec-selections">
+            ${(rec.selecciones || []).map(s => `
+              <li class="home-rec-item">
+                <div>
+                  <strong>${esc(s.mercado)}</strong>
+                  <span>${esc(s.evento)}</span>
+                </div>
+                <b>${s.cuota ? Number(s.cuota).toFixed(2) : ''}</b>
+              </li>
+            `).join('')}
+          </ul>
+        `}
+        <div class="home-rec-footer">
+          <div class="home-rec-odd">
+            <span>Cuota total</span>
+            <strong>${momioDisplay}</strong>
+          </div>
+          <a class="home-rec-cta" href="/picks.html">Ver en Mejores picks →</a>
+        </div>
+      </article>`;
+    }).join('');
+  } catch (e) {
+    cont.innerHTML = '<div class="home-rec-empty">Explora los <a href="/picks.html" style="color:var(--green);font-weight:800;">mejores picks con probabilidad estadística →</a></div>';
+  }
+}
+
+document.getElementById('home-picks-grid')?.addEventListener('click', async (e) => {
+  const btn = e.target.closest('[data-delete-rec-home]');
+  if (!btn) return;
+  const id = btn.dataset.deleteRecHome;
+  if (!confirm('¿Seguro que deseas eliminar esta recomendación del día?')) return;
+  btn.disabled = true;
+  btn.textContent = 'Quitando...';
+  try {
+    const resp = await fetch(`/api/admin/recomendaciones/${id}`, { method: 'DELETE' });
+    const datos = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(datos.error || 'No se pudo eliminar.');
+    await cargarPicksRecomendadosPortada();
+  } catch (err) {
+    alert('Error al eliminar: ' + err.message);
+    btn.disabled = false;
+    btn.textContent = '🗑️ Quitar';
+  }
+});
+
+window.addEventListener('futbol:usuario-cargado', (e) => {
+  if (e.detail?.rol === 'admin') {
+    esAdmin = true;
+    cargarPicksRecomendadosPortada();
+  }
+});
+
 document.addEventListener('DOMContentLoaded', async () => {
+  fetch('/api/auth/me').then(r => r.json()).then(d => {
+    if (d.usuario?.rol === 'admin') {
+      esAdmin = true;
+      cargarPicksRecomendadosPortada();
+    }
+  }).catch(() => {});
   pintarBiblioteca();document.getElementById('saved-comparisons').onclick=e=>{const b=e.target.closest('[data-remove-comparison]');if(b){FutbolLibrary.quitarComparacion(b.dataset.removeComparison);pintarBiblioteca()}};window.addEventListener('storage',pintarBiblioteca);
   const buscador=document.getElementById('home-team-search');const limpiar=document.getElementById('home-search-clear');let esperaBusqueda;let opcionActiva=-1;buscador.addEventListener('input',()=>{opcionActiva=-1;clearTimeout(esperaBusqueda);esperaBusqueda=setTimeout(buscarEquipoGlobal,180)});buscador.addEventListener('focus',()=>{if(buscador.value.trim().length>=2&&document.getElementById('home-team-results').hidden)buscarEquipoGlobal()});buscador.addEventListener('keydown',event=>{const opciones=[...document.querySelectorAll('.home-search-result')];if(event.key==='Escape'){cerrarBusqueda();buscador.blur();return}if(!opciones.length)return;if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();opcionActiva=event.key==='ArrowDown'?(opcionActiva+1)%opciones.length:(opcionActiva-1+opciones.length)%opciones.length;opciones.forEach((opcion,i)=>{const activa=i===opcionActiva;opcion.classList.toggle('is-active',activa);opcion.setAttribute('aria-selected',String(activa))});buscador.setAttribute('aria-activedescendant',opciones[opcionActiva].id);opciones[opcionActiva].scrollIntoView({block:'nearest'});return}if(event.key==='Enter'){event.preventDefault();const destino=opciones[opcionActiva]||opciones[0];if(destino)location.href=destino.href}});limpiar.addEventListener('click',()=>{buscador.value='';limpiar.hidden=true;opcionActiva=-1;cerrarBusqueda();buscador.focus()});document.getElementById('focus-team-search').addEventListener('click',event=>{event.preventDefault();buscador.focus();document.getElementById('buscar-equipo').scrollIntoView({behavior:'smooth',block:'center'})});document.addEventListener('click',event=>{if(!event.target.closest('.home-search'))cerrarBusqueda()});
   try {
@@ -208,6 +347,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('home-status').textContent = 'Sin conexión';
     document.getElementById('home-range').textContent = error.message;
   }
+  cargarPicksRecomendadosPortada();
   cargarRadar();
 });
 </script>

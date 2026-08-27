@@ -64,6 +64,7 @@ test('calcula promedios avanzados solo con partidos que tienen cobertura', () =>
     corners: 7,
     faltas: 11,
     tarjetas_amarillas: 3,
+    tarjetas_rojas: 1,
     offsides: 2
   };
 
@@ -72,8 +73,17 @@ test('calcula promedios avanzados solo con partidos que tienen cobertura', () =>
   assert.equal(stats.avanzadas.muestra, 1);
   assert.equal(stats.avanzadas.promedios.tirosFavor, 10);
   assert.equal(stats.avanzadas.promedios.tirosContra, 14);
+  assert.equal(stats.avanzadas.promedios.tirosTotales, 24);
+  assert.equal(stats.avanzadas.promedios.tirosPuertaTotales, 10);
   assert.equal(stats.avanzadas.promedios.cornersFavor, 5);
   assert.equal(stats.avanzadas.promedios.cornersContra, 7);
+  assert.equal(stats.avanzadas.promedios.cornersTotales, 12);
+  assert.equal(stats.avanzadas.promedios.tarjetasTotales, 6);
+  assert.equal(stats.avanzadas.promedios.puntosTarjetasFavor, 2);
+  assert.equal(stats.avanzadas.promedios.puntosTarjetasContra, 5);
+  assert.equal(stats.avanzadas.promedios.puntosTarjetasTotales, 7);
+  assert.equal(stats.avanzadas.promedios.faltasTotales, 19);
+  assert.equal(stats.avanzadas.promedios.offsidesTotales, 3);
   assert.deepEqual(stats.avanzadas.cornersOver95, { total: 1, porcentaje: '100.0' });
 });
 
@@ -141,5 +151,47 @@ test('no presenta estadísticas avanzadas faltantes como ceros reales', () => {
   assert.equal(detalle.estadisticas_disponibles, false);
   assert.equal(detalle.tiros, null);
   assert.equal(detalle.corners, null);
+  assert.equal(detalle.puntos_tarjetas, null);
   assert.equal(detalle.rival_estadisticas.tiros, null);
+});
+
+test('calcula la distribución de goles y tarjetas por tramos de 15 minutos', () => {
+  const partidosConEventos = [
+    {
+      api_id: 101,
+      fecha: new Date('2026-02-01'),
+      equipo_local: {
+        id: 10,
+        nombre: 'Local',
+        goles: 2,
+        eventos: [
+          { minuto: 12, tipo_evento: 'Gol' },
+          { minuto: 88, tipo_evento: 'Gol' },
+          { minuto: 25, tipo_evento: 'Tarjeta', detalle: 'Yellow Card' }
+        ]
+      },
+      equipo_visitante: {
+        id: 20,
+        nombre: 'Visitante',
+        goles: 1,
+        eventos: [
+          { minuto: 55, tipo_evento: 'Gol' }
+        ]
+      }
+    }
+  ];
+
+  const stats = calcularEstadisticas(partidosConEventos, 10, 0);
+  assert.ok(Array.isArray(stats.distribucion_minutos));
+  assert.equal(stats.distribucion_minutos.length, 6);
+
+  const tramo015 = stats.distribucion_minutos.find(t => t.clave === '0_15');
+  const tramo1630 = stats.distribucion_minutos.find(t => t.clave === '16_30');
+  const tramo4660 = stats.distribucion_minutos.find(t => t.clave === '46_60');
+  const tramo7690 = stats.distribucion_minutos.find(t => t.clave === '76_90');
+
+  assert.equal(tramo015.goles_favor, 1);
+  assert.equal(tramo1630.amarillas, 1);
+  assert.equal(tramo4660.goles_contra, 1);
+  assert.equal(tramo7690.goles_favor, 1);
 });

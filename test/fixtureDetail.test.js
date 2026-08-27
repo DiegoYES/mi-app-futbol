@@ -90,6 +90,9 @@ test('marca un detalle consultado aunque alguna cobertura no esté disponible', 
   });
 
   assert.equal(actualizacion.detalle_completo, true);
+  assert.equal(actualizacion.estadisticas_completas, false);
+  assert.equal(actualizacion["equipo_local.corners"], null);
+  assert.equal(actualizacion["equipo_visitante.corners"], null);
   assert.equal(actualizacion.cobertura_detalle.jugadores, false);
   assert.equal(actualizacion.cobertura_detalle.eventos, true);
 });

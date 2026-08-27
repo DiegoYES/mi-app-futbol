@@ -6,16 +6,19 @@
 <script>if ('scrollRestoration' in history) history.scrollRestoration = 'manual'; addEventListener('pageshow', () => scrollTo(0, 0), { once: true });</script>
     <title>Comparador Estadístico Multiliga</title>
 <link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
+    <link rel="manifest" href="/site.webmanifest">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Data-Fut">
+    <link rel="apple-touch-icon" href="/brand-mark.svg">
     <meta name="theme-color" content="#07100d">
     <link rel="stylesheet" href="/styles.css">
-    <script src="/auth-client.js"></script>
+    <script src="/auth-client.js?v=20260827-v11"></script>
     <script src="/user-library.js"></script>
+    <script src="/pwa-install.js" defer></script>
 </head>
-<<<<<<< HEAD
-<body data-product-event="comparator_view">
-=======
-<body class="comparator-page">
->>>>>>> 35ce8da (style: compactar vista del comparador)
+<body class="comparator-page" data-product-event="comparator_view">
     <div class="container">
         <div class="header">
             <div class="header-copy">
@@ -43,6 +46,20 @@
             <div class="frequency-switch">
                 <button type="button" data-frequency-mode="percent" aria-pressed="true">Porcentaje</button>
                 <button type="button" data-frequency-mode="count" aria-pressed="false">Veces cumplidas</button>
+            </div>
+        </div>
+
+        <div id="comparator-sticky-bar" class="comparator-sticky-bar" style="display: none;" aria-hidden="true">
+            <div class="sticky-team sticky-team-local">
+                <img id="sticky-logo-a" src="" alt="" style="display:none">
+                <strong id="sticky-name-a"></strong>
+                <span class="sticky-badge local">Local</span>
+            </div>
+            <span class="sticky-vs">VS</span>
+            <div class="sticky-team sticky-team-visitante">
+                <span class="sticky-badge visitante">Visitante</span>
+                <strong id="sticky-name-b"></strong>
+                <img id="sticky-logo-b" src="" alt="" style="display:none">
             </div>
         </div>
 
@@ -87,10 +104,16 @@
                     </div>
                     <p class="panel-role-note"><strong>Rol del pick: LOCAL.</strong> Esta condición, muestra y periodo también se usan al generar los picks.</p>
                     </details>
-                    <div class="stats-table" id="stats-a">Selecciona competición y equipo</div>
-                    <div class="last-matches" id="matches-a"></div>
-
-                    <details class="analysis-box advanced-analysis">
+                    <nav class="team-tabs" role="tablist" aria-label="Vistas del equipo local">
+                        <button type="button" role="tab" id="tab-summary-a" aria-controls="panel-summary-a" aria-selected="true" data-team-tab="summary" data-side="a">Resumen</button>
+                        <button type="button" role="tab" id="tab-trends-a" aria-controls="panel-trends-a" aria-selected="false" data-team-tab="trends" data-side="a" tabindex="-1">Tendencias</button>
+                        <button type="button" role="tab" id="tab-history-a" aria-controls="panel-history-a" aria-selected="false" data-team-tab="history" data-side="a" tabindex="-1">Historial</button>
+                        <button type="button" role="tab" id="tab-minutes-a" aria-controls="panel-minutes-a" aria-selected="false" data-team-tab="minutes" data-side="a" tabindex="-1">Por minuto</button>
+                    </nav>
+                    <section class="team-tab-panel" id="panel-summary-a" role="tabpanel" aria-labelledby="tab-summary-a"><div class="stats-table" id="stats-a">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel" id="panel-trends-a" role="tabpanel" aria-labelledby="tab-trends-a" hidden><div class="stats-table" id="trends-a">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel history-tab-panel" id="panel-history-a" role="tabpanel" aria-labelledby="tab-history-a" hidden><div class="last-matches" id="matches-a"></div></section>
+                    <section class="team-tab-panel" id="panel-minutes-a" role="tabpanel" aria-labelledby="tab-minutes-a" hidden><details class="analysis-box advanced-analysis" open>
                         <summary>📊 Analizar eventos por minuto <small>Opcional</small></summary>
                         <div class="analysis-box-body">
                         <div class="analysis-controls">
@@ -102,7 +125,7 @@
                         </div>
                         <div class="analysis-results" id="a-analysis-results"></div>
                         </div>
-                    </details>
+                    </details></section>
                 </div>
             </div>
 
@@ -146,10 +169,16 @@
                     </div>
                     <p class="panel-role-note"><strong>Rol del pick: VISITANTE.</strong> Esta condición, muestra y periodo también se usan al generar los picks.</p>
                     </details>
-                    <div class="stats-table" id="stats-b">Selecciona competición y equipo</div>
-                    <div class="last-matches" id="matches-b"></div>
-
-                    <details class="analysis-box advanced-analysis">
+                    <nav class="team-tabs" role="tablist" aria-label="Vistas del equipo visitante">
+                        <button type="button" role="tab" id="tab-summary-b" aria-controls="panel-summary-b" aria-selected="true" data-team-tab="summary" data-side="b">Resumen</button>
+                        <button type="button" role="tab" id="tab-trends-b" aria-controls="panel-trends-b" aria-selected="false" data-team-tab="trends" data-side="b" tabindex="-1">Tendencias</button>
+                        <button type="button" role="tab" id="tab-history-b" aria-controls="panel-history-b" aria-selected="false" data-team-tab="history" data-side="b" tabindex="-1">Historial</button>
+                        <button type="button" role="tab" id="tab-minutes-b" aria-controls="panel-minutes-b" aria-selected="false" data-team-tab="minutes" data-side="b" tabindex="-1">Por minuto</button>
+                    </nav>
+                    <section class="team-tab-panel" id="panel-summary-b" role="tabpanel" aria-labelledby="tab-summary-b"><div class="stats-table" id="stats-b">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel" id="panel-trends-b" role="tabpanel" aria-labelledby="tab-trends-b" hidden><div class="stats-table" id="trends-b">Selecciona competición y equipo</div></section>
+                    <section class="team-tab-panel history-tab-panel" id="panel-history-b" role="tabpanel" aria-labelledby="tab-history-b" hidden><div class="last-matches" id="matches-b"></div></section>
+                    <section class="team-tab-panel" id="panel-minutes-b" role="tabpanel" aria-labelledby="tab-minutes-b" hidden><details class="analysis-box advanced-analysis" open>
                         <summary>📊 Analizar eventos por minuto <small>Opcional</small></summary>
                         <div class="analysis-box-body">
                         <div class="analysis-controls">
@@ -161,10 +190,12 @@
                         </div>
                         <div class="analysis-results" id="b-analysis-results"></div>
                         </div>
-                    </details>
+                    </details></section>
                 </div>
             </div>
         </div>
+
+        <div id="h2h-visual-section" class="h2h-comparison-section" style="display: none;"></div>
 
         <div class="compare-action">
             <div class="compare-primary-copy"><span>Siguiente paso</span><strong>Combina ambos historiales</strong></div>
@@ -237,7 +268,8 @@
         <div id="pick-explanation-body" class="explanation-dialog-body"></div>
     </dialog>
 
-    <script src="/app.js" defer></script>
+    <script src="/app.js?v=20260824-modules" defer></script>
+    <script src="/app-picks.js?v=20260824-modules" defer></script>
     <script src="/product-events.js" defer></script>
 </body>
 </html>

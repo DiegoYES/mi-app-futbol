@@ -1,0 +1,67 @@
+function estadoCalidad(valor) { return valor ? 'quality-bad' : 'quality-ok'; }
+
+async function cargarCalidadDatos() {
+  const resumen = document.getElementById('quality-summary');
+  const detalle = document.getElementById('quality-detail');
+  resumen.innerHTML = '<div class="ticket-empty">Calculando calidad…</div>';
+  const respuesta = await fetch('/api/admin/calidad-datos', { cache: 'no-store' });
+  const datos = await respuesta.json().catch(() => ({}));
+  if (!respuesta.ok) { resumen.innerHTML = `<div class="ticket-empty">${escaparHtml(datos.error || 'No se pudo cargar el diagnóstico.')}</div>`; return; }
+  const p = datos.problemas;
+  resumen.innerHTML = [
+    ['NS atrasados', p.partidos_ns_atrasados], ['Finales sin stats', p.finalizados_sin_estadisticas],
+    ['Estados sin actualizar', p.estados_sin_actualizar], ['Ligas con pendientes', p.ligas_atrasadas]
+  ].map(([nombre, valor]) => `<article class="quality-card ${estadoCalidad(valor)}"><span>${nombre}</span><strong>${valor}</strong></article>`).join('');
+  const instancias = datos.version.instancias.map(item => `<li>Puerto ${item.puerto}: <b>${item.disponible ? escaparHtml(item.commit?.slice(0, 8)) : 'no disponible'}</b></li>`).join('');
+  const ligas = datos.ligas_atrasadas.length ? datos.ligas_atrasadas.map(item => `<li><b>${escaparHtml(item.nombre || item._id?.id || item._id)}</b><br>Sin resultado: ${item.partidos_sin_resultado || 0} · Más antiguo: ${fechaHora(item.partido_mas_antiguo)} · Estados: ${escaparHtml((item.estados || []).join(', '))}<br><button class="rec-secondary" type="button" data-quality-league="${Number(item._id?.id)}" data-quality-season="${Number(item._id?.temporada)}">Actualizar pendientes</button></li>`).join('') : '<li>Ninguna liga tiene partidos pasados pendientes de resultado</li>';
+  const cobertura = datos.cobertura_estadisticas || { total: 0, completos: 0, pendientes: 0, por_consultar: 0, en_reintento: 0, no_disponibles: 0, porcentaje_total: 100, porcentaje_obtenible: 100 };
+  const bloqueCobertura = `<article><h3>Cobertura de estadísticas · 30 días</h3><p><b>${cobertura.completos}/${cobertura.total}</b> completos (${cobertura.porcentaje_total}%)<br>Por consultar: ${cobertura.por_consultar}<br>En reintento (1–2 consultas): ${cobertura.en_reintento}<br>Sin cobertura tras 3 consultas: ${cobertura.no_disponibles}<br>Cobertura total real: ${cobertura.porcentaje_total}%</p><button class="rec-secondary" type="button" data-quality-retry-stats>Procesar 10 pendientes</button></article>`;
+  const alertas = datos.alertas?.length ? `<article class="quality-alerts"><h3>Alertas activas</h3><ul>${datos.alertas.map(a => `<li><b>${escaparHtml(a.codigo)}</b> · ${escaparHtml(typeof a.detalle === 'object' ? JSON.stringify(a.detalle) : a.detalle)}</li>`).join('')}</ul></article>` : '';
+  detalle.innerHTML = `<article><h3>Cron</h3><p>Estado: <b>${escaparHtml(datos.cron.estado)}</b><br>Último éxito: ${datos.cron.ultima_ejecucion_exitosa ? fechaHora(datos.cron.ultima_ejecucion_exitosa) : 'sin registro'}</p></article><article><h3>Proveedor y Redis</h3><p>Cuota: <b>${datos.cuota.restantes} restantes</b><br>Redis: ${escaparHtml(datos.redis)}</p></article><article><h3>Pool</h3><ul>${instancias}</ul></article><article><h3>Ligas con partidos sin resultado</h3><p>Se calcula al abrir esta pestaña: partidos de los últimos 30 días cuya hora pasó hace más de dos horas y aún no tienen estado final o marcador válido.</p><ul>${ligas}</ul></article>${bloqueCobertura}${alertas}`;
+}
+
+async function revalidarDesdeCalidad(evento) {
+  evento.preventDefault();
+  const apiId = Number(document.getElementById('quality-api-id').value);
+  if (prompt(`Para consultar al proveedor y actualizar sólo el partido ${apiId}, escribe REVALIDAR`) !== 'REVALIDAR') return;
+  const estado = document.getElementById('quality-action-status');
+  estado.textContent = 'Revalidando…';
+  const respuesta = await fetch(`/api/admin/calidad-datos/revalidar/${apiId}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmacion: 'REVALIDAR' }) });
+  const datos = await respuesta.json().catch(() => ({}));
+  estado.textContent = datos.mensaje || datos.error || 'Acción terminada.';
+  if (respuesta.ok) cargarCalidadDatos();
+}
+
+async function ejecutarAccionCalidad(url, confirmacion, pregunta, extra = {}) {
+  if (prompt(pregunta) !== confirmacion) return;
+  const estado = document.getElementById('quality-action-status');
+  estado.textContent = 'Consultando al proveedor…';
+  const respuesta = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ confirmacion, ...extra }) });
+  const datos = await respuesta.json().catch(() => ({}));
+  estado.textContent = datos.mensaje || datos.error || 'Acción terminada.';
+  if (respuesta.ok) cargarCalidadDatos();
+}
+
+function manejarAccionCalidad(evento) {
+  const liga = evento.target.closest('[data-quality-league]');
+  if (liga) return ejecutarAccionCalidad(`/api/admin/calidad-datos/revalidar-liga/${liga.dataset.qualityLeague}`, 'REVALIDAR LIGA', 'Para actualizar hasta 10 partidos pendientes de esta liga, escribe REVALIDAR LIGA', { temporada: Number(liga.dataset.qualitySeason) });
+  if (evento.target.closest('[data-quality-retry-stats]')) return ejecutarAccionCalidad('/api/admin/calidad-datos/reintentar-estadisticas', 'REINTENTAR 10', 'Para procesar hasta 10 partidos realmente pendientes (máximo 3 intentos), escribe REINTENTAR 10');
+}
+
+async function cargarResumen() {
+  const resp = await fetch('/api/admin/resumen');
+  if (!resp.ok) return;
+  const d = await resp.json();
+  const cortesias = d.diasCortesia || 0;
+  const ingresoReal = Math.max(0, d.premium - (d.mesesCortesia || 0)) * 50;
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="label">Usuarios</div><div class="value">${d.total}</div></div>
+    <div class="kpi"><div class="label">Premium</div><div class="value">${d.premium}</div></div>
+    <div class="kpi"><div class="label">En prueba</div><div class="value">${d.enPrueba}</div></div>
+    <div class="kpi"><div class="label">Expirados</div><div class="value">${d.expirados}</div></div>
+    <div class="kpi"><div class="label">Ingreso mensual real</div><div class="value">$${ingresoReal}</div></div>
+    <div class="kpi"><div class="label">Días de cortesía otorgados</div><div class="value">${cortesias}</div></div>
+    <div class="kpi"><div class="label">API hoy</div><div class="value">${d.cuotaApi.usadas}/${d.cuotaApi.disponibles_para_uso}</div></div>
+    <div class="kpi"><div class="label">Tickets abiertos</div><div class="value">${d.ticketsAbiertos || 0}</div></div>`;
+}
+

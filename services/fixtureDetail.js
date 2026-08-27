@@ -1,6 +1,7 @@
 const Partido = require('../models/partido');
 const JugadorPartido = require('../models/JugadorPartido');
 const { valorEstadistica, tieneMetricasBasicas } = require('./statValue');
+const { resolverCoberturaEstadisticas } = require('./statisticsCoverage');
 
 function numero(valor) {
   if (valor === null || valor === undefined || valor === '') return 0;
@@ -84,6 +85,10 @@ function construirUpdatePartido(detalle, partido) {
     Object.assign(update, camposEstadisticas('equipo_local', homeStats));
     Object.assign(update, camposEstadisticas('equipo_visitante', awayStats));
     update.estadisticas_completas = tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats);
+  } else {
+    Object.assign(update, camposEstadisticas("equipo_local", { statistics: [] }));
+    Object.assign(update, camposEstadisticas("equipo_visitante", { statistics: [] }));
+    update.estadisticas_completas = false;
   }
 
   if (Array.isArray(detalle.events)) {
@@ -188,6 +193,7 @@ async function guardarDetalleFixture(detalle, partido, {
     alineaciones: Array.isArray(detalle.lineups) && detalle.lineups.length > 0,
     jugadores: jugadores.length > 0
   };
+  Object.assign(update, resolverCoberturaEstadisticas(partido, update.estadisticas_completas === true));
   await modeloPartido.updateOne({ api_id: partido.api_id }, { $set: update });
   return { estadisticas: update.estadisticas_completas === true, eventos: update.eventos_completos === true, jugadores: jugadores.length };
 }

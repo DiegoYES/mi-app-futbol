@@ -19,7 +19,7 @@ function normalizarRuta(url) {
 
 // Sirve páginas HTML que sólo deben existir para ciertos roles. Quien no
 // cumple recibe 404 en vez de 403: así el panel no se anuncia a sí mismo.
-function paginasPrivadas(reglas, directorio) {
+function paginasPrivadas(reglas, directorio, enviarHtml) {
   const rutas = new Map(
     Object.entries(reglas).map(([ruta, roles]) => [ruta.toLowerCase(), new Set(roles)])
   );
@@ -39,7 +39,7 @@ function paginasPrivadas(reglas, directorio) {
         return res.status(404).type('text/plain').send('No encontrado');
       }
       res.set('Cache-Control', 'no-store');
-      return res.sendFile(path.join(directorio, path.basename(ruta)));
+      return enviarHtml ? enviarHtml(res, path.basename(ruta)) : res.sendFile(path.join(directorio, path.basename(ruta)));
     } catch (_error) {
       return res.status(404).type('text/plain').send('No encontrado');
     }
