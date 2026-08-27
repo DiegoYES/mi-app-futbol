@@ -13,7 +13,8 @@ const { obtenerEstadisticasCache } = require('../middleware/cache');
 const mongoose = require('mongoose');
 const { obtenerMetricasHttp } = require('../middleware/observability');
 const Recomendacion = require('../models/Recomendacion');
-const { normalizarRecomendacion } = require('../services/recomendaciones');
+const Boleta = require('../models/Boleta');
+const { normalizarRecomendacion, normalizarMomio } = require('../services/recomendaciones');
 const Partido = require('../models/partido');
 const { obtenerMercado } = require('../services/marketCatalog');
 const { analizarPartido } = require('./picks');
@@ -224,6 +225,129 @@ router.post('/recomendaciones', async (req, res) => {
     res.status(201).json({ mensaje: 'Recomendación creada.', recomendacion });
   } catch (error) {
     if (error.name === 'ValidationError') return res.status(400).json({ error: 'Revisa los datos de la recomendación.' });
+    errorServidor(res, error);
+  }
+});
+
+router.post('/recomendaciones/desde-boleta/:id', async (req, res) => {
+  try {
+    const boleta = await Boleta.findById(req.params.id).lean();
+    if (!boleta) return res.status(404).json({ error: 'Boleta no encontrada.' });
+    if (!boleta.selecciones || !boleta.selecciones.length) {
+      return res.status(400).json({ error: 'La boleta no contiene selecciones.' });
+    }
+    if (boleta.selecciones.length > 20) {
+      return res.status(400).json({ error: 'Una recomendación no puede exceder 20 selecciones.' });
+    }
+
+    const ahora = new Date();
+    const seleccionesEnriquecidas = [];
+    let fechaMinima = null;
+
+    for (const sel of boleta.selecciones) {
+      let partido = null;
+      if (sel.partido_api_id) {
+        partido = await Partido.findOne({ api_id: sel.partido_api_id }).lean();
+      }
+      if (!partido && sel.local?.id && sel.visitante?.id) {
+        partido = await Partido.findOne({
+          'equipo_local.id': sel.local.id,
+          'equipo_visitante.id': sel.visitante.id,
+          fecha: { $gte: new Date(ahora.getTime() - 4 * 3600000) }
+        }).sort({ fecha: 1 }).lean();
+      }
+
+      const fechaPartido = partido?.fecha || new Date(ahora.getTime() + 24 * 3600000);
+      if (!fechaMinima || fechaPartido < fechaMinima) {
+        fechaMinima = fechaPartido;
+      }
+
+      const partidoApiId = partido?.api_id || sel.partido_api_id || (sel.local.id * 10000 + sel.visitante.id);
+      const periodo = sel.configuracion?.local?.periodo || sel.mercado?.periodo || 0;
+      const estimacion = Math.min(Math.max(Number(sel.estimacion) || 50, 5), 98);
+      const cuotaCalculada = Number((100 / estimacion).toFixed(2));
+      const momioObj = normalizarMomio(cuotaCalculada, 'decimal');
+
+      const mercadoCatalogo = obtenerMercado(sel.mercado?.base_id || sel.mercado?.id);
+      const nombreMercado = (mercadoCatalogo?.nombre || sel.mercado?.nombre || 'Mercado') + (periodo ? ` · ${periodo}T` : '');
+
+      seleccionesEnriquecidas.push({
+        partido_api_id: partidoApiId,
+        fecha_partido: fechaPartido,
+        liga: {
+          id: partido?.liga?.id || sel.liga?.id || 1,
+          nombre: partido?.liga?.nombre || sel.liga?.nombre || 'Competición'
+        },
+        local: {
+          id: sel.local.id,
+          nombre: partido?.equipo_local?.nombre || sel.local.nombre || 'Local'
+        },
+        visitante: {
+          id: sel.visitante.id,
+          nombre: partido?.equipo_visitante?.nombre || sel.visitante.nombre || 'Visitante'
+        },
+        evento: `${partido?.equipo_local?.nombre || sel.local.nombre} vs ${partido?.equipo_visitante?.nombre || sel.visitante.nombre}`,
+        mercado_id: sel.mercado.id,
+        mercado: nombreMercado,
+        periodo,
+        cuota: momioObj.cuota,
+        momio_americano: momioObj.americano,
+        formato_momio: momioObj.formato,
+        momio_capturado: momioObj.capturado,
+        casa: req.body?.casa ? String(req.body.casa).trim().slice(0, 80) : ''
+      });
+    }
+
+    const n = seleccionesEnriquecidas.length;
+    const esMismoPartido = new Set(seleccionesEnriquecidas.map(s => s.partido_api_id)).size === 1;
+    const tipo = n === 1 ? 'pick' : (esMismoPartido ? 'combinada' : 'parlay');
+
+    const titulo = (typeof req.body?.titulo === 'string' && req.body.titulo.trim())
+      ? req.body.titulo.trim().slice(0, 140)
+      : (boleta.nombre || `Pick del Día ${ahora.toLocaleDateString('es-MX')}`).slice(0, 140);
+
+    const visibilidad = ['gratis', 'premium'].includes(req.body?.visibilidad) ? req.body.visibilidad : 'premium';
+    const estadoPublicacion = ['borrador', 'publicada'].includes(req.body?.estado_publicacion) ? req.body.estado_publicacion : 'publicada';
+    const descripcion = typeof req.body?.descripcion === 'string' ? req.body.descripcion.trim().slice(0, 3000) : '';
+    const destacada = Boolean(req.body?.destacada);
+
+    const cierraEn = (req.body?.cierra_en && !Number.isNaN(new Date(req.body.cierra_en).getTime()))
+      ? new Date(req.body.cierra_en)
+      : (fechaMinima && fechaMinima > ahora ? fechaMinima : new Date(ahora.getTime() + 24 * 3600000));
+
+    const cuotaTotalCalculada = seleccionesEnriquecidas.reduce((acc, item) => acc * (item.cuota || 1), 1);
+    const formatoMomioTotal = ['decimal', 'americano'].includes(req.body?.formato_momio_total) ? req.body.formato_momio_total : 'decimal';
+    const momioTotal = normalizarMomio(
+      req.body?.momio_total ? req.body.momio_total : cuotaTotalCalculada.toFixed(2),
+      formatoMomioTotal
+    ) || normalizarMomio(cuotaTotalCalculada.toFixed(2), 'decimal');
+
+    const recomendacion = await Recomendacion.create({
+      tipo,
+      titulo,
+      descripcion,
+      visibilidad,
+      estado_publicacion: estadoPublicacion,
+      resultado: 'pendiente',
+      destacada,
+      selecciones: seleccionesEnriquecidas,
+      cuota_total: momioTotal.cuota,
+      momio_total_americano: momioTotal.americano,
+      formato_momio_total: momioTotal.formato,
+      momio_total_capturado: momioTotal.capturado,
+      cierra_en: cierraEn,
+      publicada_en: estadoPublicacion === 'publicada' ? new Date() : null,
+      creada_por: req.usuario._id
+    });
+
+    res.status(201).json({
+      mensaje: 'Recomendación creada a partir de la boleta.',
+      recomendacion
+    });
+  } catch (error) {
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ error: 'Revisa los datos de la recomendación.' });
+    }
     errorServidor(res, error);
   }
 });

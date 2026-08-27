@@ -30,7 +30,26 @@
   .boleta-actions { display:flex;gap:8px;flex-wrap:wrap;margin-top:13px; }
   .boleta-actions button,.boleta-actions a { min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--ink);font-size:.72rem;font-weight:800;text-decoration:none;display:grid;place-items:center; }
   .boleta-actions a { color:var(--cyan); }
+  .boleta-actions .btn-admin-recomendar { background:rgba(84,227,142,.15);border-color:rgba(84,227,142,.45);color:#54e38e;font-weight:900; }
+  .boleta-actions .btn-admin-recomendar:hover { background:#54e38e;color:#07100d; }
   .boleta-actions .danger { color:var(--red);margin-left:auto; }
+  
+  .rec-modal-dialog { border:0;padding:0;background:transparent;max-width:480px;width:calc(100vw - 32px);margin:auto;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.8); }
+  .rec-modal-dialog::backdrop { background:rgba(4,9,7,.82);backdrop-filter:blur(8px); }
+  .rec-modal-card { padding:24px;border:1px solid rgba(84,227,142,.35);border-radius:20px;background:#0f1d18;color:#eef8f2;display:grid;gap:14px; }
+  .rec-modal-head { display:flex;align-items:flex-start;justify-content:space-between;gap:12px; }
+  .rec-modal-head span { display:block;color:#54e38e;font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase; }
+  .rec-modal-head h3 { margin:3px 0 0;font-size:1.2rem; }
+  .rec-modal-close { width:32px;height:32px;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:transparent;color:#9db1a8;font-size:1.1rem;cursor:pointer; }
+  .rec-modal-field { display:grid;gap:5px; }
+  .rec-modal-field span { color:#9db1a8;font-size:.7rem;font-weight:750; }
+  .rec-modal-field input, .rec-modal-field select, .rec-modal-field textarea { width:100%;padding:10px 13px;border:1px solid rgba(84,227,142,.3);border-radius:11px;background:#14241f;color:#eef8f2;font:inherit;font-size:.85rem;outline:none; }
+  .rec-modal-field textarea { min-height:65px;resize:vertical; }
+  .rec-modal-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
+  .rec-modal-actions { display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:6px; }
+  .btn-rec-sec { min-height:42px;padding:0 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:transparent;color:#9db1a8;font:inherit;font-size:.8rem;font-weight:750;cursor:pointer; }
+  .btn-rec-pri { min-height:42px;padding:0 16px;border:1px solid #54e38e;border-radius:10px;background:#54e38e;color:#07100d;font:inherit;font-size:.82rem;font-weight:900;cursor:pointer; }
+
   @media(max-width:700px){.page-nav{overflow-x:auto;white-space:nowrap}.boleta{padding:14px}.boleta-head{flex-direction:column;gap:5px}.boleta-item{grid-template-columns:minmax(0,1fr) auto;gap:9px}.boleta-item strong{grid-column:1/-1;overflow-wrap:anywhere}.boleta-actions{display:grid;grid-template-columns:1fr 1fr}.boleta-actions button,.boleta-actions a{min-height:44px}.boleta-actions .danger{margin-left:0}}
   @media(max-width:380px){.boleta-item{grid-template-columns:1fr}.boleta-prob{grid-column:1}.boleta-actions{grid-template-columns:1fr}}
 </style>
@@ -47,8 +66,61 @@
   </header>
   <div id="boletas" class="boletas"><div class="loader">Cargando boletas...</div></div>
 </main>
+
+<dialog id="modal-recomendar-boleta" class="rec-modal-dialog">
+  <form id="form-recomendar-boleta" class="rec-modal-card">
+    <div class="rec-modal-head">
+      <div><span>Sección editorial</span><h3>Recomendar en Picks del Día</h3></div>
+      <button id="btn-cerrar-modal-rec" class="rec-modal-close" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <input type="hidden" id="rec-modal-boleta-id">
+    <label class="rec-modal-field">
+      <span>Título de la recomendación</span>
+      <input id="rec-modal-titulo" type="text" maxlength="140" required>
+    </label>
+    <div class="rec-modal-grid-2">
+      <label class="rec-modal-field">
+        <span>Visibilidad</span>
+        <select id="rec-modal-visibilidad">
+          <option value="premium">Premium</option>
+          <option value="gratis">Gratis</option>
+        </select>
+      </label>
+      <label class="rec-modal-field">
+        <span>Estado de publicación</span>
+        <select id="rec-modal-estado">
+          <option value="publicada">Publicar ahora</option>
+          <option value="borrador">Borrador (en Admin)</option>
+        </select>
+      </label>
+    </div>
+    <div class="rec-modal-grid-2">
+      <label class="rec-modal-field">
+        <span>Momio / Cuota total</span>
+        <input id="rec-modal-momio" type="text" placeholder="Ej. 2.45 o +145">
+      </label>
+      <label class="rec-modal-field">
+        <span>Destacar</span>
+        <select id="rec-modal-destacada">
+          <option value="false">Normal</option>
+          <option value="true">⭐ Destacada</option>
+        </select>
+      </label>
+    </div>
+    <label class="rec-modal-field">
+      <span>Análisis / Justificación (opcional)</span>
+      <textarea id="rec-modal-descripcion" placeholder="Explica brevemente la lógica de la recomendación..."></textarea>
+    </label>
+    <div class="rec-modal-actions">
+      <button id="btn-cancelar-modal-rec" class="btn-rec-sec" type="button">Cancelar</button>
+      <button id="btn-confirmar-modal-rec" class="btn-rec-pri" type="submit">Publicar Pick del Día ✓</button>
+    </div>
+  </form>
+</dialog>
+
 <script>
 const boletasPorId = new Map();
+let esAdmin = false;
 
 function esc(valor) {
   return String(valor ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -85,7 +157,14 @@ async function cargarBoletas() {
       <strong>${esc(item.mercado.nombre)}<br><small>Confianza ${esc(item.confianza)} · muestra ${item.muestra} · ${item.fuentes}/2 fuentes</small></strong>
       <div class="boleta-prob">${item.estimacion}%</div>
     </div>`).join('')}</div>
-    <div class="boleta-actions"><button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button><button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button><button type="button" data-download-image="${esc(boleta._id)}">🖼️ Guardar imagen</button><a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a><button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button></div>
+    <div class="boleta-actions">
+      ${esAdmin ? `<button type="button" class="btn-admin-recomendar" data-recommend-admin="${esc(boleta._id)}">🌟 Recomendar en Picks del Día</button>` : ''}
+      <button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button>
+      <button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button>
+      <button type="button" data-download-image="${esc(boleta._id)}">🖼️ Guardar imagen</button>
+      <a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a>
+      <button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button>
+    </div>
   </article>`).join('');
 }
 
@@ -104,14 +183,12 @@ function descargarImagenBoleta(boleta) {
   canvas.width = width;
   canvas.height = height;
 
-  // Fondo oscuro con degradado
   const grad = ctx.createLinearGradient(0, 0, width, height);
   grad.addColorStop(0, '#07120e');
   grad.addColorStop(1, '#0c1d17');
   ctx.fillStyle = grad;
   ctx.fillRect(0, 0, width, height);
 
-  // Borde y acento superior verde
   ctx.strokeStyle = 'rgba(84, 227, 142, 0.4)';
   ctx.lineWidth = 4;
   ctx.strokeRect(10, 10, width - 20, height - 20);
@@ -119,7 +196,6 @@ function descargarImagenBoleta(boleta) {
   ctx.fillStyle = '#54e38e';
   ctx.fillRect(10, 10, width - 20, 6);
 
-  // Encabezado
   ctx.fillStyle = '#54e38e';
   ctx.font = 'bold 15px sans-serif';
   ctx.fillText('DATAFUT · BOLETA DE ANÁLISIS', padding, 52);
@@ -133,7 +209,6 @@ function descargarImagenBoleta(boleta) {
   const fechaStr = new Date(boleta.creada_en).toLocaleDateString('es-MX', { dateStyle: 'long' });
   ctx.fillText(`${fechaStr}  ·  ${selecciones.length} selección(es) combinada(s)`, padding, 120);
 
-  // Línea separadora
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
   ctx.lineWidth = 1;
   ctx.beginPath();
@@ -141,32 +216,26 @@ function descargarImagenBoleta(boleta) {
   ctx.lineTo(width - padding, 142);
   ctx.stroke();
 
-  // Dibujar cada selección
   let currentY = 165;
   selecciones.forEach((item, idx) => {
-    // Tarjeta de selección
     ctx.fillStyle = 'rgba(16, 26, 23, 0.75)';
     ctx.fillRect(padding, currentY, width - (padding * 2), itemHeight - 12);
     ctx.strokeStyle = 'rgba(84, 227, 142, 0.2)';
     ctx.strokeRect(padding, currentY, width - (padding * 2), itemHeight - 12);
 
-    // Número
     ctx.fillStyle = '#54e38e';
     ctx.font = 'bold 16px sans-serif';
     ctx.fillText(`${idx + 1}.`, padding + 14, currentY + 40);
 
-    // Equipos y Competición
     ctx.fillStyle = '#94a3b8';
     ctx.font = '13px sans-serif';
     const liga = item.liga?.nombre || 'Competición';
     ctx.fillText(`${item.local.nombre} vs ${item.visitante.nombre}  (${liga})`, padding + 42, currentY + 28);
 
-    // Nombre del Mercado
     ctx.fillStyle = '#f8fafc';
     ctx.font = 'bold 16px sans-serif';
     ctx.fillText(item.mercado.nombre, padding + 42, currentY + 52);
 
-    // Badge de Porcentaje
     const badgeWidth = 90;
     const badgeHeight = 36;
     const badgeX = width - padding - badgeWidth - 14;
@@ -178,7 +247,7 @@ function descargarImagenBoleta(boleta) {
     ctx.strokeRect(badgeX, badgeY, badgeWidth, badgeHeight);
 
     ctx.fillStyle = '#54e38e';
-    ctx.font = 'bold 17px sans-serif';
+    ctx.font = 'bold 16px sans-serif';
     ctx.textAlign = 'center';
     ctx.fillText(`${item.estimacion}%`, badgeX + (badgeWidth / 2), badgeY + 24);
     ctx.textAlign = 'left';
@@ -186,17 +255,15 @@ function descargarImagenBoleta(boleta) {
     currentY += itemHeight;
   });
 
-  // Pie de imagen
   ctx.fillStyle = '#64748b';
-  ctx.font = '13px sans-serif';
-  ctx.fillText('📊 Analizado en https://data-fut.com  ·  Estadísticas y tendencias en tiempo real', padding, height - 30);
+  ctx.font = '12px sans-serif';
+  ctx.fillText('Generado por Data-Fut · https://data-fut.com', padding, height - 30);
 
-  // Descarga del PNG
   canvas.toBlob(blob => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `boleta-${(boleta.nombre || 'datafut').toLowerCase().replace(/[^a-z0-9]+/g, '-')}.png`;
+    a.download = `boleta-${(boleta.nombre || 'parlay').toLowerCase().replace(/\s+/g, '-')}.png`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
@@ -204,7 +271,62 @@ function descargarImagenBoleta(boleta) {
   }, 'image/png');
 }
 
+const modalRec = document.getElementById('modal-recomendar-boleta');
+const formRec = document.getElementById('form-recomendar-boleta');
+const cerrarModalRec = () => { if (modalRec?.open) modalRec.close(); };
+
+document.getElementById('btn-cerrar-modal-rec')?.addEventListener('click', cerrarModalRec);
+document.getElementById('btn-cancelar-modal-rec')?.addEventListener('click', cerrarModalRec);
+modalRec?.addEventListener('click', (e) => { if (e.target === modalRec) cerrarModalRec(); });
+
+formRec?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const boletaId = document.getElementById('rec-modal-boleta-id').value;
+  const btn = document.getElementById('btn-confirmar-modal-rec');
+  btn.disabled = true;
+  btn.textContent = 'Publicando...';
+
+  try {
+    const payload = {
+      titulo: document.getElementById('rec-modal-titulo').value,
+      visibilidad: document.getElementById('rec-modal-visibilidad').value,
+      estado_publicacion: document.getElementById('rec-modal-estado').value,
+      momio_total: document.getElementById('rec-modal-momio').value,
+      destacada: document.getElementById('rec-modal-destacada').value === 'true',
+      descripcion: document.getElementById('rec-modal-descripcion').value
+    };
+
+    const resp = await fetch(`/api/admin/recomendaciones/desde-boleta/${boletaId}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const datos = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(datos.error || 'No se pudo publicar la recomendación');
+
+    cerrarModalRec();
+    alert('🎉 ¡Recomendación publicada con éxito en Picks del Día!');
+  } catch (err) {
+    alert('Error: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Publicar Pick del Día ✓';
+  }
+});
+
 document.getElementById('boletas').addEventListener('click', async event => {
+  const rec = event.target.closest('[data-recommend-admin]');
+  if (rec) {
+    const boleta = boletasPorId.get(rec.dataset.recommendAdmin);
+    if (!boleta) return;
+    document.getElementById('rec-modal-boleta-id').value = boleta._id;
+    document.getElementById('rec-modal-titulo').value = boleta.nombre || 'Pick del Día';
+    const cuotaSugerida = (boleta.selecciones || []).reduce((acc, s) => acc * (100 / Math.min(Math.max(Number(s.estimacion) || 50, 5), 98)), 1);
+    document.getElementById('rec-modal-momio').value = cuotaSugerida.toFixed(2);
+    document.getElementById('rec-modal-descripcion').value = '';
+    modalRec.showModal();
+    return;
+  }
   const copiar = event.target.closest('[data-copy]');
   if (copiar) {
     const boleta = boletasPorId.get(copiar.dataset.copy);
@@ -248,7 +370,21 @@ document.getElementById('boletas').addEventListener('click', async event => {
   }
 });
 
-document.addEventListener('DOMContentLoaded', cargarBoletas);
+window.addEventListener('futbol:usuario-cargado', (e) => {
+  if (e.detail?.rol === 'admin') {
+    esAdmin = true;
+    cargarBoletas();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  fetch('/api/auth/me').then(r => r.json()).then(d => {
+    if (d.usuario?.rol === 'admin') {
+      esAdmin = true;
+    }
+    cargarBoletas();
+  }).catch(() => cargarBoletas());
+});
 </script>
 </body>
 </html>
