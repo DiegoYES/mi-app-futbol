@@ -17,21 +17,6 @@
 <style>
   .page-nav { display:flex; gap:16px; margin-bottom:24px; }
   .page-nav a { color:var(--green); text-decoration:none; font-size:.85rem; }
-  .pick-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:20px; }
-  .pick-kpi { padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
-  .pick-kpi span { display:block; color:var(--muted); font-size:.7rem; text-transform:uppercase; }
-  .pick-kpi strong { display:block; margin-top:3px; font-size:1.6rem; }
-  .analytics-panel{margin-bottom:20px}.analytics-toolbar{display:flex;align-items:end;justify-content:space-between;gap:12px;margin-bottom:12px}.analytics-toolbar select{min-height:40px;padding:8px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink)}.analytics-table{width:100%;border-collapse:collapse;font-size:.72rem}.analytics-table th,.analytics-table td{padding:9px;border-bottom:1px solid var(--line);text-align:left}.analytics-table th{color:var(--muted);font-size:.62rem;text-transform:uppercase}.calibration-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:8px;margin-top:14px}.calibration-point{padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--surface)}.calibration-point span,.calibration-point b,.calibration-point small{display:block}.calibration-point span{color:var(--muted);font-size:.6rem}.calibration-point b{margin:4px 0;font-size:1rem}.calibration-point small{font-size:.58rem;color:var(--muted)}
-  .history-list { display:grid; gap:10px; }
-  .history-item { display:grid; grid-template-columns:minmax(210px,1.4fr) minmax(160px,1fr) auto auto; align-items:center; gap:16px; padding:16px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); }
-  .history-match strong, .history-market strong { display:block; }
-  .history-match span, .history-market span { color:var(--muted); font-size:.74rem; }
-  .history-prob { font-size:1.3rem; font-weight:900; }
-  .status { padding:5px 9px; border-radius:999px; font-size:.7rem; font-weight:850; text-transform:uppercase; }
-  .status-pendiente { color:var(--amber); background:rgba(245,190,91,.12); }
-  .status-acertado { color:var(--green); background:rgba(84,227,142,.12); }
-  .status-fallado { color:var(--red); background:rgba(255,124,120,.12); }
-  .delete-pick { min-height:40px; padding:0 12px; background:transparent; border:1px solid var(--line); color:var(--muted); }
   .general-controls { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:12px; margin:18px 0; }
   .general-controls label { color:var(--muted); font-size:.72rem; font-weight:800; }
   .general-controls select { width:100%; margin-top:7px; }
@@ -113,13 +98,6 @@
       <label>Línea<select id="general-linea"><option value="">Todas las líneas</option></select></label>
     </div>
     <div id="mejores-generales" class="general-grid"><div class="loader">Buscando mejores picks...</div></div>
-  </section>
-
-  <section id="resumen" class="pick-kpis"><div class="loader">Cargando rendimiento...</div></section>
-  <section class="picks-section analytics-panel">
-    <div class="analytics-toolbar"><div><p class="eyebrow">Resultados segmentados</p><h3>Rendimiento y calibración del modelo</h3></div><label>Segmentar por <select id="analytics-dimension"><option value="mercado">Mercado</option><option value="liga">Liga</option><option value="alcance">Local/visitante</option><option value="periodo">Periodo</option><option value="confianza">Confianza</option><option value="muestra">Tamaño de muestra</option><option value="mes">Mes</option><option value="temporada">Temporada</option></select></label></div>
-    <div id="analytics-segments"><div class="loader">Calculando segmentos…</div></div>
-    <div id="analytics-calibration" class="calibration-grid"></div>
   </section>
 </main>
 <dialog id="general-explanation-dialog" class="explanation-dialog" aria-labelledby="general-explanation-title">
@@ -259,31 +237,16 @@ async function abrirAnalisisGeneral(boton) {
 }
 
 let analiticaPicks = { segmentos: {}, calibracion: [] };
-function pintarAnaliticaPicks() {
-  const dimension = document.getElementById('analytics-dimension').value;
-  const filas = analiticaPicks.segmentos?.[dimension] || [];
-  document.getElementById('analytics-segments').innerHTML = filas.length ? `<div class="table-scroll"><table class="analytics-table"><thead><tr><th>Segmento</th><th>Total</th><th>Resueltos</th><th>Aciertos</th><th>Efectividad</th><th>Brier</th></tr></thead><tbody>${filas.map(f => `<tr><td><strong>${esc(f.etiqueta)}</strong></td><td>${f.total}</td><td>${f.resueltos}</td><td>${f.acertados}</td><td>${f.efectividad == null ? '—' : `${f.efectividad}%`}</td><td>${f.brier ?? '—'}</td></tr>`).join('')}</tbody></table></div>` : '<div class="empty-state">Aún no hay muestra para este segmento.</div>';
-  document.getElementById('analytics-calibration').innerHTML = (analiticaPicks.calibracion || []).map(p => `<article class="calibration-point"><span>Estimados ${esc(p.etiqueta)}</span><b>${p.efectividad == null ? '—' : `${p.efectividad}% real`}</b><small>Media ${p.estimacion_media}% · ${p.resueltos} resueltos</small></article>`).join('');
+async function cargarPicksGuardados() {
+  try {
+    const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
+    if (!respuesta.ok) return;
+    const datos = await respuesta.json();
+    picksGuardados = new Set((datos.picks || []).map(pick => `${pick.partido_api_id}:${pick.mercado.id}`));
+    marcarPicksGeneralesGuardados();
+  } catch {}
 }
 
-async function cargarMetricasPicks() {
-  const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
-  if (!respuesta.ok) return;
-  const datos = await respuesta.json();
-  picksGuardados = new Set(datos.picks.map(pick => `${pick.partido_api_id}:${pick.mercado.id}`));
-  marcarPicksGeneralesGuardados();
-  analiticaPicks = datos;
-  pintarAnaliticaPicks();
-  const r = datos.resumen;
-  document.getElementById('resumen').innerHTML = `
-    <article class="pick-kpi"><span>Total analizados</span><strong>${r.total}</strong></article>
-    <article class="pick-kpi"><span>Pendientes</span><strong>${r.pendientes}</strong></article>
-    <article class="pick-kpi"><span>Acertados</span><strong>${r.acertados}</strong></article>
-    <article class="pick-kpi"><span>Efectividad</span><strong>${r.efectividad ?? '—'}${r.efectividad == null ? '' : '%'}</strong></article>
-    <article class="pick-kpi"><span>Brier ↓</span><strong>${r.brier ?? '—'}</strong></article>`;
-}
-
-document.getElementById('analytics-dimension').addEventListener('change', pintarAnaliticaPicks);
 document.querySelector('.general-controls').addEventListener('change', cargarMejoresGenerales);
 document.getElementById('mejores-generales').addEventListener('click', async event => {
   const explicacion = event.target.closest('[data-explain-general]');
@@ -349,11 +312,11 @@ document.addEventListener('DOMContentLoaded', () => {
   }).finally(() => {
     cargarRecomendacionesEditoriales();
     cargarMejoresGenerales();
-    cargarMetricasPicks();
+    cargarPicksGuardados();
   });
 });
-window.addEventListener('futbol:picks-actualizados', cargarMetricasPicks);
-window.addEventListener('pageshow', event => { if (event.persisted) cargarMetricasPicks(); });
+window.addEventListener('futbol:picks-actualizados', cargarPicksGuardados);
+window.addEventListener('pageshow', event => { if (event.persisted) cargarPicksGuardados(); });
 </script>
 </body>
 </html>

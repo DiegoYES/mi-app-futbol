@@ -17,11 +17,27 @@
 <style>
   .page-nav { display:flex;gap:16px;margin-bottom:24px; }
   .page-nav a { color:var(--green);text-decoration:none;font-size:.85rem; }
+  .boleta-kpis { display:grid; grid-template-columns:repeat(5,minmax(0,1fr)); gap:10px; margin-bottom:22px; }
+  .boleta-kpi { padding:14px; border:1px solid var(--line); border-radius:14px; background:var(--surface-raised); text-align:center; }
+  .boleta-kpi span { display:block; color:var(--muted); font-size:.65rem; text-transform:uppercase; font-weight:800; }
+  .boleta-kpi strong { display:block; margin-top:4px; font-size:1.5rem; }
+  .boleta-filters { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px; }
+  .boleta-filter-btn { padding:6px 14px; border:1px solid var(--line); border-radius:999px; background:transparent; color:var(--muted); font:inherit; font-size:.76rem; font-weight:800; cursor:pointer; transition:all .15s; }
+  .boleta-filter-btn:hover { color:var(--ink); border-color:rgba(84,227,142,.3); }
+  .boleta-filter-btn.active { background:rgba(84,227,142,.15); border-color:rgba(84,227,142,.4); color:var(--green); }
   .boletas { display:grid;gap:14px; }
   .boleta { padding:18px;border:1px solid var(--line);border-radius:16px;background:var(--surface-raised); }
   .boleta-head { display:flex;align-items:flex-start;justify-content:space-between;gap:15px;margin-bottom:12px; }
   .boleta-head h3 { margin:0;font-size:1rem; }
   .boleta-head span { color:var(--muted);font-size:.7rem; }
+  .badge-boleta { padding:4px 10px; border-radius:999px; font-size:.65rem; font-weight:900; text-transform:uppercase; display:inline-flex; align-items:center; gap:4px; }
+  .badge-boleta.acertada { background:rgba(84,227,142,.15); color:var(--green); border:1px solid rgba(84,227,142,.35); }
+  .badge-boleta.fallada { background:rgba(255,124,120,.15); color:var(--red); border:1px solid rgba(255,124,120,.35); }
+  .badge-boleta.pendiente { background:rgba(245,190,91,.15); color:var(--amber); border:1px solid rgba(245,190,91,.35); }
+  .badge-sel { font-size:.62rem; font-weight:850; padding:2px 7px; border-radius:6px; text-transform:uppercase; display:inline-block; }
+  .badge-sel.acertado { color:var(--green); background:rgba(84,227,142,.15); border:1px solid rgba(84,227,142,.3); }
+  .badge-sel.fallado { color:var(--red); background:rgba(255,124,120,.15); border:1px solid rgba(255,124,120,.3); }
+  .badge-sel.pendiente { color:var(--amber); background:rgba(245,190,91,.15); border:1px solid rgba(245,190,91,.3); }
   .boleta-selecciones { display:grid;gap:7px; }
   .boleta-item { display:grid;grid-template-columns:minmax(190px,1fr) minmax(220px,1.4fr) auto;align-items:center;gap:14px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft); }
   .boleta-item span,.boleta-item small { color:var(--muted);font-size:.68rem; }
@@ -50,20 +66,29 @@
   .btn-rec-sec { min-height:42px;padding:0 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:transparent;color:#9db1a8;font:inherit;font-size:.8rem;font-weight:750;cursor:pointer; }
   .btn-rec-pri { min-height:42px;padding:0 16px;border:1px solid #54e38e;border-radius:10px;background:#54e38e;color:#07100d;font:inherit;font-size:.82rem;font-weight:900;cursor:pointer; }
 
-  @media(max-width:700px){.page-nav{overflow-x:auto;white-space:nowrap}.boleta{padding:14px}.boleta-head{flex-direction:column;gap:5px}.boleta-item{grid-template-columns:minmax(0,1fr) auto;gap:9px}.boleta-item strong{grid-column:1/-1;overflow-wrap:anywhere}.boleta-actions{display:grid;grid-template-columns:1fr 1fr}.boleta-actions button,.boleta-actions a{min-height:44px}.boleta-actions .danger{margin-left:0}}
+  @media(max-width:700px){.page-nav{overflow-x:auto;white-space:nowrap}.boleta-kpis{grid-template-columns:repeat(2,1fr)}.boleta{padding:14px}.boleta-head{flex-direction:column;gap:5px}.boleta-item{grid-template-columns:minmax(0,1fr) auto;gap:9px}.boleta-item strong{grid-column:1/-1;overflow-wrap:anywhere}.boleta-actions{display:grid;grid-template-columns:1fr 1fr}.boleta-actions button,.boleta-actions a{min-height:44px}.boleta-actions .danger{margin-left:0}}
   @media(max-width:380px){.boleta-item{grid-template-columns:1fr}.boleta-prob{grid-column:1}.boleta-actions{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
 <main class="container">
-  <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/picks.html">Mis picks</a></nav>
+  <nav class="page-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/picks.html">Mejores picks</a></nav>
   <header class="header">
     <div class="header-copy">
-      <p class="eyebrow">Borradores personales</p>
+      <p class="eyebrow">Seguimiento y boletas</p>
       <h1>Mis <span>boletas.</span></h1>
-      <p>Copia los mercados y búscalos en la casa. Las líneas y cuotas deben confirmarse antes de apostar.</p>
+      <p>Tus tickets y combinadas creadas con evaluación de resultados en tiempo real y porcentaje de acierto.</p>
     </div>
   </header>
+
+  <section id="boleta-kpis" class="boleta-kpis" hidden></section>
+  <div id="boleta-filters" class="boleta-filters" hidden>
+    <button class="boleta-filter-btn active" data-filter="todas" type="button">Todas (<span id="count-todas">0</span>)</button>
+    <button class="boleta-filter-btn" data-filter="pendiente" type="button">⏳ Pendientes (<span id="count-pendientes">0</span>)</button>
+    <button class="boleta-filter-btn" data-filter="acertada" type="button">✅ Acertadas (<span id="count-acertadas">0</span>)</button>
+    <button class="boleta-filter-btn" data-filter="fallada" type="button">❌ Falladas (<span id="count-falladas">0</span>)</button>
+  </div>
+
   <div id="boletas" class="boletas"><div class="loader">Cargando boletas...</div></div>
 </main>
 
@@ -124,6 +149,8 @@
 
 <script>
 const boletasPorId = new Map();
+let todasLasBoletas = [];
+let filtroActual = 'todas';
 let esAdmin = false;
 
 function esc(valor) {
@@ -141,36 +168,106 @@ function textoBoleta(boleta) {
   return `📋 ${boleta.nombre}\n\n${lineas.join('\n\n')}\n\n📊 Analizado en https://data-fut.com`;
 }
 
+function renderizarListaBoletas() {
+  const cont = document.getElementById('boletas');
+  const filtradas = filtroActual === 'todas'
+    ? todasLasBoletas
+    : todasLasBoletas.filter(b => b.estado_evaluacion === filtroActual);
+
+  if (!filtradas.length) {
+    cont.innerHTML = `<div class="empty-state">No hay boletas en la categoría "${filtroActual}".</div>`;
+    return;
+  }
+
+  cont.innerHTML = filtradas.map(boleta => {
+    const estado = boleta.estado_evaluacion || 'pendiente';
+    const badgeLabel = estado === 'acertada' ? '✅ Acertada' : estado === 'fallada' ? '❌ Fallada' : '⏳ Pendiente';
+    return `<article class="boleta">
+      <div class="boleta-head">
+        <div>
+          <h3>${esc(boleta.nombre)}</h3>
+          <span>${fecha(boleta.creada_en)} · ${boleta.selecciones.length} selección(es)</span>
+        </div>
+        <span class="badge-boleta ${estado}">${badgeLabel}</span>
+      </div>
+      <div class="boleta-selecciones">${(boleta.selecciones || []).map(item => {
+        const estadoSel = item.estado_seleccion || 'pendiente';
+        const labelSel = estadoSel === 'acertado' ? '✓ Acertado' : estadoSel === 'fallado' ? '✕ Fallado' : '⏳ Pendiente';
+        const marcador = item.partido_info?.goles_local != null ? `<b style="color:var(--ink);margin-left:6px;">(${item.partido_info.goles_local} - ${item.partido_info.goles_visitante} ${item.partido_info.estado || ''})</b>` : '';
+        return `<div class="boleta-item">
+          <span>
+            ${esc(item.local.nombre)} <b>(L)</b> vs ${esc(item.visitante.nombre)} <b>(V)</b> ${marcador}
+            <br>${item.fuentes?.local
+              ? `${esc(item.fuentes.local.nombre)} · ${item.fuentes.local.temporada} / ${esc(item.fuentes.visitante.nombre)} · ${item.fuentes.visitante.temporada}`
+              : `${esc(item.liga.nombre)} · ${item.liga.temporada}`}
+          </span>
+          <strong>${esc(item.mercado.nombre)}<br><small>Confianza ${esc(item.confianza)} · muestra ${item.muestra}</small></strong>
+          <div style="display:flex;flex-direction:column;align-items:flex-end;gap:4px;">
+            <div class="boleta-prob">${item.estimacion}%</div>
+            <span class="badge-sel ${estadoSel}">${labelSel}</span>
+          </div>
+        </div>`;
+      }).join('')}</div>
+      <div class="boleta-actions">
+        ${esAdmin ? `<button type="button" class="btn-admin-recomendar" data-recommend-admin="${esc(boleta._id)}">🌟 Recomendar en Picks del Día</button>` : ''}
+        <button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button>
+        <button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button>
+        <button type="button" data-download-image="${esc(boleta._id)}">🖼️ Guardar imagen</button>
+        <a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a>
+        <button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button>
+      </div>
+    </article>`;
+  }).join('');
+}
+
 async function cargarBoletas() {
   const respuesta = await fetch('/api/boletas');
   if (!respuesta.ok) return;
-  const { boletas } = await respuesta.json();
-  const cont = document.getElementById('boletas');
+  const data = await respuesta.json();
+  const boletas = data.boletas || [];
+  const resumen = data.resumen || {};
+  todasLasBoletas = boletas;
   boletasPorId.clear();
   boletas.forEach(item => boletasPorId.set(String(item._id), item));
+
+  const kpisCont = document.getElementById('boleta-kpis');
+  const filtersCont = document.getElementById('boleta-filters');
+  const cont = document.getElementById('boletas');
+
   if (!boletas.length) {
-    cont.innerHTML = '<div class="empty-state">Todavía no guardas boletas. En el comparador abre los picks y agrega los mercados que quieras combinar.</div>';
+    kpisCont.hidden = true;
+    filtersCont.hidden = true;
+    cont.innerHTML = '<div class="empty-state">Todavía no guardas boletas. En el comparador o partidos abre los picks y agrega los mercados que quieras combinar.</div>';
     return;
   }
-  cont.innerHTML = boletas.map(boleta => `<article class="boleta">
-    <div class="boleta-head"><div><h3>${esc(boleta.nombre)}</h3><span>${fecha(boleta.creada_en)} · ${boleta.selecciones.length} selección(es)</span></div><span class="model-badge">Borrador</span></div>
-    <div class="boleta-selecciones">${boleta.selecciones.map(item => `<div class="boleta-item">
-      <span>${esc(item.local.nombre)} <b>(L)</b> vs ${esc(item.visitante.nombre)} <b>(V)</b><br>${item.fuentes?.local
-        ? `${esc(item.fuentes.local.nombre)} · ${item.fuentes.local.temporada} / ${esc(item.fuentes.visitante.nombre)} · ${item.fuentes.visitante.temporada}`
-        : `${esc(item.liga.nombre)} · ${item.liga.temporada}`}</span>
-      <strong>${esc(item.mercado.nombre)}<br><small>Confianza ${esc(item.confianza)} · muestra ${item.muestra} · ${item.fuentes}/2 fuentes</small></strong>
-      <div class="boleta-prob">${item.estimacion}%</div>
-    </div>`).join('')}</div>
-    <div class="boleta-actions">
-      ${esAdmin ? `<button type="button" class="btn-admin-recomendar" data-recommend-admin="${esc(boleta._id)}">🌟 Recomendar en Picks del Día</button>` : ''}
-      <button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button>
-      <button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button>
-      <button type="button" data-download-image="${esc(boleta._id)}">🖼️ Guardar imagen</button>
-      <a href="https://online.playdoit.mx/" target="_blank" rel="noopener noreferrer">Abrir Playdoit ↗</a>
-      <button type="button" class="danger" data-delete="${esc(boleta._id)}">Eliminar</button>
-    </div>
-  </article>`).join('');
+
+  kpisCont.hidden = false;
+  kpisCont.innerHTML = `
+    <div class="boleta-kpi"><span>Total Boletas</span><strong>${resumen.total || boletas.length}</strong></div>
+    <div class="boleta-kpi"><span>Pendientes</span><strong style="color:var(--amber);">${resumen.pendientes || 0}</strong></div>
+    <div class="boleta-kpi"><span>Acertadas</span><strong style="color:var(--green);">${resumen.acertadas || 0}</strong></div>
+    <div class="boleta-kpi"><span>Falladas</span><strong style="color:var(--red);">${resumen.falladas || 0}</strong></div>
+    <div class="boleta-kpi"><span>Efectividad</span><strong>${resumen.efectividad != null ? `${resumen.efectividad}%` : '—'}</strong></div>
+  `;
+
+  filtersCont.hidden = false;
+  document.getElementById('count-todas').textContent = boletas.length;
+  document.getElementById('count-pendientes').textContent = resumen.pendientes || 0;
+  document.getElementById('count-acertadas').textContent = resumen.acertadas || 0;
+  document.getElementById('count-falladas').textContent = resumen.falladas || 0;
+
+  renderizarListaBoletas();
 }
+
+document.getElementById('boleta-filters')?.addEventListener('click', (e) => {
+  const btn = e.target.closest('.boleta-filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.boleta-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filtroActual = btn.dataset.filter;
+  renderizarListaBoletas();
+});
+
 
 function descargarImagenBoleta(boleta) {
   const canvas = document.createElement('canvas');
