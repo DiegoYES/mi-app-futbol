@@ -92,6 +92,11 @@
     .radar-head { display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:16px; }
     .radar-head h2 { margin:0;font-size:1.35rem; }.radar-head p { margin:5px 0 0;color:var(--muted);font-size:.76rem; }
     .radar-date { padding:6px 10px;border:1px solid rgba(84,227,142,.25);border-radius:999px;color:var(--green);font-size:.65rem;font-weight:850;text-transform:uppercase; }
+    .radar-leagues-bar { display:flex;gap:7px;overflow-x:auto;margin-bottom:10px;padding-bottom:3px;scrollbar-width:none; }
+    .radar-leagues-bar::-webkit-scrollbar { display:none; }
+    .radar-leagues-bar button { min-height:30px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface-raised);color:var(--muted);font-size:.66rem;font-weight:750;white-space:nowrap;cursor:pointer;transition:all .15s; }
+    .radar-leagues-bar button:hover { border-color:rgba(84,227,142,.4);color:var(--ink); }
+    .radar-leagues-bar button.active { border-color:var(--green);background:rgba(84,227,142,.12);color:var(--green);font-weight:900; }
     .radar-filters { display:flex;gap:7px;overflow-x:auto;margin-bottom:13px;padding-bottom:2px; }.radar-filters button { min-height:34px;padding:0 12px;border:1px solid var(--line);background:var(--surface-raised);color:var(--muted);font-size:.68rem;white-space:nowrap; }.radar-filters button.active { border-color:var(--green);color:var(--green); }
     .radar-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px; }
     .radar-card { display:flex;flex-direction:column;min-height:215px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-raised);color:var(--ink);text-decoration:none;transition:border-color .18s,transform .18s; }.radar-card:hover { border-color:rgba(84,227,142,.35);transform:translateY(-2px); }
@@ -182,6 +187,7 @@
 
   <section class="radar" aria-labelledby="radar-title">
     <div class="radar-head"><div><p class="eyebrow">Radar de partidos</p><h2 id="radar-title">Lecturas destacadas de la jornada</h2><p id="radar-copy">Buscando partidos disponibles y tendencias con respaldo histórico.</p></div><span class="radar-date" id="radar-date">Cargando</span></div>
+    <div class="radar-leagues-bar" id="radar-leagues" aria-label="Filtrar por liga"></div>
     <div class="radar-filters" id="radar-filters" aria-label="Filtrar mercados"></div>
     <div class="radar-grid" id="radar-grid"><div class="radar-empty">Construyendo radar sin consumir la API externa…</div></div>
   </section>
@@ -219,11 +225,52 @@
 function numero(valor){ return new Intl.NumberFormat('es-MX').format(valor || 0); }
 function fecha(valor){ return valor ? new Date(valor).toLocaleDateString('es-MX',{dateStyle:'medium'}) : '—'; }
 const radarCategorias={goles:'Goles',resultado:'Resultado',corners:'Córners',tarjetas:'Tarjetas',tiros:'Tiros',tiros_puerta:'Tiros a puerta',faltas:'Faltas',offsides:'Fueras de juego'};
+const cachePicksPartido=new Map();
+let competicionesDelDia=[];
+let ligaSeleccionada='todas';
+let categoriaSeleccionada='goles';
 let radarPartidos=[];
 let indiceEquipos=null;
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+
+function iconoCompeticion(comp){
+  const id=Number(comp.liga_id);
+  if(id===262||id===263)return '🇲🇽 ';
+  if(id===39||id===40)return '🏴󠁧󠁢󠁥󠁮󠁧󠁿 ';
+  if(id===140||id===141)return '🇪🇸 ';
+  if(id===135||id===136)return '🇮🇹 ';
+  if(id===78||id===79)return '🇩🇪 ';
+  if(id===61||id===62)return '🇫🇷 ';
+  if(id===253)return '🇺🇸 ';
+  if(id===128)return '🇦🇷 ';
+  if(id===71||id===72)return '🇧🇷 ';
+  if(id===2||id===3||id===848)return '🏆 ';
+  if(id===239)return '🇨🇴 ';
+  if(id===242)return '🇪🇨 ';
+  if(id===88)return '🇳🇱 ';
+  if(id===94)return '🇵🇹 ';
+  if(id===203)return '🇹🇷 ';
+  if(id===307)return '🇸🇦 ';
+  return '⚽ ';
+}
+
+async function obtenerAnalisisPartido(apiId){
+  if(cachePicksPartido.has(apiId))return cachePicksPartido.get(apiId);
+  try{
+    const r=await fetch(`/api/picks/partido/${apiId}`);
+    const datos=r.ok?await r.json():null;
+    cachePicksPartido.set(apiId,datos);
+    return datos;
+  }catch{
+    cachePicksPartido.set(apiId,null);
+    return null;
+  }
+}
+
 function pintarBiblioteca(){const favoritos=FutbolLibrary.favoritos();document.getElementById('favorite-teams').innerHTML=favoritos.map(e=>`<a class="personal-item" href="/equipo.html?id=${e.id}&league=${e.league}"><img src="/api/equipos/${e.id}/escudo" alt=""><span><strong>${esc(e.nombre)}</strong><small>${esc(e.competicion||'Competición guardada')}</small></span><span>→</span></a>`).join('')||'<div class="personal-empty">Marca una estrella en el directorio o en la ficha de un equipo.</div>';const comparaciones=FutbolLibrary.comparaciones();document.getElementById('saved-comparisons').innerHTML=comparaciones.map(c=>`<div class="personal-item"><span class="portal-icon">VS</span><a href="${esc(c.url)}"><strong>${esc(c.titulo)}</strong><small>${esc(c.competiciones)}</small></a><button type="button" data-remove-comparison="${esc(c.id)}" aria-label="Quitar comparación">×</button></div>`).join('')||'<div class="personal-empty">Guarda una pareja desde el comparador para reabrirla con sus filtros.</div>'}
+
 function pintarRadar(categoria='goles'){
+  categoriaSeleccionada=categoria;
   document.querySelectorAll('[data-radar-category]').forEach(b=>b.classList.toggle('active',b.dataset.radarCategory===categoria));
   const grid=document.getElementById('radar-grid');
   const cards=radarPartidos.map(({partido,analisis,liga})=>{
@@ -258,9 +305,112 @@ function pintarRadar(categoria='goles'){
       </div>
     </a>`;
   }).filter(Boolean);
-  grid.innerHTML=cards.join('')||'<div class="radar-empty">Esta jornada no tiene mercados con cobertura para la categoría elegida.</div>';
+  grid.innerHTML=cards.join('')||'<div class="radar-empty">Esta jornada o competición no tiene mercados con cobertura para la categoría elegida.</div>';
 }
-async function cargarRadar(){try{const rangoResp=await fetch('/api/calendario/rango');const rango=await rangoResp.json();if(!rango.hasta)throw new Error('No hay calendario almacenado');const ahora=new Date();const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;const dentro=hoy>=rango.desde&&hoy<=rango.hasta;const objetivo=dentro?hoy:rango.hasta;const diaResp=await fetch(`/api/calendario/dia?fecha=${objetivo}`);const dia=await diaResp.json();const seleccionados=[];const porLiga=new Map();for(const comp of(dia.competiciones||[])){for(const part of(comp.partidos||[])){const c=porLiga.get(comp.liga_id)||0;if(c<2&&seleccionados.length<8){porLiga.set(comp.liga_id,c+1);seleccionados.push({liga:comp,partido:part})}}}if(seleccionados.length<8){for(const comp of(dia.competiciones||[])){for(const part of(comp.partidos||[])){if(seleccionados.length>=8)break;if(!seleccionados.some(s=>s.partido.api_id===part.api_id))seleccionados.push({liga:comp,partido:part})}}}radarPartidos=await Promise.all(seleccionados.map(async item=>{try{const r=await fetch(`/api/picks/partido/${item.partido.api_id}`);return {...item,analisis:r.ok?await r.json():null}}catch{return {...item,analisis:null}}}));const categorias=[...new Set(radarPartidos.flatMap(x=>x.analisis?.categorias||[]))];const fechaEl=document.getElementById('radar-date');fechaEl.textContent=dentro?'Partidos de hoy':'Última jornada guardada';fechaEl.dataset.fecha=objetivo;document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${seleccionados.length} partidos destacados · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;const filtros=document.getElementById('radar-filters');filtros.innerHTML=categorias.map(c=>`<button type="button" data-radar-category="${esc(c)}">${esc(radarCategorias[c]||c)}</button>`).join('');filtros.onclick=e=>{const b=e.target.closest('[data-radar-category]');if(b)pintarRadar(b.dataset.radarCategory)};pintarRadar(categorias.includes('goles')?'goles':categorias[0]);}catch(error){document.getElementById('radar-date').textContent='Sin datos';document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`}}
+
+async function cambiarFiltroLiga(ligaId){
+  ligaSeleccionada=String(ligaId);
+  document.querySelectorAll('[data-radar-league]').forEach(b=>{
+    b.classList.toggle('active',b.dataset.radarLeague===ligaSeleccionada);
+  });
+  await actualizarPartidosRadar();
+}
+
+async function actualizarPartidosRadar(){
+  let candidatos=[];
+  if(ligaSeleccionada==='todas'){
+    const porLiga=new Map();
+    for(const comp of competicionesDelDia){
+      for(const part of(comp.partidos||[])){
+        const c=porLiga.get(comp.liga_id)||0;
+        if(c<2&&candidatos.length<8){
+          porLiga.set(comp.liga_id,c+1);
+          candidatos.push({liga:comp,partido:part});
+        }
+      }
+    }
+    if(candidatos.length<8){
+      for(const comp of competicionesDelDia){
+        for(const part of(comp.partidos||[])){
+          if(candidatos.length>=8)break;
+          if(!candidatos.some(s=>s.partido.api_id===part.api_id)){
+            candidatos.push({liga:comp,partido:part});
+          }
+        }
+      }
+    }
+  }else{
+    const comp=competicionesDelDia.find(c=>String(c.liga_id)===ligaSeleccionada);
+    if(comp){
+      candidatos=(comp.partidos||[]).map(p=>({liga:comp,partido:p}));
+    }
+  }
+
+  radarPartidos=await Promise.all(candidatos.map(async item=>{
+    const analisis=await obtenerAnalisisPartido(item.partido.api_id);
+    return {...item,analisis};
+  }));
+
+  const categorias=[...new Set(radarPartidos.flatMap(x=>x.analisis?.categorias||[]))];
+  if(!categorias.includes(categoriaSeleccionada)){
+    categoriaSeleccionada=categorias.includes('goles')?'goles':(categorias[0]||'goles');
+  }
+
+  const filtros=document.getElementById('radar-filters');
+  filtros.innerHTML=categorias.map(c=>`
+    <button type="button" data-radar-category="${esc(c)}" class="${c===categoriaSeleccionada?'active':''}">
+      ${esc(radarCategorias[c]||c)}
+    </button>
+  `).join('');
+  filtros.onclick=e=>{
+    const b=e.target.closest('[data-radar-category]');
+    if(b)pintarRadar(b.dataset.radarCategory);
+  };
+
+  pintarRadar(categoriaSeleccionada);
+}
+
+async function cargarRadar(){
+  try{
+    const rangoResp=await fetch('/api/calendario/rango');
+    const rango=await rangoResp.json();
+    if(!rango.hasta)throw new Error('No hay calendario almacenado');
+    const ahora=new Date();
+    const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;
+    const dentro=hoy>=rango.desde&&hoy<=rango.hasta;
+    const objetivo=dentro?hoy:rango.hasta;
+
+    const diaResp=await fetch(`/api/calendario/dia?fecha=${objetivo}`);
+    const dia=await diaResp.json();
+    competicionesDelDia=(dia.competiciones||[]).filter(c=>(c.partidos||[]).length>0);
+
+    const fechaEl=document.getElementById('radar-date');
+    fechaEl.textContent=dentro?'Partidos de hoy':'Última jornada guardada';
+    fechaEl.dataset.fecha=objetivo;
+    document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${dia.total||0} partidos en ${competicionesDelDia.length} ligas · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;
+
+    const barLigas=document.getElementById('radar-leagues');
+    if(barLigas){
+      barLigas.innerHTML=`
+        <button type="button" data-radar-league="todas" class="active">Todas (${dia.total||0})</button>
+        ${competicionesDelDia.map(c=>`
+          <button type="button" data-radar-league="${esc(c.liga_id)}">
+            ${iconoCompeticion(c)}${esc(c.liga)} (${c.partidos.length})
+          </button>
+        `).join('')}
+      `;
+      barLigas.onclick=e=>{
+        const b=e.target.closest('[data-radar-league]');
+        if(b)cambiarFiltroLiga(b.dataset.radarLeague);
+      };
+    }
+
+    await actualizarPartidosRadar();
+  }catch(error){
+    document.getElementById('radar-date').textContent='Sin datos';
+    document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`;
+  }
+}
 function estadoBusqueda(texto, abierta=false){document.getElementById('home-search-status').textContent=texto;document.getElementById('home-team-search').setAttribute('aria-expanded',String(abierta))}
 function cerrarBusqueda(){const salida=document.getElementById('home-team-results');const consulta=document.getElementById('home-team-search').value.trim();salida.hidden=true;document.getElementById('home-team-search').removeAttribute('aria-activedescendant');estadoBusqueda(consulta.length>=2?'Pulsa para ver resultados':'Escribe 2 letras o más')}
 async function cargarIndiceEquipos(){if(indiceEquipos)return indiceEquipos;try{const cache=sessionStorage.getItem('datafut_indice_equipos');if(cache){const parseado=JSON.parse(cache);if(Array.isArray(parseado)&&parseado.length){indiceEquipos=parseado;return indiceEquipos}}}catch{}const salida=document.getElementById('home-team-results');salida.hidden=false;estadoBusqueda('Preparando equipos…',true);salida.innerHTML='<div class="home-search-empty">Preparando índice local…</div>';const r=await fetch('/api/home/equipos');const d=await r.json().catch(()=>({}));if(!r.ok||!Array.isArray(d.equipos))throw new Error(d.error||'No se pudo cargar el índice de equipos');indiceEquipos=d.equipos;try{sessionStorage.setItem('datafut_indice_equipos',JSON.stringify(indiceEquipos))}catch{}return indiceEquipos}
