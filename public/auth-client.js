@@ -645,6 +645,18 @@
 
 
   function cargarRedesSociales() {
+    const iniciar = () => window.FutbolSocial?.cargar('[data-social-links]');
+    if (window.FutbolSocial) return iniciar();
+    if (document.querySelector('script[data-social-icons]')) return;
+    const script = document.createElement('script');
+    script.src = '/social-icons.js?v=20260824-social';
+    script.dataset.socialIcons = 'true';
+    script.onload = iniciar;
+    document.head.appendChild(script);
+  }
+
+  function pintarAvisoLegal() {
+    if (document.getElementById('site-legal-footer')) return;
     const pie = document.createElement('footer');
     pie.id = 'site-legal-footer';
     pie.className = 'site-legal-footer';
