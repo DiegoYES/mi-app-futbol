@@ -270,6 +270,10 @@
       .global-picks-head span{display:block;color:#54e38e;font-size:.57rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.global-picks-head strong{display:block;margin-top:2px;font-size:.9rem}
       .global-picks-close{position:relative;z-index:1;width:36px;height:36px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(255,255,255,.06);color:#9db1a8;font-size:1.3rem;line-height:1;cursor:pointer;touch-action:manipulation}
       .global-picks-close:hover,.global-picks-close:active{background:rgba(255,255,255,.15);color:#fff;border-color:#54e38e}
+      .global-picks-tabs{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px;background:#14241f;border-bottom:1px solid rgba(255,255,255,.08)}
+      .global-picks-tab{min-height:34px;padding:0 8px;border:1px solid transparent;border-radius:8px;background:rgba(255,255,255,.03);color:#9db1a8;font:inherit;font-size:.72rem;font-weight:800;cursor:pointer;transition:all .15s ease}
+      .global-picks-tab:hover{color:#eef8f2;background:rgba(255,255,255,.07)}
+      .global-picks-tab.active{background:rgba(84,227,142,.15);border-color:rgba(84,227,142,.35);color:#54e38e}
       .global-picks-summary{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
       .global-picks-summary div{padding:7px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
       .global-picks-list{flex:1 1 auto;min-height:70px;max-height:270px;display:grid;gap:7px;overflow-y:auto;padding:10px 12px}
@@ -326,50 +330,119 @@
     document.head.appendChild(estilos);
   }
 
+  let tabActualPicks = 'activas';
   let ultimosPicksCargados = [];
+  let ultimosDatosPicks = null;
 
   function pintarContenidoPicks(datos) {
+    if (datos) ultimosDatosPicks = datos;
+    const info = ultimosDatosPicks || {};
     const panel = document.getElementById('global-picks-panel');
     const lista = document.getElementById('global-picks-list');
+    const summary = document.getElementById('global-picks-summary');
     const acciones = document.getElementById('global-picks-actions');
+    const footerLink = document.getElementById('global-picks-link-footer');
     if (!panel || !lista) return;
-    const picks = datos?.picks || [];
-    ultimosPicksCargados = picks;
-    const resumen = datos.resumen || {};
-    const pendientes = picks.filter(item => item.estado === 'pendiente');
-    const visibles = [...pendientes, ...picks.filter(item => item.estado !== 'pendiente')].slice(0, 7);
-    document.getElementById('global-picks-count').textContent = pendientes.length;
-    document.getElementById('global-picks-summary').innerHTML = `
-      <div><span>Pendientes</span><b>${pendientes.length}</b></div>
-      <div><span>Acertados</span><b>${resumen.acertados || 0}</b></div>
-      <div><span>Efectividad</span><b>${resumen.efectividad == null ? '—' : `${resumen.efectividad}%`}</b></div>`;
-    lista.innerHTML = visibles.length ? visibles.map(pick => {
-      const url = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`;
-      return `<article class="global-pick-item">
-        <div class="global-pick-top">
-          <img src="/api/equipos/${pick.local.id}/escudo" alt="" class="global-pick-logo">
-          <a href="${url}" class="global-pick-info">
-            <strong>${escaparHtml(pick.mercado.nombre)}</strong>
-            <small>${escaparHtml(pick.local.nombre)} vs ${escaparHtml(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small>
-          </a>
-        </div>
-        <div class="global-pick-bottom">
-          <div class="global-pick-meta">
-            <span class="global-pick-pct">${pick.estimacion}%</span>
-            <span class="global-pick-badge ${escaparHtml(pick.estado)}">${escaparHtml(pick.estado)}</span>
-          </div>
-          ${pick.estado === 'pendiente' ? `<button type="button" class="global-pick-delete" data-global-pick-delete="${escaparHtml(pick._id)}">✕ Quitar</button>` : ''}
-        </div>
-      </article>`;
-    }).join('') : '<div class="global-picks-empty">Todavía no tienes picks guardados. Abre un partido futuro y guarda un mercado para verlo aquí en cualquier página.</div>';
 
-    if (acciones) {
-      if (pendientes.length > 0) {
-        acciones.innerHTML = `<button id="global-picks-to-boleta" class="btn-create-boleta" type="button">📋 Guardar como Boleta (${pendientes.length})</button>`;
-        acciones.hidden = false;
+    const picks = info.picks || [];
+    ultimosPicksCargados = picks;
+    const resumen = info.resumen || {};
+    const pendientes = picks.filter(item => item.estado === 'pendiente');
+    const resueltos = picks.filter(item => item.estado !== 'pendiente');
+
+    document.getElementById('global-picks-count').textContent = pendientes.length;
+    
+    const countActivas = document.getElementById('tab-count-activas');
+    const countHistorial = document.getElementById('tab-count-historial');
+    if (countActivas) countActivas.textContent = pendientes.length;
+    if (countHistorial) countHistorial.textContent = resueltos.length;
+
+    const tabActivasBtn = document.getElementById('tab-picks-activas');
+    const tabHistorialBtn = document.getElementById('tab-picks-historial');
+    if (tabActivasBtn && tabHistorialBtn) {
+      tabActivasBtn.classList.toggle('active', tabActualPicks === 'activas');
+      tabHistorialBtn.classList.toggle('active', tabActualPicks === 'historial');
+    }
+
+    if (tabActualPicks === 'activas') {
+      if (summary) summary.style.display = 'none';
+      if (footerLink) {
+        footerLink.href = '/boletas.html';
+        footerLink.textContent = 'Ir a Mis boletas →';
+      }
+
+      if (!pendientes.length) {
+        lista.innerHTML = '<div class="global-picks-empty"><span style="display:block;font-size:1.3rem;margin-bottom:6px;">📋</span>No tienes selecciones por armar.<br><small style="display:block;margin-top:5px;color:#9db1a8;">Guarda pronósticos desde cualquier partido para armar tu boleta.</small></div>';
       } else {
+        lista.innerHTML = pendientes.map(pick => {
+          const url = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`;
+          return `<article class="global-pick-item">
+            <div class="global-pick-top">
+              <img src="/api/equipos/${pick.local.id}/escudo" alt="" class="global-pick-logo">
+              <a href="${url}" class="global-pick-info">
+                <strong>${escaparHtml(pick.mercado.nombre)}</strong>
+                <small>${escaparHtml(pick.local.nombre)} vs ${escaparHtml(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small>
+              </a>
+            </div>
+            <div class="global-pick-bottom">
+              <div class="global-pick-meta">
+                <span class="global-pick-pct">${pick.estimacion}%</span>
+                <span class="global-pick-badge ${escaparHtml(pick.estado)}">${escaparHtml(pick.estado)}</span>
+              </div>
+              <button type="button" class="global-pick-delete" data-global-pick-delete="${escaparHtml(pick._id)}">✕ Quitar</button>
+            </div>
+          </article>`;
+        }).join('');
+      }
+
+      if (acciones) {
+        if (pendientes.length > 0) {
+          acciones.innerHTML = `<button id="global-picks-to-boleta" class="btn-create-boleta" type="button">📋 Guardar como Boleta (${pendientes.length})</button>`;
+          acciones.hidden = false;
+        } else {
+          acciones.innerHTML = '';
+          acciones.hidden = true;
+        }
+      }
+    } else {
+      // Pestaña Historial
+      if (summary) {
+        summary.style.display = 'grid';
+        summary.innerHTML = `
+          <div><span>Acertados</span><b style="color:#54e38e;">${resumen.acertados || 0}</b></div>
+          <div><span>Fallados</span><b style="color:#ff7c78;">${resumen.fallados || 0}</b></div>
+          <div><span>Efectividad</span><b>${resumen.efectividad == null ? '—' : `${resumen.efectividad}%`}</b></div>`;
+      }
+      if (acciones) {
         acciones.innerHTML = '';
         acciones.hidden = true;
+      }
+      if (footerLink) {
+        footerLink.href = '/picks.html';
+        footerLink.textContent = 'Ver métricas completas →';
+      }
+
+      if (!resueltos.length) {
+        lista.innerHTML = '<div class="global-picks-empty"><span style="display:block;font-size:1.3rem;margin-bottom:6px;">📊</span>No hay picks finalizados en tu historial todavía.</div>';
+      } else {
+        lista.innerHTML = resueltos.slice(0, 20).map(pick => {
+          const url = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`;
+          return `<article class="global-pick-item">
+            <div class="global-pick-top">
+              <img src="/api/equipos/${pick.local.id}/escudo" alt="" class="global-pick-logo">
+              <a href="${url}" class="global-pick-info">
+                <strong>${escaparHtml(pick.mercado.nombre)}</strong>
+                <small>${escaparHtml(pick.local.nombre)} vs ${escaparHtml(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small>
+              </a>
+            </div>
+            <div class="global-pick-bottom">
+              <div class="global-pick-meta">
+                <span class="global-pick-pct">${pick.estimacion}%</span>
+                <span class="global-pick-badge ${escaparHtml(pick.estado)}">${escaparHtml(pick.estado)}</span>
+              </div>
+            </div>
+          </article>`;
+        }).join('');
       }
     }
   }
@@ -377,7 +450,7 @@
   async function actualizarPicksFlotantes() {
     if (!widgetPicksCreado) return;
     const lista = document.getElementById('global-picks-list');
-    if (lista) lista.innerHTML = '<div class="global-picks-empty">Actualizando picks…</div>';
+    if (lista && !ultimosDatosPicks) lista.innerHTML = '<div class="global-picks-empty">Actualizando picks…</div>';
     try {
       const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
       if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
@@ -397,11 +470,15 @@
     widget.className = 'global-picks-widget';
     widget.innerHTML = `
       <section id="global-picks-panel" class="global-picks-panel" aria-label="Mis picks" hidden>
-        <header class="global-picks-head"><div><span>Seguimiento personal</span><strong>Mis picks</strong></div><button id="global-picks-close" class="global-picks-close" type="button" aria-label="Cerrar">×</button></header>
-        <div id="global-picks-summary" class="global-picks-summary"></div>
+        <header class="global-picks-head"><div><span>Borrador & Historial</span><strong>Mis picks</strong></div><button id="global-picks-close" class="global-picks-close" type="button" aria-label="Cerrar">×</button></header>
+        <div class="global-picks-tabs">
+          <button id="tab-picks-activas" class="global-picks-tab active" type="button">📝 Por armar (<span id="tab-count-activas">0</span>)</button>
+          <button id="tab-picks-historial" class="global-picks-tab" type="button">📊 Historial (<span id="tab-count-historial">0</span>)</button>
+        </div>
+        <div id="global-picks-summary" class="global-picks-summary" style="display:none;"></div>
         <div id="global-picks-list" class="global-picks-list"></div>
         <div id="global-picks-actions" class="global-picks-actions" hidden></div>
-        <footer class="global-picks-footer"><span>Se actualiza en todas las páginas</span><a href="/picks.html">Ver historial completo →</a></footer>
+        <footer class="global-picks-footer"><span>Se sincroniza en vivo</span><a href="/boletas.html" id="global-picks-link-footer">Ir a Mis boletas →</a></footer>
       </section>
       <button id="global-picks-trigger" class="global-picks-trigger" type="button" aria-expanded="false" aria-controls="global-picks-panel"><span>✓</span><span>Mis picks</span><b id="global-picks-count" class="global-picks-count">0</b></button>
       
@@ -515,12 +592,27 @@
         });
         const resData = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
+        
+        // Limpiar de la lista de picks pendientes aquellos convertidos en boleta
+        await Promise.all(pendientes.map(pick => fetch(`/api/picks/seguimiento/${pick._id}`, { method: 'DELETE', cache: 'no-store' }).catch(() => {})));
+        notificarCambioPicks();
+
         window.location.href = '/boletas.html';
       } catch (err) {
         alert('Error: ' + err.message);
         confirmBtn.disabled = false;
         confirmBtn.textContent = 'Guardar Boleta ✓';
       }
+    });
+
+    document.getElementById('tab-picks-activas')?.addEventListener('click', () => {
+      tabActualPicks = 'activas';
+      pintarContenidoPicks();
+    });
+
+    document.getElementById('tab-picks-historial')?.addEventListener('click', () => {
+      tabActualPicks = 'historial';
+      pintarContenidoPicks();
     });
 
     document.getElementById('global-picks-panel').addEventListener('click', async event => {
