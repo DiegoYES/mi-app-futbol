@@ -259,7 +259,7 @@
     estilos.id = 'global-picks-styles';
     estilos.textContent = `
       .global-picks-widget{position:fixed;right:18px;bottom:18px;z-index:140;font-family:Inter,system-ui,sans-serif;color:#eef8f2}
-      .global-picks-trigger{min-height:50px;display:flex;align-items:center;gap:9px;padding:0 15px;border:1px solid rgba(84,227,142,.45);border-radius:999px;background:#14241f;color:#eef8f2;box-shadow:0 16px 42px rgba(0,0,0,.48);font-size:.78rem;font-weight:850;cursor:pointer}
+      .global-picks-trigger{min-height:50px;display:flex;align-items:center;gap:9px;padding:0 15px;border:1px solid rgba(84,227,142,.45);border-radius:999px;background:#14241f;color:#eef8f2;box-shadow:0 16px 42px rgba(0,0,0,.48);font-size:.78rem;font-weight:850;cursor:pointer;transition:transform .15s ease, border-color .15s ease}
       .global-picks-trigger:hover{border-color:#54e38e;transform:translateY(-1px)}
       .global-picks-trigger>span:first-child{width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:rgba(84,227,142,.14);color:#54e38e}
       .global-picks-count{min-width:22px;height:22px;display:grid;place-items:center;padding:0 6px;border-radius:999px;background:#54e38e;color:#07100d;font-size:.67rem}
@@ -270,10 +270,9 @@
       .global-picks-head span{display:block;color:#54e38e;font-size:.57rem;font-weight:900;letter-spacing:.09em;text-transform:uppercase}.global-picks-head strong{display:block;margin-top:2px;font-size:.9rem}
       .global-picks-close{position:relative;z-index:1;width:36px;height:36px;min-width:36px;min-height:36px;display:flex;align-items:center;justify-content:center;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:9px;background:rgba(255,255,255,.06);color:#9db1a8;font-size:1.3rem;line-height:1;cursor:pointer;touch-action:manipulation}
       .global-picks-close:hover,.global-picks-close:active{background:rgba(255,255,255,.15);color:#fff;border-color:#54e38e}
-      .global-picks-tabs{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px;background:#14241f;border-bottom:1px solid rgba(255,255,255,.08)}
-      .global-picks-tab{min-height:34px;padding:0 8px;border:1px solid transparent;border-radius:8px;background:rgba(255,255,255,.03);color:#9db1a8;font:inherit;font-size:.72rem;font-weight:800;cursor:pointer;transition:all .15s ease}
-      .global-picks-tab:hover{color:#eef8f2;background:rgba(255,255,255,.07)}
-      .global-picks-tab.active{background:rgba(84,227,142,.15);border-color:rgba(84,227,142,.35);color:#54e38e}
+      .global-picks-tabs{flex-shrink:0;display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:8px 12px;background:#12201b;border-bottom:1px solid rgba(255,255,255,.08)}
+      .global-picks-tab-btn{min-height:34px;padding:0 8px;border:1px solid rgba(255,255,255,.1);border-radius:8px;background:transparent;color:#9db1a8;font:inherit;font-size:.7rem;font-weight:800;cursor:pointer;transition:all .15s ease}
+      .global-picks-tab-btn.active{background:rgba(84,227,142,.15);border-color:rgba(84,227,142,.45);color:#54e38e}
       .global-picks-summary{flex-shrink:0;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.08)}
       .global-picks-summary div{padding:7px;border-radius:9px;background:rgba(255,255,255,.035);text-align:center}.global-picks-summary span{display:block;color:#9db1a8;font-size:.55rem;text-transform:uppercase}.global-picks-summary b{display:block;margin-top:2px;font-size:.83rem}
       .global-picks-list{flex:1 1 auto;min-height:70px;max-height:270px;display:grid;gap:7px;overflow-y:auto;padding:10px 12px}
@@ -289,8 +288,8 @@
       .global-pick-pct{font-size:.8rem;font-weight:900;color:#68d9e7}
       .global-pick-badge{display:inline-block;padding:2px 7px;border-radius:6px;font-size:.58rem;font-weight:850;letter-spacing:.04em;text-transform:uppercase}
       .global-pick-badge.pendiente{background:rgba(245,190,91,.15);color:#f5be5b;border:1px solid rgba(245,190,91,.3)}
-      .global-pick-badge.acertado{background:rgba(84,227,142,.15);color:#54e38e;border:1px solid rgba(84,227,142,.3)}
-      .global-pick-badge.fallado{background:rgba(255,124,120,.15);color:#ff7c78;border:1px solid rgba(255,124,120,.3)}
+      .global-pick-badge.acertado,.global-pick-badge.acertada{background:rgba(84,227,142,.15);color:#54e38e;border:1px solid rgba(84,227,142,.3)}
+      .global-pick-badge.fallado,.global-pick-badge.fallada{background:rgba(255,124,120,.15);color:#ff7c78;border:1px solid rgba(255,124,120,.3)}
       .global-pick-delete{min-height:26px;padding:0 10px;border:1px solid rgba(255,124,120,.3);border-radius:7px;background:rgba(255,124,120,.08);color:#ff7c78;font-size:.62rem;font-weight:750;cursor:pointer;display:inline-flex;align-items:center;gap:4px;transition:all .15s ease}
       .global-pick-delete:hover{background:#ff7c78;color:#07100d;border-color:#ff7c78}
       .global-picks-actions{flex-shrink:0;padding:10px 12px;border-top:1px solid rgba(255,255,255,.08);background:#14241f}
@@ -330,32 +329,29 @@
     document.head.appendChild(estilos);
   }
 
-  let tabActualPicks = 'activas';
   let ultimosPicksCargados = [];
-  let ultimosDatosPicks = null;
+  let ultimasBoletasCargadas = [];
+  let resumenBoletas = {};
+  let tabActualPicks = 'activas';
 
-  function pintarContenidoPicks(datos) {
-    if (datos) ultimosDatosPicks = datos;
-    const info = ultimosDatosPicks || {};
+  function pintarContenidoPicks() {
     const panel = document.getElementById('global-picks-panel');
     const lista = document.getElementById('global-picks-list');
-    const summary = document.getElementById('global-picks-summary');
     const acciones = document.getElementById('global-picks-actions');
+    const summary = document.getElementById('global-picks-summary');
     const footerLink = document.getElementById('global-picks-link-footer');
     if (!panel || !lista) return;
 
-    const picks = info.picks || [];
-    ultimosPicksCargados = picks;
-    const resumen = info.resumen || {};
-    const pendientes = picks.filter(item => item.estado === 'pendiente');
-    const resueltos = picks.filter(item => item.estado !== 'pendiente');
+    const pendientes = ultimosPicksCargados.filter(item => item.estado === 'pendiente');
+    const boletas = ultimasBoletasCargadas;
 
-    document.getElementById('global-picks-count').textContent = pendientes.length;
-    
+    const countTrigger = document.getElementById('global-picks-count');
+    if (countTrigger) countTrigger.textContent = pendientes.length;
+
     const countActivas = document.getElementById('tab-count-activas');
     const countHistorial = document.getElementById('tab-count-historial');
     if (countActivas) countActivas.textContent = pendientes.length;
-    if (countHistorial) countHistorial.textContent = resueltos.length;
+    if (countHistorial) countHistorial.textContent = boletas.length;
 
     const tabActivasBtn = document.getElementById('tab-picks-activas');
     const tabHistorialBtn = document.getElementById('tab-picks-historial');
@@ -378,68 +374,65 @@
           const url = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`;
           return `<article class="global-pick-item">
             <div class="global-pick-top">
-              <img src="/api/equipos/${pick.local.id}/escudo" alt="" class="global-pick-logo">
-              <a href="${url}" class="global-pick-info">
-                <strong>${escaparHtml(pick.mercado.nombre)}</strong>
-                <small>${escaparHtml(pick.local.nombre)} vs ${escaparHtml(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small>
+              <img class="global-pick-logo" src="${esc(pick.local.logo || '/brand-mark.svg')}" alt="${esc(pick.local.nombre)}" loading="lazy">
+              <a class="global-pick-info" href="${url}">
+                <strong>${esc(pick.mercado.nombre)}</strong>
+                <small>${esc(pick.local.nombre)} vs ${esc(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small>
               </a>
             </div>
             <div class="global-pick-bottom">
               <div class="global-pick-meta">
                 <span class="global-pick-pct">${pick.estimacion}%</span>
-                <span class="global-pick-badge ${escaparHtml(pick.estado)}">${escaparHtml(pick.estado)}</span>
+                <span class="global-pick-badge pendiente">Por armar</span>
               </div>
-              <button type="button" class="global-pick-delete" data-global-pick-delete="${escaparHtml(pick._id)}">✕ Quitar</button>
+              <button class="global-pick-delete" type="button" data-global-pick-delete="${pick._id}">Quitar</button>
             </div>
           </article>`;
         }).join('');
       }
 
       if (acciones) {
-        if (pendientes.length > 0) {
-          acciones.innerHTML = `<button id="global-picks-to-boleta" class="btn-create-boleta" type="button">📋 Guardar como Boleta (${pendientes.length})</button>`;
-          acciones.hidden = false;
-        } else {
-          acciones.innerHTML = '';
-          acciones.hidden = true;
-        }
+        acciones.hidden = !pendientes.length;
+        acciones.innerHTML = pendientes.length
+          ? `<button id="global-picks-to-boleta" class="btn-create-boleta" type="button">📋 Guardar Boleta (${pendientes.length})</button>`
+          : '';
       }
     } else {
-      // Pestaña Historial
+      // TAB 2: MIS BOLETAS
+      if (acciones) acciones.hidden = true;
+      if (footerLink) {
+        footerLink.href = '/boletas.html';
+        footerLink.textContent = 'Ver todas las boletas →';
+      }
+
       if (summary) {
         summary.style.display = 'grid';
         summary.innerHTML = `
-          <div><span>Acertados</span><b style="color:#54e38e;">${resumen.acertados || 0}</b></div>
-          <div><span>Fallados</span><b style="color:#ff7c78;">${resumen.fallados || 0}</b></div>
-          <div><span>Efectividad</span><b>${resumen.efectividad == null ? '—' : `${resumen.efectividad}%`}</b></div>`;
-      }
-      if (acciones) {
-        acciones.innerHTML = '';
-        acciones.hidden = true;
-      }
-      if (footerLink) {
-        footerLink.href = '/picks.html';
-        footerLink.textContent = 'Ver métricas completas →';
+          <div><span>Acertadas</span><b style="color:#54e38e;">${resumenBoletas.acertadas || 0}</b></div>
+          <div><span>Falladas</span><b style="color:#ff7c78;">${resumenBoletas.falladas || 0}</b></div>
+          <div><span>Efectividad</span><b>${resumenBoletas.efectividad != null ? `${resumenBoletas.efectividad}%` : '—'}</b></div>
+        `;
       }
 
-      if (!resueltos.length) {
-        lista.innerHTML = '<div class="global-picks-empty"><span style="display:block;font-size:1.3rem;margin-bottom:6px;">📊</span>No hay picks finalizados en tu historial todavía.</div>';
+      if (!boletas.length) {
+        lista.innerHTML = '<div class="global-picks-empty"><span style="display:block;font-size:1.3rem;margin-bottom:6px;">🧾</span>Aún no guardas boletas.<br><small style="display:block;margin-top:5px;color:#9db1a8;">Arma tu primera boleta en la pestaña anterior.</small></div>';
       } else {
-        lista.innerHTML = resueltos.slice(0, 20).map(pick => {
-          const url = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`;
+        lista.innerHTML = boletas.map(boleta => {
+          const estado = boleta.estado_evaluacion || 'pendiente';
+          const badgeLabel = estado === 'acertada' ? 'Acertada' : estado === 'fallada' ? 'Fallada' : 'Pendiente';
+          const numSels = (boleta.selecciones || []).length;
           return `<article class="global-pick-item">
             <div class="global-pick-top">
-              <img src="/api/equipos/${pick.local.id}/escudo" alt="" class="global-pick-logo">
-              <a href="${url}" class="global-pick-info">
-                <strong>${escaparHtml(pick.mercado.nombre)}</strong>
-                <small>${escaparHtml(pick.local.nombre)} vs ${escaparHtml(pick.visitante.nombre)} · ${fechaPick(pick.fecha_partido)}</small>
+              <a class="global-pick-info" href="/boletas.html" style="text-decoration:none;">
+                <strong>${esc(boleta.nombre)}</strong>
+                <small>${fechaPick(boleta.creada_en)} · ${numSels} selección(es)</small>
               </a>
             </div>
             <div class="global-pick-bottom">
               <div class="global-pick-meta">
-                <span class="global-pick-pct">${pick.estimacion}%</span>
-                <span class="global-pick-badge ${escaparHtml(pick.estado)}">${escaparHtml(pick.estado)}</span>
+                <span class="global-pick-badge ${estado}">${badgeLabel}</span>
               </div>
+              <a href="/boletas.html" style="color:#54e38e;font-size:.68rem;font-weight:800;text-decoration:none;">Ver boleta →</a>
             </div>
           </article>`;
         }).join('');
@@ -448,32 +441,45 @@
   }
 
   async function actualizarPicksFlotantes() {
-    if (!widgetPicksCreado) return;
-    const lista = document.getElementById('global-picks-list');
-    if (lista && !ultimosDatosPicks) lista.innerHTML = '<div class="global-picks-empty">Actualizando picks…</div>';
+    if (!estaAutenticado()) return;
     try {
-      const respuesta = await fetch('/api/picks/seguimiento', { cache: 'no-store' });
-      if (!respuesta.ok) throw new Error(`HTTP ${respuesta.status}`);
-      pintarContenidoPicks(await respuesta.json());
-    } catch (error) {
-      if (lista) lista.innerHTML = '<div class="global-picks-empty">No se pudieron actualizar los picks.</div>';
-      console.error('No se pudieron actualizar los picks flotantes:', error);
-    }
+      const [respPicks, respBoletas] = await Promise.all([
+        fetchOriginal('/api/picks/seguimiento', { cache: 'no-store' }),
+        fetchOriginal('/api/boletas', { cache: 'no-store' })
+      ]);
+
+      if (respPicks.ok) {
+        const datos = await respPicks.json();
+        ultimosPicksCargados = datos.picks || [];
+      }
+
+      if (respBoletas.ok) {
+        const datosB = await respBoletas.json();
+        ultimasBoletasCargadas = datosB.boletas || [];
+        resumenBoletas = datosB.resumen || {};
+      }
+
+      pintarContenidoPicks();
+    } catch {}
   }
 
   function crearWidgetPicks() {
-    if (widgetPicksCreado || document.getElementById('global-picks-widget')) return;
+    if (widgetPicksCreado || !estaAutenticado() || esPaginaAdmin || esPaginaConfiguracion) return;
     widgetPicksCreado = true;
     instalarEstilosPicks();
     const widget = document.createElement('aside');
     widget.id = 'global-picks-widget';
     widget.className = 'global-picks-widget';
+    widget.setAttribute('aria-label', 'Armador y Boletas');
     widget.innerHTML = `
-      <section id="global-picks-panel" class="global-picks-panel" aria-label="Mis picks" hidden>
-        <header class="global-picks-head"><div><span>Borrador & Historial</span><strong>Mis picks</strong></div><button id="global-picks-close" class="global-picks-close" type="button" aria-label="Cerrar">×</button></header>
+      <section id="global-picks-panel" class="global-picks-panel" hidden aria-hidden="true">
+        <div class="global-picks-head">
+          <div><span>Armador & Historial</span><strong>Mis boletas</strong></div>
+          <button id="global-picks-close" class="global-picks-close" type="button" aria-label="Cerrar panel">×</button>
+        </div>
         <div class="global-picks-tabs">
-          <button id="tab-picks-activas" class="global-picks-tab active" type="button">📝 Por armar (<span id="tab-count-activas">0</span>)</button>
-          <button id="tab-picks-historial" class="global-picks-tab" type="button">📊 Historial (<span id="tab-count-historial">0</span>)</button>
+          <button id="tab-picks-activas" class="global-picks-tab-btn active" type="button">📝 Por armar (<span id="tab-count-activas">0</span>)</button>
+          <button id="tab-picks-historial" class="global-picks-tab-btn" type="button">🧾 Mis Boletas (<span id="tab-count-historial">0</span>)</button>
         </div>
         <div id="global-picks-summary" class="global-picks-summary" style="display:none;"></div>
         <div id="global-picks-list" class="global-picks-list"></div>
@@ -481,14 +487,13 @@
         <footer class="global-picks-footer"><span>Se sincroniza en vivo</span><a href="/boletas.html" id="global-picks-link-footer">Ir a Mis boletas →</a></footer>
       </section>
       <button id="global-picks-trigger" class="global-picks-trigger" type="button" aria-expanded="false" aria-controls="global-picks-panel"><span>✓</span><span>Mis picks</span><b id="global-picks-count" class="global-picks-count">0</b></button>
-      
       <dialog id="global-boleta-modal" class="global-boleta-dialog">
         <div class="global-boleta-card">
           <div class="global-boleta-header">
             <div><span>Crear Boleta / Parlay</span><h3>Nombrar boleta</h3></div>
             <button id="global-boleta-modal-close" class="global-boleta-modal-close" type="button" aria-label="Cerrar">×</button>
           </div>
-          <p class="global-boleta-info">Empaqueta tus <b id="global-boleta-modal-count">0</b> selecciones pendientes en un ticket combinable.</p>
+          <p class="global-boleta-info">Empaqueta tus <b id="global-boleta-modal-count">0</b> selecciones en un ticket combinable con seguimiento.</p>
           <label class="global-boleta-field">
             <span>Nombre del ticket</span>
             <input id="global-boleta-modal-input" type="text" maxlength="60" placeholder="Ej. Parlay Fin de Semana" autocomplete="off">
@@ -508,10 +513,11 @@
 
     const cerrar = () => {
       panel.hidden = true;
-      panel.setAttribute('hidden', '');
+      panel.setAttribute('hidden', 'until-found');
       trigger.setAttribute('aria-expanded', 'false');
       document.body.classList.remove('global-picks-open');
     };
+
     const abrir = () => {
       panel.hidden = false;
       panel.removeAttribute('hidden');
@@ -532,8 +538,6 @@
     };
     const botonCerrar = document.getElementById('global-picks-close');
     botonCerrar.addEventListener('click', cerrarDesdeControl);
-    // En algunos navegadores móviles el `click` puede retrasarse o perderse al
-    // desplazar el panel. Cerrar al soltar el toque lo hace inmediato y fiable.
     botonCerrar.addEventListener('pointerup', cerrarDesdeControl);
 
     const cerrarAlTocarFuera = (e) => {
@@ -570,6 +574,7 @@
         const payload = {
           nombre,
           selecciones: pendientes.map(pick => ({
+            partido_api_id: pick.partido_api_id,
             team_local: pick.local.id,
             team_visitante: pick.visitante.id,
             league_local: pick.liga.id,
@@ -593,7 +598,6 @@
         const resData = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
         
-        // Limpiar de la lista de picks pendientes aquellos convertidos en boleta
         await Promise.all(pendientes.map(pick => fetch(`/api/picks/seguimiento/${pick._id}`, { method: 'DELETE', cache: 'no-store' }).catch(() => {})));
         notificarCambioPicks();
 
@@ -628,8 +632,9 @@
         inputNombre.select();
         return;
       }
+
       const boton = event.target.closest('[data-global-pick-delete]');
-      if (!boton) return;
+      if (!boton || boton.disabled) return;
       boton.disabled = true;
       const respuesta = await fetch(`/api/picks/seguimiento/${boton.dataset.globalPickDelete}`, { method: 'DELETE', cache: 'no-store' });
       if (respuesta.ok) notificarCambioPicks();
@@ -638,17 +643,8 @@
     actualizarPicksFlotantes();
   }
 
-  function cargarRedesSociales() {
-    const iniciar = () => window.FutbolSocial?.cargar("[data-social-links]");
-    if (window.FutbolSocial) return iniciar();
-    if (document.querySelector("script[data-social-icons]")) return;
-    const script = document.createElement("script");
-    script.src = "/social-icons.js?v=20260824-social"; script.dataset.socialIcons = "true"; script.onload = iniciar;
-    document.head.appendChild(script);
-  }
 
-  function pintarAvisoLegal() {
-    if (document.getElementById('site-legal-footer')) return;
+  function cargarRedesSociales() {
     const pie = document.createElement('footer');
     pie.id = 'site-legal-footer';
     pie.className = 'site-legal-footer';
