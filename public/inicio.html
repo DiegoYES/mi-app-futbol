@@ -93,10 +93,14 @@
     .radar-head h2 { margin:0;font-size:1.35rem; }.radar-head p { margin:5px 0 0;color:var(--muted);font-size:.76rem; }
     .radar-date { padding:6px 10px;border:1px solid rgba(84,227,142,.25);border-radius:999px;color:var(--green);font-size:.65rem;font-weight:850;text-transform:uppercase; }
     .radar-filters { display:flex;gap:7px;overflow-x:auto;margin-bottom:13px;padding-bottom:2px; }.radar-filters button { min-height:34px;padding:0 12px;border:1px solid var(--line);background:var(--surface-raised);color:var(--muted);font-size:.68rem;white-space:nowrap; }.radar-filters button.active { border-color:var(--green);color:var(--green); }
-    .radar-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px; }
-    .radar-card { display:flex;flex-direction:column;min-height:208px;padding:15px;border:1px solid var(--line);border-radius:15px;background:var(--surface-raised);color:var(--ink);text-decoration:none; }.radar-card:hover { border-color:rgba(84,227,142,.35); }
+    .radar-card { display:flex;flex-direction:column;min-height:215px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-raised);color:var(--ink);text-decoration:none;transition:border-color .18s,transform .18s; }.radar-card:hover { border-color:rgba(84,227,142,.35);transform:translateY(-2px); }
     .radar-meta { display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.6rem;text-transform:uppercase; }.radar-teams { display:grid;gap:8px;margin:15px 0; }.radar-team { display:flex;align-items:center;gap:9px;font-size:.76rem;font-weight:800; }.radar-team img { width:25px;height:25px;object-fit:contain;padding:2px;border-radius:7px;background:#f4f8f5; }.radar-team b { margin-left:auto;font-size:.9rem; }
-    .radar-pick { margin-top:auto;padding-top:12px;border-top:1px solid var(--line); }.radar-pick span { display:block;color:var(--muted);font-size:.65rem; }.radar-pick strong { display:flex;justify-content:space-between;gap:10px;margin-top:3px;font-size:.76rem; }.radar-pick em { color:var(--green);font-size:1rem;font-style:normal; }.radar-outcome { margin-top:6px;color:var(--muted);font-size:.6rem; }
+    .radar-pick { margin-top:auto;padding-top:12px;border-top:1px solid var(--line); }.radar-pick span { display:block;color:var(--muted);font-size:.65rem; }.radar-pick strong { display:flex;justify-content:space-between;gap:10px;margin-top:3px;font-size:.76rem; }.radar-pick em { color:var(--green);font-size:1rem;font-style:normal; }
+    .radar-outcome { display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:9px;padding-top:8px;border-top:1px dashed rgba(255,255,255,.08);font-size:.65rem;color:var(--muted); }
+    .radar-badge { display:inline-flex;align-items:center;gap:4px;padding:4px 9px;border-radius:7px;font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.03em; }
+    .radar-badge.acertado { background:rgba(84,227,142,.2);color:#54e38e;border:1px solid rgba(84,227,142,.5);box-shadow:0 0 10px rgba(84,227,142,.15); }
+    .radar-badge.fallado { background:rgba(255,124,120,.2);color:#ff7c78;border:1px solid rgba(255,124,120,.5);box-shadow:0 0 10px rgba(255,124,120,.15); }
+    .radar-badge.pendiente { background:rgba(104,217,231,.12);color:#68d9e7;border:1px solid rgba(104,217,231,.35); }
     .home-picks-grid { display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-bottom:24px; }
     .home-rec-card { display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--surface-raised);box-shadow:var(--shadow);transition:border-color .18s,transform .18s; }
     .home-rec-card:hover { border-color:rgba(84,227,142,.4);transform:translateY(-2px); }
@@ -221,7 +225,38 @@ function pintarBiblioteca(){const favoritos=FutbolLibrary.favoritos();document.g
 function pintarRadar(categoria='goles'){
   document.querySelectorAll('[data-radar-category]').forEach(b=>b.classList.toggle('active',b.dataset.radarCategory===categoria));
   const grid=document.getElementById('radar-grid');
-  const cards=radarPartidos.map(({partido,analisis,liga})=>{const mercados=(analisis?.mercados||[]).filter(m=>m.categoria===categoria);const recomendados=new Set(analisis?.recomendados||[]);const pick=mercados.find(m=>recomendados.has(m.id))||mercados[0];if(!pick)return null;const esCandidato=recomendados.has(pick.id);const motivo=esCandidato?'Candidato por muestra y consistencia':'Mayor respaldo disponible';const url=`/partido.html?local=${partido.local.id}&visitante=${partido.visitante.id}&liga=${liga.liga_id}&partido=${partido.api_id}&fecha=${document.getElementById('radar-date').dataset.fecha}#picks`;const resultado=pick.resultado_historico===true?'✓ habría acertado':pick.resultado_historico===false?'× habría fallado':'Abrir evidencia';return `<a class="radar-card" href="${url}"><div class="radar-meta"><span>${esc(liga.liga)}</span><span>${esc(partido.hora)}</span></div><div class="radar-teams"><div class="radar-team"><img src="/api/equipos/${partido.local.id}/escudo" alt=""><span>${esc(partido.local.nombre)}</span>${partido.finalizado?`<b>${partido.local.goles}</b>`:''}</div><div class="radar-team"><img src="/api/equipos/${partido.visitante.id}/escudo" alt=""><span>${esc(partido.visitante.nombre)}</span>${partido.finalizado?`<b>${partido.visitante.goles}</b>`:''}</div></div><div class="radar-pick"><span>${motivo} · ${esc(pick.confianza||'con cobertura')}</span><strong>${esc(pick.mercado)} <em>${pick.estimacion}%</em></strong><div class="radar-outcome">${resultado} · muestra ${pick.muestra}</div></div></a>`}).filter(Boolean);
+  const cards=radarPartidos.map(({partido,analisis,liga})=>{
+    const mercados=(analisis?.mercados||[]).filter(m=>m.categoria===categoria);
+    const recomendados=new Set(analisis?.recomendados||[]);
+    const pick=mercados.find(m=>recomendados.has(m.id))||mercados[0];
+    if(!pick)return null;
+    const esCandidato=recomendados.has(pick.id);
+    const motivo=esCandidato?'Candidato por muestra y consistencia':'Mayor respaldo disponible';
+    const url=`/partido.html?local=${partido.local.id}&visitante=${partido.visitante.id}&liga=${liga.liga_id}&partido=${partido.api_id}&fecha=${document.getElementById('radar-date').dataset.fecha}#picks`;
+    let badgeResultado='';
+    if(pick.resultado_historico===true){
+      badgeResultado='<span class="radar-badge acertado">✓ Acertado</span>';
+    }else if(pick.resultado_historico===false){
+      badgeResultado='<span class="radar-badge fallado">✕ Fallado</span>';
+    }else{
+      badgeResultado='<span class="radar-badge pendiente">👁️ Ver evidencia</span>';
+    }
+    return `<a class="radar-card" href="${url}">
+      <div class="radar-meta"><span>${esc(liga.liga)}</span><span>${esc(partido.hora)}</span></div>
+      <div class="radar-teams">
+        <div class="radar-team"><img src="/api/equipos/${partido.local.id}/escudo" alt=""><span>${esc(partido.local.nombre)}</span>${partido.finalizado?`<b>${partido.local.goles}</b>`:''}</div>
+        <div class="radar-team"><img src="/api/equipos/${partido.visitante.id}/escudo" alt=""><span>${esc(partido.visitante.nombre)}</span>${partido.finalizado?`<b>${partido.visitante.goles}</b>`:''}</div>
+      </div>
+      <div class="radar-pick">
+        <span>${motivo} · ${esc(pick.confianza||'con cobertura')}</span>
+        <strong>${esc(pick.mercado)} <em>${pick.estimacion}%</em></strong>
+        <div class="radar-outcome">
+          <span>Muestra ${pick.muestra}</span>
+          ${badgeResultado}
+        </div>
+      </div>
+    </a>`;
+  }).filter(Boolean);
   grid.innerHTML=cards.join('')||'<div class="radar-empty">Esta jornada no tiene mercados con cobertura para la categoría elegida.</div>';
 }
 async function cargarRadar(){try{const rangoResp=await fetch('/api/calendario/rango');const rango=await rangoResp.json();if(!rango.hasta)throw new Error('No hay calendario almacenado');const ahora=new Date();const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;const dentro=hoy>=rango.desde&&hoy<=rango.hasta;const objetivo=dentro?hoy:rango.hasta;const diaResp=await fetch(`/api/calendario/dia?fecha=${objetivo}`);const dia=await diaResp.json();const seleccionados=[];const porLiga=new Map();for(const comp of(dia.competiciones||[])){for(const part of(comp.partidos||[])){const c=porLiga.get(comp.liga_id)||0;if(c<2&&seleccionados.length<8){porLiga.set(comp.liga_id,c+1);seleccionados.push({liga:comp,partido:part})}}}if(seleccionados.length<8){for(const comp of(dia.competiciones||[])){for(const part of(comp.partidos||[])){if(seleccionados.length>=8)break;if(!seleccionados.some(s=>s.partido.api_id===part.api_id))seleccionados.push({liga:comp,partido:part})}}}radarPartidos=await Promise.all(seleccionados.map(async item=>{try{const r=await fetch(`/api/picks/partido/${item.partido.api_id}`);return {...item,analisis:r.ok?await r.json():null}}catch{return {...item,analisis:null}}}));const categorias=[...new Set(radarPartidos.flatMap(x=>x.analisis?.categorias||[]))];const fechaEl=document.getElementById('radar-date');fechaEl.textContent=dentro?'Partidos de hoy':'Última jornada guardada';fechaEl.dataset.fecha=objetivo;document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${seleccionados.length} partidos destacados · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;const filtros=document.getElementById('radar-filters');filtros.innerHTML=categorias.map(c=>`<button type="button" data-radar-category="${esc(c)}">${esc(radarCategorias[c]||c)}</button>`).join('');filtros.onclick=e=>{const b=e.target.closest('[data-radar-category]');if(b)pintarRadar(b.dataset.radarCategory)};pintarRadar(categorias.includes('goles')?'goles':categorias[0]);}catch(error){document.getElementById('radar-date').textContent='Sin datos';document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`}}
