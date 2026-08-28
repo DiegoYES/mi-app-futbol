@@ -109,8 +109,6 @@
     .home-rec-badge.tipo { background:rgba(84,227,142,.12);color:var(--green); }
     .home-rec-badge.destacada { background:rgba(245,190,91,.15);color:var(--amber); }
     .home-rec-badge.premium { background:rgba(104,217,231,.12);color:var(--cyan); }
-    .home-rec-del { padding:3px 7px;border:1px solid rgba(255,124,120,.45);border-radius:999px;background:rgba(255,124,120,.12);color:var(--red);font-size:.56rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px; }
-    .home-rec-del:hover { background:var(--red);color:#07100d; }
     .home-rec-selections { display:grid;gap:7px;margin:0;padding:0;list-style:none; }
     .home-rec-item { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border-left:3px solid var(--green);border-radius:0 10px 10px 0;background:rgba(84,227,142,.06);font-size:.78rem; }
     .home-rec-item strong { display:block;color:var(--ink); }
@@ -226,13 +224,11 @@ function pintarRadar(categoria='goles'){
   const cards=radarPartidos.map(({partido,analisis,liga})=>{const mercados=(analisis?.mercados||[]).filter(m=>m.categoria===categoria);const recomendados=new Set(analisis?.recomendados||[]);const pick=mercados.find(m=>recomendados.has(m.id))||mercados[0];if(!pick)return null;const esCandidato=recomendados.has(pick.id);const motivo=esCandidato?'Candidato por muestra y consistencia':'Mayor respaldo disponible';const url=`/partido.html?local=${partido.local.id}&visitante=${partido.visitante.id}&liga=${liga.liga_id}&partido=${partido.api_id}&fecha=${document.getElementById('radar-date').dataset.fecha}#picks`;const resultado=pick.resultado_historico===true?'✓ habría acertado':pick.resultado_historico===false?'× habría fallado':'Abrir evidencia';return `<a class="radar-card" href="${url}"><div class="radar-meta"><span>${esc(liga.liga)}</span><span>${esc(partido.hora)}</span></div><div class="radar-teams"><div class="radar-team"><img src="/api/equipos/${partido.local.id}/escudo" alt=""><span>${esc(partido.local.nombre)}</span>${partido.finalizado?`<b>${partido.local.goles}</b>`:''}</div><div class="radar-team"><img src="/api/equipos/${partido.visitante.id}/escudo" alt=""><span>${esc(partido.visitante.nombre)}</span>${partido.finalizado?`<b>${partido.visitante.goles}</b>`:''}</div></div><div class="radar-pick"><span>${motivo} · ${esc(pick.confianza||'con cobertura')}</span><strong>${esc(pick.mercado)} <em>${pick.estimacion}%</em></strong><div class="radar-outcome">${resultado} · muestra ${pick.muestra}</div></div></a>`}).filter(Boolean);
   grid.innerHTML=cards.join('')||'<div class="radar-empty">Esta jornada no tiene mercados con cobertura para la categoría elegida.</div>';
 }
-async function cargarRadar(){try{const rangoResp=await fetch('/api/calendario/rango');const rango=await rangoResp.json();if(!rango.hasta)throw new Error('No hay calendario almacenado');const ahora=new Date();const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;const dentro=hoy>=rango.desde&&hoy<=rango.hasta;const objetivo=dentro?hoy:rango.hasta;const diaResp=await fetch(`/api/calendario/dia?fecha=${objetivo}`);const dia=await diaResp.json();const planos=dia.competiciones.flatMap(liga=>liga.partidos.map(partido=>({liga,partido}))).slice(0,6);radarPartidos=await Promise.all(planos.map(async item=>{try{const r=await fetch(`/api/picks/partido/${item.partido.api_id}`);return {...item,analisis:r.ok?await r.json():null}}catch{return {...item,analisis:null}}}));const categorias=[...new Set(radarPartidos.flatMap(x=>x.analisis?.categorias||[]))];const fechaEl=document.getElementById('radar-date');fechaEl.textContent=dentro?'Partidos de hoy':'Última jornada guardada';fechaEl.dataset.fecha=objetivo;document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${planos.length} partidos · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;const filtros=document.getElementById('radar-filters');filtros.innerHTML=categorias.map(c=>`<button type="button" data-radar-category="${esc(c)}">${esc(radarCategorias[c]||c)}</button>`).join('');filtros.onclick=e=>{const b=e.target.closest('[data-radar-category]');if(b)pintarRadar(b.dataset.radarCategory)};pintarRadar(categorias.includes('goles')?'goles':categorias[0]);}catch(error){document.getElementById('radar-date').textContent='Sin datos';document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`}}
+async function cargarRadar(){try{const rangoResp=await fetch('/api/calendario/rango');const rango=await rangoResp.json();if(!rango.hasta)throw new Error('No hay calendario almacenado');const ahora=new Date();const hoy=`${ahora.getFullYear()}-${String(ahora.getMonth()+1).padStart(2,'0')}-${String(ahora.getDate()).padStart(2,'0')}`;const dentro=hoy>=rango.desde&&hoy<=rango.hasta;const objetivo=dentro?hoy:rango.hasta;const diaResp=await fetch(`/api/calendario/dia?fecha=${objetivo}`);const dia=await diaResp.json();const seleccionados=[];const porLiga=new Map();for(const comp of(dia.competiciones||[])){for(const part of(comp.partidos||[])){const c=porLiga.get(comp.liga_id)||0;if(c<2&&seleccionados.length<16){porLiga.set(comp.liga_id,c+1);seleccionados.push({liga:comp,partido:part})}}}if(seleccionados.length<16){for(const comp of(dia.competiciones||[])){for(const part of(comp.partidos||[])){if(seleccionados.length>=16)break;if(!seleccionados.some(s=>s.partido.api_id===part.api_id))seleccionados.push({liga:comp,partido:part})}}}radarPartidos=await Promise.all(seleccionados.map(async item=>{try{const r=await fetch(`/api/picks/partido/${item.partido.api_id}`);return {...item,analisis:r.ok?await r.json():null}}catch{return {...item,analisis:null}}}));const categorias=[...new Set(radarPartidos.flatMap(x=>x.analisis?.categorias||[]))];const fechaEl=document.getElementById('radar-date');fechaEl.textContent=dentro?'Partidos de hoy':'Última jornada guardada';fechaEl.dataset.fecha=objetivo;document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${seleccionados.length} partidos destacados · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;const filtros=document.getElementById('radar-filters');filtros.innerHTML=categorias.map(c=>`<button type="button" data-radar-category="${esc(c)}">${esc(radarCategorias[c]||c)}</button>`).join('');filtros.onclick=e=>{const b=e.target.closest('[data-radar-category]');if(b)pintarRadar(b.dataset.radarCategory)};pintarRadar(categorias.includes('goles')?'goles':categorias[0]);}catch(error){document.getElementById('radar-date').textContent='Sin datos';document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`}}
 function estadoBusqueda(texto, abierta=false){document.getElementById('home-search-status').textContent=texto;document.getElementById('home-team-search').setAttribute('aria-expanded',String(abierta))}
 function cerrarBusqueda(){const salida=document.getElementById('home-team-results');const consulta=document.getElementById('home-team-search').value.trim();salida.hidden=true;document.getElementById('home-team-search').removeAttribute('aria-activedescendant');estadoBusqueda(consulta.length>=2?'Pulsa para ver resultados':'Escribe 2 letras o más')}
 async function cargarIndiceEquipos(){if(indiceEquipos)return indiceEquipos;try{const cache=sessionStorage.getItem('datafut_indice_equipos');if(cache){const parseado=JSON.parse(cache);if(Array.isArray(parseado)&&parseado.length){indiceEquipos=parseado;return indiceEquipos}}}catch{}const salida=document.getElementById('home-team-results');salida.hidden=false;estadoBusqueda('Preparando equipos…',true);salida.innerHTML='<div class="home-search-empty">Preparando índice local…</div>';const r=await fetch('/api/home/equipos');const d=await r.json().catch(()=>({}));if(!r.ok||!Array.isArray(d.equipos))throw new Error(d.error||'No se pudo cargar el índice de equipos');indiceEquipos=d.equipos;try{sessionStorage.setItem('datafut_indice_equipos',JSON.stringify(indiceEquipos))}catch{}return indiceEquipos}
 async function buscarEquipoGlobal(){const input=document.getElementById('home-team-search');const salida=document.getElementById('home-team-results');const consulta=input.value.trim();document.getElementById('home-search-clear').hidden=!consulta;if(consulta.length<2){cerrarBusqueda();return}try{const equipos=await cargarIndiceEquipos();if(input.value.trim()!==consulta)return;const encontrados=FutbolSearch.ordenar(equipos,consulta,e=>e.nombre).slice(0,8);salida.hidden=false;estadoBusqueda(encontrados.length===1?'1 resultado':`${encontrados.length} resultados`,true);salida.innerHTML=encontrados.map((e,i)=>`<a id="home-team-option-${i}" class="home-search-result" role="option" aria-selected="false" href="/equipo.html?id=${e.id}&league=${e.league}&season=${e.season}"><img src="/api/equipos/${e.id}/escudo" alt=""><div><strong>${esc(e.nombre)}</strong><span>${esc(e.competiciones.join(' · '))}</span></div><span class="home-search-result-arrow" aria-hidden="true">→</span></a>`).join('')||'<div class="home-search-empty">No encontramos equipos con ese nombre. Prueba con menos palabras.</div>'}catch(error){salida.hidden=false;estadoBusqueda('Búsqueda no disponible',true);salida.innerHTML='<div class="home-search-empty">No se pudo preparar la búsqueda. Inténtalo de nuevo.</div>'}}
-let esAdmin = false;
-
 async function cargarPicksRecomendadosPortada() {
   const cont = document.getElementById('home-picks-grid');
   if (!cont) return;
@@ -249,7 +245,6 @@ async function cargarPicksRecomendadosPortada() {
       const cuota = rec.cuota_total ? Number(rec.cuota_total).toFixed(2) : '—';
       const momioAmericano = rec.momio_total_americano ? (rec.momio_total_americano > 0 ? `+${rec.momio_total_americano}` : rec.momio_total_americano) : '';
       const momioDisplay = momioAmericano ? `${cuota} (${momioAmericano})` : cuota;
-      const botonDel = esAdmin ? `<button type="button" class="home-rec-del" data-delete-rec-home="${rec._id}" title="Eliminar recomendación">🗑️ Quitar</button>` : '';
       return `<article class="home-rec-card ${rec.destacada ? 'destacada' : ''}">
         <div class="home-rec-head">
           <div>
@@ -260,7 +255,6 @@ async function cargarPicksRecomendadosPortada() {
             ${rec.destacada ? '<span class="home-rec-badge destacada">⭐ Destacada</span>' : ''}
             <span class="home-rec-badge tipo">${esc(rec.tipo)}</span>
             <span class="home-rec-badge ${rec.visibilidad}">${esc(rec.visibilidad)}</span>
-            ${botonDel}
           </div>
         </div>
         ${rec.descripcion ? `<p style="margin:0;color:var(--muted);font-size:.73rem;line-height:1.5;">${esc(rec.descripcion)}</p>` : ''}
@@ -296,39 +290,7 @@ async function cargarPicksRecomendadosPortada() {
   }
 }
 
-document.getElementById('home-picks-grid')?.addEventListener('click', async (e) => {
-  const btn = e.target.closest('[data-delete-rec-home]');
-  if (!btn) return;
-  const id = btn.dataset.deleteRecHome;
-  if (!confirm('¿Seguro que deseas eliminar esta recomendación del día?')) return;
-  btn.disabled = true;
-  btn.textContent = 'Quitando...';
-  try {
-    const resp = await fetch(`/api/admin/recomendaciones/${id}`, { method: 'DELETE' });
-    const datos = await resp.json().catch(() => ({}));
-    if (!resp.ok) throw new Error(datos.error || 'No se pudo eliminar.');
-    await cargarPicksRecomendadosPortada();
-  } catch (err) {
-    alert('Error al eliminar: ' + err.message);
-    btn.disabled = false;
-    btn.textContent = '🗑️ Quitar';
-  }
-});
-
-window.addEventListener('futbol:usuario-cargado', (e) => {
-  if (e.detail?.rol === 'admin') {
-    esAdmin = true;
-    cargarPicksRecomendadosPortada();
-  }
-});
-
 document.addEventListener('DOMContentLoaded', async () => {
-  fetch('/api/auth/me').then(r => r.json()).then(d => {
-    if (d.usuario?.rol === 'admin') {
-      esAdmin = true;
-      cargarPicksRecomendadosPortada();
-    }
-  }).catch(() => {});
   pintarBiblioteca();document.getElementById('saved-comparisons').onclick=e=>{const b=e.target.closest('[data-remove-comparison]');if(b){FutbolLibrary.quitarComparacion(b.dataset.removeComparison);pintarBiblioteca()}};window.addEventListener('storage',pintarBiblioteca);
   const buscador=document.getElementById('home-team-search');const limpiar=document.getElementById('home-search-clear');let esperaBusqueda;let opcionActiva=-1;buscador.addEventListener('input',()=>{opcionActiva=-1;clearTimeout(esperaBusqueda);esperaBusqueda=setTimeout(buscarEquipoGlobal,180)});buscador.addEventListener('focus',()=>{if(buscador.value.trim().length>=2&&document.getElementById('home-team-results').hidden)buscarEquipoGlobal()});buscador.addEventListener('keydown',event=>{const opciones=[...document.querySelectorAll('.home-search-result')];if(event.key==='Escape'){cerrarBusqueda();buscador.blur();return}if(!opciones.length)return;if(event.key==='ArrowDown'||event.key==='ArrowUp'){event.preventDefault();opcionActiva=event.key==='ArrowDown'?(opcionActiva+1)%opciones.length:(opcionActiva-1+opciones.length)%opciones.length;opciones.forEach((opcion,i)=>{const activa=i===opcionActiva;opcion.classList.toggle('is-active',activa);opcion.setAttribute('aria-selected',String(activa))});buscador.setAttribute('aria-activedescendant',opciones[opcionActiva].id);opciones[opcionActiva].scrollIntoView({block:'nearest'});return}if(event.key==='Enter'){event.preventDefault();const destino=opciones[opcionActiva]||opciones[0];if(destino)location.href=destino.href}});limpiar.addEventListener('click',()=>{buscador.value='';limpiar.hidden=true;opcionActiva=-1;cerrarBusqueda();buscador.focus()});document.getElementById('focus-team-search').addEventListener('click',event=>{event.preventDefault();buscador.focus();document.getElementById('buscar-equipo').scrollIntoView({behavior:'smooth',block:'center'})});document.addEventListener('click',event=>{if(!event.target.closest('.home-search'))cerrarBusqueda()});
   try {

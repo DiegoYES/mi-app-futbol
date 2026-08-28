@@ -21,6 +21,59 @@ const CAMPOS_CALENDARIO = [
   'goles_prorroga.local', 'goles_prorroga.visitante'
 ].join(' ');
 
+const PRIORIDAD_LIGAS = {
+  262: 1, // Liga MX
+  39: 2,  // Premier League
+  140: 3, // La Liga
+  2: 4,   // UEFA Champions League
+  135: 5, // Serie A
+  78: 6,  // Bundesliga
+  61: 7,  // Ligue 1
+  3: 8,   // UEFA Europa League
+  848: 9, // UEFA Conference League
+  253: 10,// Major League Soccer
+  128: 11,// Argentina Primera División
+  71: 12, // Brasileirão Serie A
+  239: 13,// Colombia Primera A
+  242: 14,// Ecuador Liga Pro
+  265: 15,// Chile Primera División
+  281: 16,// Perú Primera División
+  13: 17, // CONMEBOL Libertadores
+  11: 18, // CONMEBOL Sudamericana
+  88: 19, // Eredivisie
+  94: 20, // Primeira Liga
+  144: 21,// Jupiler Pro League
+  203: 22,// Süper Lig
+  307: 23,// Saudi Pro League
+  141: 30,// La Liga 2
+  40: 31, // Championship
+  79: 32, // 2. Bundesliga
+  136: 33,// Serie B
+  62: 34, // Ligue 2
+  263: 35,// Liga de Expansión MX
+  72: 36, // Brasileirão Serie B
+  179: 40,// Scottish Premiership
+  218: 41,// Bundesliga Austria
+  119: 42,// Superliga Dinamarca
+  207: 43,// Swiss Super League
+  106: 44,// Ekstraklasa
+  113: 45,// Allsvenskan
+  103: 46,// Eliteserien
+  98: 47, // J1 League
+  292: 48,// K League 1
+  169: 49 // Chinese Super League
+};
+
+function ordenarCompeticiones(competiciones) {
+  return Array.from(competiciones).sort((a, b) => {
+    const pesoA = PRIORIDAD_LIGAS[a.liga_id] || 999;
+    const pesoB = PRIORIDAD_LIGAS[b.liga_id] || 999;
+    if (pesoA !== pesoB) return pesoA - pesoB;
+    return a.liga.localeCompare(b.liga, 'es');
+  });
+}
+
+
 async function paisesDeEquipos(partidos) {
   const ids = [...new Set(partidos.flatMap(p => [p.equipo_local?.id, p.equipo_visitante?.id]).filter(Number.isFinite))];
   if (!ids.length) return new Map();
@@ -130,7 +183,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
       fecha: texto,
       zona_horaria: zonaHoraria,
       total: partidos.length,
-      competiciones: Array.from(porLiga.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
+      competiciones: ordenarCompeticiones(porLiga.values())
     });
   } catch (error) {
     errorServidor(res, error);
@@ -219,7 +272,7 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
       })),
       jornadas: Array.from(porDia.values()).map(d => ({
         ...d,
-        competiciones: Array.from(d.competiciones.values()).sort((a, b) => a.liga.localeCompare(b.liga, 'es'))
+        competiciones: ordenarCompeticiones(d.competiciones.values())
       }))
     });
   } catch (error) {
