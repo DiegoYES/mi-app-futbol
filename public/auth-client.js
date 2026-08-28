@@ -441,7 +441,6 @@
   }
 
   async function actualizarPicksFlotantes() {
-    if (!estaAutenticado()) return;
     try {
       const [respPicks, respBoletas] = await Promise.all([
         fetchOriginal('/api/picks/seguimiento', { cache: 'no-store' }),
@@ -464,7 +463,7 @@
   }
 
   function crearWidgetPicks() {
-    if (widgetPicksCreado || !estaAutenticado() || esPaginaAdmin || esPaginaConfiguracion) return;
+    if (widgetPicksCreado || esPaginaAdmin || esPaginaConfiguracion) return;
     widgetPicksCreado = true;
     instalarEstilosPicks();
     const widget = document.createElement('aside');
