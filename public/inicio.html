@@ -92,12 +92,15 @@
     .radar-head { display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:16px; }
     .radar-head h2 { margin:0;font-size:1.35rem; }.radar-head p { margin:5px 0 0;color:var(--muted);font-size:.76rem; }
     .radar-date { padding:6px 10px;border:1px solid rgba(84,227,142,.25);border-radius:999px;color:var(--green);font-size:.65rem;font-weight:850;text-transform:uppercase; }
-    .radar-leagues-bar { display:flex;gap:7px;overflow-x:auto;margin-bottom:10px;padding-bottom:3px;scrollbar-width:none; }
-    .radar-leagues-bar::-webkit-scrollbar { display:none; }
-    .radar-leagues-bar button { min-height:30px;padding:0 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface-raised);color:var(--muted);font-size:.66rem;font-weight:750;white-space:nowrap;cursor:pointer;transition:all .15s; }
-    .radar-leagues-bar button:hover { border-color:rgba(84,227,142,.4);color:var(--ink); }
-    .radar-leagues-bar button.active { border-color:var(--green);background:rgba(84,227,142,.12);color:var(--green);font-weight:900; }
-    .radar-filters { display:flex;gap:7px;overflow-x:auto;margin-bottom:13px;padding-bottom:2px; }.radar-filters button { min-height:34px;padding:0 12px;border:1px solid var(--line);background:var(--surface-raised);color:var(--muted);font-size:.68rem;white-space:nowrap; }.radar-filters button.active { border-color:var(--green);color:var(--green); }
+    .radar-controls { display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap; }
+    .radar-league-select-wrap { display:flex;align-items:center; }
+    .radar-league-select { height:36px;padding:0 34px 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2354e38e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat calc(100% - 10px) center;color:var(--ink);font-size:.74rem;font-weight:800;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;transition:border-color .15s,box-shadow .15s;min-width:210px;max-width:320px; }
+    .radar-league-select:hover,.radar-league-select:focus { border-color:var(--green);box-shadow:0 0 0 3px rgba(84,227,142,.12); }
+    .radar-league-select option { background:#111e19;color:#fff;padding:8px; }
+    .radar-filters { display:flex;gap:7px;overflow-x:auto;scrollbar-width:none; }
+    .radar-filters::-webkit-scrollbar { display:none; }
+    .radar-filters button { min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--muted);font-size:.68rem;font-weight:750;white-space:nowrap;cursor:pointer;transition:border-color .15s,color .15s; }
+    .radar-filters button.active { border-color:var(--green);color:var(--green);background:rgba(84,227,142,.08); }
     .radar-grid { display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px; }
     .radar-card { display:flex;flex-direction:column;min-height:215px;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--surface-raised);color:var(--ink);text-decoration:none;transition:border-color .18s,transform .18s; }.radar-card:hover { border-color:rgba(84,227,142,.35);transform:translateY(-2px); }
     .radar-meta { display:flex;justify-content:space-between;gap:8px;color:var(--muted);font-size:.6rem;text-transform:uppercase; }.radar-teams { display:grid;gap:8px;margin:15px 0; }.radar-team { display:flex;align-items:center;gap:9px;font-size:.76rem;font-weight:800; }.radar-team img { width:25px;height:25px;object-fit:contain;padding:2px;border-radius:7px;background:#f4f8f5; }.radar-team b { margin-left:auto;font-size:.9rem; }
@@ -187,8 +190,14 @@
 
   <section class="radar" aria-labelledby="radar-title">
     <div class="radar-head"><div><p class="eyebrow">Radar de partidos</p><h2 id="radar-title">Lecturas destacadas de la jornada</h2><p id="radar-copy">Buscando partidos disponibles y tendencias con respaldo histórico.</p></div><span class="radar-date" id="radar-date">Cargando</span></div>
-    <div class="radar-leagues-bar" id="radar-leagues" aria-label="Filtrar por liga"></div>
-    <div class="radar-filters" id="radar-filters" aria-label="Filtrar mercados"></div>
+    <div class="radar-controls">
+      <div class="radar-league-select-wrap">
+        <select id="radar-league-select" class="radar-league-select" aria-label="Filtrar por liga">
+          <option value="todas">🌎 Todas las ligas</option>
+        </select>
+      </div>
+      <div class="radar-filters" id="radar-filters" aria-label="Filtrar mercados"></div>
+    </div>
     <div class="radar-grid" id="radar-grid"><div class="radar-empty">Construyendo radar sin consumir la API externa…</div></div>
   </section>
 
@@ -310,9 +319,10 @@ function pintarRadar(categoria='goles'){
 
 async function cambiarFiltroLiga(ligaId){
   ligaSeleccionada=String(ligaId);
-  document.querySelectorAll('[data-radar-league]').forEach(b=>{
-    b.classList.toggle('active',b.dataset.radarLeague===ligaSeleccionada);
-  });
+  const selectLigas=document.getElementById('radar-league-select');
+  if(selectLigas && selectLigas.value!==ligaSeleccionada){
+    selectLigas.value=ligaSeleccionada;
+  }
   await actualizarPartidosRadar();
 }
 
@@ -389,19 +399,19 @@ async function cargarRadar(){
     fechaEl.dataset.fecha=objetivo;
     document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${dia.total||0} partidos en ${competicionesDelDia.length} ligas · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;
 
-    const barLigas=document.getElementById('radar-leagues');
-    if(barLigas){
-      barLigas.innerHTML=`
-        <button type="button" data-radar-league="todas" class="active">Todas (${dia.total||0})</button>
+    const selectLigas=document.getElementById('radar-league-select');
+    if(selectLigas){
+      selectLigas.innerHTML=`
+        <option value="todas">🌎 Todas las ligas (${dia.total||0})</option>
         ${competicionesDelDia.map(c=>`
-          <button type="button" data-radar-league="${esc(c.liga_id)}">
+          <option value="${esc(c.liga_id)}">
             ${iconoCompeticion(c)}${esc(c.liga)} (${c.partidos.length})
-          </button>
+          </option>
         `).join('')}
       `;
-      barLigas.onclick=e=>{
-        const b=e.target.closest('[data-radar-league]');
-        if(b)cambiarFiltroLiga(b.dataset.radarLeague);
+      selectLigas.value=ligaSeleccionada;
+      selectLigas.onchange=async()=>{
+        await cambiarFiltroLiga(selectLigas.value);
       };
     }
 
