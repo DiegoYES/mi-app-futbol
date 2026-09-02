@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Centro de competencia</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v14"><script src="/auth-client.js?v=20260902-v14"></script></head>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v15"><script src="/auth-client.js?v=20260902-v15"></script></head>
 <body><main class="catalog competition-center">
   <nav class="catalog-nav"><a href="/competiciones.html">← Competiciones</a><a href="/">Inicio</a><a href="/comparador.html">Comparador</a><a id="teams-link" href="/equipos.html">Equipos</a></nav>
   <header class="catalog-head"><div class="competition-identity"><img id="competition-logo" alt=""><div><p class="eyebrow">Centro de competencia</p><h1 id="title">Cargando <span>temporada.</span></h1><p id="subtitle">Clasificación reconstruida, cobertura y partidos guardados.</p></div></div><label class="competition-center-season"><span>Temporada</span><select id="season" aria-label="Temporada"></select></label></header>
@@ -92,6 +92,13 @@ function activarPestaña(tabName){
   document.querySelectorAll('.competition-tab-panel').forEach(panel=>{
     panel.classList.toggle('active',panel.id===`panel-${tabName}`);
   });
+  if(tabName==='partidos'){
+    const selPartidosJornada=document.getElementById('filtro-partidos-jornada');
+    if(selPartidosJornada && !selPartidosJornada.value && datosCompeticion?.jornadas){
+      selPartidosJornada.value = calcularJornadaSiguiente(datosCompeticion.jornadas);
+      pintarPartidos();
+    }
+  }
   const u=new URL(location.href);
   u.hash=tabName;
   history.replaceState(null,'',u.toString());
@@ -155,6 +162,15 @@ function pintarJugadores(){
   document.getElementById('round-players').innerHTML=filtrados.map((p,i)=>`<tr><td>${i+1}</td><td><a href="/jugador.html?id=${p.id}&league=${ID}&season=${datosCompeticion?.competencia?.temporada}"><img src="${esc(p.foto||'')}" alt=""><span>${esc(p.nombre)}</span></a></td><td>${esc(p.equipo)}</td><td>${p.minutos}</td><td><b>${p.goles}</b></td><td>${p.asistencias}</td><td>${p.calificacion??'—'}</td><td>${p.tiros}</td><td>${p.tiros_puerta}</td><td>${p.pases_clave}</td><td>${p.entradas}</td><td>${p.atajadas}</td><td>${p.amarillas}</td></tr>`).join('')||'<tr><td colspan="13">No se encontraron jugadores para este filtro.</td></tr>';
 }
 
+function calcularJornadaSiguiente(jornadas){
+  if(!jornadas||!jornadas.length)return '';
+  // 1. Buscar la primera jornada con partidos pendientes (finalizados < partidos)
+  const siguiente=jornadas.find(j=>j.finalizados<j.partidos);
+  if(siguiente)return siguiente.nombre;
+  // 2. Si la temporada ya concluyó, la última jornada
+  return jornadas[jornadas.length-1].nombre;
+}
+
 function pintarPartidos(){
   const contenedor=document.getElementById('lista-partidos-temporada');
   const selJornada=document.getElementById('filtro-partidos-jornada');
@@ -180,30 +196,64 @@ function pintarPartidos(){
     return;
   }
 
-  contenedor.innerHTML=base.map(p=>{
-    const esFin=['FT','AET','PEN'].includes(p.estado);
-    const esLive=['1T','2T','HT','ET','P','LIVE'].includes(p.estado);
-    const badgeClass=esFin?'ft':esLive?'live':'';
-    const badgeLabel=esFin?(p.estado==='PEN'?'Penales':p.estado==='AET'?'Prórroga':'Finalizado'):esLive?'En vivo':'Próximo';
-    const scoreText=esFin||esLive?`${p.local.goles??0} - ${p.visitante.goles??0}`:`vs ${horaCorta(p.fecha)}`;
-    const roundEtiqueta=formatearJornada(p.jornada);
+  // Agrupar los partidos jornada por jornada
+  const grupos=new Map();
+  for(const p of base){
+    const key=p.jornada||'Sin jornada';
+    if(!grupos.has(key))grupos.set(key,[]);
+    grupos.get(key).push(p);
+  }
 
-    return `<a href="${urlPartido(p,datosCompeticion?.competencia?.temporada)}" class="match-list-item">
-      <div class="match-list-time">
-        <span>${fechaCorta(p.fecha)}</span>
-        <small>${horaCorta(p.fecha)}</small>
+  let rondasOrdenadas=[];
+  if(datosCompeticion?.jornadas){
+    const nombresDefinidos=datosCompeticion.jornadas.map(j=>j.nombre);
+    rondasOrdenadas=nombresDefinidos.filter(nom=>grupos.has(nom));
+    for(const k of grupos.keys()){
+      if(!rondasOrdenadas.includes(k))rondasOrdenadas.push(k);
+    }
+  } else {
+    rondasOrdenadas=Array.from(grupos.keys());
+  }
+
+  contenedor.innerHTML=rondasOrdenadas.map(nombreRonda=>{
+    const lista=grupos.get(nombreRonda)||[];
+    const fin=lista.filter(p=>['FT','AET','PEN'].includes(p.estado)).length;
+    const total=lista.length;
+    const estadoTexto=fin===total?'Finalizada':fin>0?`${fin}/${total} en juego`:'Próxima';
+
+    return `<section class="matches-round-group">
+      <div class="matches-round-group-header">
+        <div class="matches-round-title">${esc(formatearJornada(nombreRonda))}</div>
+        <div class="matches-round-status">${total} partidos · ${estadoTexto}</div>
       </div>
-      <div class="match-list-round" title="${esc(p.jornada)}">${esc(roundEtiqueta)}</div>
-      <div class="match-list-teams">
-        <span class="team-home" title="${esc(p.local.nombre)}">${esc(p.local.nombre)}</span>
-        <span class="match-list-score ${!esFin&&!esLive?'is-upcoming':''}">${scoreText}</span>
-        <span class="team-away" title="${esc(p.visitante.nombre)}">${esc(p.visitante.nombre)}</span>
+      <div class="matches-round-items">
+        ${lista.map(p=>{
+          const esFin=['FT','AET','PEN'].includes(p.estado);
+          const esLive=['1T','2T','HT','ET','P','LIVE'].includes(p.estado);
+          const badgeClass=esFin?'ft':esLive?'live':'';
+          const badgeLabel=esFin?(p.estado==='PEN'?'Penales':p.estado==='AET'?'Prórroga':'Finalizado'):esLive?'En vivo':'Próximo';
+          const scoreText=esFin||esLive?`${p.local.goles??0} - ${p.visitante.goles??0}`:`vs ${horaCorta(p.fecha)}`;
+          const roundEtiqueta=formatearJornada(p.jornada);
+
+          return `<a href="${urlPartido(p,datosCompeticion?.competencia?.temporada)}" class="match-list-item">
+            <div class="match-list-time">
+              <span>${fechaCorta(p.fecha)}</span>
+              <small>${horaCorta(p.fecha)}</small>
+            </div>
+            <div class="match-list-round" title="${esc(p.jornada)}">${esc(roundEtiqueta)}</div>
+            <div class="match-list-teams">
+              <span class="team-home" title="${esc(p.local.nombre)}">${esc(p.local.nombre)}</span>
+              <span class="match-list-score ${!esFin&&!esLive?'is-upcoming':''}">${scoreText}</span>
+              <span class="team-away" title="${esc(p.visitante.nombre)}">${esc(p.visitante.nombre)}</span>
+            </div>
+            <div class="match-list-status">
+              <span class="match-status-badge ${badgeClass}">${badgeLabel}</span>
+            </div>
+            <div class="match-list-action">→</div>
+          </a>`;
+        }).join('')}
       </div>
-      <div class="match-list-status">
-        <span class="match-status-badge ${badgeClass}">${badgeLabel}</span>
-      </div>
-      <div class="match-list-action">→</div>
-    </a>`;
+    </section>`;
   }).join('');
 }
 
@@ -215,7 +265,7 @@ async function cargar(round=''){
   if(round)query.set('round',round);
   
   try {
-    const r=await fetch(`/api/home/competiciones/${ID}?${query}`);
+    const r=await fetch(`/api/home/competiciones/${ID}?${query}&_ts=${Date.now()}`, { cache: 'no-store' });
     const d=await r.json().catch(()=>({}));
     if(!r.ok){
       document.getElementById('title').textContent=d.error||'No disponible';
@@ -243,6 +293,12 @@ async function cargar(round=''){
     partidosTemporada=d.partidos_temporada||d.recientes||[];
     const selPartidosJornada=document.getElementById('filtro-partidos-jornada');
     selPartidosJornada.innerHTML='<option value="">Todas las jornadas</option>'+d.jornadas.map(j=>`<option value="${esc(j.nombre)}">${esc(formatearJornada(j.nombre))}</option>`).join('');
+    
+    // Seleccionar automáticamente la jornada que sigue
+    const jornadaSiguiente = calcularJornadaSiguiente(d.jornadas);
+    if(jornadaSiguiente){
+      selPartidosJornada.value = jornadaSiguiente;
+    }
     pintarPartidos();
 
     const hash=location.hash.replace('#','')||'jornadas';

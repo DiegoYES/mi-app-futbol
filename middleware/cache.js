@@ -15,7 +15,7 @@ let solicitudesCoalescidas = 0;
 let erroresRedis = 0;
 
 const TTL_CORTO = 600;
-const PATRONES_TTL_CORTO = ['/h2h', '/historial', '/estadisticas-detalladas', '/calendario/'];
+const PATRONES_TTL_CORTO = ['/h2h', '/historial', '/estadisticas-detalladas', '/calendario/', '/competiciones'];
 
 function clienteRedisListo() {
   const actual = obtenerClienteRedis();

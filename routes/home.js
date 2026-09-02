@@ -184,10 +184,6 @@ router.get('/competiciones/:id', cacheMiddleware, async (req, res) => {
       if (!porJornada.has(nombreJornada)) porJornada.set(nombreJornada, []);
       porJornada.get(nombreJornada).push(partido);
     }
-    const extraeNumeroRonda = str => {
-      const m = String(str).match(/(\d+)/);
-      return m ? Number.parseInt(m[1], 10) : Number.POSITIVE_INFINITY;
-    };
     const jornadas = [...porJornada.entries()].map(([nombreJornada, lista]) => {
       const terminados = lista.filter(finalizado);
       return {
@@ -197,12 +193,7 @@ router.get('/competiciones/:id', cacheMiddleware, async (req, res) => {
         desde: lista.reduce((min, p) => !min || p.fecha < min ? p.fecha : min, null),
         hasta: lista.reduce((max, p) => !max || p.fecha > max ? p.fecha : max, null)
       };
-    }).sort((a, b) => {
-      const na = extraeNumeroRonda(a.nombre);
-      const nb = extraeNumeroRonda(b.nombre);
-      if (na !== nb && Number.isFinite(na) && Number.isFinite(nb)) return na - nb;
-      return new Date(a.desde) - new Date(b.desde);
-    });
+    }).sort((a, b) => new Date(a.desde) - new Date(b.desde));
     const jornadaPedida = typeof req.query.round === 'string' ? req.query.round : '';
     const jornadaPredeterminada = [...jornadas].reverse().find(item => item.finalizados > 0)?.nombre || jornadas[0]?.nombre || null;
     const jornadaSeleccionada = porJornada.has(jornadaPedida) ? jornadaPedida : jornadaPredeterminada;

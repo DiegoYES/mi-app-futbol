@@ -238,13 +238,23 @@ async function recorrer(nombre, opcionesContexto) {
         errores.push(`[${nombre}] /competicion.html no mostró ningún partido en el listado.`);
       }
 
-      // Probar filtro de jornada en listado de partidos
+      // Validar que se agrupan los partidos jornada a jornada
+      const grupos = await pagina.locator('.matches-round-group').count();
+      if (grupos === 0) {
+        errores.push(`[${nombre}] /competicion.html no agrupó los partidos jornada a jornada.`);
+      }
+
+      // Probar selección de "Todas las jornadas" y verificar grupos múltiples
       const selJornadasPartidos = pagina.locator('#filtro-partidos-jornada');
       if (await selJornadasPartidos.count()) {
         const opciones = await selJornadasPartidos.locator('option').all();
         if (opciones.length > 1) {
-          await selJornadasPartidos.selectOption({ index: 1 });
+          await selJornadasPartidos.selectOption({ index: 0 });
           await pagina.waitForTimeout(200);
+          const gruposTodas = await pagina.locator('.matches-round-group').count();
+          if (gruposTodas === 0) {
+            errores.push(`[${nombre}] /competicion.html no mostró grupos en "Todas las jornadas".`);
+          }
         }
       }
     }
