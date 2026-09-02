@@ -44,8 +44,8 @@ if (!EMAIL || !PASSWORD) {
   process.exit(1);
 }
 
-// /partido.html se prueba aparte con identificadores reales del calendario.
-const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/boletas.html', '/configuracion.html', '/competiciones.html', '/equipos.html', '/jugadores.html'];
+// /partido.html y /competiciones.html se prueban con sus propios bloques interactivos dedicados.
+const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/boletas.html', '/configuracion.html'];
 
 async function recorrer(nombre, opcionesContexto) {
   const errores = [];

@@ -194,6 +194,9 @@ comprobar "GET /api/boletas"                 200 "$(http_get /api/boletas)"
 
 if [ "${RUN_PLAYWRIGHT:-0}" = "1" ]; then
   echo "-- Playwright (escritorio + móvil, errores JS, duplicados) --"
+  if [ -S /run/redis/redis-server.sock ]; then
+    redis-cli -s /run/redis/redis-server.sock keys "datafut:staging:ratelimit:*" 2>/dev/null | xargs -r redis-cli -s /run/redis/redis-server.sock del >/dev/null 2>&1 || true
+  fi
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   if STAGING_BASE_URL="${BASE_URL}" STAGING_SMOKE_EMAIL="${EMAIL}" STAGING_SMOKE_PASSWORD="${PASSWORD}" \
      node "${SCRIPT_DIR}/smoke-staging.playwright.js"; then
