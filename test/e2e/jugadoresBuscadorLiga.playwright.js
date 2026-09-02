@@ -22,8 +22,16 @@ const { chromium, devices } = require('playwright');
 
 const RAIZ_PUBLICA = path.join(__dirname, '..', '..', 'public');
 const REMOTO = process.env.BASE_URL || '';
+// Contra un servidor remoto las APIs exigen sesión: se inicia con el formulario
+// real usando una cuenta de prueba (nunca hardcodeada).
+const EMAIL = process.env.SMOKE_EMAIL || process.env.STAGING_SMOKE_EMAIL || '';
+const PASSWORD = process.env.SMOKE_PASSWORD || process.env.STAGING_SMOKE_PASSWORD || '';
 const BASIC_USER = process.env.STAGING_BASIC_AUTH_USER || '';
 const BASIC_PASSWORD = process.env.STAGING_BASIC_AUTH_PASSWORD || '';
+if (REMOTO && (!EMAIL || !PASSWORD)) {
+  console.error('Con BASE_URL define SMOKE_EMAIL y SMOKE_PASSWORD (cuenta de prueba) para iniciar sesión.');
+  process.exit(1);
+}
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8',
@@ -96,6 +104,17 @@ async function comprobar(nombre, opcionesContexto, base) {
     if (/\/api\/(equipos|ligas)\/.+\/(escudo|logo)/.test(respuesta.url()) && [400, 404, 429, 503].includes(estado)) return;
     fallos.push(`[${nombre}] HTTP ${estado}: ${respuesta.url()}`);
   });
+
+  if (REMOTO) {
+    await pagina.goto('/login.html', { waitUntil: 'networkidle' });
+    await pagina.fill('input[type="email"], input[name="email"], #email', EMAIL);
+    await pagina.fill('input[type="password"], input[name="password"], #password', PASSWORD);
+    const [respuestaLogin] = await Promise.all([
+      pagina.waitForResponse(r => r.url().includes('/api/auth/login')),
+      pagina.click('button[type="submit"]')
+    ]);
+    if (!respuestaLogin.ok()) fallos.push(`[${nombre}] login respondió ${respuestaLogin.status()}`);
+  }
 
   await pagina.goto('/jugadores.html', { waitUntil: 'networkidle' });
 
