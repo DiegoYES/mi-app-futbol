@@ -1,6 +1,7 @@
 const express = require('express');
+const bcrypt = require('bcryptjs');
 const Usuario = require('../models/Usuario');
-const { firmarToken, requireAuth } = require('../middleware/auth');
+const { firmarToken, requireAuth, usuarioDeSesion } = require('../middleware/auth');
 const { crearLimitador } = require('../middleware/rateLimit');
 const { errorServidor } = require('../middleware/security');
 const { registrarEventoProducto } = require('../services/productEvents');
@@ -10,6 +11,9 @@ const {
   validarPasswordNueva
 } = require('../services/accountSettings');
 const { registrarEventoSeguridad } = require('../services/securityAudit');
+
+// Hash bcrypt de costo 12 precalculado para neutralizar timing attacks cuando el correo no existe.
+const HASH_DUMMY = '$2a$12$e8Yk1A6/f206rQkQO5D1kOQv2eG3L8lW9M4m2Q4m2Q4m2Q4m2Q4m2';
 
 const router = express.Router();
 
@@ -120,7 +124,10 @@ router.post('/login', limiteIntentos, async (req, res) => {
     // El hash está excluido por defecto y sólo se carga para verificar el login.
     const usuario = await Usuario.findOne({ email: email.toLowerCase() })
       .select('+password');
-    if (!usuario || !(await usuario.compararPassword(password))) {
+    const hashParaComparar = usuario?.password || HASH_DUMMY;
+    const passwordCoincide = await bcrypt.compare(password, hashParaComparar);
+
+    if (!usuario || !passwordCoincide) {
       return res.status(401).json({ error: 'Email o contraseña incorrectos' });
     }
     if (!usuario.activo) {
@@ -140,7 +147,17 @@ router.post('/login', limiteIntentos, async (req, res) => {
   }
 });
 
-router.post('/logout', (req, res) => {
+router.post('/logout', async (req, res) => {
+  try {
+    const usuario = await usuarioDeSesion(req);
+    if (usuario) {
+      usuario.sesion_version = Number(usuario.sesion_version || 0) + 1;
+      await usuario.save();
+      registrarEventoSeguridad('account_sessions_revoked', req);
+    }
+  } catch (error) {
+    console.error('Error al revocar sesión en logout:', error);
+  }
   res.clearCookie('token', { ...OPCIONES_COOKIE, maxAge: undefined });
   res.json({ mensaje: 'Sesión cerrada' });
 });

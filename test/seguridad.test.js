@@ -38,6 +38,15 @@ test('el panel de administración no se sirve a visitantes anónimos', async t =
   assert.doesNotMatch(cuerpo, /cargarUsuarios/);
 });
 
+test('los scripts y estilos de administración devuelven 404 a visitantes anónimos', async t => {
+  const baseUrl = await servidorTemporal(t);
+  const archivos = ['/admin.js', '/admin-users.js', '/admin-picks.js', '/admin.css'];
+  for (const archivo of archivos) {
+    const res = await fetch(`${baseUrl}${archivo}`);
+    assert.equal(res.status, 404, `${archivo} debió responder 404`);
+  }
+});
+
 test('el panel de administración tampoco se filtra por variantes de la ruta', async t => {
   const baseUrl = await servidorTemporal(t);
   const variantes = ['/admin.html/', '//admin.html', '/./admin.html', '/%61dmin.html', '/ADMIN.HTML'];
@@ -185,4 +194,10 @@ test('las búsquedas con $regex sólo usan patrones escapados', () => {
       assert.doesNotMatch(uso, /\$regex:\s*(busqueda|q)\b/, `${archivo} usa el texto crudo en ${uso}`);
     }
   }
+});
+
+test('el login mitiga timing attacks evaluando hash simulado si el usuario no existe', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
+  assert.match(codigo, /HASH_DUMMY/, 'falta hash dummy para timing attacks');
+  assert.match(codigo, /hashParaComparar\s*=\s*usuario\?\.password\s*\|\|\s*HASH_DUMMY/, 'no se compara con hash dummy cuando el usuario es nulo');
 });

@@ -30,7 +30,8 @@ function paginasPrivadas(reglas, directorio, enviarHtml) {
     const ruta = normalizarRuta(req.url);
     if (ruta === null) return res.status(400).type('text/plain').send('Solicitud inválida');
 
-    const rolesPermitidos = rutas.get(ruta);
+    const rolesPermitidos = rutas.get(ruta)
+      || (/^\/admin.*?\.(?:js|css)$/i.test(ruta) ? new Set(['admin']) : null);
     if (!rolesPermitidos) return next();
 
     try {
@@ -39,7 +40,10 @@ function paginasPrivadas(reglas, directorio, enviarHtml) {
         return res.status(404).type('text/plain').send('No encontrado');
       }
       res.set('Cache-Control', 'no-store');
-      return enviarHtml ? enviarHtml(res, path.basename(ruta)) : res.sendFile(path.join(directorio, path.basename(ruta)));
+      const esHtml = ruta.endsWith('.html');
+      return (esHtml && enviarHtml)
+        ? enviarHtml(res, path.basename(ruta))
+        : res.sendFile(path.join(directorio, path.basename(ruta)));
     } catch (_error) {
       return res.status(404).type('text/plain').send('No encontrado');
     }
