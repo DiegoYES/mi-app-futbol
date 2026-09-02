@@ -181,7 +181,7 @@ function pintarPartidos(){
     const badgeClass=esFin?'ft':esLive?'live':'';
     const badgeLabel=esFin?(p.estado==='PEN'?'Penales':p.estado==='AET'?'Prórroga':'Finalizado'):esLive?'En vivo':'Próximo';
     const scoreText=esFin||esLive?`${p.local.goles??0} - ${p.visitante.goles??0}`:`vs ${horaCorta(p.fecha)}`;
-    const roundEtiqueta=p.jornada.replace(/^.*? - /,'Jornada ');
+    const roundEtiqueta=String(p.jornada||'').replace(/^.*? - /,'Jornada ')||'Partido';
 
     return `<a href="${urlPartido(p,datosCompeticion?.competencia?.temporada)}" class="match-list-item">
       <div class="match-list-time">

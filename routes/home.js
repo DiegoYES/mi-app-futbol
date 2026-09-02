@@ -281,6 +281,7 @@ router.get('/competiciones/:id', cacheMiddleware, async (req, res) => {
       } : null,
       recientes: partidos.slice(0, 12).map(p => ({
         api_id: p.api_id, fecha: p.fecha, estado: p.estado,
+        jornada: String(p.liga?.jornada || 'Sin jornada'),
         local: { id: p.equipo_local.id, nombre: p.equipo_local.nombre, goles: p.equipo_local.goles },
         visitante: { id: p.equipo_visitante.id, nombre: p.equipo_visitante.nombre, goles: p.equipo_visitante.goles }
       })),
