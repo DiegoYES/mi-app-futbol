@@ -76,7 +76,7 @@ router.get('/', async (req, res) => {
       { $sort: { minutos: -1, goles: -1, nombre: 1 } },
       { $limit: limite },
       { $project: { _id: 0, id: '$_id', nombre: 1, foto: 1, posicion: 1, equipos: 1, partidos: 1, minutos: 1, goles: 1, asistencias: 1, tiros: 1, tiros_puerta: 1, pases: 1, pases_clave: 1, entradas: 1, intercepciones: 1, duelos: 1, duelos_ganados: 1, regates: 1, regates_exitosos: 1, atajadas: 1, amarillas: 1, rojas: 1, faltas: 1, calificacion: { $cond: [{ $ne: ['$calificacion', null] }, { $round: ['$calificacion', 2] }, null] } } }
-    ]);
+    ]).option({ maxTimeMS: 5000 });
     res.json({ jugadores, jornadas, jornada: jornada || null });
   } catch (error) {
     errorServidor(res, error);

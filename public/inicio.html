@@ -241,6 +241,7 @@ let categoriaSeleccionada='goles';
 let radarPartidos=[];
 let indiceEquipos=null;
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+function urlSegura(v){const t=String(v||'').trim();if(t.startsWith('/')&&!t.startsWith('//')&&!t.includes('\\'))return t;try{const u=new URL(t,location.origin);if(['http:','https:'].includes(u.protocol)&&u.origin===location.origin)return u.pathname+u.search+u.hash}catch{}return '#'}
 
 function iconoCompeticion(comp){
   const id=Number(comp.liga_id);
@@ -276,7 +277,7 @@ async function obtenerAnalisisPartido(apiId){
   }
 }
 
-function pintarBiblioteca(){const favoritos=FutbolLibrary.favoritos();document.getElementById('favorite-teams').innerHTML=favoritos.map(e=>`<a class="personal-item" href="/equipo.html?id=${e.id}&league=${e.league}"><img src="/api/equipos/${e.id}/escudo" alt=""><span><strong>${esc(e.nombre)}</strong><small>${esc(e.competicion||'Competición guardada')}</small></span><span>→</span></a>`).join('')||'<div class="personal-empty">Marca una estrella en el directorio o en la ficha de un equipo.</div>';const comparaciones=FutbolLibrary.comparaciones();document.getElementById('saved-comparisons').innerHTML=comparaciones.map(c=>`<div class="personal-item"><span class="portal-icon">VS</span><a href="${esc(c.url)}"><strong>${esc(c.titulo)}</strong><small>${esc(c.competiciones)}</small></a><button type="button" data-remove-comparison="${esc(c.id)}" aria-label="Quitar comparación">×</button></div>`).join('')||'<div class="personal-empty">Guarda una pareja desde el comparador para reabrirla con sus filtros.</div>'}
+function pintarBiblioteca(){const favoritos=FutbolLibrary.favoritos();document.getElementById('favorite-teams').innerHTML=favoritos.map(e=>`<a class="personal-item" href="/equipo.html?id=${e.id}&league=${e.league}"><img src="/api/equipos/${e.id}/escudo" alt=""><span><strong>${esc(e.nombre)}</strong><small>${esc(e.competicion||'Competición guardada')}</small></span><span>→</span></a>`).join('')||'<div class="personal-empty">Marca una estrella en el directorio o en la ficha de un equipo.</div>';const comparaciones=FutbolLibrary.comparaciones();document.getElementById('saved-comparisons').innerHTML=comparaciones.map(c=>`<div class="personal-item"><span class="portal-icon">VS</span><a href="${esc(urlSegura(c.url))}"><strong>${esc(c.titulo)}</strong><small>${esc(c.competiciones)}</small></a><button type="button" data-remove-comparison="${esc(c.id)}" aria-label="Quitar comparación">×</button></div>`).join('')||'<div class="personal-empty">Guarda una pareja desde el comparador para reabrirla con sus filtros.</div>'}
 
 function pintarRadar(categoria='goles'){
   categoriaSeleccionada=categoria;

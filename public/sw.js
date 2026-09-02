@@ -1,4 +1,4 @@
-const CACHE_NAME = 'datafut-pwa-v16';
+const CACHE_NAME = 'datafut-pwa-v17';
 const STATIC_ASSETS = [
   '/brand-mark.svg',
   '/brand-social-avatar.png',
@@ -28,13 +28,17 @@ self.addEventListener('activate', event => {
 self.addEventListener('fetch', event => {
   const url = new URL(event.request.url);
 
-  // No interceptar peticiones de API, Webhooks, endpoints no GET ni orígenes externos
+  // No interceptar peticiones de API, Webhooks, endpoints privados/admin, no GET ni orígenes externos
   if (
     event.request.method !== 'GET' ||
     url.origin !== self.location.origin ||
     url.pathname.startsWith('/api/') ||
     url.pathname.startsWith('/webhooks/') ||
-    url.pathname.startsWith('/health/')
+    url.pathname.startsWith('/health/') ||
+    url.pathname.startsWith('/admin') ||
+    url.pathname === '/configuracion.html' ||
+    url.pathname === '/boletas.html' ||
+    url.pathname === '/sugerencias.html'
   ) {
     return;
   }

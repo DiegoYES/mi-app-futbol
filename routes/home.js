@@ -217,7 +217,7 @@ router.get('/competiciones/:id', cacheMiddleware, async (req, res) => {
       { $sort: { goles: -1, asistencias: -1, calificacion: -1, minutos: -1, nombre: 1 } },
       { $limit: 40 },
       { $project: { _id: 0, id: '$_id', nombre: 1, foto: 1, posicion: 1, equipo_id: 1, equipo: 1, partidos: 1, minutos: 1, goles: 1, asistencias: 1, tiros: 1, tiros_puerta: 1, pases_clave: 1, entradas: 1, atajadas: 1, amarillas: 1, calificacion: 1 } }
-    ]) : [];
+    ]).option({ maxTimeMS: 5000 }) : [];
     const totalMetrica = campo => finalizadosJornada.reduce((total, partido) => total + (Number(partido.equipo_local?.[campo]) || 0) + (Number(partido.equipo_visitante?.[campo]) || 0), 0);
     const golesJornada = totalMetrica('goles');
     const tabla = new Map();
