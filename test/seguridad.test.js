@@ -201,3 +201,20 @@ test('el login mitiga timing attacks evaluando hash simulado si el usuario no ex
   assert.match(codigo, /HASH_DUMMY/, 'falta hash dummy para timing attacks');
   assert.match(codigo, /hashParaComparar\s*=\s*usuario\?\.password\s*\|\|\s*HASH_DUMMY/, 'no se compara con hash dummy cuando el usuario es nulo');
 });
+
+test('todas las agregaciones de usuario y rutas incluyen maxTimeMS defensivo', () => {
+  const rutas = ['routes/home.js', 'routes/jugadores.js', 'routes/calendario.js', 'routes/admin.js'];
+  for (const archivo of rutas) {
+    const codigo = fs.readFileSync(path.join(__dirname, '..', archivo), 'utf8');
+    const conteoAggregate = (codigo.match(/\.aggregate\(/g) || []).length;
+    const conteoMaxTime = (codigo.match(/maxTimeMS/g) || []).length;
+    assert.ok(conteoAggregate > 0, `${archivo} debería tener agregaciones`);
+    assert.equal(conteoMaxTime, conteoAggregate, `${archivo} tiene ${conteoAggregate} aggregate(s) pero ${conteoMaxTime} maxTimeMS`);
+  }
+});
+
+test('las rutas administrativas validan el identificador ObjectId', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
+  assert.match(codigo, /function validarIdMongo/, 'falta middleware validarIdMongo');
+  assert.match(codigo, /mongoose\.isValidObjectId/, 'no se usa isValidObjectId');
+});

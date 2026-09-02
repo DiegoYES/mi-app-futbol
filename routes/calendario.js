@@ -101,8 +101,9 @@ function marcadorExtra(origen) {
 
 // Convierte 'YYYY-MM-DD' al rango [00:00, 23:59:59.999] de ese día en hora local
 function rangoDelDia(textoFecha) {
+  if (typeof textoFecha !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(textoFecha)) return null;
   const [anio, mes, dia] = textoFecha.split('-').map(Number);
-  if (!anio || !mes || !dia) return null;
+  if (!anio || !mes || !dia || mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
   const inicio = new Date(anio, mes - 1, dia, 0, 0, 0, 0);
   const fin = new Date(anio, mes - 1, dia, 23, 59, 59, 999);
   if (isNaN(inicio.getTime())) return null;
@@ -135,7 +136,8 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
     if (!rango) return res.status(400).json({ error: 'Fecha inválida. Usa el formato YYYY-MM-DD' });
 
     const filtro = { fecha: { $gte: new Date(rango.inicio.getTime() - 86400000), $lte: new Date(rango.fin.getTime() + 86400000) } };
-    if (req.query.league) filtro['liga.id'] = parseInt(req.query.league);
+    const league = Number.parseInt(req.query.league, 10);
+    if (Number.isInteger(league)) filtro['liga.id'] = league;
 
     const candidatos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
     const partidos = candidatos.filter(p => fechaISOEnZona(p.fecha, zonaHoraria) === texto);
@@ -202,7 +204,8 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
     fin.setHours(23, 59, 59, 999);
 
     const filtro = { fecha: { $gte: new Date(inicio.getTime() - 86400000), $lte: new Date(fin.getTime() + 86400000) } };
-    if (req.query.league) filtro['liga.id'] = parseInt(req.query.league);
+    const league = Number.parseInt(req.query.league, 10);
+    if (Number.isInteger(league)) filtro['liga.id'] = league;
 
     const candidatos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
 
@@ -345,10 +348,10 @@ router.get('/picks', cacheMiddleware, async (req, res) => {
 router.get('/mes', cacheMiddleware, async (req, res) => {
   try {
     const zonaHoraria = zonaHorariaValida(req.query.tz);
-    const anio = parseInt(req.query.anio);
-    const mes = parseInt(req.query.mes); // 1-12
-    if (!anio || !mes || mes < 1 || mes > 12) {
-      return res.status(400).json({ error: 'Parámetros anio y mes (1-12) obligatorios' });
+    const anio = Number.parseInt(req.query.anio, 10);
+    const mes = Number.parseInt(req.query.mes, 10); // 1-12
+    if (!Number.isInteger(anio) || !Number.isInteger(mes) || anio < 2020 || anio > 2035 || mes < 1 || mes > 12) {
+      return res.status(400).json({ error: 'Parámetros anio (2020-2035) y mes (1-12) obligatorios' });
     }
 
     const inicio = new Date(anio, mes - 1, 1, 0, 0, 0, 0);
@@ -360,7 +363,7 @@ router.get('/mes', cacheMiddleware, async (req, res) => {
       { $match: { fecha: { $gte: inicio, $lte: fin } } },
       { $group: { _id: { $dateToString: { date: '$fecha', format: '%Y-%m-%d', timezone: zonaHoraria } }, total: { $sum: 1 } } },
       { $sort: { _id: 1 } }
-    ]);
+    ]).option({ maxTimeMS: 5000 });
 
     res.json({
       anio,

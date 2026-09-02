@@ -28,6 +28,13 @@ const router = express.Router();
 
 router.use(requireAuth, requireAdmin);
 
+function validarIdMongo(req, res, next) {
+  if (!mongoose.isValidObjectId(req.params.id)) {
+    return res.status(400).json({ error: 'Identificador no válido.', codigo: 'ID_INVALIDO' });
+  }
+  next();
+}
+
 router.get('/calidad-datos', async (_req, res) => {
   try {
     const calidad = await obtenerCalidadDatos();
@@ -82,7 +89,7 @@ router.post('/redes-sociales', async (req, res) => {
   } catch (error) { errorServidor(res, error); }
 });
 
-router.patch('/redes-sociales/:id', async (req, res) => {
+router.patch('/redes-sociales/:id', validarIdMongo, async (req, res) => {
   try {
     const normalizado = normalizarEnlaceSocial(req.body);
     if (normalizado.error) return res.status(400).json({ error: normalizado.error });
@@ -95,7 +102,7 @@ router.patch('/redes-sociales/:id', async (req, res) => {
   }
 });
 
-router.delete('/redes-sociales/:id', async (req, res) => {
+router.delete('/redes-sociales/:id', validarIdMongo, async (req, res) => {
   try {
     const enlace = await EnlaceSocial.findByIdAndDelete(req.params.id);
     if (!enlace) return res.status(404).json({ error: 'Enlace no encontrado.' });
@@ -229,7 +236,7 @@ router.post('/recomendaciones', async (req, res) => {
   }
 });
 
-router.post('/recomendaciones/desde-boleta/:id', async (req, res) => {
+router.post('/recomendaciones/desde-boleta/:id', validarIdMongo, async (req, res) => {
   try {
     const boleta = await Boleta.findById(req.params.id).lean();
     if (!boleta) return res.status(404).json({ error: 'Boleta no encontrada.' });
@@ -352,7 +359,7 @@ router.post('/recomendaciones/desde-boleta/:id', async (req, res) => {
   }
 });
 
-router.patch('/recomendaciones/:id', async (req, res) => {
+router.patch('/recomendaciones/:id', validarIdMongo, async (req, res) => {
   try {
     const normalizada = normalizarRecomendacion(req.body);
     if (normalizada.error) return res.status(400).json({ error: normalizada.error });
@@ -373,7 +380,7 @@ router.patch('/recomendaciones/:id', async (req, res) => {
   }
 });
 
-router.delete('/recomendaciones/:id', async (req, res) => {
+router.delete('/recomendaciones/:id', validarIdMongo, async (req, res) => {
   try {
     const eliminada = await Recomendacion.findByIdAndDelete(req.params.id);
     if (!eliminada) return res.status(404).json({ error: 'Recomendación no encontrada.' });
@@ -452,7 +459,7 @@ router.get('/resumen', async (req, res) => {
         prueba_termina: { $gt: ahora },
         $or: [{ suscripcion_termina: null }, { suscripcion_termina: { $lte: ahora } }]
       }),
-      Usuario.aggregate([{ $group: { _id: null, total: { $sum: '$meses_cortesia' } } }]),
+      Usuario.aggregate([{ $group: { _id: null, total: { $sum: '$meses_cortesia' } } }]).option({ maxTimeMS: 5000 }),
       crearControlCuota().consultar(),
       Sugerencia.countDocuments({ estado: { $in: ['nueva', 'en_revision', 'planeada'] } })
     ]);
@@ -491,7 +498,7 @@ router.get('/sugerencias', async (req, res) => {
   }
 });
 
-router.patch('/sugerencias/:id', async (req, res) => {
+router.patch('/sugerencias/:id', validarIdMongo, async (req, res) => {
   try {
     const estado = req.body?.estado;
     const prioridad = req.body?.prioridad;
@@ -557,7 +564,7 @@ router.get('/produccion/estado', async (_req, res) => {
 });
 
 // Activar o extender suscripción: suma meses desde hoy o desde el vencimiento actual
-router.post('/usuarios/:id/suscripcion', async (req, res) => {
+router.post('/usuarios/:id/suscripcion', validarIdMongo, async (req, res) => {
   try {
     const meses = parseInt(req.body.meses);
     if (!Number.isInteger(meses) || meses < 1 || meses > 24) {
@@ -584,7 +591,7 @@ router.post('/usuarios/:id/suscripcion', async (req, res) => {
 });
 
 // Cortesía: extiende una cantidad exacta de días sin contar como ingreso
-router.post('/usuarios/:id/cortesia', async (req, res) => {
+router.post('/usuarios/:id/cortesia', validarIdMongo, async (req, res) => {
   try {
     const dias = Number.parseInt(req.body.dias, 10);
     if (!Number.isInteger(dias) || dias < 1 || dias > 3650) {
@@ -611,7 +618,7 @@ router.post('/usuarios/:id/cortesia', async (req, res) => {
 });
 
 
-router.patch('/usuarios/:id/rol', async (req, res) => {
+router.patch('/usuarios/:id/rol', validarIdMongo, async (req, res) => {
   try {
     if (!(await esAdministradorPrincipal(req.usuario))) return res.status(403).json({ error: 'Solo el administrador principal puede gestionar administradores' });
     const rol = req.body?.rol;
@@ -627,7 +634,7 @@ router.patch('/usuarios/:id/rol', async (req, res) => {
   }
 });
 
-router.delete('/usuarios/:id/suscripcion', async (req, res) => {
+router.delete('/usuarios/:id/suscripcion', validarIdMongo, async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -654,7 +661,7 @@ router.get('/ips-duplicadas', async (req, res) => {
       }},
       { $match: { cuentas: { $gte: 2 } } },
       { $sort: { cuentas: -1 } }
-    ]);
+    ]).option({ maxTimeMS: 5000 });
     res.json({ duplicadas });
   } catch (error) {
     errorServidor(res, error);
@@ -662,7 +669,7 @@ router.get('/ips-duplicadas', async (req, res) => {
 });
 
 // Suspensión temporal
-router.post('/usuarios/:id/suspender', async (req, res) => {
+router.post('/usuarios/:id/suspender', validarIdMongo, async (req, res) => {
   try {
     const dias = parseInt(req.body.dias);
     if (!Number.isInteger(dias) || dias < 1 || dias > 365) {
@@ -685,7 +692,7 @@ router.post('/usuarios/:id/suspender', async (req, res) => {
 });
 
 // Levantar suspensión temporal
-router.delete('/usuarios/:id/suspension', async (req, res) => {
+router.delete('/usuarios/:id/suspension', validarIdMongo, async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -698,7 +705,7 @@ router.delete('/usuarios/:id/suspension', async (req, res) => {
 });
 
 // Desbloquear cuenta bloqueada por IP duplicada (cuando el usuario paga)
-router.delete('/usuarios/:id/bloqueo-ip', async (req, res) => {
+router.delete('/usuarios/:id/bloqueo-ip', validarIdMongo, async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -711,7 +718,7 @@ router.delete('/usuarios/:id/bloqueo-ip', async (req, res) => {
 });
 
 // Activar o desactivar una cuenta
-router.patch('/usuarios/:id/activo', async (req, res) => {
+router.patch('/usuarios/:id/activo', validarIdMongo, async (req, res) => {
   try {
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
@@ -745,9 +752,9 @@ router.get('/mercados/diagnostico', async (_req, res) => {
     const [ultima, vigentes, categorias, estados, problemas] = await Promise.all([
       ActualizacionMercados.findOne({ proveedor: 'playdoit' }).sort({ iniciada_en: -1 }).lean(),
       MercadoCasa.countDocuments({ proveedor: 'playdoit', expira_en: { $gt: ahora } }),
-      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', expira_en: { $gt: ahora } } }, { $group: { _id: '$categoria', total: { $sum: 1 } } }, { $sort: { total: -1 } }]),
-      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', expira_en: { $gt: ahora } } }, { $group: { _id: '$estado', total: { $sum: 1 } } }, { $sort: { total: -1 } }]),
-      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', problemas: { $ne: [] } } }, { $unwind: '$problemas' }, { $group: { _id: '$problemas', total: { $sum: 1 } } }, { $sort: { total: -1 } }, { $limit: 20 }])
+      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', expira_en: { $gt: ahora } } }, { $group: { _id: '$categoria', total: { $sum: 1 } } }, { $sort: { total: -1 } }]).option({ maxTimeMS: 5000 }),
+      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', expira_en: { $gt: ahora } } }, { $group: { _id: '$estado', total: { $sum: 1 } } }, { $sort: { total: -1 } }]).option({ maxTimeMS: 5000 }),
+      MercadoCasa.aggregate([{ $match: { proveedor: 'playdoit', problemas: { $ne: [] } } }, { $unwind: '$problemas' }, { $group: { _id: '$problemas', total: { $sum: 1 } } }, { $sort: { total: -1 } }, { $limit: 20 }]).option({ maxTimeMS: 5000 })
     ]);
     res.json({ ultima_actualizacion: ultima, selecciones_vigentes: vigentes, categorias, estados, problemas_normalizacion: problemas });
   } catch (error) {

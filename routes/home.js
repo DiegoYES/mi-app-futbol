@@ -28,7 +28,7 @@ async function obtenerCompeticiones() {
       hasta: { $max: '$fecha' }
     } },
     { $sort: { '_id.temporada': -1, nombre: 1 } }
-  ]);
+  ]).option({ maxTimeMS: 5000 });
 }
 
 function construirResumenGlobal(competiciones, totalJugadores) {
@@ -70,7 +70,7 @@ async function contarJugadores() {
   const resultado = await JugadorPartido.aggregate([
     { $group: { _id: '$jugador.id' } },
     { $count: 'total' }
-  ]);
+  ]).option({ maxTimeMS: 5000 });
   return resultado[0]?.total || 0;
 }
 
@@ -154,7 +154,7 @@ async function obtenerFilasEquipos() {
     { $sort: { '_id.liga': 1, '_id.temporada': -1, nombre: 1 } }
   ];
 
-  return Partido.aggregate(pipeline);
+  return Partido.aggregate(pipeline).option({ maxTimeMS: 5000 });
 }
 
 router.get('/equipos', cacheMiddleware, async (_req, res) => {
