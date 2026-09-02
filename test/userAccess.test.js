@@ -69,3 +69,11 @@ test('la IP duplicada continúa bloqueando una prueba gratuita', () => {
   assert.equal(estado.tieneAcceso, false);
   assert.equal(estado.motivo, 'ip_duplicada');
 });
+
+test('una cuenta suspendida no obtiene acceso y declara motivo suspendido', () => {
+  const hasta = new Date(Date.now() + 5 * 86400000);
+  const estado = usuario({ suspendido_hasta: hasta }).estadoAcceso();
+
+  assert.equal(estado.tieneAcceso, false);
+  assert.equal(estado.motivo, 'suspendido');
+});

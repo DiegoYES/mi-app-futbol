@@ -676,6 +676,7 @@ router.post('/usuarios/:id/suspender', async (req, res) => {
     const hasta = new Date();
     hasta.setDate(hasta.getDate() + dias);
     usuario.suspendido_hasta = hasta;
+    usuario.sesion_version = Number(usuario.sesion_version || 0) + 1;
     await usuario.save();
     res.json({ mensaje: `Cuenta suspendida por ${dias} día(s)`, usuario: usuario.aJSON() });
   } catch (error) {
@@ -718,6 +719,9 @@ router.patch('/usuarios/:id/activo', async (req, res) => {
       return res.status(400).json({ error: 'No puedes desactivar tu propia cuenta' });
     }
     usuario.activo = Boolean(req.body.activo);
+    if (!usuario.activo) {
+      usuario.sesion_version = Number(usuario.sesion_version || 0) + 1;
+    }
     await usuario.save();
     res.json({ mensaje: usuario.activo ? 'Cuenta activada' : 'Cuenta desactivada', usuario: usuario.aJSON() });
   } catch (error) {

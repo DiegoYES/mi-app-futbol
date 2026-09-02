@@ -133,6 +133,16 @@ router.post('/login', limiteIntentos, async (req, res) => {
     if (!usuario.activo) {
       return res.status(403).json({ error: 'Esta cuenta está desactivada' });
     }
+    if (usuario.suspendido_hasta && usuario.suspendido_hasta > new Date()) {
+      const fecha = usuario.suspendido_hasta.toLocaleDateString('es-MX', {
+        day: '2-digit', month: 'short', year: 'numeric'
+      });
+      return res.status(403).json({
+        error: `Tu cuenta está suspendida temporalmente hasta el ${fecha}.`,
+        codigo: 'CUENTA_SUSPENDIDA',
+        suspendido_hasta: usuario.suspendido_hasta
+      });
+    }
 
     usuario.ultimo_acceso = new Date();
     usuario.ip_ultimo_acceso = obtenerIP(req);

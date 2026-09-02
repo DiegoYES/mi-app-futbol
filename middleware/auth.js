@@ -39,7 +39,7 @@ async function usuarioDeSesion(req) {
   try {
     const payload = jwt.verify(token, JWT_SECRET);
     const usuario = await Usuario.findById(payload.id);
-    if (!usuario || !usuario.activo || !sesionCoincide(payload, usuario)) return null;
+    if (!usuario || !usuario.activo || (usuario.suspendido_hasta && usuario.suspendido_hasta > new Date()) || !sesionCoincide(payload, usuario)) return null;
     return usuario;
   } catch (_error) {
     return null;
@@ -59,6 +59,14 @@ async function requireAuth(req, res, next) {
 
     if (!usuario || !usuario.activo || !sesionCoincide(payload, usuario)) {
       return res.status(401).json({ error: 'Cuenta no disponible', codigo: 'CUENTA_INVALIDA' });
+    }
+
+    if (usuario.suspendido_hasta && usuario.suspendido_hasta > new Date()) {
+      return res.status(403).json({
+        error: 'Cuenta suspendida temporalmente',
+        codigo: 'CUENTA_SUSPENDIDA',
+        suspendido_hasta: usuario.suspendido_hasta
+      });
     }
 
     req.usuario = usuario;
