@@ -80,14 +80,24 @@ function estadisticasPeriodo(equipo, half) {
   if (!equipo) return { ...EMPTY_STATS };
 
   if (half === 0) {
+    let amarillas = numeroNullable(equipo.tarjetas_amarillas);
+    let rojas = numeroNullable(equipo.tarjetas_rojas);
+    if (Array.isArray(equipo.eventos) && equipo.eventos.length > 0) {
+      const amarillasEv = equipo.eventos.filter(e => e.tipo_evento === 'Tarjeta' && /yellow|amarilla/i.test(e.detalle || '')).length;
+      const rojasEv = equipo.eventos.filter(e => e.tipo_evento === 'Tarjeta' && /red|roja/i.test(e.detalle || '') && !/yellow|amarilla/i.test(e.detalle || '')).length;
+      if (amarillas !== null && amarillasEv > amarillas) amarillas = amarillasEv;
+      if (rojas !== null && rojasEv > rojas) rojas = rojasEv;
+      if (amarillas === null && amarillasEv > 0) amarillas = amarillasEv;
+      if (rojas === null && rojasEv > 0) rojas = rojasEv;
+    }
     return {
       goles: numero(equipo.goles),
       tiros: numeroNullable(equipo.tiros_total),
       tiros_puerta: numeroNullable(equipo.tiros_puerta),
       corners: numeroNullable(equipo.corners),
       faltas: numeroNullable(equipo.faltas),
-      amarillas: numeroNullable(equipo.tarjetas_amarillas),
-      rojas: numeroNullable(equipo.tarjetas_rojas),
+      amarillas,
+      rojas,
       offsides: numeroNullable(equipo.offsides)
     };
   }

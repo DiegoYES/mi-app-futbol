@@ -96,3 +96,31 @@ test('marca un detalle consultado aunque alguna cobertura no esté disponible', 
   assert.equal(actualizacion.cobertura_detalle.jugadores, false);
   assert.equal(actualizacion.cobertura_detalle.eventos, true);
 });
+
+test('reconcilia tarjetas cuando los eventos tienen amonestaciones pero las estadísticas traen 0', () => {
+  const detalle = {
+    statistics: [
+      { team: { id: 1 }, statistics: [
+        { type: 'Total Shots', value: 10 }, { type: 'Shots on Goal', value: 4 },
+        { type: 'Corner Kicks', value: 5 }, { type: 'Fouls', value: 12 },
+        { type: 'Yellow Cards', value: 0 }, { type: 'Red Cards', value: 0 }
+      ] },
+      { team: { id: 2 }, statistics: [
+        { type: 'Total Shots', value: 8 }, { type: 'Shots on Goal', value: 3 },
+        { type: 'Corner Kicks', value: 3 }, { type: 'Fouls', value: 14 },
+        { type: 'Yellow Cards', value: 1 }, { type: 'Red Cards', value: 0 }
+      ] }
+    ],
+    events: [
+      { time: { elapsed: 20 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 101, name: 'Jugador 1' } },
+      { time: { elapsed: 65 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 102, name: 'Jugador 2' } },
+      { time: { elapsed: 85 }, team: { id: 1 }, type: 'Card', detail: 'Red Card', player: { id: 103, name: 'Jugador 3' } },
+      { time: { elapsed: 40 }, team: { id: 2 }, type: 'Card', detail: 'Yellow Card', player: { id: 201, name: 'Jugador Rival' } }
+    ]
+  };
+  const update = construirUpdatePartido(detalle, partido);
+  assert.equal(update['equipo_local.tarjetas_amarillas'], 2);
+  assert.equal(update['equipo_local.tarjetas_rojas'], 1);
+  assert.equal(update['equipo_visitante.tarjetas_amarillas'], 1);
+});
+

@@ -1,6 +1,7 @@
 (function (global) {
   const FAVORITOS = 'futbol:favoritos:v1';
   const PARTIDOS_FAVORITOS = 'futbol:partidos-favoritos:v1';
+  const COMPETICIONES_FAVORITAS = 'futbol:competiciones-favoritas:v1';
   const COMPARACIONES = 'futbol:comparaciones:v1';
 
   function crearBiblioteca(storage) {
@@ -15,6 +16,7 @@
     };
     const idEquipo = equipo => `${Number(equipo.id)}:${Number(equipo.league)}`;
     const idPartido = partido => String(Number(partido.api_id ?? partido.id));
+    const idCompeticion = comp => String(Number(comp.id ?? comp));
 
     return {
       favoritos() { return leer(FAVORITOS); },
@@ -37,6 +39,17 @@
         if (indice >= 0) lista.splice(indice, 1);
         else lista.unshift({ ...partido, api_id: Number(partido.api_id ?? partido.id), guardado_en: new Date().toISOString() });
         escribir(PARTIDOS_FAVORITOS, lista.slice(0, 100));
+        return indice < 0;
+      },
+      competicionesFavoritas() { return leer(COMPETICIONES_FAVORITAS); },
+      esCompeticionFavorita(id) { return leer(COMPETICIONES_FAVORITAS).some(c => idCompeticion(c) === String(Number(id))); },
+      alternarCompeticionFavorita(comp) {
+        const lista = leer(COMPETICIONES_FAVORITAS);
+        const clave = idCompeticion(comp);
+        const indice = lista.findIndex(item => idCompeticion(item) === clave);
+        if (indice >= 0) lista.splice(indice, 1);
+        else lista.unshift(typeof comp === 'object' ? { ...comp, id: Number(comp.id), guardado_en: new Date().toISOString() } : { id: Number(comp), guardado_en: new Date().toISOString() });
+        escribir(COMPETICIONES_FAVORITAS, lista.slice(0, 50));
         return indice < 0;
       },
       comparaciones() { return leer(COMPARACIONES); },

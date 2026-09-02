@@ -195,3 +195,22 @@ test('calcula la distribución de goles y tarjetas por tramos de 15 minutos', ()
   assert.equal(tramo4660.goles_contra, 1);
   assert.equal(tramo7690.goles_favor, 1);
 });
+
+test('estadisticasPeriodo concilia tarjetas desde eventos cuando el campo numérico viene en cero', () => {
+  const eq = {
+    id: 10,
+    nombre: 'Equipo',
+    goles: 1,
+    tarjetas_amarillas: 0,
+    tarjetas_rojas: 0,
+    eventos: [
+      { minuto: 22, tipo_evento: 'Tarjeta', detalle: 'Yellow Card' },
+      { minuto: 45, tipo_evento: 'Tarjeta', detalle: 'Yellow Card' },
+      { minuto: 89, tipo_evento: 'Tarjeta', detalle: 'Red Card' }
+    ]
+  };
+  const stats = estadisticasPeriodo(eq, 0);
+  assert.equal(stats.amarillas, 2);
+  assert.equal(stats.rojas, 1);
+});
+

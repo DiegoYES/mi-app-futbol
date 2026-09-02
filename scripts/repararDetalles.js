@@ -47,6 +47,7 @@ function parseArgs(argv = process.argv.slice(2)) {
   args.maxPartidos = enteroPositivo(args.maxPartidos, 300, '--max-partidos');
   args.maxLlamadas = enteroPositivo(args.maxLlamadas, 15, '--max-llamadas');
   args.pausaMs = enteroPositivo(args.pausaMs, 5000, '--pausa-ms');
+  args.incluirFinalizados = /^(1|true|yes|si|sí)$/i.test(String(args.incluirFinalizados || ''));
   return args;
 }
 
@@ -81,13 +82,38 @@ function crearFiltro(args, ahora = new Date()) {
   const fechaInicio = new Date(ahora.getTime() - (args.dias * 86400000));
   const fechaMaxima = new Date(ahora.getTime() - (args.horasGracia * 3600000));
   const reintentarAntesDe = new Date(ahora.getTime() - (args.horasReintento * 3600000));
-  return {
+
+  const condicionAtrasados = {
     estado: { $in: ESTADOS_ATRASADOS },
-    fecha: { $gte: fechaInicio, $lte: fechaMaxima },
     $or: [
       { estado_consultado_en: null },
       { estado_consultado_en: { $exists: false } },
       { estado_consultado_en: { $lt: reintentarAntesDe } }
+    ]
+  };
+
+  if (!args.incluirFinalizados) {
+    return {
+      estado: { $in: ESTADOS_ATRASADOS },
+      fecha: { $gte: fechaInicio, $lte: fechaMaxima },
+      ...condicionAtrasados
+    };
+  }
+
+  return {
+    fecha: { $gte: fechaInicio, $lte: fechaMaxima },
+    $or: [
+      condicionAtrasados,
+      {
+        estado: { $in: [...ESTADOS_FINALIZADOS] },
+        estadisticas_completas: { $ne: true },
+        estadisticas_no_disponibles: { $ne: true },
+        $or: [
+          { detalle_consultado_en: null },
+          { detalle_consultado_en: { $exists: false } },
+          { detalle_consultado_en: { $lt: reintentarAntesDe } }
+        ]
+      }
     ]
   };
 }

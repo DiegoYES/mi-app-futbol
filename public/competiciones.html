@@ -1,14 +1,29 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Competiciones</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css"><script src="/auth-client.js?v=20260827-v11"></script></head>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css"><script src="/auth-client.js?v=20260827-v11"></script><script src="/search-utils.js"></script><script src="/user-library.js"></script></head>
 <body><main class="catalog">
   <nav class="catalog-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/equipos.html">Equipos</a><a href="/jugadores.html">Jugadores</a></nav>
   <header class="catalog-head"><div><p class="eyebrow">Cobertura real</p><h1>Ligas y <span>competiciones.</span></h1><p>Una tarjeta por competición. Elige dentro de ella la temporada que quieras consultar y revisa únicamente la cobertura que realmente existe.</p></div><div class="catalog-summary"><strong id="total-ligas">—</strong><span>ligas/torneos únicos</span><small id="total-temporadas">— temporadas guardadas</small></div></header>
+
+  <section class="catalog-controls competition-directory-filters" aria-label="Filtros de competiciones">
+    <div class="competition-search-field">
+      <input id="buscar" type="search" autocomplete="off" placeholder="Buscar por país o competición (ej. México, Premier, La Liga…)" aria-label="Buscar por país o nombre de competición">
+      <button id="limpiar-busqueda" type="button" class="search-clear-btn" aria-label="Limpiar búsqueda" hidden>×</button>
+    </div>
+    <div class="competition-filter-pills" role="tablist" aria-label="Filtrar por favoritos">
+      <button type="button" id="filtro-todas" class="pill-btn active" role="tab" aria-selected="true">Todas (<span id="count-todas">0</span>)</button>
+      <button type="button" id="filtro-favoritas" class="pill-btn pill-fav" role="tab" aria-selected="false">⭐ Favoritas (<span id="count-favoritas">0</span>)</button>
+    </div>
+    <span id="resultados" class="catalog-result-count" aria-live="polite"></span>
+  </section>
+
   <div id="lista" class="catalog-grid"><div class="loader">Calculando cobertura…</div></div>
 </main><script>
 function aplicarAnchos(){document.querySelectorAll("[data-width]").forEach(el=>{el.style.width=Math.max(0,Math.min(100,Number(el.dataset.width)||0))+"%"})}
 const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
 let competiciones=[];
+let soloFavoritas=false;
 const temporadasElegidas=new Map();
+
 function normalizarCatalogo(lista){
   const porLiga=new Map();
   for(const item of lista||[]){
@@ -25,12 +40,158 @@ function normalizarCatalogo(lista){
     liga.resumen.finalizados+=temporada.finalizados;
     for(const clave of ['estadisticas','detalles','jugadores'])liga.resumen.cobertura[clave]+=Number(temporada.cobertura[clave])||0;
   }
-  return [...porLiga.values()].map(liga=>({...liga,temporadas:liga.temporadas.sort((a,b)=>b.temporada-a.temporada)})).sort((a,b)=>Number(b.principal)-Number(a.principal)||a.nombre.localeCompare(b.nombre,'es'));
+  return [...porLiga.values()].map(liga=>({...liga,temporadas:liga.temporadas.sort((a,b)=>b.temporada-a.temporada)}));
 }
-function temporadaActiva(competencia){const elegida=temporadasElegidas.get(competencia.id);return competencia.temporadas.find(t=>t.temporada===elegida)||competencia.temporadas[0]}
+
+function ordenarCompeticiones(lista){
+  return [...lista].sort((a,b)=>{
+    const favA=FutbolLibrary?.esCompeticionFavorita(a.id)?1:0;
+    const favB=FutbolLibrary?.esCompeticionFavorita(b.id)?1:0;
+    if(favA!==favB)return favB-favA;
+    const prio=Number(b.principal)-Number(a.principal);
+    if(prio!==0)return prio;
+    return a.nombre.localeCompare(b.nombre,'es');
+  });
+}
+
+function temporadaActiva(competencia){
+  const elegida=temporadasElegidas.get(competencia.id);
+  return competencia.temporadas.find(t=>t.temporada===elegida)||competencia.temporadas[0];
+}
+
 function pintar(){
   const lista=document.getElementById('lista');
-  lista.innerHTML=competiciones.map(c=>{const t=temporadaActiva(c);const pct=t.finalizados?Math.round(t.cobertura.estadisticas/t.finalizados*100):0;return `<article class="catalog-card competition-directory-card"><div class="catalog-card-head"><img src="/api/ligas/${c.id}/logo" alt="Logo de ${esc(c.nombre)}"><div><h3>${esc(c.nombre)}</h3><p>${esc(c.pais)} · ${c.temporadas.length} temporada${c.temporadas.length===1?'':'s'} en la base</p></div></div><label class="competition-season-picker"><span>Temporada</span><select data-competition-season="${c.id}">${c.temporadas.map(item=>`<option value="${item.temporada}" ${item.temporada===t.temporada?'selected':''}>${esc(item.etiqueta)}</option>`).join('')}</select></label><div class="metric-row"><span>Partidos<b>${t.partidos}</b></span><span>Finalizados<b>${t.finalizados}</b></span><span>Con stats<b>${t.cobertura.estadisticas}</b></span></div><div class="coverage"><i data-width="${pct}"></i></div><div class="competition-card-foot"><small>${t.finalizados?`${pct}% de cobertura avanzada`:'Temporada sin partidos finalizados'}</small><a href="/competicion.html?id=${c.id}&season=${t.temporada}">Abrir temporada →</a></div></article>`}).join('')||'<div class="catalog-empty">No hay competiciones guardadas.</div>';aplicarAnchos();
+  const inputBuscar=document.getElementById('buscar');
+  const btnLimpiar=document.getElementById('limpiar-busqueda');
+  const q=(inputBuscar?.value||'').trim();
+  if(btnLimpiar)btnLimpiar.hidden=!q;
+
+  const totalFavoritas=competiciones.filter(c=>FutbolLibrary?.esCompeticionFavorita(c.id)).length;
+  const countTodas=document.getElementById('count-todas');
+  const countFavs=document.getElementById('count-favoritas');
+  if(countTodas)countTodas.textContent=competiciones.length;
+  if(countFavs)countFavs.textContent=totalFavoritas;
+
+  let base=competiciones;
+  if(soloFavoritas){
+    base=base.filter(c=>FutbolLibrary?.esCompeticionFavorita(c.id));
+  }
+
+  let visibles=base;
+  if(q){
+    visibles=typeof FutbolSearch!=='undefined'
+      ? FutbolSearch.ordenar(base,q,c=>`${c.nombre} ${c.pais||''}`)
+      : base.filter(c=>`${c.nombre} ${c.pais||''}`.toLowerCase().includes(q.toLowerCase()));
+  }
+
+  visibles=ordenarCompeticiones(visibles);
+
+  const resEl=document.getElementById('resultados');
+  if(resEl){
+    resEl.textContent=competiciones.length
+      ? `${visibles.length} de ${competiciones.length} competiciones`
+      : '';
+  }
+
+  lista.innerHTML=visibles.map(c=>{
+    const t=temporadaActiva(c);
+    const pct=t.finalizados?Math.round(t.cobertura.estadisticas/t.finalizados*100):0;
+    const esFav=FutbolLibrary?.esCompeticionFavorita(c.id);
+    return `<article class="catalog-card competition-directory-card ${esFav?'is-favorite':''}">
+      <button class="favorite-button ${esFav?'active':''}" type="button" data-favorite-competition="${c.id}" aria-label="${esFav?'Quitar de favoritas':'Marcar como favorita'}" title="${esFav?'Quitar de favoritas':'Marcar como favorita'}">${esFav?'★':'☆'}</button>
+      <div class="catalog-card-head">
+        <img src="/api/ligas/${c.id}/logo" alt="Logo de ${esc(c.nombre)}">
+        <div>
+          <h3>${esc(c.nombre)}</h3>
+          <p>${esc(c.pais)} · ${c.temporadas.length} temporada${c.temporadas.length===1?'':'s'} en la base</p>
+        </div>
+      </div>
+      <label class="competition-season-picker">
+        <span>Temporada</span>
+        <select data-competition-season="${c.id}">
+          ${c.temporadas.map(item=>`<option value="${item.temporada}" ${item.temporada===t.temporada?'selected':''}>${esc(item.etiqueta)}</option>`).join('')}
+        </select>
+      </label>
+      <div class="metric-row">
+        <span>Partidos<b>${t.partidos}</b></span>
+        <span>Finalizados<b>${t.finalizados}</b></span>
+        <span>Con stats<b>${t.cobertura.estadisticas}</b></span>
+      </div>
+      <div class="coverage"><i data-width="${pct}"></i></div>
+      <div class="competition-card-foot">
+        <small>${t.finalizados?`${pct}% de cobertura avanzada`:'Temporada sin partidos finalizados'}</small>
+        <a href="/competicion.html?id=${c.id}&season=${t.temporada}">Abrir temporada →</a>
+      </div>
+    </article>`;
+  }).join('')||`<div class="catalog-empty"><strong>No se encontraron competiciones</strong><span>${soloFavoritas?'No tienes competiciones marcadas como favoritas todavía.':`No encontramos coincidencias para “${esc(q)}”. Prueba con el nombre del país o de la liga.`}</span></div>`;
+
+  aplicarAnchos();
 }
-document.addEventListener('DOMContentLoaded',async()=>{const lista=document.getElementById('lista');try{const r=await fetch('/api/home/competiciones');const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'No disponible');competiciones=normalizarCatalogo(d.competiciones);const temporadas=competiciones.reduce((n,c)=>n+c.temporadas.length,0);document.getElementById('total-ligas').textContent=competiciones.length;document.getElementById('total-temporadas').textContent=`${temporadas} temporadas guardadas`;lista.addEventListener('change',event=>{const select=event.target.closest('[data-competition-season]');if(!select)return;temporadasElegidas.set(Number(select.dataset.competitionSeason),Number(select.value));pintar()});pintar()}catch(error){lista.innerHTML=`<div class="warning">No se pudo calcular la cobertura: ${esc(error.message)}</div>`}});
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  const lista=document.getElementById('lista');
+  const inputBuscar=document.getElementById('buscar');
+  const btnLimpiar=document.getElementById('limpiar-busqueda');
+  const btnTodas=document.getElementById('filtro-todas');
+  const btnFavs=document.getElementById('filtro-favoritas');
+
+  if(inputBuscar){
+    inputBuscar.addEventListener('input',()=>pintar());
+  }
+  if(btnLimpiar){
+    btnLimpiar.addEventListener('click',()=>{
+      inputBuscar.value='';
+      inputBuscar.focus();
+      pintar();
+    });
+  }
+  if(btnTodas && btnFavs){
+    btnTodas.addEventListener('click',()=>{
+      soloFavoritas=false;
+      btnTodas.classList.add('active');
+      btnTodas.setAttribute('aria-selected','true');
+      btnFavs.classList.remove('active');
+      btnFavs.setAttribute('aria-selected','false');
+      pintar();
+    });
+    btnFavs.addEventListener('click',()=>{
+      soloFavoritas=true;
+      btnFavs.classList.add('active');
+      btnFavs.setAttribute('aria-selected','true');
+      btnTodas.classList.remove('active');
+      btnTodas.setAttribute('aria-selected','false');
+      pintar();
+    });
+  }
+
+  lista.addEventListener('click',event=>{
+    const btn=event.target.closest('[data-favorite-competition]');
+    if(!btn)return;
+    const id=Number(btn.dataset.favoriteCompetition);
+    const comp=competiciones.find(c=>c.id===id);
+    if(!comp)return;
+    FutbolLibrary?.alternarCompeticionFavorita(comp);
+    pintar();
+  });
+
+  lista.addEventListener('change',event=>{
+    const select=event.target.closest('[data-competition-season]');
+    if(!select)return;
+    temporadasElegidas.set(Number(select.dataset.competitionSeason),Number(select.value));
+    pintar();
+  });
+
+  try{
+    const r=await fetch('/api/home/competiciones');
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(d.error||'No disponible');
+    competiciones=normalizarCatalogo(d.competiciones);
+    const temporadas=competiciones.reduce((n,c)=>n+c.temporadas.length,0);
+    document.getElementById('total-ligas').textContent=competiciones.length;
+    document.getElementById('total-temporadas').textContent=`${temporadas} temporadas guardadas`;
+    pintar();
+  }catch(error){
+    lista.innerHTML=`<div class="warning">No se pudo calcular la cobertura: ${esc(error.message)}</div>`;
+  }
+});
 </script></body></html>

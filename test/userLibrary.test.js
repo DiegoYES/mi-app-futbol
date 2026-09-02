@@ -35,3 +35,16 @@ test('una comparación repetida se actualiza sin duplicarse', () => {
   biblioteca.quitarComparacion('42:39:50:39');
   assert.equal(biblioteca.comparaciones().length, 0);
 });
+
+test('competiciones favoritas se alternan por su id', () => {
+  const biblioteca = crearBiblioteca(memoria());
+  assert.equal(biblioteca.alternarCompeticionFavorita({ id: 262, nombre: 'Liga MX' }), true);
+  assert.equal(biblioteca.esCompeticionFavorita(262), true);
+  assert.equal(biblioteca.esCompeticionFavorita('262'), true);
+  assert.equal(biblioteca.esCompeticionFavorita(39), false);
+  assert.equal(biblioteca.competicionesFavoritas().length, 1);
+  assert.equal(biblioteca.competicionesFavoritas()[0].id, 262);
+  assert.equal(biblioteca.alternarCompeticionFavorita({ id: 262 }), false);
+  assert.equal(biblioteca.competicionesFavoritas().length, 0);
+  assert.equal(biblioteca.esCompeticionFavorita(262), false);
+});

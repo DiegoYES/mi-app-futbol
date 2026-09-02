@@ -81,24 +81,49 @@ function construirUpdatePartido(detalle, partido) {
   const awayStats = detalle.statistics?.find(item => item.team?.id === awayId);
   const update = { fecha_actualizacion: new Date() };
 
-  if (homeStats && awayStats) {
-    Object.assign(update, camposEstadisticas('equipo_local', homeStats));
-    Object.assign(update, camposEstadisticas('equipo_visitante', awayStats));
-    update.estadisticas_completas = tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats);
-  } else {
-    Object.assign(update, camposEstadisticas("equipo_local", { statistics: [] }));
-    Object.assign(update, camposEstadisticas("equipo_visitante", { statistics: [] }));
-    update.estadisticas_completas = false;
-  }
-
+  let locales = [];
+  let visitantes = [];
   if (Array.isArray(detalle.events)) {
-    const locales = detalle.events.filter(item => item.team?.id === homeId).map(eventoGuardable);
-    const visitantes = detalle.events.filter(item => item.team?.id === awayId).map(eventoGuardable);
+    locales = detalle.events.filter(item => item.team?.id === homeId).map(eventoGuardable);
+    visitantes = detalle.events.filter(item => item.team?.id === awayId).map(eventoGuardable);
     update['equipo_local.eventos'] = locales;
     update['equipo_visitante.eventos'] = visitantes;
     update['equipo_local.estadisticas_por_rango'] = agruparEventos(locales);
     update['equipo_visitante.estadisticas_por_rango'] = agruparEventos(visitantes);
     update.eventos_completos = true;
+  }
+
+  const amarillasEvLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && String(e.detalle || '').toLowerCase().includes('yellow')).length;
+  const rojasEvLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && detailIsRed(String(e.detalle || '').toLowerCase())).length;
+  const amarillasEvVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && String(e.detalle || '').toLowerCase().includes('yellow')).length;
+  const rojasEvVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && detailIsRed(String(e.detalle || '').toLowerCase())).length;
+
+  if (homeStats && awayStats) {
+    Object.assign(update, camposEstadisticas('equipo_local', homeStats));
+    Object.assign(update, camposEstadisticas('equipo_visitante', awayStats));
+
+    // Reconciliación defensiva de tarjetas si los eventos ya registran amonestaciones
+    if (amarillasEvLocal > 0 && (update['equipo_local.tarjetas_amarillas'] ?? 0) < amarillasEvLocal) {
+      update['equipo_local.tarjetas_amarillas'] = amarillasEvLocal;
+    }
+    if (rojasEvLocal > 0 && (update['equipo_local.tarjetas_rojas'] ?? 0) < rojasEvLocal) {
+      update['equipo_local.tarjetas_rojas'] = rojasEvLocal;
+    }
+    if (amarillasEvVis > 0 && (update['equipo_visitante.tarjetas_amarillas'] ?? 0) < amarillasEvVis) {
+      update['equipo_visitante.tarjetas_amarillas'] = amarillasEvVis;
+    }
+    if (rojasEvVis > 0 && (update['equipo_visitante.tarjetas_rojas'] ?? 0) < rojasEvVis) {
+      update['equipo_visitante.tarjetas_rojas'] = rojasEvVis;
+    }
+
+    const golesLocal = partido.equipo_local?.goles ?? detalle.goals?.home;
+    const golesVis = partido.equipo_visitante?.goles ?? detalle.goals?.away;
+    update.estadisticas_completas = tieneMetricasBasicas(homeStats, { goles: golesLocal, tarjetasEventos: amarillasEvLocal + rojasEvLocal }) &&
+      tieneMetricasBasicas(awayStats, { goles: golesVis, tarjetasEventos: amarillasEvVis + rojasEvVis });
+  } else {
+    Object.assign(update, camposEstadisticas("equipo_local", { statistics: [] }));
+    Object.assign(update, camposEstadisticas("equipo_visitante", { statistics: [] }));
+    update.estadisticas_completas = false;
   }
 
   if (Array.isArray(detalle.lineups)) {

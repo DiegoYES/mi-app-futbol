@@ -68,6 +68,28 @@ async function auditar() {
           { 'equipo_visitante.estadisticas_1t': { $exists: false } },
           { 'equipo_visitante.estadisticas_2t': { $exists: false } }
         ]
+      }),
+      Partido.countDocuments({
+        estado: { $in: ['FT', 'AET', 'PEN'] },
+        estadisticas_completas: true,
+        $or: [
+          {
+            $expr: {
+              $and: [
+                { $gt: [{ $ifNull: ['$equipo_local.goles', 0] }, 0] },
+                { $lt: [{ $ifNull: ['$equipo_local.tiros_total', 0] }, { $ifNull: ['$equipo_local.goles', 0] }] }
+              ]
+            }
+          },
+          {
+            $expr: {
+              $and: [
+                { $gt: [{ $ifNull: ['$equipo_visitante.goles', 0] }, 0] },
+                { $lt: [{ $ifNull: ['$equipo_visitante.tiros_total', 0] }, { $ifNull: ['$equipo_visitante.goles', 0] }] }
+              ]
+            }
+          }
+        ]
       })
     ]),
     Partido.collection.indexes(),
@@ -97,7 +119,8 @@ async function auditar() {
       total_goles: inconsistencias[0],
       ambos_anotan: inconsistencias[1],
       identificadores_o_temporada_faltantes: inconsistencias[2],
-      tiempos_marcados_completos_sin_subdocumentos: inconsistencias[3]
+      tiempos_marcados_completos_sin_subdocumentos: inconsistencias[3],
+      tiros_menor_que_goles: inconsistencias[4]
     },
     indices: {
       partidos: indicesPartidos.map(indice => ({ nombre: indice.name, campos: indice.key })),
