@@ -73,7 +73,7 @@
  
   <!-- SECCIÓN 5: MERCADOS POR EQUIPO -->
   <section id="panel-mercados" class="competition-tab-panel" role="tabpanel" aria-labelledby="tab-mercados">
-    <article class="competition-panel" style="margin-top:0">
+    <article class="competition-panel panel-flush">
       <div class="competition-panel-head">
         <div>
           <p class="eyebrow">Estadísticas para apuestas</p>
@@ -143,12 +143,12 @@
         <table class="standings market-stats-table">
           <thead>
             <tr>
-              <th style="width:44px">#</th>
-              <th>Equipo</th>
-              <th style="width:70px;text-align:center">PJ</th>
-              <th style="width:100px;text-align:center">Cumplidos</th>
-              <th style="width:180px">Acierto (%)</th>
-              <th style="width:160px;text-align:center">Racha (Últimos 5)</th>
+              <th class="col-rank">#</th>
+              <th class="col-team">Equipo</th>
+              <th class="col-pj">PJ</th>
+              <th class="col-hits">Cumplidos</th>
+              <th class="col-pct">Acierto (%)</th>
+              <th class="col-streak">Racha (Últimos 5)</th>
             </tr>
           </thead>
           <tbody id="lista-tabla-mercados"></tbody>
@@ -162,6 +162,7 @@ const params=new URLSearchParams(location.search);const ID=Number(params.get('id
 const fechaCorta=v=>new Date(v).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
 const fechaLarga=v=>new Date(v).toLocaleString('es-MX',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
 const horaCorta=v=>new Date(v).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
+function aplicarAnchos(raiz=document){raiz.querySelectorAll('[data-width]').forEach(el=>{el.style.width=Math.max(0,Math.min(100,Number(el.dataset.width)||0))+'%'})}
 function urlPartido(p,season){const dia=new Date(p.fecha).toISOString().slice(0,10);return `/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${ID}&temporada=${season}&partido=${p.api_id}&fecha=${dia}`}
 
 let datosCompeticion=null;
@@ -525,33 +526,34 @@ function pintarMercados(){
     const badgeClass = r.porcentaje >= 70 ? 'high' : r.porcentaje >= 40 ? 'mid' : 'low';
     const rachaHtml = r.racha.length
       ? r.racha.map(dot => `<span class="streak-dot ${dot.cumplio ? 'hit' : 'miss'}" title="${esc(dot.desc)}">${dot.cumplio ? '✓' : '✗'}</span>`).join('')
-      : '<span style="color:var(--muted);font-size:.7rem">—</span>';
+      : '<span class="market-streak-empty">—</span>';
 
     return `
       <tr>
-        <td style="color:var(--muted);font-weight:700">${index + 1}</td>
-        <td>
-          <a href="/equipo.html?id=${r.id}&league=${ID}&season=${season}" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;font-weight:700">
-            <img src="/api/equipos/${r.id}/escudo" alt="" style="width:20px;height:20px;object-fit:contain">
+        <td class="col-rank">${index + 1}</td>
+        <td class="col-team">
+          <a href="/equipo.html?id=${r.id}&league=${ID}&season=${season}" class="market-team-cell">
+            <img src="/api/equipos/${r.id}/escudo" alt="">
             <span>${esc(r.nombre)}</span>
           </a>
         </td>
-        <td style="text-align:center;font-weight:700">${r.pj}</td>
-        <td style="text-align:center;font-weight:800;color:var(--ink)">${r.cumplidos} / ${r.pj}</td>
-        <td>
+        <td class="col-pj">${r.pj}</td>
+        <td class="col-hits">${r.cumplidos} / ${r.pj}</td>
+        <td class="col-pct">
           <div class="market-pct-bar-wrap">
             <span class="market-pct-badge ${badgeClass}">${r.porcentaje}%</span>
             <div class="market-pct-track">
-              <div class="market-pct-fill ${badgeClass}" style="width:${r.porcentaje}%"></div>
+              <div class="market-pct-fill ${badgeClass}" data-width="${r.porcentaje}"></div>
             </div>
           </div>
         </td>
-        <td style="text-align:center">
+        <td class="col-streak">
           <div class="market-streak">${rachaHtml}</div>
         </td>
       </tr>
     `;
   }).join('');
+  aplicarAnchos(tbody);
 }
 
 async function cargar(round=''){

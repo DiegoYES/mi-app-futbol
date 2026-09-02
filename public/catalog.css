@@ -180,7 +180,17 @@
 .market-search-box input:focus { border-color:var(--green); }
 
 /* Tabla de estadísticas de mercado */
+.panel-flush { margin-top: 0 !important; }
 .market-stats-table td { padding:10px 14px;vertical-align:middle; }
+.market-stats-table th.col-rank, .market-stats-table td.col-rank { width:44px;color:var(--muted);font-weight:700;text-align:center; }
+.market-stats-table th.col-team, .market-stats-table td.col-team { font-weight:700; }
+.market-stats-table th.col-pj, .market-stats-table td.col-pj { width:70px;text-align:center;font-weight:700; }
+.market-stats-table th.col-hits, .market-stats-table td.col-hits { width:100px;text-align:center;font-weight:800;color:var(--ink); }
+.market-stats-table th.col-pct, .market-stats-table td.col-pct { width:180px; }
+.market-stats-table th.col-streak, .market-stats-table td.col-streak { width:160px;text-align:center; }
+.market-team-cell { display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;font-weight:700; }
+.market-team-cell img { width:20px;height:20px;object-fit:contain; }
+.market-streak-empty { color:var(--muted);font-size:.7rem; }
 .market-stats-table .market-pct-bar-wrap { display:flex;align-items:center;gap:10px; }
 .market-pct-badge { min-width:44px;padding:3px 8px;border-radius:6px;font-weight:900;font-size:.76rem;text-align:center; }
 .market-pct-badge.high { background:rgba(84,227,142,.15);color:var(--green);border:1px solid rgba(84,227,142,.3); }
