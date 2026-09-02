@@ -47,6 +47,26 @@ test('rechaza escrituras web desde un origen ajeno', async t => {
   assert.equal(body.codigo, 'ORIGEN_NO_PERMITIDO');
 });
 
+test('rechaza escrituras con Sec-Fetch-Site cross-site o Referer externo', async t => {
+  const baseUrl = await servidorTemporal(t);
+
+  const respFetchSite = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { 'sec-fetch-site': 'cross-site' }
+  });
+  assert.equal(respFetchSite.status, 403);
+  const body1 = await respFetchSite.json();
+  assert.equal(body1.codigo, 'ORIGEN_NO_PERMITIDO');
+
+  const respReferer = await fetch(`${baseUrl}/api/auth/logout`, {
+    method: 'POST',
+    headers: { referer: 'https://atacante.example/landing' }
+  });
+  assert.equal(respReferer.status, 403);
+  const body2 = await respReferer.json();
+  assert.equal(body2.codigo, 'ORIGEN_NO_PERMITIDO');
+});
+
 test('acepta escrituras del mismo host cuando un proxy termina HTTPS', async t => {
   const baseUrl = await servidorTemporal(t);
   const url = new URL(baseUrl);

@@ -42,7 +42,16 @@ function normalizarOrigen(valor) {
 
 function validarOrigenNavegador(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next();
-  const origin = req.get('origin');
+
+  const fetchSite = String(req.get('sec-fetch-site') || '').toLowerCase();
+  if (fetchSite === 'cross-site') {
+    return res.status(403).json({
+      error: 'Origen de solicitud no permitido.',
+      codigo: 'ORIGEN_NO_PERMITIDO'
+    });
+  }
+
+  const origin = req.get('origin') || req.get('referer');
   if (!origin) return next();
 
   const origenNavegador = normalizarOrigen(origin);
@@ -140,6 +149,14 @@ const limiteEscudos = crearLimitador('escudos', {
   handler: respuestaLimite
 });
 
+const limiteEventosProducto = crearLimitador('eventos-producto', {
+  windowMs: 60_000,
+  limit: enteroEnRango(process.env.PRODUCT_EVENTS_RATE_LIMIT_PER_MINUTE, 40, 10, 300),
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  handler: respuestaLimite
+});
+
 function manejarJsonInvalido(error, _req, res, next) {
   if (error?.type === 'entity.too.large') {
     return res.status(413).json({ error: 'La solicitud es demasiado grande.', codigo: 'BODY_MUY_GRANDE' });
@@ -157,6 +174,7 @@ module.exports = {
   escaparRegex,
   limiteApi,  limiteUsuario,
   limiteEscudos,
+  limiteEventosProducto,
   manejarJsonInvalido,
   origenesPermitidos,
   revisarConfiguracionSegura,
