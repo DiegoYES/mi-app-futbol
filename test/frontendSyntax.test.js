@@ -262,6 +262,16 @@ test('el directorio de jugadores separa competición y temporada', () => {
   assert.doesNotMatch(html, /const \[league,season\]=valor\.split/);
 });
 
+test('el directorio de jugadores permite buscar la competición por país o nombre tokenizado', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'jugadores.html'), 'utf8');
+  assert.match(html, /id="selector-liga" class="league-picker"/);
+  assert.match(html, /id="buscar-liga" class="picker-search"/);
+  assert.match(html, /FutbolSearch\.ordenar\(competiciones,consulta,item=>`\$\{item\.pais\} \$\{item\.nombre\}`\)/);
+  assert.match(html, /data-league-value/);
+  assert.match(html, /id="selector-basico"/);
+  assert.match(html, /function seleccionarLiga\(id\)/);
+});
+
 test('el formulario de tickets maneja respuestas HTML sin mostrar errores de JSON', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'sugerencias.html'), 'utf8');
   assert.match(html, /function leerRespuesta/);

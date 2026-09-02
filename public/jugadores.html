@@ -19,7 +19,18 @@
   </header>
 
   <section class="catalog-controls player-filters" aria-label="Filtros de jugadores">
-    <label class="catalog-filter-field"><span>1 · Competición</span><select id="liga"><option value="">Elige una competición</option></select></label>
+    <div class="catalog-filter-field">
+      <span>1 · Competición</span>
+      <div id="selector-liga" class="league-picker">
+        <select id="liga" class="league-select-native" aria-label="Seleccionar competición"><option value="">Elige una competición</option></select>
+        <button id="abrir-ligas" class="league-picker-button" type="button" aria-haspopup="listbox" aria-expanded="false"></button>
+        <div id="lista-ligas" class="league-picker-list" role="listbox" hidden>
+          <input id="buscar-liga" class="picker-search" type="search" autocomplete="off" placeholder="Buscar país o competición…" aria-label="Buscar por país o nombre de competición">
+          <div id="resultados-ligas" class="league-picker-results"></div>
+          <button id="selector-basico" class="league-picker-basic" type="button">Usar selector básico</button>
+        </div>
+      </div>
+    </div>
     <label class="catalog-filter-field"><span>2 · Temporada</span><select id="temporada" disabled><option value="">Elige una competición</option></select></label>
     <label class="catalog-filter-field player-search"><span>3 · Jugador</span><input id="buscar" type="search" autocomplete="off" placeholder="Buscar por nombre…"></label>
     <button id="filtrar" type="button">Buscar</button>
@@ -49,6 +60,43 @@ function pintarTemporadas(temporadaPreferida=''){
   select.innerHTML=competencia.temporadas.map(item=>`<option value="${item.temporada}">${esc(item.etiqueta||item.temporada)} · ${item.cobertura?.jugadores||0} partidos con jugadores</option>`).join('');
   const preferida=String(temporadaPreferida||'');
   if(preferida&&[...select.options].some(option=>option.value===preferida))select.value=preferida;
+}
+
+function cerrarSelectorLiga(){
+  document.getElementById('lista-ligas').hidden=true;
+  document.getElementById('abrir-ligas').setAttribute('aria-expanded','false');
+  document.getElementById('selector-liga').classList.remove('open');
+}
+
+function pintarSelectorLiga(){
+  const boton=document.getElementById('abrir-ligas');
+  const seleccionada=competenciaActual();
+  boton.innerHTML=seleccionada
+    ?`<img src="/api/ligas/${seleccionada.id}/logo" alt=""><span>${esc(seleccionada.nombre)}</span><small>${esc(seleccionada.pais)}</small><b>⌄</b>`
+    :`<i class="league-picker-placeholder" aria-hidden="true">🏆</i><span>Elige una competición</span><small>${competiciones.length} disponibles</small><b>⌄</b>`;
+  pintarResultadosLiga();
+}
+
+function pintarResultadosLiga(){
+  const consulta=document.getElementById('buscar-liga').value;
+  const select=document.getElementById('liga');
+  const encontradas=FutbolSearch.ordenar(competiciones,consulta,item=>`${item.pais} ${item.nombre}`);
+  const porPais=new Map();
+  for(const item of encontradas){
+    const pais=item.pais||'Otras competiciones';
+    if(!porPais.has(pais))porPais.set(pais,[]);
+    porPais.get(pais).push(item);
+  }
+  document.getElementById('resultados-ligas').innerHTML=[...porPais.entries()].map(([pais,lista])=>`<section class="league-picker-group"><h4>${esc(pais)} <span>${lista.length}</span></h4>${lista.map(item=>`<button type="button" role="option" data-league-value="${item.id}" aria-selected="${select.value===String(item.id)}"><img src="/api/ligas/${item.id}/logo" alt=""><span><strong>${esc(item.nombre)}</strong><small>${esc(item.pais)} · ${item.temporadas.length} temporada${item.temporadas.length===1?'':'s'}</small></span></button>`).join('')}</section>`).join('')||'<p class="league-picker-empty">No encontramos competiciones de ese país ni con ese nombre.</p>';
+}
+
+function seleccionarLiga(id){
+  const select=document.getElementById('liga');
+  select.value=String(id||'');
+  cerrarSelectorLiga();
+  pintarSelectorLiga();
+  pintarTemporadas();
+  cargar();
 }
 
 function actualizarUrl(){
@@ -103,9 +151,44 @@ document.addEventListener('DOMContentLoaded',async()=>{
     liga.innerHTML='<option value="">Elige una competición</option>'+competiciones.map(item=>`<option value="${item.id}">${esc(item.nombre)} · ${esc(item.pais)}</option>`).join('');
     const ligaInicial=params.get('league');
     if(ligaInicial&&[...liga.options].some(option=>option.value===ligaInicial))liga.value=ligaInicial;
+    pintarSelectorLiga();
     pintarTemporadas(params.get('season'));
     document.getElementById('buscar').value=params.get('q')||'';
-    liga.addEventListener('change',()=>{pintarTemporadas();cargar()});
+    liga.addEventListener('change',()=>seleccionarLiga(liga.value));
+    document.getElementById('abrir-ligas').addEventListener('click',evento=>{
+      evento.stopPropagation();
+      const listaLigas=document.getElementById('lista-ligas');
+      listaLigas.hidden=!listaLigas.hidden;
+      document.getElementById('selector-liga').classList.toggle('open',!listaLigas.hidden);
+      evento.currentTarget.setAttribute('aria-expanded',String(!listaLigas.hidden));
+      if(!listaLigas.hidden){
+        const buscarLiga=document.getElementById('buscar-liga');
+        buscarLiga.value='';
+        pintarResultadosLiga();
+        requestAnimationFrame(()=>buscarLiga.focus());
+      }
+    });
+    document.getElementById('lista-ligas').addEventListener('click',evento=>{
+      evento.stopPropagation();
+      const opcion=evento.target.closest('[data-league-value]');
+      if(opcion)seleccionarLiga(opcion.dataset.leagueValue);
+    });
+    document.getElementById('buscar-liga').addEventListener('input',pintarResultadosLiga);
+    document.getElementById('buscar-liga').addEventListener('keydown',evento=>{
+      if(evento.key==='Escape')cerrarSelectorLiga();
+      if(evento.key==='Enter'){
+        const primera=document.querySelector('#resultados-ligas [data-league-value]');
+        if(primera){evento.preventDefault();seleccionarLiga(primera.dataset.leagueValue);}
+      }
+    });
+    document.getElementById('selector-basico').addEventListener('click',evento=>{
+      evento.stopPropagation();
+      cerrarSelectorLiga();
+      document.getElementById('selector-liga').classList.add('fallback');
+      document.getElementById('abrir-ligas').hidden=true;
+      liga.classList.remove('league-select-native');
+    });
+    document.addEventListener('click',cerrarSelectorLiga);
     document.getElementById('temporada').addEventListener('change',cargar);
     document.getElementById('filtrar').addEventListener('click',cargar);
     document.getElementById('buscar').addEventListener('keydown',event=>{if(event.key==='Enter')cargar()});
