@@ -45,7 +45,7 @@ if (!EMAIL || !PASSWORD) {
 }
 
 // /partido.html se prueba aparte con identificadores reales del calendario.
-const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/boletas.html', '/configuracion.html'];
+const PAGINAS = ['/', '/calendario.html', '/comparador.html', '/picks.html', '/boletas.html', '/configuracion.html', '/competiciones.html', '/equipos.html', '/jugadores.html'];
 
 async function recorrer(nombre, opcionesContexto) {
   const errores = [];
@@ -178,6 +178,39 @@ async function recorrer(nombre, opcionesContexto) {
     }
   } else {
     errores.push(`[${nombre}] no se encontró el buscador #busquedaCalendario en el calendario.`);
+  }
+
+  // Competiciones: verificación de tarjetas reales, sin estados de error,
+  // funcionamiento del buscador y botón de favoritas.
+  await pagina.goto('/competiciones.html', { waitUntil: 'networkidle' });
+  try {
+    await pagina.waitForSelector('.competition-directory-card', { timeout: 10000 });
+    const totalCards = await pagina.locator('.competition-directory-card').count();
+    if (totalCards === 0) {
+      errores.push(`[${nombre}] /competiciones.html cargó 0 tarjetas.`);
+    }
+    const erroresVisibles = await pagina.locator('.warning, .catalog-empty').count();
+    if (erroresVisibles > 0) {
+      const txt = await pagina.locator('.warning, .catalog-empty').first().innerText().catch(() => '');
+      errores.push(`[${nombre}] /competiciones.html mostró un bloque de error visible: ${txt}`);
+    }
+    const inputBuscar = pagina.locator('#buscar');
+    if (await inputBuscar.count()) {
+      await inputBuscar.fill('México');
+      await pagina.waitForTimeout(400);
+      const filtradas = await pagina.locator('.competition-directory-card').count();
+      if (filtradas === 0) {
+        errores.push(`[${nombre}] el buscador de competiciones arrojó 0 resultados para 'México'.`);
+      }
+      const favBtn = pagina.locator('.competition-directory-card .favorite-button').first();
+      if (await favBtn.count()) {
+        await favBtn.click();
+        await pagina.waitForTimeout(200);
+      }
+      await pagina.click('#limpiar-busqueda');
+    }
+  } catch (err) {
+    errores.push(`[${nombre}] fallo interactuando con /competiciones.html: ${err.message}`);
   }
 
   await navegador.close();

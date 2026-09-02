@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Competiciones</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css"><script src="/auth-client.js?v=20260827-v11"></script><script src="/search-utils.js"></script><script src="/user-library.js"></script></head>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css"><script src="/auth-client.js?v=20260902-v12"></script><script src="/search-utils.js?v=20260902-v12"></script><script src="/user-library.js?v=20260902-v12"></script></head>
 <body><main class="catalog">
   <nav class="catalog-nav"><a href="/">← Inicio</a><a href="/comparador.html">Comparador</a><a href="/equipos.html">Equipos</a><a href="/jugadores.html">Jugadores</a></nav>
   <header class="catalog-head"><div><p class="eyebrow">Cobertura real</p><h1>Ligas y <span>competiciones.</span></h1><p>Una tarjeta por competición. Elige dentro de ella la temporada que quieras consultar y revisa únicamente la cobertura que realmente existe.</p></div><div class="catalog-summary"><strong id="total-ligas">—</strong><span>ligas/torneos únicos</span><small id="total-temporadas">— temporadas guardadas</small></div></header>
@@ -24,6 +24,25 @@ let competiciones=[];
 let soloFavoritas=false;
 const temporadasElegidas=new Map();
 
+function esCompeticionFav(id){
+  try {
+    return Boolean(typeof FutbolLibrary?.esCompeticionFavorita === 'function' && FutbolLibrary.esCompeticionFavorita(id));
+  } catch {
+    return false;
+  }
+}
+
+function alternarCompeticionFav(comp){
+  try {
+    if (typeof FutbolLibrary?.alternarCompeticionFavorita === 'function') {
+      return FutbolLibrary.alternarCompeticionFavorita(comp);
+    }
+  } catch (err) {
+    console.warn('No se pudo guardar la competición favorita:', err);
+  }
+  return false;
+}
+
 function normalizarCatalogo(lista){
   const porLiga=new Map();
   for(const item of lista||[]){
@@ -45,8 +64,8 @@ function normalizarCatalogo(lista){
 
 function ordenarCompeticiones(lista){
   return [...lista].sort((a,b)=>{
-    const favA=FutbolLibrary?.esCompeticionFavorita(a.id)?1:0;
-    const favB=FutbolLibrary?.esCompeticionFavorita(b.id)?1:0;
+    const favA=esCompeticionFav(a.id)?1:0;
+    const favB=esCompeticionFav(b.id)?1:0;
     if(favA!==favB)return favB-favA;
     const prio=Number(b.principal)-Number(a.principal);
     if(prio!==0)return prio;
@@ -66,7 +85,7 @@ function pintar(){
   const q=(inputBuscar?.value||'').trim();
   if(btnLimpiar)btnLimpiar.hidden=!q;
 
-  const totalFavoritas=competiciones.filter(c=>FutbolLibrary?.esCompeticionFavorita(c.id)).length;
+  const totalFavoritas=competiciones.filter(c=>esCompeticionFav(c.id)).length;
   const countTodas=document.getElementById('count-todas');
   const countFavs=document.getElementById('count-favoritas');
   if(countTodas)countTodas.textContent=competiciones.length;
@@ -74,12 +93,12 @@ function pintar(){
 
   let base=competiciones;
   if(soloFavoritas){
-    base=base.filter(c=>FutbolLibrary?.esCompeticionFavorita(c.id));
+    base=base.filter(c=>esCompeticionFav(c.id));
   }
 
   let visibles=base;
   if(q){
-    visibles=typeof FutbolSearch!=='undefined'
+    visibles=typeof FutbolSearch!=='undefined' && typeof FutbolSearch.ordenar==='function'
       ? FutbolSearch.ordenar(base,q,c=>`${c.nombre} ${c.pais||''}`)
       : base.filter(c=>`${c.nombre} ${c.pais||''}`.toLowerCase().includes(q.toLowerCase()));
   }
@@ -96,7 +115,7 @@ function pintar(){
   lista.innerHTML=visibles.map(c=>{
     const t=temporadaActiva(c);
     const pct=t.finalizados?Math.round(t.cobertura.estadisticas/t.finalizados*100):0;
-    const esFav=FutbolLibrary?.esCompeticionFavorita(c.id);
+    const esFav=esCompeticionFav(c.id);
     return `<article class="catalog-card competition-directory-card ${esFav?'is-favorite':''}">
       <button class="favorite-button ${esFav?'active':''}" type="button" data-favorite-competition="${c.id}" aria-label="${esFav?'Quitar de favoritas':'Marcar como favorita'}" title="${esFav?'Quitar de favoritas':'Marcar como favorita'}">${esFav?'★':'☆'}</button>
       <div class="catalog-card-head">
@@ -170,7 +189,7 @@ document.addEventListener('DOMContentLoaded',async()=>{
     const id=Number(btn.dataset.favoriteCompetition);
     const comp=competiciones.find(c=>c.id===id);
     if(!comp)return;
-    FutbolLibrary?.alternarCompeticionFavorita(comp);
+    alternarCompeticionFav(comp);
     pintar();
   });
 
@@ -191,7 +210,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
     document.getElementById('total-temporadas').textContent=`${temporadas} temporadas guardadas`;
     pintar();
   }catch(error){
-    lista.innerHTML=`<div class="warning">No se pudo calcular la cobertura: ${esc(error.message)}</div>`;
+    console.error('Error cargando competiciones:', error);
+    lista.innerHTML=`<div class="catalog-empty"><strong>No pudimos cargar las competiciones en este momento</strong><span>Revisa tu conexión o intenta recargar la página.</span><button type="button" class="pill-btn" onclick="location.reload()" style="margin-top:14px;cursor:pointer">Reintentar</button></div>`;
   }
 });
 </script></body></html>
