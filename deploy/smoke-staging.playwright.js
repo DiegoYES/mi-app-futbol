@@ -213,6 +213,42 @@ async function recorrer(nombre, opcionesContexto) {
     errores.push(`[${nombre}] fallo interactuando con /competiciones.html: ${err.message}`);
   }
 
+  // Verificación de Centro de Competición (/competicion.html):
+  // Abrir la primera liga, probar el cambio entre pestañas (jornadas, jugadores, clasificacion, partidos)
+  // y validar que los partidos de toda la temporada se listen y filtren correctamente.
+  try {
+    const enlaceLiga = pagina.locator('.competition-card-foot a').first();
+    if (await enlaceLiga.count()) {
+      await enlaceLiga.click();
+      await pagina.waitForSelector('.competition-nav-tabs', { timeout: 10000 });
+
+      // Probar cambio a pestaña Jugadores
+      await pagina.click('[data-tab="jugadores"]');
+      await pagina.waitForTimeout(200);
+
+      // Probar cambio a pestaña Clasificación
+      await pagina.click('[data-tab="clasificacion"]');
+      await pagina.waitForTimeout(200);
+
+      // Probar cambio a pestaña Partidos
+      await pagina.click('[data-tab="partidos"]');
+      await pagina.waitForTimeout(200);
+      const totalPartidos = await pagina.locator('.match-list-item').count();
+      if (totalPartidos === 0) {
+        errores.push(`[${nombre}] /competicion.html no mostró ningún partido en el listado.`);
+      }
+
+      // Probar filtro de partidos finalizados
+      const btnFin = pagina.locator('#filtro-partidos-finalizados');
+      if (await btnFin.count()) {
+        await btnFin.click();
+        await pagina.waitForTimeout(200);
+      }
+    }
+  } catch (err) {
+    errores.push(`[${nombre}] fallo interactuando con /competicion.html: ${err.message}`);
+  }
+
   await navegador.close();
   return errores;
 }

@@ -169,6 +169,9 @@ else
 fi
 
 echo "-- Login (cuenta de staging) --"
+if [ -S /run/redis/redis-server.sock ]; then
+  redis-cli -s /run/redis/redis-server.sock keys "datafut:staging:rate-limit:*" 2>/dev/null | xargs -r redis-cli -s /run/redis/redis-server.sock del >/dev/null 2>&1 || true
+fi
 CODIGO_LOGIN="$(curl -sS "${CURL_AUTH[@]+"${CURL_AUTH[@]}"}" -o "${CUERPO}" -w '%{http_code}' -c "${COOKIES}" \
   -H 'Content-Type: application/json' \
   -H "Origin: ${BASE_URL}" \
@@ -186,6 +189,7 @@ comprobar "centro de partido /partido.html"  200 "$(http_get /partido.html)"
 comprobar "picks /picks.html"                200 "$(http_get /picks.html)"
 comprobar "boletas /boletas.html"            200 "$(http_get /boletas.html)"
 comprobar "competiciones /competiciones.html" 200 "$(http_get /competiciones.html)"
+comprobar "centro de competición /competicion.html" 200 "$(http_get '/competicion.html?id=39')"
 comprobar "GET /api/home/resumen"            200 "$(http_get /api/home/resumen)"
 comprobar "GET /api/home/competiciones"       200 "$(http_get /api/home/competiciones)"
 comprobar "GET /api/calendario/proximos"     200 "$(http_get /api/calendario/proximos)"
@@ -195,7 +199,7 @@ comprobar "GET /api/boletas"                 200 "$(http_get /api/boletas)"
 if [ "${RUN_PLAYWRIGHT:-0}" = "1" ]; then
   echo "-- Playwright (escritorio + móvil, errores JS, duplicados) --"
   if [ -S /run/redis/redis-server.sock ]; then
-    redis-cli -s /run/redis/redis-server.sock keys "datafut:staging:ratelimit:*" 2>/dev/null | xargs -r redis-cli -s /run/redis/redis-server.sock del >/dev/null 2>&1 || true
+    redis-cli -s /run/redis/redis-server.sock keys "datafut:staging:rate-limit:*" 2>/dev/null | xargs -r redis-cli -s /run/redis/redis-server.sock del >/dev/null 2>&1 || true
   fi
   SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
   if STAGING_BASE_URL="${BASE_URL}" STAGING_SMOKE_EMAIL="${EMAIL}" STAGING_SMOKE_PASSWORD="${PASSWORD}" \

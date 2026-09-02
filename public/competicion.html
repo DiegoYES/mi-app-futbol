@@ -1,27 +1,291 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Centro de competencia</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css"><script src="/auth-client.js?v=20260827-v11"></script></head>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v13"><script src="/auth-client.js?v=20260902-v13"></script></head>
 <body><main class="catalog competition-center">
   <nav class="catalog-nav"><a href="/competiciones.html">← Competiciones</a><a href="/">Inicio</a><a href="/comparador.html">Comparador</a><a id="teams-link" href="/equipos.html">Equipos</a></nav>
-  <header class="catalog-head"><div class="competition-identity"><img id="competition-logo" alt=""><div><p class="eyebrow">Centro de competencia</p><h1 id="title">Cargando <span>temporada.</span></h1><p id="subtitle">Clasificación reconstruida, cobertura y últimos partidos guardados.</p></div></div><label class="competition-center-season"><span>Temporada</span><select id="season" aria-label="Temporada"></select></label></header>
+  <header class="catalog-head"><div class="competition-identity"><img id="competition-logo" alt=""><div><p class="eyebrow">Centro de competencia</p><h1 id="title">Cargando <span>temporada.</span></h1><p id="subtitle">Clasificación reconstruida, cobertura y partidos guardados.</p></div></div><label class="competition-center-season"><span>Temporada</span><select id="season" aria-label="Temporada"></select></label></header>
+  
   <section class="competition-kpis" id="kpis"></section>
-  <div id="notice" class="method-note"></div>
-  <section class="competition-rounds competition-panel">
-    <div class="competition-panel-head"><div><p class="eyebrow">Jornadas</p><h2>Partidos y análisis por jornada</h2></div><label class="round-select"><span>Jornada</span><select id="round" aria-label="Jornada"></select></label></div>
-    <div id="round-tabs" class="round-tabs" aria-label="Jornadas de la temporada"></div>
-    <div id="round-kpis" class="round-kpis"></div>
-    <div class="round-layout"><div><h3>Partidos</h3><div id="round-matches" class="round-matches"></div></div><div><h3>Datos de la jornada</h3><div id="round-stats" class="round-stats"></div></div></div>
+
+  <!-- Pestañas de navegación de la competición -->
+  <nav class="competition-nav-tabs" role="tablist" aria-label="Secciones de la competición">
+    <button type="button" class="competition-tab-btn active" data-tab="jornadas" role="tab" aria-selected="true" aria-controls="panel-jornadas"><span>📅</span> Jornadas</button>
+    <button type="button" class="competition-tab-btn" data-tab="jugadores" role="tab" aria-selected="false" aria-controls="panel-jugadores"><span>👥</span> Rendimiento de jugadores</button>
+    <button type="button" class="competition-tab-btn" data-tab="clasificacion" role="tab" aria-selected="false" aria-controls="panel-clasificacion"><span>🏆</span> Clasificación</button>
+    <button type="button" class="competition-tab-btn" data-tab="partidos" role="tab" aria-selected="false" aria-controls="panel-partidos"><span>⚽</span> Partidos</button>
+  </nav>
+
+  <!-- SECCIÓN 1: JORNADAS -->
+  <section id="panel-jornadas" class="competition-tab-panel active" role="tabpanel" aria-labelledby="tab-jornadas">
+    <div class="competition-rounds competition-panel">
+      <div class="competition-panel-head"><div><p class="eyebrow">Jornadas</p><h2>Partidos y análisis por jornada</h2></div><label class="round-select"><span>Jornada</span><select id="round" aria-label="Jornada"></select></label></div>
+      <div id="round-tabs" class="round-tabs" aria-label="Jornadas de la temporada"></div>
+      <div id="round-kpis" class="round-kpis"></div>
+      <div class="round-layout">
+        <div><h3>Partidos de la jornada</h3><div id="round-matches" class="round-matches"></div></div>
+        <div><h3>Datos de la jornada</h3><div id="round-stats" class="round-stats"></div></div>
+      </div>
+    </div>
   </section>
-  <section class="competition-panel competition-players">
-    <div class="competition-panel-head"><div><p class="eyebrow">Jugadores</p><h2>Rendimiento individual de la jornada</h2></div><span id="players-coverage" class="coverage-label"></span></div>
-    <div class="table-scroll"><table class="standings player-round-table"><thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>MIN</th><th>G</th><th>A</th><th>Nota</th><th>Tiros</th><th>A puerta</th><th>Pases clave</th><th>Entradas</th><th>Atajadas</th><th>TA</th></tr></thead><tbody id="round-players"></tbody></table></div>
+
+  <!-- SECCIÓN 2: RENDIMIENTO DE JUGADORES -->
+  <section id="panel-jugadores" class="competition-tab-panel" role="tabpanel" aria-labelledby="tab-jugadores">
+    <div class="competition-panel competition-players" style="margin-top:0">
+      <div class="competition-panel-head"><div><p class="eyebrow">Jugadores</p><h2>Rendimiento individual de la jornada</h2></div><span id="players-coverage" class="coverage-label"></span></div>
+      <div class="player-search-box">
+        <input id="buscar-jugador" type="search" placeholder="Buscar por jugador o equipo en la jornada…" aria-label="Buscar jugador o equipo">
+        <span id="jugadores-contador" class="coverage-label"></span>
+      </div>
+      <div class="table-scroll"><table class="standings player-round-table"><thead><tr><th>#</th><th>Jugador</th><th>Equipo</th><th>MIN</th><th>G</th><th>A</th><th>Nota</th><th>Tiros</th><th>A puerta</th><th>Pases clave</th><th>Entradas</th><th>Atajadas</th><th>TA</th></tr></thead><tbody id="round-players"></tbody></table></div>
+    </div>
   </section>
-  <section class="competition-layout"><article class="competition-panel"><div class="competition-panel-head"><div><p class="eyebrow">Rendimiento</p><h2>Clasificación</h2></div><a id="compare-link" href="/comparador.html">Comparar equipos →</a></div><div class="table-scroll"><table class="standings"><thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>DG</th><th>PTS</th></tr></thead><tbody id="standings"></tbody></table></div></article>
-  <aside class="competition-panel"><div class="competition-panel-head"><div><p class="eyebrow">Archivo</p><h2>Últimos partidos</h2></div></div><div id="recent" class="competition-matches"></div></aside></section>
+
+  <!-- SECCIÓN 3: CLASIFICACIÓN -->
+  <section id="panel-clasificacion" class="competition-tab-panel" role="tabpanel" aria-labelledby="tab-clasificacion">
+    <div id="notice" class="method-note"></div>
+    <article class="competition-panel" style="margin-top:12px">
+      <div class="competition-panel-head"><div><p class="eyebrow">Rendimiento general</p><h2>Tabla de clasificación</h2></div><a id="compare-link" href="/comparador.html">Comparar equipos en el comparador →</a></div>
+      <div class="table-scroll"><table class="standings"><thead><tr><th>#</th><th>Equipo</th><th>PJ</th><th>G</th><th>E</th><th>P</th><th>DG</th><th>PTS</th></tr></thead><tbody id="standings"></tbody></table></div>
+    </article>
+  </section>
+
+  <!-- SECCIÓN 4: PARTIDOS (CALENDARIO COMPLETO) -->
+  <section id="panel-partidos" class="competition-tab-panel" role="tabpanel" aria-labelledby="tab-partidos">
+    <article class="competition-panel">
+      <div class="competition-panel-head">
+        <div><p class="eyebrow">Fixture y resultados</p><h2>Partidos de la temporada</h2></div>
+        <span id="partidos-contador" class="coverage-label"></span>
+      </div>
+      <div class="matches-list-controls">
+        <div class="matches-filter-pills" role="tablist" aria-label="Filtrar por estado">
+          <button type="button" id="filtro-partidos-todos" class="pill-btn active">Todos (<span id="count-partidos-todos">0</span>)</button>
+          <button type="button" id="filtro-partidos-finalizados" class="pill-btn">Anteriores (<span id="count-partidos-finalizados">0</span>)</button>
+          <button type="button" id="filtro-partidos-proximos" class="pill-btn">Próximos (<span id="count-partidos-proximos">0</span>)</button>
+        </div>
+        <label class="matches-round-filter">
+          <select id="filtro-partidos-jornada" aria-label="Filtrar por jornada">
+            <option value="">Todas las jornadas</option>
+          </select>
+        </label>
+        <div class="matches-search-filter">
+          <input id="buscar-partidos" type="search" placeholder="Buscar por equipo…" aria-label="Buscar partidos por equipo">
+        </div>
+      </div>
+      <div id="lista-partidos-temporada" class="full-matches-list">
+        <div class="catalog-empty">Cargando partidos…</div>
+      </div>
+    </article>
+  </section>
+
 </main><script>
 const params=new URLSearchParams(location.search);const ID=Number(params.get('id'));const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
-const fechaCorta=v=>new Date(v).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});const fechaLarga=v=>new Date(v).toLocaleString('es-MX',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+const fechaCorta=v=>new Date(v).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
+const fechaLarga=v=>new Date(v).toLocaleString('es-MX',{weekday:'short',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+const horaCorta=v=>new Date(v).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'});
 function urlPartido(p,season){const dia=new Date(p.fecha).toISOString().slice(0,10);return `/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${ID}&temporada=${season}&partido=${p.api_id}&fecha=${dia}`}
-function pintarJornada(d){const j=d.jornada;const sel=document.getElementById('round');sel.innerHTML=d.jornadas.map(item=>`<option value="${esc(item.nombre)}" ${item.nombre===j?.nombre?'selected':''}>${esc(item.nombre)} · ${item.finalizados}/${item.partidos}</option>`).join('');document.getElementById('round-tabs').innerHTML=d.jornadas.map(item=>`<button type="button" data-round="${esc(item.nombre)}" class="${item.nombre===j?.nombre?'active':''}"><span>${esc(item.nombre.replace(/^.*? - /,''))}</span><small>${item.finalizados===item.partidos?'Finalizada':item.finalizados?'En juego':'Próxima'}</small></button>`).join('');if(!j){document.getElementById('round-matches').innerHTML='<div class="catalog-empty">Sin jornadas guardadas.</div>';return}const r=j.resumen;document.getElementById('round-kpis').innerHTML=[['Partidos',`${r.finalizados}/${r.partidos}`],['Goles',r.goles],['Promedio',r.goles_por_partido??'—'],['Local',r.victorias_local],['Empates',r.empates],['Visitante',r.victorias_visitante]].map(([n,v])=>`<div><span>${n}</span><strong>${v}</strong></div>`).join('');document.getElementById('round-matches').innerHTML=j.partidos.map(p=>`<a href="${urlPartido(p,d.competencia.temporada)}"><time>${fechaLarga(p.fecha)}</time><span><i>${esc(p.local.nombre)}</i><b>${p.local.goles??'–'} : ${p.visitante.goles??'–'}</b><i>${esc(p.visitante.nombre)}</i></span><small>${esc(p.estado||'NS')}</small></a>`).join('')||'<div class="catalog-empty">Sin partidos en esta jornada.</div>';document.getElementById('round-stats').innerHTML=[['Tiros',r.tiros],['A puerta',r.tiros_puerta],['Córners',r.corners],['Faltas',r.faltas],['Amarillas',r.amarillas],['Rojas',r.rojas]].map(([n,v])=>`<div><span>${n}</span><strong>${v}</strong></div>`).join('');document.getElementById('players-coverage').textContent=j.jugadores.length?`${j.jugadores.length} jugadores con datos`:'Sin estadísticas individuales';document.getElementById('round-players').innerHTML=j.jugadores.map((p,i)=>`<tr><td>${i+1}</td><td><a href="/jugador.html?id=${p.id}&league=${ID}&season=${d.competencia.temporada}"><img src="${esc(p.foto||'')}" alt=""><span>${esc(p.nombre)}</span></a></td><td>${esc(p.equipo)}</td><td>${p.minutos}</td><td><b>${p.goles}</b></td><td>${p.asistencias}</td><td>${p.calificacion??'—'}</td><td>${p.tiros}</td><td>${p.tiros_puerta}</td><td>${p.pases_clave}</td><td>${p.entradas}</td><td>${p.atajadas}</td><td>${p.amarillas}</td></tr>`).join('')||'<tr><td colspan="13">Esta jornada todavía no tiene estadísticas de jugadores.</td></tr>';document.querySelectorAll('[data-round]').forEach(btn=>btn.onclick=()=>cargar(btn.dataset.round))}
-async function cargar(round=''){if(!Number.isInteger(ID)){document.getElementById('title').textContent='Competición inválida';return}const season=document.getElementById('season').value||params.get('season')||'';const query=new URLSearchParams();if(season)query.set('season',season);if(round)query.set('round',round);const r=await fetch(`/api/home/competiciones/${ID}?${query}`);const d=await r.json().catch(()=>({}));if(!r.ok){document.getElementById('title').textContent=d.error||'No disponible';return}const etiqueta=d.competencia.temporada_etiqueta||d.competencia.temporada;document.title=`${d.competencia.nombre} ${etiqueta}`;document.getElementById('competition-logo').src=`/api/ligas/${ID}/logo`;document.getElementById('competition-logo').alt=`Logo de ${d.competencia.nombre}`;document.getElementById('title').innerHTML=`${esc(d.competencia.nombre)} <span>${esc(etiqueta)}.</span>`;document.getElementById('subtitle').textContent=`${d.competencia.pais} · ${d.resumen.finalizados} partidos finalizados en la base.`;const sel=document.getElementById('season');sel.innerHTML=d.competencia.temporadas_etiquetas.map(t=>`<option value="${t.temporada}" ${t.temporada===d.competencia.temporada?'selected':''}>${esc(t.etiqueta)}</option>`).join('');document.getElementById('teams-link').href=`/equipos.html?league=${ID}&season=${d.competencia.temporada}`;document.getElementById('compare-link').href=`/comparador.html?leagueLocal=${ID}&seasonLocal=${d.competencia.temporada}`;document.getElementById('kpis').innerHTML=[['Partidos',d.resumen.partidos],['Finalizados',d.resumen.finalizados],['Goles',d.resumen.goles],['Goles / partido',d.resumen.goles_por_partido??'—'],['Con estadísticas',d.resumen.estadisticas],['Con jugadores',d.resumen.jugadores]].map(([n,v])=>`<div><span>${n}</span><strong>${v}</strong></div>`).join('');document.getElementById('notice').textContent=d.clasificacion_oficial?'Tabla reconstruida con los marcadores finales almacenados.':'En copas, esta tabla resume el rendimiento acumulado guardado; no representa necesariamente el formato o clasificación oficial del torneo.';pintarJornada(d);document.getElementById('standings').innerHTML=d.clasificacion.map((e,i)=>`<tr><td>${i+1}</td><td><a href="/equipo.html?id=${e.id}&league=${ID}&season=${d.competencia.temporada}"><img src="/api/equipos/${e.id}/escudo" alt=""><span>${esc(e.nombre)}</span></a></td><td>${e.jugados}</td><td>${e.ganados}</td><td>${e.empatados}</td><td>${e.perdidos}</td><td>${e.diferencia>0?'+':''}${e.diferencia}</td><td><b>${e.puntos}</b></td></tr>`).join('')||'<tr><td colspan="8">Sin partidos finalizados.</td></tr>';document.getElementById('recent').innerHTML=d.recientes.map(p=>`<a href="${urlPartido(p,d.competencia.temporada)}"><time>${fechaCorta(p.fecha)}</time><span>${esc(p.local.nombre)} <b>${p.local.goles??'–'} · ${p.visitante.goles??'–'}</b> ${esc(p.visitante.nombre)}</span></a>`).join('')||'<div class="catalog-empty">Sin partidos.</div>';history.replaceState(null,'',`/competicion.html?id=${ID}&season=${d.competencia.temporada}&round=${encodeURIComponent(d.jornada?.nombre||'')}`)}
-document.addEventListener('DOMContentLoaded',()=>{document.getElementById('season').onchange=()=>cargar();document.getElementById('round').onchange=e=>cargar(e.target.value);cargar(params.get('round')||'')});
+
+let datosCompeticion=null;
+let jugadoresActuales=[];
+let partidosTemporada=[];
+let filtroEstadoPartidos='todos';
+let pestañaActiva='jornadas';
+
+function activarPestaña(tabName){
+  pestañaActiva=tabName;
+  document.querySelectorAll('.competition-tab-btn').forEach(btn=>{
+    const activo=btn.dataset.tab===tabName;
+    btn.classList.toggle('active',activo);
+    btn.setAttribute('aria-selected',activo?'true':'false');
+  });
+  document.querySelectorAll('.competition-tab-panel').forEach(panel=>{
+    panel.classList.toggle('active',panel.id===`panel-${tabName}`);
+  });
+  const u=new URL(location.href);
+  u.hash=tabName;
+  history.replaceState(null,'',u.toString());
+}
+
+function pintarJornada(d){
+  const j=d.jornada;
+  const sel=document.getElementById('round');
+  sel.innerHTML=d.jornadas.map(item=>`<option value="${esc(item.nombre)}" ${item.nombre===j?.nombre?'selected':''}>${esc(item.nombre)} · ${item.finalizados}/${item.partidos}</option>`).join('');
+  document.getElementById('round-tabs').innerHTML=d.jornadas.map(item=>`<button type="button" data-round="${esc(item.nombre)}" class="${item.nombre===j?.nombre?'active':''}"><span>${esc(item.nombre.replace(/^.*? - /,''))}</span><small>${item.finalizados===item.partidos?'Finalizada':item.finalizados?'En juego':'Próxima'}</small></button>`).join('');
+  
+  if(!j){
+    document.getElementById('round-matches').innerHTML='<div class="catalog-empty">Sin jornadas guardadas.</div>';
+    return;
+  }
+  const r=j.resumen;
+  document.getElementById('round-kpis').innerHTML=[['Partidos',`${r.finalizados}/${r.partidos}`],['Goles',r.goles],['Promedio',r.goles_por_partido??'—'],['Local',r.victorias_local],['Empates',r.empates],['Visitante',r.victorias_visitante]].map(([n,v])=>`<div><span>${n}</span><strong>${v}</strong></div>`).join('');
+  document.getElementById('round-matches').innerHTML=j.partidos.map(p=>`<a href="${urlPartido(p,d.competencia.temporada)}"><time>${fechaLarga(p.fecha)}</time><span><i>${esc(p.local.nombre)}</i><b>${p.local.goles??'–'} : ${p.visitante.goles??'–'}</b><i>${esc(p.visitante.nombre)}</i></span><small>${esc(p.estado||'NS')}</small></a>`).join('')||'<div class="catalog-empty">Sin partidos en esta jornada.</div>';
+  document.getElementById('round-stats').innerHTML=[['Tiros',r.tiros],['A puerta',r.tiros_puerta],['Córners',r.corners],['Faltas',r.faltas],['Amarillas',r.amarillas],['Rojas',r.rojas]].map(([n,v])=>`<div><span>${n}</span><strong>${v}</strong></div>`).join('');
+  
+  jugadoresActuales=j.jugadores||[];
+  pintarJugadores();
+  document.querySelectorAll('[data-round]').forEach(btn=>btn.onclick=()=>cargar(btn.dataset.round));
+}
+
+function pintarJugadores(){
+  const input=document.getElementById('buscar-jugador');
+  const q=(input?.value||'').trim().toLowerCase();
+  const filtrados=q
+    ? jugadoresActuales.filter(p=>p.nombre.toLowerCase().includes(q)||p.equipo.toLowerCase().includes(q))
+    : jugadoresActuales;
+
+  document.getElementById('players-coverage').textContent=jugadoresActuales.length?`${jugadoresActuales.length} jugadores con datos`:'Sin estadísticas individuales';
+  const contador=document.getElementById('jugadores-contador');
+  if(contador){
+    contador.textContent=q?`${filtrados.length} de ${jugadoresActuales.length}`:'';
+  }
+
+  document.getElementById('round-players').innerHTML=filtrados.map((p,i)=>`<tr><td>${i+1}</td><td><a href="/jugador.html?id=${p.id}&league=${ID}&season=${datosCompeticion?.competencia?.temporada}"><img src="${esc(p.foto||'')}" alt=""><span>${esc(p.nombre)}</span></a></td><td>${esc(p.equipo)}</td><td>${p.minutos}</td><td><b>${p.goles}</b></td><td>${p.asistencias}</td><td>${p.calificacion??'—'}</td><td>${p.tiros}</td><td>${p.tiros_puerta}</td><td>${p.pases_clave}</td><td>${p.entradas}</td><td>${p.atajadas}</td><td>${p.amarillas}</td></tr>`).join('')||'<tr><td colspan="13">No se encontraron jugadores para este filtro.</td></tr>';
+}
+
+function pintarPartidos(){
+  const contenedor=document.getElementById('lista-partidos-temporada');
+  const selJornada=document.getElementById('filtro-partidos-jornada');
+  const inputBuscar=document.getElementById('buscar-partidos');
+  const roundFiltro=selJornada?.value||'';
+  const q=(inputBuscar?.value||'').trim().toLowerCase();
+
+  const finalizados=partidosTemporada.filter(p=>['FT','AET','PEN'].includes(p.estado));
+  const proximos=partidosTemporada.filter(p=>!['FT','AET','PEN'].includes(p.estado));
+
+  document.getElementById('count-partidos-todos').textContent=partidosTemporada.length;
+  document.getElementById('count-partidos-finalizados').textContent=finalizados.length;
+  document.getElementById('count-partidos-proximos').textContent=proximos.length;
+
+  let base=partidosTemporada;
+  if(filtroEstadoPartidos==='finalizados')base=finalizados;
+  if(filtroEstadoPartidos==='proximos')base=proximos;
+
+  if(roundFiltro){
+    base=base.filter(p=>p.jornada===roundFiltro);
+  }
+  if(q){
+    base=base.filter(p=>p.local.nombre.toLowerCase().includes(q)||p.visitante.nombre.toLowerCase().includes(q));
+  }
+
+  const contador=document.getElementById('partidos-contador');
+  if(contador){
+    contador.textContent=`${base.length} de ${partidosTemporada.length} partidos`;
+  }
+
+  if(!base.length){
+    contenedor.innerHTML='<div class="catalog-empty">No se encontraron partidos para este filtro.</div>';
+    return;
+  }
+
+  contenedor.innerHTML=base.map(p=>{
+    const esFin=['FT','AET','PEN'].includes(p.estado);
+    const esLive=['1T','2T','HT','ET','P','LIVE'].includes(p.estado);
+    const badgeClass=esFin?'ft':esLive?'live':'';
+    const badgeLabel=esFin?(p.estado==='PEN'?'Penales':p.estado==='AET'?'Prórroga':'Finalizado'):esLive?'En vivo':'Próximo';
+    const scoreText=esFin||esLive?`${p.local.goles??0} - ${p.visitante.goles??0}`:`vs ${horaCorta(p.fecha)}`;
+    const roundEtiqueta=p.jornada.replace(/^.*? - /,'Jornada ');
+
+    return `<a href="${urlPartido(p,datosCompeticion?.competencia?.temporada)}" class="match-list-item">
+      <div class="match-list-time">
+        <span>${fechaCorta(p.fecha)}</span>
+        <small>${horaCorta(p.fecha)}</small>
+      </div>
+      <div class="match-list-round" title="${esc(p.jornada)}">${esc(roundEtiqueta)}</div>
+      <div class="match-list-teams">
+        <span class="team-home" title="${esc(p.local.nombre)}">${esc(p.local.nombre)}</span>
+        <span class="match-list-score ${!esFin&&!esLive?'is-upcoming':''}">${scoreText}</span>
+        <span class="team-away" title="${esc(p.visitante.nombre)}">${esc(p.visitante.nombre)}</span>
+      </div>
+      <div class="match-list-status">
+        <span class="match-status-badge ${badgeClass}">${badgeLabel}</span>
+      </div>
+      <div class="match-list-action">→</div>
+    </a>`;
+  }).join('');
+}
+
+async function cargar(round=''){
+  if(!Number.isInteger(ID)){document.getElementById('title').textContent='Competición inválida';return}
+  const season=document.getElementById('season').value||params.get('season')||'';
+  const query=new URLSearchParams();
+  if(season)query.set('season',season);
+  if(round)query.set('round',round);
+  
+  try {
+    const r=await fetch(`/api/home/competiciones/${ID}?${query}`);
+    const d=await r.json().catch(()=>({}));
+    if(!r.ok){
+      document.getElementById('title').textContent=d.error||'No disponible';
+      return;
+    }
+    datosCompeticion=d;
+    const etiqueta=d.competencia.temporada_etiqueta||d.competencia.temporada;
+    document.title=`${d.competencia.nombre} ${etiqueta}`;
+    document.getElementById('competition-logo').src=`/api/ligas/${ID}/logo`;
+    document.getElementById('competition-logo').alt=`Logo de ${d.competencia.nombre}`;
+    document.getElementById('title').innerHTML=`${esc(d.competencia.nombre)} <span>${esc(etiqueta)}.</span>`;
+    document.getElementById('subtitle').textContent=`${d.competencia.pais} · ${d.resumen.finalizados} partidos finalizados en la base.`;
+    
+    const sel=document.getElementById('season');
+    sel.innerHTML=d.competencia.temporadas_etiquetas.map(t=>`<option value="${t.temporada}" ${t.temporada===d.competencia.temporada?'selected':''}>${esc(t.etiqueta)}</option>`).join('');
+    document.getElementById('teams-link').href=`/equipos.html?league=${ID}&season=${d.competencia.temporada}`;
+    document.getElementById('compare-link').href=`/comparador.html?leagueLocal=${ID}&seasonLocal=${d.competencia.temporada}`;
+    document.getElementById('kpis').innerHTML=[['Partidos',d.resumen.partidos],['Finalizados',d.resumen.finalizados],['Goles',d.resumen.goles],['Goles / partido',d.resumen.goles_por_partido??'—'],['Con estadísticas',d.resumen.estadisticas],['Con jugadores',d.resumen.jugadores]].map(([n,v])=>`<div><span>${n}</span><strong>${v}</strong></div>`).join('');
+    document.getElementById('notice').textContent=d.clasificacion_oficial?'Tabla reconstruida con los marcadores finales almacenados.':'En copas, esta tabla resume el rendimiento acumulado guardado; no representa necesariamente el formato o clasificación oficial del torneo.';
+    
+    pintarJornada(d);
+    document.getElementById('standings').innerHTML=d.clasificacion.map((e,i)=>`<tr><td>${i+1}</td><td><a href="/equipo.html?id=${e.id}&league=${ID}&season=${d.competencia.temporada}"><img src="/api/equipos/${e.id}/escudo" alt=""><span>${esc(e.nombre)}</span></a></td><td>${e.jugados}</td><td>${e.ganados}</td><td>${e.empatados}</td><td>${e.perdidos}</td><td>${e.diferencia>0?'+':''}${e.diferencia}</td><td><b>${e.puntos}</b></td></tr>`).join('')||'<tr><td colspan="8">Sin partidos finalizados.</td></tr>';
+    
+    // Configurar listado completo de partidos
+    partidosTemporada=d.partidos_temporada||d.recientes||[];
+    const selPartidosJornada=document.getElementById('filtro-partidos-jornada');
+    selPartidosJornada.innerHTML='<option value="">Todas las jornadas</option>'+d.jornadas.map(j=>`<option value="${esc(j.nombre)}">${esc(j.nombre)}</option>`).join('');
+    pintarPartidos();
+
+    const hash=location.hash.replace('#','')||'jornadas';
+    activarPestaña(hash);
+
+    history.replaceState(null,'',`/competicion.html?id=${ID}&season=${d.competencia.temporada}&round=${encodeURIComponent(d.jornada?.nombre||'')}${location.hash}`);
+  } catch(error) {
+    console.error('Error al cargar datos de competición:', error);
+    document.getElementById('title').textContent='No pudimos cargar la competición en este momento';
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  // Botones de pestañas
+  document.querySelectorAll('.competition-tab-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>activarPestaña(btn.dataset.tab));
+  });
+
+  // Selector de temporada y jornada
+  document.getElementById('season').onchange=()=>cargar();
+  document.getElementById('round').onchange=e=>cargar(e.target.value);
+
+  // Buscador de jugadores
+  const inputJugador=document.getElementById('buscar-jugador');
+  if(inputJugador){
+    inputJugador.addEventListener('input',()=>pintarJugadores());
+  }
+
+  // Filtros de partidos
+  const btnTodos=document.getElementById('filtro-partidos-todos');
+  const btnFin=document.getElementById('filtro-partidos-finalizados');
+  const btnProx=document.getElementById('filtro-partidos-proximos');
+  const selJornada=document.getElementById('filtro-partidos-jornada');
+  const inputPartidos=document.getElementById('buscar-partidos');
+
+  function setFiltroPartidos(tipo, btnActivo){
+    filtroEstadoPartidos=tipo;
+    [btnTodos,btnFin,btnProx].forEach(b=>b?.classList.remove('active'));
+    btnActivo?.classList.add('active');
+    pintarPartidos();
+  }
+
+  if(btnTodos)btnTodos.onclick=()=>setFiltroPartidos('todos',btnTodos);
+  if(btnFin)btnFin.onclick=()=>setFiltroPartidos('finalizados',btnFin);
+  if(btnProx)btnProx.onclick=()=>setFiltroPartidos('proximos',btnProx);
+  if(selJornada)selJornada.onchange=()=>pintarPartidos();
+  if(inputPartidos)inputPartidos.oninput=()=>pintarPartidos();
+
+  cargar(params.get('round')||'');
+});
 </script></body></html>
