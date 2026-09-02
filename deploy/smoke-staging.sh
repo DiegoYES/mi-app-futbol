@@ -150,7 +150,7 @@ comprobar "/health/ready" 200 "$(http_get /health/ready)"
 
 echo "-- Cabeceras de seguridad en / --"
 HEADERS="$(curl -sSI "${CURL_AUTH[@]+"${CURL_AUTH[@]}"}" "${BASE_URL}/")"
-for cabecera in 'content-security-policy' 'strict-transport-security' 'x-content-type-options'; do
+for cabecera in 'content-security-policy' 'strict-transport-security' 'x-content-type-options' 'permissions-policy'; do
   if printf '%s' "${HEADERS}" | grep -qi "^${cabecera}:"; then
     echo "  OK    ${cabecera}"
   else

@@ -30,6 +30,7 @@ test('expone salud y cabeceras seguras sin revelar Express', async t => {
   assert.equal(body.estado, 'ok');
   assert.equal(respuesta.headers.get('x-powered-by'), null);
   assert.equal(respuesta.headers.get('x-content-type-options'), 'nosniff');
+  assert.equal(respuesta.headers.get('permissions-policy'), 'camera=(), microphone=(), geolocation=(), payment=()');
   assert.match(respuesta.headers.get('content-security-policy'), /default-src 'self'/);
   assert.ok(respuesta.headers.get('x-request-id'));
 });

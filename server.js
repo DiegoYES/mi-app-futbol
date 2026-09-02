@@ -90,6 +90,10 @@ app.use(helmet({
     ? { maxAge: 15_552_000, includeSubDomains: true }
     : false
 }));
+app.use((_req, res, next) => {
+  res.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=(), payment=()');
+  next();
+});
 app.use(express.json({ limit: process.env.JSON_BODY_LIMIT || '32kb' }));
 app.use(cookieParser());
 
