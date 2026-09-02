@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Perfil de jugador</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v14"><script src="/auth-client.js?v=20260827-v11"></script></head><body><main class="catalog player-profile">
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v15"><script src="/auth-client.js?v=20260827-v11"></script></head><body><main class="catalog player-profile">
 <nav class="catalog-nav"><a href="/jugadores.html">← Jugadores</a><a href="/">Inicio</a><a href="/equipos.html">Equipos</a><a href="/comparador.html">Comparador</a></nav>
 <header class="player-hero"><img id="photo" hidden alt=""><div><p class="eyebrow">Perfil individual</p><h1 id="name">Cargando jugador…</h1><p id="meta"></p></div></header>
 <section id="player-content"><div class="loader">Leyendo rendimientos guardados…</div></section>
@@ -13,6 +13,45 @@ const n=v=>Number(v)||0;
 const fmt=v=>v==null?'—':Number.isInteger(v)?String(v):v.toFixed(2);
 const pct=(parte,total)=>total?`${Math.round(parte*100/total)}%`:'—';
 
+// Glosario único: alimenta los tooltips de cabeceras, KPIs y promedios, y el
+// panel "Glosario" al pie de la tabla. Cada término: nombre completo y qué mide.
+const GLOSARIO={
+  minutos:['Minutos','Minutos jugados según la alineación y las sustituciones registradas.'],
+  jugados:['Partidos jugados','Partidos en los que entró al campo (con minutos). "Conv." son las convocatorias en las que estuvo en el acta, aunque no jugara.'],
+  nota:['Nota','Calificación del partido según el proveedor de datos (escala 1–10). La media ignora los partidos sin minutos.'],
+  goles:['Goles','Goles anotados.'],
+  asistencias:['Asistencias','Pases que terminaron directamente en gol de un compañero.'],
+  tiros:['Tiros','Remates totales intentados.'],
+  tiros_puerta:['Tiros a puerta','Remates que fueron entre los tres palos (gol o atajada). Se muestra "tiros / a puerta".'],
+  pases:['Pases','Pases intentados.'],
+  pases_clave:['Pases clave','Pases que dejaron a un compañero en posición de remate (ocasión creada), haya terminado o no en gol.'],
+  precision_pases:['Pases precisos','Pases completados con éxito; el porcentaje es sobre los intentados.'],
+  faltas_cometidas:['Faltas cometidas (FC)','Infracciones señaladas en su contra por el árbitro.'],
+  faltas_recibidas:['Faltas recibidas (FR)','Infracciones que le hicieron a él; suele indicar cuánto lo buscan o cuánto provoca falta.'],
+  amarillas:['Amarillas','Tarjetas amarillas recibidas.'],
+  rojas:['Rojas','Tarjetas rojas (directas o por doble amarilla).'],
+  tarjetas:['Tarjetas','Amarillas + rojas. En la tabla se dibujan como fichas 🟨 / 🟥 por partido.'],
+  entradas:['Entradas (Entr.)','Tackles: acciones defensivas en las que disputó y recuperó o despejó el balón al rival.'],
+  intercepciones:['Intercepciones (Int)','Balones cortados anticipándose a un pase del rival, sin contacto directo.'],
+  duelos:['Duelos','Disputas uno contra uno por el balón (por tierra o aéreas). Se muestra "ganados / totales".'],
+  duelos_ganados:['Duelos ganados','Duelos en los que se quedó con el balón. El porcentaje es sobre los duelos disputados.'],
+  regates:['Regates','Intentos de superar a un rival con el balón controlado. Se muestra "exitosos / intentados".'],
+  regates_exitosos:['Regates exitosos','Regates en los que dejó atrás al rival conservando el balón.'],
+  atajadas:['Atajadas','Remates a puerta detenidos (porteros).'],
+  offsides:['Fueras de juego','Veces que fue sancionado en posición adelantada.'],
+  por_partido:['Por partido','Total ÷ partidos con minutos. Es el promedio más firme cuando hay pocos partidos.'],
+  por_90:['Por 90\'','Total × 90 ÷ minutos jugados: proyecta el ritmo a un partido completo. Con pocos minutos exagera (1 amarilla en 33 min ⇒ 2.73).'],
+  total:['Total','Suma en los partidos guardados de esta competición y temporada.']
+};
+
+// Envuelve una etiqueta en un término del glosario: hover/foco en escritorio y
+// tap en móvil muestran su definición; el nombre completo va a los lectores de pantalla.
+function termino(clave,texto){
+  const def=GLOSARIO[clave];
+  if(!def)return esc(texto);
+  return `<button type="button" class="stat-term" data-term="${clave}" aria-label="${esc(def[0])}. ${esc(def[1])}">${esc(texto)}</button>`;
+}
+
 // Métricas comparables en los promedios: etiqueta, clave y si conviene resaltarla.
 const METRICAS=[
   ['Goles','goles'],['Asistencias','asistencias'],['Tiros','tiros'],['Tiros a puerta','tiros_puerta'],['Pases clave','pases_clave'],
@@ -24,21 +63,21 @@ function kpisDe(d){
   const t=d.totales;
   const portero=/^(G|Goalkeeper|Portero)$/i.test(d.jugador.posicion||'')||n(t.atajadas)>0;
   const lista=[
-    ['Minutos',t.minutos],
-    ['Jugados',`${d.partidos_jugados}<small>/ ${d.partidos} conv.</small>`],
-    ['Nota media',fmt(d.calificacion_promedio)],
-    ['Goles',t.goles],['Asistencias',t.asistencias],
-    ['Tiros / a puerta',`${t.tiros}<small>/ ${t.tiros_puerta}</small>`],
-    ['Pases clave',t.pases_clave],
-    ['Pases precisos',`${t.precision_pases}<small>/ ${t.pases} · ${pct(t.precision_pases,t.pases)}</small>`],
-    ['Faltas cometidas',t.faltas_cometidas],['Faltas recibidas',t.faltas_recibidas],
-    ['Amarillas',t.amarillas],['Rojas',t.rojas],
-    ['Entradas',t.entradas],['Intercepciones',t.intercepciones],
-    ['Duelos ganados',`${t.duelos_ganados}<small>/ ${t.duelos} · ${pct(t.duelos_ganados,t.duelos)}</small>`],
-    ['Regates',`${t.regates_exitosos}<small>/ ${t.regates}</small>`]
+    ['Minutos',t.minutos,'minutos'],
+    ['Jugados',`${d.partidos_jugados}<small>/ ${d.partidos} conv.</small>`,'jugados'],
+    ['Nota media',fmt(d.calificacion_promedio),'nota'],
+    ['Goles',t.goles,'goles'],['Asistencias',t.asistencias,'asistencias'],
+    ['Tiros / a puerta',`${t.tiros}<small>/ ${t.tiros_puerta}</small>`,'tiros_puerta'],
+    ['Pases clave',t.pases_clave,'pases_clave'],
+    ['Pases precisos',`${t.precision_pases}<small>/ ${t.pases} · ${pct(t.precision_pases,t.pases)}</small>`,'precision_pases'],
+    ['Faltas cometidas',t.faltas_cometidas,'faltas_cometidas'],['Faltas recibidas',t.faltas_recibidas,'faltas_recibidas'],
+    ['Amarillas',t.amarillas,'amarillas'],['Rojas',t.rojas,'rojas'],
+    ['Entradas',t.entradas,'entradas'],['Intercepciones',t.intercepciones,'intercepciones'],
+    ['Duelos ganados',`${t.duelos_ganados}<small>/ ${t.duelos} · ${pct(t.duelos_ganados,t.duelos)}</small>`,'duelos_ganados'],
+    ['Regates',`${t.regates_exitosos}<small>/ ${t.regates}</small>`,'regates']
   ];
-  if(portero)lista.push(['Atajadas',t.atajadas]);
-  if(n(t.offsides))lista.push(['Fueras de juego',t.offsides]);
+  if(portero)lista.push(['Atajadas',t.atajadas,'atajadas']);
+  if(n(t.offsides))lista.push(['Fueras de juego',t.offsides,'offsides']);
   return lista;
 }
 
@@ -74,9 +113,71 @@ function panelPromedios(d){
   const aviso=m.suficiente
     ?`<p class="method-note">Muestra: ${m.minutos} min en ${m.partidos_jugados} partido${m.partidos_jugados===1?'':'s'} con minutos. Los promedios no corrigen rival, rol ni estado del partido.</p>`
     :`<p class="method-note sample-warning"><strong>Muestra corta:</strong> ${m.minutos} min en ${m.partidos_jugados} partido${m.partidos_jugados===1?'':'s'}. El ritmo por 90 extrapola a partido completo (p. ej. ${n(d.totales.tarjetas)} tarjeta${n(d.totales.tarjetas)===1?'':'s'} en ${m.minutos} min ⇒ ${fmt(d.promedios_90.tarjetas)} por 90) y sólo es orientativo hasta acumular ${m.minutos_minimos} min. Los totales y el promedio por partido son los datos firmes.</p>`;
-  const filas=METRICAS.filter(([,k])=>k!=='offsides'||n(d.totales.offsides)).map(([a,k])=>`<tr><td>${a}</td><td>${fmt(d.totales[k])}</td><td>${fmt(d.promedios_partido[k])}</td><td class="${m.suficiente?'':'dim'}">${fmt(d.promedios_90[k])}</td></tr>`).join('');
+  const filas=METRICAS.filter(([,k])=>k!=='offsides'||n(d.totales.offsides)).map(([a,k])=>`<tr><td>${termino(k,a)}</td><td>${fmt(d.totales[k])}</td><td>${fmt(d.promedios_partido[k])}</td><td class="${m.suficiente?'':'dim'}">${fmt(d.promedios_90[k])}</td></tr>`).join('');
   return `<aside class="competition-panel"><p class="eyebrow">Totales y ritmo</p><h2>Promedios</h2>
-    <div class="table-scroll"><table class="standings player-averages"><thead><tr><th>Métrica</th><th title="Suma en los partidos con datos">Total</th><th title="Total ÷ partidos con minutos">Por partido</th><th title="Total × 90 ÷ minutos jugados">Por 90'</th></tr></thead><tbody>${filas}</tbody></table></div>${aviso}</aside>`;
+    <div class="table-scroll"><table class="standings player-averages"><thead><tr><th>Métrica</th><th>${termino('total','Total')}</th><th>${termino('por_partido','Por partido')}</th><th>${termino('por_90',"Por 90'")}</th></tr></thead><tbody>${filas}</tbody></table></div>${aviso}</aside>`;
+}
+
+function panelGlosario(){
+  const orden=['minutos','jugados','nota','goles','asistencias','tiros','tiros_puerta','pases_clave','precision_pases','faltas_cometidas','faltas_recibidas','amarillas','rojas','tarjetas','entradas','intercepciones','duelos','regates','atajadas','offsides','por_partido','por_90'];
+  return `<details id="glosario" class="stat-glossary"><summary>Glosario de métricas</summary><dl>${orden.map(k=>`<div><dt>${esc(GLOSARIO[k][0])}</dt><dd>${esc(GLOSARIO[k][1])}</dd></div>`).join('')}</dl><p class="method-note">Fuente: estadísticas por jugador del proveedor de datos, guardadas partido a partido. Sólo se cuentan los encuentros con datos individuales.</p></details>`;
+}
+
+// Un solo tooltip flotante para todos los términos. Escritorio: hover/foco.
+// Móvil: un toque lo abre y otro (o tocar fuera / Escape) lo cierra.
+const tooltip={el:null,activo:null,fijado:false};
+function tooltipElemento(){
+  if(tooltip.el)return tooltip.el;
+  const el=document.createElement('div');
+  el.id='stat-tooltip';el.setAttribute('role','tooltip');el.hidden=true;
+  document.body.appendChild(el);
+  tooltip.el=el;
+  return el;
+}
+function mostrarTooltip(boton){
+  const def=GLOSARIO[boton.dataset.term];
+  if(!def)return;
+  const el=tooltipElemento();
+  el.innerHTML=`<strong>${esc(def[0])}</strong><span>${esc(def[1])}</span>`;
+  el.hidden=false;
+  tooltip.activo=boton;
+  tooltip.fijado=false;
+  boton.setAttribute('aria-expanded','true');
+  const r=boton.getBoundingClientRect();
+  const ancho=Math.min(300,window.innerWidth-16);
+  el.style.width=`${ancho}px`;
+  let x=r.left+r.width/2-ancho/2;
+  x=Math.max(8,Math.min(x,window.innerWidth-ancho-8));
+  const alto=el.offsetHeight;
+  const abajo=r.bottom+8+alto<=window.innerHeight;
+  el.style.left=`${x}px`;
+  el.style.top=`${abajo?r.bottom+8:Math.max(8,r.top-8-alto)}px`;
+  el.classList.toggle('above',!abajo);
+  el.style.setProperty('--arrow-x',`${r.left+r.width/2-x}px`);
+}
+function ocultarTooltip(){
+  if(!tooltip.el)return;
+  tooltip.el.hidden=true;
+  if(tooltip.activo)tooltip.activo.removeAttribute('aria-expanded');
+  tooltip.activo=null;
+  tooltip.fijado=false;
+}
+function activarTooltips(raiz){
+  raiz.addEventListener('click',evento=>{
+    const boton=evento.target.closest('.stat-term');
+    if(boton){evento.preventDefault();if(tooltip.activo===boton&&tooltip.fijado){ocultarTooltip()}else{mostrarTooltip(boton);tooltip.fijado=true}return}
+    const abrir=evento.target.closest('[data-open-glossary]');
+    if(abrir){const det=document.getElementById('glosario');if(det){det.open=true}}
+  });
+  raiz.addEventListener('mouseover',evento=>{const boton=evento.target.closest('.stat-term');if(boton&&tooltip.activo!==boton)mostrarTooltip(boton)});
+  raiz.addEventListener('mouseout',evento=>{const boton=evento.target.closest('.stat-term');if(boton&&!tooltip.fijado&&!boton.matches(':focus-visible'))ocultarTooltip()});
+  raiz.addEventListener('focusin',evento=>{const boton=evento.target.closest('.stat-term');if(boton)mostrarTooltip(boton)});
+  raiz.addEventListener('focusout',evento=>{if(evento.target.closest('.stat-term')&&!tooltip.fijado)ocultarTooltip()});
+  document.addEventListener('click',evento=>{if(!evento.target.closest('.stat-term,#stat-tooltip'))ocultarTooltip()});
+  document.addEventListener('keydown',evento=>{if(evento.key==='Escape')ocultarTooltip()});
+  window.addEventListener('scroll',ocultarTooltip,{passive:true});
+  window.addEventListener('resize',ocultarTooltip);
+  document.querySelectorAll('.table-scroll').forEach(caja=>caja.addEventListener('scroll',ocultarTooltip,{passive:true}));
 }
 
 document.addEventListener('DOMContentLoaded',async()=>{
@@ -93,13 +194,15 @@ document.addEventListener('DOMContentLoaded',async()=>{
   document.getElementById('meta').textContent=`${d.jugador.equipo.nombre} · ${d.jugador.posicion||'Posición sin registrar'} · ${d.partidos_jugados} de ${d.partidos} partidos con minutos${Number.isInteger(SEASON)?` · temporada ${SEASON}`:''}`;
   if(d.jugador.foto){const img=document.getElementById('photo');img.src=d.jugador.foto;img.alt=`Foto de ${d.jugador.nombre}`;img.hidden=false}
   const kpis=kpisDe(d);
-  cont.innerHTML=`<div class="player-kpis">${kpis.map(([a,b])=>`<div><span>${a}</span><strong>${b}</strong></div>`).join('')}</div>
+  cont.innerHTML=`<div class="player-kpis">${kpis.map(([a,b,k])=>`<div><span>${termino(k,a)}</span><strong>${b}</strong></div>`).join('')}</div>
   <div class="competition-layout player-layout">
     <article class="competition-panel">
-      <div class="competition-panel-head"><div><p class="eyebrow">Partido a partido</p><h2>Rendimiento reciente</h2></div><small class="player-legend">FC faltas cometidas · FR recibidas · T/AP tiros / a puerta · Int intercepciones · Duelos y regates: ganados / totales</small></div>
-      <div class="table-scroll"><table class="standings player-matches"><thead><tr><th>Fecha</th><th>Rival</th><th>Min</th><th>Nota</th><th>G</th><th>A</th><th title="Tiros / a puerta">T / AP</th><th title="Pases clave">PC</th><th title="Faltas cometidas">FC</th><th title="Faltas recibidas">FR</th><th>Tarj.</th><th title="Entradas">Entr.</th><th title="Intercepciones">Int</th><th title="Duelos ganados / totales">Duelos</th><th title="Regates exitosos / intentados">Regates</th></tr></thead><tbody>${d.recientes.map(filaPartido).join('')}</tbody></table></div>
+      <div class="competition-panel-head"><div><p class="eyebrow">Partido a partido</p><h2>Rendimiento reciente</h2></div><small class="player-legend">Pasa el cursor o toca una abreviatura para ver qué mide · <a href="#glosario" data-open-glossary>Ver glosario</a></small></div>
+      <div class="table-scroll"><table class="standings player-matches"><thead><tr><th>Fecha</th><th>Rival</th><th>${termino('minutos','Min')}</th><th>${termino('nota','Nota')}</th><th>${termino('goles','G')}</th><th>${termino('asistencias','A')}</th><th>${termino('tiros_puerta','T / AP')}</th><th>${termino('pases_clave','PC')}</th><th>${termino('faltas_cometidas','FC')}</th><th>${termino('faltas_recibidas','FR')}</th><th>${termino('tarjetas','Tarj.')}</th><th>${termino('entradas','Entr.')}</th><th>${termino('intercepciones','Int')}</th><th>${termino('duelos','Duelos')}</th><th>${termino('regates','Regates')}</th></tr></thead><tbody>${d.recientes.map(filaPartido).join('')}</tbody></table></div>
+      ${panelGlosario()}
     </article>
     ${panelPromedios(d)}
   </div>`;
+  activarTooltips(cont);
 });
 </script></body></html>

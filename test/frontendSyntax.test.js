@@ -282,7 +282,11 @@ test('el formulario de tickets maneja respuestas HTML sin mostrar errores de JSO
 test('la ficha de jugador desglosa faltas y tarjetas por partido y contextualiza el ritmo por 90', () => {
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'jugador.html'), 'utf8');
   const ruta = fs.readFileSync(path.join(__dirname, '..', 'routes', 'jugadores.js'), 'utf8');
-  for (const columna of ['title="Faltas cometidas">FC', 'title="Faltas recibidas">FR', '<th>Tarj.</th>', 'title="Intercepciones">Int']) assert.ok(html.includes(columna), `falta la columna ${columna}`);
+  for (const columna of ["termino('faltas_cometidas','FC')", "termino('faltas_recibidas','FR')", "termino('tarjetas','Tarj.')", "termino('intercepciones','Int')", "termino('entradas','Entr.')"]) assert.ok(html.includes(columna), `falta la columna ${columna}`);
+  for (const clave of ['faltas_recibidas', 'entradas', 'intercepciones', 'duelos', 'regates', 'por_90']) assert.match(html, new RegExp(`^\\s*${clave}:\\['`, 'm'), `falta ${clave} en el glosario`);
+  assert.match(html, /class="stat-term" data-term=/);
+  assert.match(html, /id="stat-tooltip"|el\.id='stat-tooltip'/);
+  assert.match(html, /id="glosario" class="stat-glossary"/);
   assert.match(html, /class="card yellow"/);
   assert.match(html, /class="card red"/);
   assert.match(html, /Sin minutos/);

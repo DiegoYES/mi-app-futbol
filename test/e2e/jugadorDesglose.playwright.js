@@ -118,6 +118,40 @@ async function comprobar(nombre, opcionesContexto, base) {
   if (JSON.stringify(filaTarjetas) !== JSON.stringify(['Tarjetas', '1', '0.50', '2.73'])) fallos.push(`[${nombre}] fila de tarjetas en promedios: ${JSON.stringify(filaTarjetas)}`);
   const filaFaltas = await pagina.locator('.player-averages tbody tr', { hasText: 'Faltas cometidas' }).locator('td').allTextContents();
   if (JSON.stringify(filaFaltas) !== JSON.stringify(['Faltas cometidas', '2', '1', '5.45'])) fallos.push(`[${nombre}] fila de faltas en promedios: ${JSON.stringify(filaFaltas)}`);
+  // Tooltips: hover en escritorio, toque en móvil; ambos deben explicar la abreviatura.
+  const tactil = Boolean(opcionesContexto.hasTouch);
+  const terminoInt = pagina.locator('.player-matches thead .stat-term[data-term="intercepciones"]');
+  if (!(await terminoInt.count())) fallos.push(`[${nombre}] la cabecera "Int" no es un término del glosario`);
+  else {
+    if (tactil) await terminoInt.tap(); else await terminoInt.hover();
+    const tip = pagina.locator('#stat-tooltip');
+    await tip.waitFor({ state: 'visible', timeout: 3000 }).catch(() => {});
+    const textoTip = (await tip.textContent().catch(() => '')) || '';
+    if (!/Intercepciones/.test(textoTip) || !/anticip/i.test(textoTip)) fallos.push(`[${nombre}] el tooltip de "Int" no explica la métrica: "${textoTip}"`);
+    const cajaTip = await tip.boundingBox();
+    if (cajaTip && (cajaTip.x < 0 || cajaTip.x + cajaTip.width > (opcionesContexto.viewport?.width || 9999) + 1)) fallos.push(`[${nombre}] el tooltip se sale de la pantalla (${Math.round(cajaTip.x)}..${Math.round(cajaTip.x + cajaTip.width)})`);
+    if (tactil) {
+      await terminoInt.tap();
+      if (await tip.isVisible()) fallos.push(`[${nombre}] un segundo toque no cierra el tooltip`);
+    } else {
+      await pagina.mouse.move(5, 5);
+      await pagina.waitForTimeout(100);
+      if (await tip.isVisible()) fallos.push(`[${nombre}] el tooltip no se oculta al retirar el cursor`);
+    }
+  }
+  const terminoFR = pagina.locator('.player-kpis .stat-term[data-term="faltas_recibidas"]');
+  if (!(await terminoFR.count())) fallos.push(`[${nombre}] el KPI "Faltas recibidas" no tiene término del glosario`);
+  else if (!/Infracciones que le hicieron/.test(await terminoFR.getAttribute('aria-label') || '')) fallos.push(`[${nombre}] el término accesible no describe la métrica`);
+  const glosario = pagina.locator('#glosario.stat-glossary');
+  if (!(await glosario.count())) fallos.push(`[${nombre}] falta el panel de glosario`);
+  else {
+    if (await glosario.evaluate(el => el.open)) fallos.push(`[${nombre}] el glosario debería iniciar plegado`);
+    await pagina.locator('[data-open-glossary]').click();
+    if (!(await glosario.evaluate(el => el.open))) fallos.push(`[${nombre}] "Ver glosario" no despliega el glosario`);
+    const entradas = await glosario.locator('dt').allTextContents();
+    for (const esperado of ['Intercepciones (Int)', 'Entradas (Entr.)', 'Faltas recibidas (FR)', "Por 90'"]) if (!entradas.includes(esperado)) fallos.push(`[${nombre}] el glosario no incluye "${esperado}"`);
+  }
+
   const meta = await pagina.locator('#meta').textContent();
   if (!/2 de 3 partidos con minutos/.test(meta)) fallos.push(`[${nombre}] el encabezado no distingue convocados de jugados: "${meta}"`);
 
