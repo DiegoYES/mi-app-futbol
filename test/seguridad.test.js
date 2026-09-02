@@ -203,7 +203,7 @@ test('el login mitiga timing attacks evaluando hash simulado si el usuario no ex
 });
 
 test('todas las agregaciones de usuario y rutas incluyen maxTimeMS defensivo', () => {
-  const rutas = ['routes/home.js', 'routes/jugadores.js', 'routes/calendario.js', 'routes/admin.js'];
+  const rutas = ['routes/home.js', 'routes/jugadores.js', 'routes/calendario.js', 'routes/admin.js', 'services/dataQuality.js', 'services/betting/predictionEvaluationService.js'];
   for (const archivo of rutas) {
     const codigo = fs.readFileSync(path.join(__dirname, '..', archivo), 'utf8');
     const conteoAggregate = (codigo.match(/\.aggregate\(/g) || []).length;
@@ -217,4 +217,10 @@ test('las rutas administrativas validan el identificador ObjectId', () => {
   const codigo = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
   assert.match(codigo, /function validarIdMongo/, 'falta middleware validarIdMongo');
   assert.match(codigo, /mongoose\.isValidObjectId/, 'no se usa isValidObjectId');
+});
+
+test('la ruta de explicacion de mercado valida el identificador de mercado', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../routes/picks.js'), 'utf8');
+  assert.match(codigo, /mercadoId = String\(req\.params\.mercado/, 'no extrae mercadoId de params');
+  assert.match(codigo, /\[a-zA-Z0-9_.-]\{2,64\}/, 'no valida formato alfanumérico seguro');
 });

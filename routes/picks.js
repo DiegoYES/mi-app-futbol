@@ -64,6 +64,10 @@ router.get('/partido/:id/explicacion/:mercado', async (req, res) => {
   try {
     const partidoId = Number.parseInt(req.params.id, 10);
     if (!Number.isInteger(partidoId)) return res.status(400).json({ error: 'Partido inválido.' });
+    const mercadoId = String(req.params.mercado || '').trim();
+    if (!/^[a-zA-Z0-9_.-]{2,64}$/.test(mercadoId)) {
+      return res.status(400).json({ error: 'Mercado inválido.' });
+    }
     const partido = await Partido.findOne({ api_id: partidoId }).lean();
     if (!partido) return res.status(404).json({ error: 'Partido no encontrado.' });
     const periodo = periodoValido(req.query.periodo);
@@ -74,7 +78,7 @@ router.get('/partido/:id/explicacion/:mercado', async (req, res) => {
       teamLocal: partido.equipo_local.id,
       partidosVisitante,
       teamVisitante: partido.equipo_visitante.id,
-      mercadoId: req.params.mercado,
+      mercadoId,
       limite: 10,
       halfLocal: periodo,
       halfVisitante: periodo,

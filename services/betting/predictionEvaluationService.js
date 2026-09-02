@@ -29,7 +29,7 @@ async function probabilidadJugador(seleccion, partido, cache = {}) {
   cache.candidatosJugadores ||= JugadorPartido.aggregate([
     { $match: { 'liga.id': partido.liga.id, 'liga.temporada': partido.liga.temporada, fecha: { $lt: partido.fecha }, 'equipo.id': { $in: [partido.equipo_local.id, partido.equipo_visitante.id] } } },
     { $sort: { fecha: -1 } }, { $group: { _id: '$jugador.id', nombre: { $first: '$jugador.nombre' }, equipo: { $first: '$equipo.id' } } }
-  ]).exec();
+  ]).option({ maxTimeMS: 5000 }).exec();
   const candidatos = await cache.candidatosJugadores;
   const match = resolverNombre(seleccion.jugador, candidatos.map(item => ({ id: item._id, nombre: item.nombre, equipo: item.equipo })), 'jugadores');
   if (match.estado === 'AMBIGUOUS') return { estado: 'AMBIGUOUS_MATCH' };

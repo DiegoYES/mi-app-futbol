@@ -69,9 +69,42 @@ test('valida la firma HMAC de Mercado Pago y rechaza alteraciones', () => {
   const ts = '1704908010';
   const manifiesto = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${ts};`;
   const firma = crypto.createHmac('sha256', secret).update(manifiesto).digest('hex');
-  const datos = { xSignature: `ts=${ts},v1=${firma}`, xRequestId: requestId, dataId, secret };
+  const datos = { xSignature: `ts=${ts},v1=${firma}`, xRequestId: requestId, dataId, secret, toleranciaSegundos: 0 };
 
   assert.equal(firmaWebhookValida(datos), true);
   assert.equal(firmaWebhookValida({ ...datos, dataId: 'otro' }), false);
   assert.equal(firmaWebhookValida({ ...datos, xSignature: '' }), false);
+});
+
+test('la firma de webhook rechaza timestamps expirados para mitigar replay attacks', () => {
+  const secret = 'secreto-webhook';
+  const dataId = 'ABC123';
+  const requestId = 'request-456';
+  const ahoraSec = 1700000000;
+  const tsValido = String(ahoraSec - 120); // 2 minutos atrás
+  const tsExpirado = String(ahoraSec - 700); // casi 12 minutos atrás (excede 10m)
+
+  const manValido = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${tsValido};`;
+  const firmaValida = crypto.createHmac('sha256', secret).update(manValido).digest('hex');
+
+  const manExpirado = `id:${dataId.toLowerCase()};request-id:${requestId};ts:${tsExpirado};`;
+  const firmaExpirada = crypto.createHmac('sha256', secret).update(manExpirado).digest('hex');
+
+  assert.equal(firmaWebhookValida({
+    xSignature: `ts=${tsValido},v1=${firmaValida}`,
+    xRequestId: requestId,
+    dataId,
+    secret,
+    toleranciaSegundos: 600,
+    ahora: ahoraSec * 1000
+  }), true);
+
+  assert.equal(firmaWebhookValida({
+    xSignature: `ts=${tsExpirado},v1=${firmaExpirada}`,
+    xRequestId: requestId,
+    dataId,
+    secret,
+    toleranciaSegundos: 600,
+    ahora: ahoraSec * 1000
+  }), false);
 });

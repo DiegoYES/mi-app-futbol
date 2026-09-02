@@ -101,9 +101,23 @@ function partesFirma(encabezado) {
   return resultado;
 }
 
-function firmaWebhookValida({ xSignature, xRequestId, dataId, secret }) {
+function firmaWebhookValida({ xSignature, xRequestId, dataId, secret, toleranciaSegundos = 600, ahora }) {
   const { ts, v1 } = partesFirma(xSignature);
   if (!ts || !v1 || !xRequestId || !dataId || !secret) return false;
+
+  // En producción y staging exigimos que el timestamp esté dentro de una ventana de 10 minutos (600s)
+  // para evitar ataques de repetición (replay attacks) con peticiones interceptadas en el pasado.
+  const maxTolerancia = Number.isInteger(toleranciaSegundos) ? toleranciaSegundos : 600;
+
+  if (maxTolerancia > 0) {
+    const tsNumero = Number.parseInt(ts, 10);
+    if (!Number.isInteger(tsNumero)) return false;
+    const tsSegundos = tsNumero > 1e11 ? Math.floor(tsNumero / 1000) : tsNumero;
+    const momentoActual = typeof ahora === 'function' ? ahora() : (typeof ahora === 'number' ? ahora : Date.now());
+    const actualSegundos = Math.floor(momentoActual / 1000);
+    if (Math.abs(actualSegundos - tsSegundos) > maxTolerancia) return false;
+  }
+
   const idNormalizado = String(dataId).toLowerCase();
   const manifiesto = `id:${idNormalizado};request-id:${xRequestId};ts:${ts};`;
   const calculada = crypto.createHmac('sha256', secret).update(manifiesto).digest('hex');

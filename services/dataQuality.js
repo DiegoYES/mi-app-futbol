@@ -85,13 +85,13 @@ async function obtenerCalidadDatos({ ahora = new Date(), modelo = Partido, env =
           { $lte: [{ $ifNull: ['$estadisticas_intentos', 0] }, 0] }
         ] }, 1, 0] } }
       } }
-    ]),
+    ]).option({ maxTimeMS: 5000 }),
     modelo.countDocuments({ estado: { $in: ACTIVOS }, fecha: { $gte: hace7d, $lt: ahora }, $or: [{ estado_consultado_en: { $lt: hace6h } }, { estado_consultado_en: null }, { estado_consultado_en: { $exists: false } }] }),
     modelo.aggregate([
       { $match: filtroPartidosPasadosSinResultado(ahora) },
       { $group: { _id: { id: '$liga.id', temporada: '$liga.temporada' }, nombre: { $first: '$liga.nombre' }, pais: { $first: '$liga.pais' }, partido_mas_antiguo: { $min: '$fecha' }, ultima_actualizacion: { $max: '$fecha_actualizacion' }, partidos_sin_resultado: { $sum: 1 }, estados: { $addToSet: '$estado' } } },
       { $sort: { partido_mas_antiguo: 1 } }
-    ]),
+    ]).option({ maxTimeMS: 5000 }),
     crearControlCuota().consultar(),
         Promise.all(puertosPool(env).map(puerto => consultarVersionPuerto(puerto))),
     Suscripcion.find({ estado: 'autorizada' }).select('usuario periodo_fin').limit(500).lean()
