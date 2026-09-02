@@ -6,6 +6,10 @@ const { errorServidor, escaparRegex, textoDeConsulta } = require('../middleware/
 
 const router = express.Router();
 
+const LIMITE_RECIENTES = 25;
+// Tres partidos completos: mínimo para que un promedio por 90 tenga sentido.
+const MINUTOS_MUESTRA_MINIMA = 270;
+
 router.get('/', async (req, res) => {
   try {
     const limite = Math.min(Math.max(Number.parseInt(req.query.limite || '60', 10), 1), 200);
@@ -91,20 +95,42 @@ router.get('/:id', async (req, res) => {
     const registros = await JugadorPartido.find(filtro).sort({ fecha: -1 }).lean();
     if (!registros.length) return res.status(404).json({ error: 'No hay partidos guardados para este jugador.' });
     const primero = registros[0];
-    const campos = ['minutos', 'goles', 'asistencias', 'tiros', 'tiros_puerta', 'pases', 'pases_clave', 'entradas', 'intercepciones', 'duelos', 'duelos_ganados', 'regates', 'regates_exitosos', 'faltas_recibidas', 'faltas_cometidas', 'amarillas', 'rojas', 'atajadas', 'offsides'];
+    const campos = ['minutos', 'goles', 'asistencias', 'tiros', 'tiros_puerta', 'pases', 'pases_clave', 'precision_pases', 'entradas', 'intercepciones', 'duelos', 'duelos_ganados', 'regates', 'regates_exitosos', 'faltas_recibidas', 'faltas_cometidas', 'amarillas', 'rojas', 'atajadas', 'offsides'];
     const totales = Object.fromEntries(campos.map(campo => [campo, registros.reduce((total, item) => total + (Number(item[campo]) || 0), 0)]));
-    const partidos = await Partido.find({ api_id: { $in: registros.slice(0, 12).map(item => item.partido_api_id) } }).select('api_id equipo_local equipo_visitante').lean();
+    totales.tarjetas = totales.amarillas + totales.rojas;
+    // Sólo cuentan como "jugados" los partidos con minutos: un suplente sin
+    // entrar aparece en la alineación pero no aporta muestra estadística.
+    const jugados = registros.filter(item => (Number(item.minutos) || 0) > 0);
+    const conNota = jugados.filter(item => Number(item.calificacion) > 0);
+    const metricas = campos.filter(campo => campo !== 'minutos' && campo !== 'precision_pases').concat('tarjetas');
+    const redondear = valor => Number(valor.toFixed(2));
+    const partidos = await Partido.find({ api_id: { $in: registros.slice(0, LIMITE_RECIENTES).map(item => item.partido_api_id) } }).select('api_id equipo_local equipo_visitante estado').lean();
     const porPartido = new Map(partidos.map(partido => [partido.api_id, partido]));
-    const recientes = registros.slice(0, 12).map(item => {
+    const recientes = registros.slice(0, LIMITE_RECIENTES).map(item => {
       const partido = porPartido.get(item.partido_api_id);
-      const rival = partido?.equipo_local?.id === item.equipo.id ? partido.equipo_visitante : partido?.equipo_local;
-      return { partido_api_id: item.partido_api_id, fecha: item.fecha, liga: item.liga, equipo: item.equipo, rival: rival ? { id: rival.id, nombre: rival.nombre } : null, posicion: item.posicion, titular: item.titular, minutos: item.minutos, calificacion: item.calificacion, goles: item.goles, asistencias: item.asistencias, tiros: item.tiros, tiros_puerta: item.tiros_puerta, faltas_cometidas: item.faltas_cometidas, amarillas: item.amarillas };
+      const esLocal = partido ? partido.equipo_local?.id === item.equipo.id : item.equipo.local;
+      const rival = partido ? (esLocal ? partido.equipo_visitante : partido.equipo_local) : null;
+      const propio = partido ? (esLocal ? partido.equipo_local : partido.equipo_visitante) : null;
+      const marcador = propio && Number.isFinite(propio.goles) && Number.isFinite(rival?.goles) ? { propio: propio.goles, rival: rival.goles } : null;
+      return {
+        partido_api_id: item.partido_api_id, fecha: item.fecha, liga: item.liga, equipo: item.equipo, local: Boolean(esLocal),
+        rival: rival ? { id: rival.id, nombre: rival.nombre } : null, marcador, estado: partido?.estado || null,
+        posicion: item.posicion, numero: item.numero, titular: item.titular, capitan: item.capitan, minutos: item.minutos, calificacion: item.calificacion,
+        ...Object.fromEntries(campos.filter(campo => campo !== 'minutos').map(campo => [campo, item[campo] ?? 0]))
+      };
     });
     res.json({
       jugador: { id, nombre: primero.jugador.nombre, foto: primero.jugador.foto, posicion: primero.posicion, equipo: primero.equipo },
       partidos: registros.length,
+      partidos_jugados: jugados.length,
       totales,
-      promedios_90: Object.fromEntries(campos.filter(c => c !== 'minutos').map(campo => [campo, totales.minutos ? Number((totales[campo] * 90 / totales.minutos).toFixed(2)) : null])),
+      calificacion_promedio: conNota.length ? redondear(conNota.reduce((total, item) => total + item.calificacion, 0) / conNota.length) : null,
+      // Muestra disponible para interpretar los ritmos: por debajo de
+      // MINUTOS_MUESTRA_MINIMA el "por 90" extrapola demasiado (1 amarilla en
+      // 33 minutos se convierte en 2.73 por partido completo).
+      muestra: { minutos: totales.minutos, partidos: registros.length, partidos_jugados: jugados.length, minutos_minimos: MINUTOS_MUESTRA_MINIMA, suficiente: totales.minutos >= MINUTOS_MUESTRA_MINIMA },
+      promedios_partido: Object.fromEntries(['minutos', ...metricas].map(campo => [campo, jugados.length ? redondear(totales[campo] / jugados.length) : null])),
+      promedios_90: Object.fromEntries(metricas.map(campo => [campo, totales.minutos ? redondear(totales[campo] * 90 / totales.minutos) : null])),
       competiciones: [...new Map(registros.map(item => [item.liga.id, item.liga])).values()],
       recientes
     });

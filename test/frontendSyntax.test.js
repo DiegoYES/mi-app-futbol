@@ -278,3 +278,19 @@ test('el formulario de tickets maneja respuestas HTML sin mostrar errores de JSO
   assert.match(html, /content-type/);
   assert.match(html, /servicio de tickets no está disponible/);
 });
+
+test('la ficha de jugador desglosa faltas y tarjetas por partido y contextualiza el ritmo por 90', () => {
+  const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'jugador.html'), 'utf8');
+  const ruta = fs.readFileSync(path.join(__dirname, '..', 'routes', 'jugadores.js'), 'utf8');
+  for (const columna of ['title="Faltas cometidas">FC', 'title="Faltas recibidas">FR', '<th>Tarj.</th>', 'title="Intercepciones">Int']) assert.ok(html.includes(columna), `falta la columna ${columna}`);
+  assert.match(html, /class="card yellow"/);
+  assert.match(html, /class="card red"/);
+  assert.match(html, /Sin minutos/);
+  assert.match(html, /sample-warning/);
+  assert.match(html, /promedios_partido\[k\]/);
+  assert.match(html, /promedios_90\[k\]/);
+  assert.match(ruta, /MINUTOS_MUESTRA_MINIMA = 270/);
+  assert.match(ruta, /partidos_jugados: jugados\.length/);
+  assert.match(ruta, /totales\.tarjetas = totales\.amarillas \+ totales\.rojas/);
+  assert.match(ruta, /faltas_recibidas/);
+});

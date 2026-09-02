@@ -1,9 +1,105 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Perfil de jugador</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css"><script src="/auth-client.js?v=20260827-v11"></script></head><body><main class="catalog player-profile">
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v14"><script src="/auth-client.js?v=20260827-v11"></script></head><body><main class="catalog player-profile">
 <nav class="catalog-nav"><a href="/jugadores.html">← Jugadores</a><a href="/">Inicio</a><a href="/equipos.html">Equipos</a><a href="/comparador.html">Comparador</a></nav>
 <header class="player-hero"><img id="photo" hidden alt=""><div><p class="eyebrow">Perfil individual</p><h1 id="name">Cargando jugador…</h1><p id="meta"></p></div></header>
 <section id="player-content"><div class="loader">Leyendo rendimientos guardados…</div></section>
 </main><script>
-const p=new URLSearchParams(location.search);const ID=Number(p.get('id'));const LEAGUE=p.has('league')?Number(p.get('league')):null;const SEASON=p.has('season')?Number(p.get('season')):null;const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');const n=v=>Number(v)||0;
-document.addEventListener('DOMContentLoaded',async()=>{if(!Number.isInteger(ID)){document.getElementById('player-content').innerHTML='<div class="warning">Jugador inválido.</div>';return}const q=new URLSearchParams();if(Number.isInteger(LEAGUE))q.set('league',LEAGUE);if(Number.isInteger(SEASON))q.set('season',SEASON);const r=await fetch(`/api/jugadores/${ID}${q.size?`?${q}`:''}`);const d=await r.json().catch(()=>({}));if(!r.ok){document.getElementById('name').textContent='Perfil sin datos';document.getElementById('player-content').innerHTML=`<div class="warning">${esc(d.error||'No disponible')}</div>`;return}document.title=`${d.jugador.nombre} · Jugador`;document.getElementById('name').textContent=d.jugador.nombre;document.getElementById('meta').textContent=`${d.jugador.equipo.nombre} · ${d.jugador.posicion||'Posición sin registrar'} · ${d.partidos} partidos${Number.isInteger(SEASON)?` · temporada ${SEASON}`:''}`;if(d.jugador.foto){const img=document.getElementById('photo');img.src=d.jugador.foto;img.alt=`Foto de ${d.jugador.nombre}`;img.hidden=false}const kpis=[['Minutos',d.totales.minutos],['Goles',d.totales.goles],['Asistencias',d.totales.asistencias],['Tiros',d.totales.tiros],['A puerta',d.totales.tiros_puerta],['Pases clave',d.totales.pases_clave],['Faltas',d.totales.faltas_cometidas],['Amarillas',d.totales.amarillas]];const filas=d.recientes.map(x=>`<tr><td>${new Date(x.fecha).toLocaleDateString('es-MX',{day:'2-digit',month:'short'})}</td><td>${esc(x.rival?.nombre||'Rival no disponible')}</td><td>${n(x.minutos)}</td><td>${n(x.goles)}</td><td>${n(x.asistencias)}</td><td>${n(x.tiros)} / ${n(x.tiros_puerta)}</td><td>${x.calificacion??'—'}</td></tr>`).join('');document.getElementById('player-content').innerHTML=`<div class="player-kpis">${kpis.map(([a,b])=>`<div><span>${a}</span><strong>${b}</strong></div>`).join('')}</div><div class="competition-layout"><article class="competition-panel"><div class="competition-panel-head"><div><p class="eyebrow">Partido a partido</p><h2>Rendimiento reciente</h2></div></div><div class="table-scroll"><table class="standings"><thead><tr><th>Fecha</th><th>Rival</th><th>Min</th><th>G</th><th>A</th><th>T / AP</th><th>Nota</th></tr></thead><tbody>${filas}</tbody></table></div></article><aside class="competition-panel"><p class="eyebrow">Ritmo por 90</p><h2>Promedios</h2>${[['Goles',d.promedios_90.goles],['Asistencias',d.promedios_90.asistencias],['Tiros',d.promedios_90.tiros],['Tiros a puerta',d.promedios_90.tiros_puerta],['Faltas',d.promedios_90.faltas_cometidas],['Tarjetas',d.promedios_90.amarillas]].map(([a,b])=>`<div class="player-average"><span>${a}</span><b>${b??'—'}</b></div>`).join('')}<p class="method-note">Promedios normalizados por minutos almacenados; no corrigen rival, rol ni estado del partido.</p></aside></div>`});
+const p=new URLSearchParams(location.search);
+const ID=Number(p.get('id'));
+const LEAGUE=p.has('league')?Number(p.get('league')):null;
+const SEASON=p.has('season')?Number(p.get('season')):null;
+const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
+const n=v=>Number(v)||0;
+const fmt=v=>v==null?'—':Number.isInteger(v)?String(v):v.toFixed(2);
+const pct=(parte,total)=>total?`${Math.round(parte*100/total)}%`:'—';
+
+// Métricas comparables en los promedios: etiqueta, clave y si conviene resaltarla.
+const METRICAS=[
+  ['Goles','goles'],['Asistencias','asistencias'],['Tiros','tiros'],['Tiros a puerta','tiros_puerta'],['Pases clave','pases_clave'],
+  ['Faltas cometidas','faltas_cometidas'],['Faltas recibidas','faltas_recibidas'],['Amarillas','amarillas'],['Rojas','rojas'],['Tarjetas','tarjetas'],
+  ['Entradas','entradas'],['Intercepciones','intercepciones'],['Duelos ganados','duelos_ganados'],['Regates exitosos','regates_exitosos'],['Fueras de juego','offsides']
+];
+
+function kpisDe(d){
+  const t=d.totales;
+  const portero=/^(G|Goalkeeper|Portero)$/i.test(d.jugador.posicion||'')||n(t.atajadas)>0;
+  const lista=[
+    ['Minutos',t.minutos],
+    ['Jugados',`${d.partidos_jugados}<small>/ ${d.partidos} conv.</small>`],
+    ['Nota media',fmt(d.calificacion_promedio)],
+    ['Goles',t.goles],['Asistencias',t.asistencias],
+    ['Tiros / a puerta',`${t.tiros}<small>/ ${t.tiros_puerta}</small>`],
+    ['Pases clave',t.pases_clave],
+    ['Pases precisos',`${t.precision_pases}<small>/ ${t.pases} · ${pct(t.precision_pases,t.pases)}</small>`],
+    ['Faltas cometidas',t.faltas_cometidas],['Faltas recibidas',t.faltas_recibidas],
+    ['Amarillas',t.amarillas],['Rojas',t.rojas],
+    ['Entradas',t.entradas],['Intercepciones',t.intercepciones],
+    ['Duelos ganados',`${t.duelos_ganados}<small>/ ${t.duelos} · ${pct(t.duelos_ganados,t.duelos)}</small>`],
+    ['Regates',`${t.regates_exitosos}<small>/ ${t.regates}</small>`]
+  ];
+  if(portero)lista.push(['Atajadas',t.atajadas]);
+  if(n(t.offsides))lista.push(['Fueras de juego',t.offsides]);
+  return lista;
+}
+
+function filaPartido(x){
+  const fecha=new Date(x.fecha).toLocaleDateString('es-MX',{day:'2-digit',month:'short'});
+  const sinMinutos=!n(x.minutos);
+  const marcador=x.marcador?`<small class="player-score ${x.marcador.propio>x.marcador.rival?'win':x.marcador.propio<x.marcador.rival?'loss':'draw'}">${x.marcador.propio}-${x.marcador.rival}</small>`:'';
+  const rival=`${x.local?'vs':'@'} ${esc(x.rival?.nombre||'Rival no disponible')}`;
+  const rol=sinMinutos?'<small class="player-role">Sin minutos</small>':x.titular?'':'<small class="player-role">Suplente</small>';
+  const tarjetas=`${n(x.amarillas)?'<i class="card yellow" title="Amarilla"></i>'.repeat(n(x.amarillas)):''}${n(x.rojas)?'<i class="card red" title="Roja"></i>'.repeat(n(x.rojas)):''}`||'—';
+  const celda=v=>sinMinutos?'<span class="dim">—</span>':n(v);
+  return `<tr class="${sinMinutos?'player-row-dnp':''}">
+    <td>${fecha}</td>
+    <td><span class="player-rival">${rival}${marcador}</span>${rol}</td>
+    <td>${n(x.minutos)}</td>
+    <td>${sinMinutos||!n(x.calificacion)?'<span class="dim">—</span>':x.calificacion}</td>
+    <td>${celda(x.goles)}</td>
+    <td>${celda(x.asistencias)}</td>
+    <td>${sinMinutos?'<span class="dim">—</span>':`${n(x.tiros)} / ${n(x.tiros_puerta)}`}</td>
+    <td>${celda(x.pases_clave)}</td>
+    <td>${celda(x.faltas_cometidas)}</td>
+    <td>${celda(x.faltas_recibidas)}</td>
+    <td class="player-cards">${sinMinutos?'<span class="dim">—</span>':tarjetas}</td>
+    <td>${celda(x.entradas)}</td>
+    <td>${celda(x.intercepciones)}</td>
+    <td>${sinMinutos?'<span class="dim">—</span>':`${n(x.duelos_ganados)} / ${n(x.duelos)}`}</td>
+    <td>${sinMinutos?'<span class="dim">—</span>':`${n(x.regates_exitosos)} / ${n(x.regates)}`}</td>
+  </tr>`;
+}
+
+function panelPromedios(d){
+  const m=d.muestra;
+  const aviso=m.suficiente
+    ?`<p class="method-note">Muestra: ${m.minutos} min en ${m.partidos_jugados} partido${m.partidos_jugados===1?'':'s'} con minutos. Los promedios no corrigen rival, rol ni estado del partido.</p>`
+    :`<p class="method-note sample-warning"><strong>Muestra corta:</strong> ${m.minutos} min en ${m.partidos_jugados} partido${m.partidos_jugados===1?'':'s'}. El ritmo por 90 extrapola a partido completo (p. ej. ${n(d.totales.tarjetas)} tarjeta${n(d.totales.tarjetas)===1?'':'s'} en ${m.minutos} min ⇒ ${fmt(d.promedios_90.tarjetas)} por 90) y sólo es orientativo hasta acumular ${m.minutos_minimos} min. Los totales y el promedio por partido son los datos firmes.</p>`;
+  const filas=METRICAS.filter(([,k])=>k!=='offsides'||n(d.totales.offsides)).map(([a,k])=>`<tr><td>${a}</td><td>${fmt(d.totales[k])}</td><td>${fmt(d.promedios_partido[k])}</td><td class="${m.suficiente?'':'dim'}">${fmt(d.promedios_90[k])}</td></tr>`).join('');
+  return `<aside class="competition-panel"><p class="eyebrow">Totales y ritmo</p><h2>Promedios</h2>
+    <div class="table-scroll"><table class="standings player-averages"><thead><tr><th>Métrica</th><th title="Suma en los partidos con datos">Total</th><th title="Total ÷ partidos con minutos">Por partido</th><th title="Total × 90 ÷ minutos jugados">Por 90'</th></tr></thead><tbody>${filas}</tbody></table></div>${aviso}</aside>`;
+}
+
+document.addEventListener('DOMContentLoaded',async()=>{
+  const cont=document.getElementById('player-content');
+  if(!Number.isInteger(ID)){cont.innerHTML='<div class="warning">Jugador inválido.</div>';return}
+  const q=new URLSearchParams();
+  if(Number.isInteger(LEAGUE))q.set('league',LEAGUE);
+  if(Number.isInteger(SEASON))q.set('season',SEASON);
+  const r=await fetch(`/api/jugadores/${ID}${q.size?`?${q}`:''}`);
+  const d=await r.json().catch(()=>({}));
+  if(!r.ok){document.getElementById('name').textContent='Perfil sin datos';cont.innerHTML=`<div class="warning">${esc(d.error||'No disponible')}</div>`;return}
+  document.title=`${d.jugador.nombre} · Jugador`;
+  document.getElementById('name').textContent=d.jugador.nombre;
+  document.getElementById('meta').textContent=`${d.jugador.equipo.nombre} · ${d.jugador.posicion||'Posición sin registrar'} · ${d.partidos_jugados} de ${d.partidos} partidos con minutos${Number.isInteger(SEASON)?` · temporada ${SEASON}`:''}`;
+  if(d.jugador.foto){const img=document.getElementById('photo');img.src=d.jugador.foto;img.alt=`Foto de ${d.jugador.nombre}`;img.hidden=false}
+  const kpis=kpisDe(d);
+  cont.innerHTML=`<div class="player-kpis">${kpis.map(([a,b])=>`<div><span>${a}</span><strong>${b}</strong></div>`).join('')}</div>
+  <div class="competition-layout player-layout">
+    <article class="competition-panel">
+      <div class="competition-panel-head"><div><p class="eyebrow">Partido a partido</p><h2>Rendimiento reciente</h2></div><small class="player-legend">FC faltas cometidas · FR recibidas · T/AP tiros / a puerta · Int intercepciones · Duelos y regates: ganados / totales</small></div>
+      <div class="table-scroll"><table class="standings player-matches"><thead><tr><th>Fecha</th><th>Rival</th><th>Min</th><th>Nota</th><th>G</th><th>A</th><th title="Tiros / a puerta">T / AP</th><th title="Pases clave">PC</th><th title="Faltas cometidas">FC</th><th title="Faltas recibidas">FR</th><th>Tarj.</th><th title="Entradas">Entr.</th><th title="Intercepciones">Int</th><th title="Duelos ganados / totales">Duelos</th><th title="Regates exitosos / intentados">Regates</th></tr></thead><tbody>${d.recientes.map(filaPartido).join('')}</tbody></table></div>
+    </article>
+    ${panelPromedios(d)}
+  </div>`;
+});
 </script></body></html>
