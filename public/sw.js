@@ -1,4 +1,4 @@
-const CACHE_NAME = 'datafut-pwa-v12';
+const CACHE_NAME = 'datafut-pwa-v13';
 const STATIC_ASSETS = [
   '/brand-mark.svg',
   '/brand-social-avatar.png',
