@@ -9,8 +9,19 @@ const ID_PARTIDO = params.get('partido');
 let datosLocal = null;
 let datosVisitante = null;
 let datosPicksPartido = null;
-const filtrosMercado = { categoria: 'todas', familia: 'todas', alcance: '', tipo: '', linea: '', periodo: 0 };
 let temporadaPartido = null;
+const filtrosMercado = {
+  categoria: 'todas',
+  familia: 'todas',
+  alcance: '',
+  tipo: '',
+  linea: '',
+  periodo: 0,
+  modoPersonalizado: false,
+  lineaPersonalizada: '',
+  cargandoPersonalizada: false,
+  errorPersonalizada: ''
+};
 const INTERVALO_ACTUALIZACION_PARTIDO_MS = 120000;
 let ultimaCargaPartido = 0;
 let estadoPartidoActual = null;
@@ -441,10 +452,65 @@ function prepararFiltrosMercado(datos) {
     filtrosMercado.alcance = 'total';
     lineas = obtenerLineas();
   }
-  if (filtrosMercado.linea !== '' && !lineas.includes(Number(filtrosMercado.linea))) {
+  if (!filtrosMercado.modoPersonalizado && filtrosMercado.linea !== '' && !lineas.includes(Number(filtrosMercado.linea))) {
     filtrosMercado.linea = lineas.includes(1.5) ? 1.5 : lineas[0];
   }
   return { lineas };
+}
+
+async function consultarLineaPersonalizada() {
+  const input = document.getElementById('inputLineaPersonalizada');
+  if (!input) return;
+  const texto = input.value.trim();
+  const valor = Number(texto);
+  if (!texto || !Number.isFinite(valor) || valor <= 0 || valor > 100) {
+    filtrosMercado.errorPersonalizada = 'Ingresa un número de línea válido entre 0.5 y 99.5 (ej. 18.5).';
+    pintarPicksPartido();
+    return;
+  }
+  if (filtrosMercado.categoria === 'todas') {
+    filtrosMercado.errorPersonalizada = 'Selecciona una categoría arriba (ej. Tiros, Córners) para consultar una línea manual.';
+    pintarPicksPartido();
+    return;
+  }
+
+  filtrosMercado.lineaPersonalizada = valor;
+  filtrosMercado.errorPersonalizada = '';
+  filtrosMercado.cargandoPersonalizada = true;
+  pintarPicksPartido();
+
+  try {
+    const yaExiste = datosPicksPartido.mercados.some(item => (
+      item.categoria === filtrosMercado.categoria
+      && item.linea === valor
+      && (!filtrosMercado.alcance || item.alcance === filtrosMercado.alcance)
+    ));
+
+    if (!yaExiste) {
+      const datos = await pedir(`/api/picks/partido/${ID_PARTIDO}/personalizado?categoria=${encodeURIComponent(filtrosMercado.categoria)}&alcance=${encodeURIComponent(filtrosMercado.alcance || '')}&linea=${valor}&periodo=${filtrosMercado.periodo}`);
+      if (datos && Array.isArray(datos.mercados) && datos.mercados.length) {
+        for (const m of datos.mercados) {
+          const idx = datosPicksPartido.mercados.findIndex(e => e.id === m.id);
+          if (idx >= 0) datosPicksPartido.mercados[idx] = m;
+          else datosPicksPartido.mercados.push(m);
+        }
+      } else {
+        filtrosMercado.errorPersonalizada = 'No se pudieron calcular mercados para esa línea.';
+        filtrosMercado.cargandoPersonalizada = false;
+        pintarPicksPartido();
+        return;
+      }
+    }
+
+    filtrosMercado.linea = valor;
+    filtrosMercado.modoPersonalizado = false;
+    filtrosMercado.cargandoPersonalizada = false;
+    pintarPicksPartido();
+  } catch (error) {
+    filtrosMercado.errorPersonalizada = error.message || 'No se pudo consultar la línea.';
+    filtrosMercado.cargandoPersonalizada = false;
+    pintarPicksPartido();
+  }
 }
 
 function pintarPicksPartido() {
@@ -485,11 +551,30 @@ function pintarPicksPartido() {
           <option value="under" ${filtrosMercado.tipo === 'under' ? 'selected' : ''}>Under · Menos de</option>
         </select></label>
         <label>Línea<select id="lineaMercadoPartido">
-          <option value="" ${filtrosMercado.linea === '' || filtrosMercado.linea === null ? 'selected' : ''}>Todas las líneas</option>
-          ${opciones.lineas.map(item => `<option value="${item}" ${item === Number(filtrosMercado.linea) ? 'selected' : ''}>${item}</option>`).join('')}
+          <option value="" ${!filtrosMercado.modoPersonalizado && (filtrosMercado.linea === '' || filtrosMercado.linea === null) ? 'selected' : ''}>Todas las líneas</option>
+          ${opciones.lineas.map(item => `<option value="${item}" ${!filtrosMercado.modoPersonalizado && item === Number(filtrosMercado.linea) ? 'selected' : ''}>${item}</option>`).join('')}
+          <option value="__custom__" ${filtrosMercado.modoPersonalizado ? 'selected' : ''}>Otra línea personalizada…</option>
         </select></label>
       </div>
-      <div class="market-explorer-summary"><span>${mercados.length} pick${mercados.length === 1 ? '' : 's'} ${filtrosMercado.linea === '' || filtrosMercado.linea === null ? 'disponibles' : `para ${filtrosMercado.tipo === 'over' ? 'Over' : 'Under'} ${filtrosMercado.linea}`}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>“Registradas” suma amarillas + rojas simples; confirma las reglas de tu casino.</span>' : ''}</div>
+      ${filtrosMercado.modoPersonalizado ? `
+        <div class="market-custom-line-bar" id="bloqueLineaPersonalizada">
+          <div class="market-custom-line-inputs">
+            <label for="inputLineaPersonalizada">Línea manual:
+              <input type="number" id="inputLineaPersonalizada" step="0.5" min="0.5" max="99.5" inputmode="decimal" placeholder="Ej: 18.5" value="${esc(filtrosMercado.lineaPersonalizada !== '' ? String(filtrosMercado.lineaPersonalizada) : '')}">
+            </label>
+            <button type="button" id="btnCalcularLineaPersonalizada" class="btn-custom-calc" ${filtrosMercado.cargandoPersonalizada ? 'disabled' : ''}>
+              ${filtrosMercado.cargandoPersonalizada ? 'Consultando…' : 'Consultar'}
+            </button>
+          </div>
+          <span class="custom-line-help">
+            ${filtrosMercado.categoria === 'todas'
+              ? '⚠️ Selecciona primero una categoría específica (ej. Tiros, Córners) en los filtros de arriba.'
+              : `Introduce el número exacto ofrecido por tu casa de apuestas para ${esc(NOMBRES_CATEGORIAS[filtrosMercado.categoria] || filtrosMercado.categoria)}.`}
+          </span>
+          ${filtrosMercado.errorPersonalizada ? `<div class="warning custom-line-error">${esc(filtrosMercado.errorPersonalizada)}</div>` : ''}
+        </div>
+      ` : ''}
+      <div class="market-explorer-summary"><span>${mercados.length} pick${mercados.length === 1 ? '' : 's'} ${filtrosMercado.linea === '' || filtrosMercado.linea === null ? 'disponibles' : `para ${filtrosMercado.tipo === 'over' ? 'Over' : filtrosMercado.tipo === 'under' ? 'Under' : 'Línea'} ${filtrosMercado.linea}`}</span>${filtrosMercado.categoria === 'tarjetas' ? '<span>“Registradas” suma amarillas + rojas simples; confirma las reglas de tu casino.</span>' : ''}</div>
     </section>
     <div class="pick-grid" style="margin-top:12px">
       ${mercados.length ? mercados.map(item => {
@@ -572,7 +657,7 @@ async function cargarCasosPickPartido(mercadoId, contenedor) {
   }
 }
 
-async function cargarPicks() {
+async function cargarPicks(conservarFiltros = false) {
   const cont = document.getElementById('bloquePicks');
   if (!ID_PARTIDO) {
     cont.innerHTML = '<div class="aviso">Abre un partido desde el calendario para generar picks auditables.</div>';
@@ -583,12 +668,24 @@ async function cargarPicks() {
     cont.innerHTML = '<div class="aviso">No hay muestra histórica anterior suficiente para este partido.</div>';
     return;
   }
+  if (datosPicksPartido?.mercados?.length) {
+    const personalizados = datosPicksPartido.mercados.filter(m => !datos.mercados.some(dm => dm.id === m.id));
+    for (const p of personalizados) {
+      datos.mercados.push(p);
+    }
+  }
   datosPicksPartido = datos;
-  filtrosMercado.categoria = 'todas';
-  filtrosMercado.familia = 'todas';
-  filtrosMercado.alcance = '';
-  filtrosMercado.tipo = '';
-  filtrosMercado.linea = '';
+  if (!conservarFiltros) {
+    filtrosMercado.categoria = 'todas';
+    filtrosMercado.familia = 'todas';
+    filtrosMercado.alcance = '';
+    filtrosMercado.tipo = '';
+    filtrosMercado.linea = '';
+    filtrosMercado.modoPersonalizado = false;
+    filtrosMercado.lineaPersonalizada = '';
+    filtrosMercado.cargandoPersonalizada = false;
+    filtrosMercado.errorPersonalizada = '';
+  }
   pintarPicksPartido();
 }
 
@@ -603,8 +700,12 @@ async function guardarPick(mercadoId) {
     alert(datos.error || 'No se pudo guardar el pick.');
     return;
   }
+  const mercado = datosPicksPartido?.mercados?.find(item => item.id === mercadoId);
+  if (mercado) {
+    mercado.guardado = true;
+    pintarPicksPartido();
+  }
   if (window.FutbolPicks?.notificarCambio) window.FutbolPicks.notificarCambio();
-  else await cargarPicks();
 }
 
 async function cargarTodo() {
@@ -669,7 +770,14 @@ document.addEventListener('DOMContentLoaded', () => {
       filtrosMercado.categoria = categoryTab.dataset.categoryTab;
       filtrosMercado.familia = 'todas';
       filtrosMercado.linea = '';
+      filtrosMercado.modoPersonalizado = false;
+      filtrosMercado.errorPersonalizada = '';
       pintarPicksPartido();
+      return;
+    }
+    const btnCalcular = event.target.closest('#btnCalcularLineaPersonalizada');
+    if (btnCalcular) {
+      consultarLineaPersonalizada();
       return;
     }
     const boton = event.target.closest('[data-guardar-pick]');
@@ -680,20 +788,37 @@ document.addEventListener('DOMContentLoaded', () => {
       filtrosMercado.categoria = event.target.value;
       filtrosMercado.familia = 'todas';
       filtrosMercado.linea = '';
+      filtrosMercado.modoPersonalizado = false;
+      filtrosMercado.errorPersonalizada = '';
     } else if (event.target.id === 'periodoMercadoPartido') {
       filtrosMercado.periodo = Number(event.target.value);
       filtrosMercado.linea = '';
+      filtrosMercado.errorPersonalizada = '';
       cargarPicks();
       return;
     } else if (event.target.id === 'alcanceMercadoPartido') {
       filtrosMercado.alcance = event.target.value;
       filtrosMercado.linea = '';
+      filtrosMercado.errorPersonalizada = '';
     } else if (event.target.id === 'tipoMercadoPartido') {
       filtrosMercado.tipo = event.target.value;
       filtrosMercado.linea = '';
-    } else if (event.target.id === 'lineaMercadoPartido') filtrosMercado.linea = event.target.value === '' ? '' : Number(event.target.value);
-    else return;
+    } else if (event.target.id === 'lineaMercadoPartido') {
+      if (event.target.value === '__custom__') {
+        filtrosMercado.modoPersonalizado = true;
+        filtrosMercado.errorPersonalizada = '';
+      } else {
+        filtrosMercado.modoPersonalizado = false;
+        filtrosMercado.linea = event.target.value === '' ? '' : Number(event.target.value);
+      }
+    } else return;
     pintarPicksPartido();
+  });
+  document.getElementById('bloquePicks').addEventListener('keydown', event => {
+    if (event.target.id === 'inputLineaPersonalizada' && event.key === 'Enter') {
+      event.preventDefault();
+      consultarLineaPersonalizada();
+    }
   });
   document.getElementById('bloqueH2H').addEventListener('click', event => {
     const boton = event.target.closest('[data-h2h-details]');
@@ -718,5 +843,5 @@ window.addEventListener('pageshow', event => {
   if (event.persisted && ID_PARTIDO) cargarPicks();
 });
 window.addEventListener('futbol:picks-actualizados', () => {
-  if (ID_PARTIDO) cargarPicks();
+  if (ID_PARTIDO) cargarPicks(true);
 });

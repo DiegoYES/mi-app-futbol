@@ -2,7 +2,8 @@ const express = require('express');
 const { errorServidor } = require('../middleware/security');
 const Partido = require('../models/partido');
 const PickGuardado = require('../models/PickGuardado');
-const { explicarMercado, generarPicks } = require('../services/pickEngine');
+const { construirMercadosPersonalizados } = require('../services/marketCatalog');
+const { evaluarMercadosEspecificos, explicarMercado, generarPicks } = require('../services/pickEngine');
 const { evaluarMercado, idMercadoPeriodo, resumirRendimientoSegmentado } = require('../services/pickTracking');
 
 const router = express.Router();
@@ -81,6 +82,61 @@ router.get('/partido/:id/explicacion/:mercado', async (req, res) => {
     });
     if (!explicacion) return res.status(404).json({ error: 'Mercado no disponible.' });
     res.json({ explicacion });
+  } catch (error) {
+    errorServidor(res, error);
+  }
+});
+
+router.get('/partido/:id/personalizado', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const partidoId = Number.parseInt(req.params.id, 10);
+    if (!Number.isInteger(partidoId)) return res.status(400).json({ error: 'Partido inválido.' });
+    const partido = await Partido.findOne({ api_id: partidoId }).lean();
+    if (!partido) return res.status(404).json({ error: 'Partido no encontrado.' });
+    const periodo = periodoValido(req.query.periodo);
+    if (periodo === null) return res.status(400).json({ error: 'El periodo debe ser 0, 1 o 2.' });
+
+    const categoria = typeof req.query.categoria === 'string' ? req.query.categoria.trim() : '';
+    const alcance = typeof req.query.alcance === 'string' ? req.query.alcance.trim() : '';
+    const linea = Number(req.query.linea);
+    if (!Number.isFinite(linea) || linea <= 0 || linea > 100) {
+      return res.status(400).json({ error: 'La línea debe ser un número positivo válido.' });
+    }
+
+    const mercadosObjetivo = construirMercadosPersonalizados({ categoria, alcance, linea });
+    if (!mercadosObjetivo.length) {
+      return res.status(400).json({ error: 'No se pudo generar el mercado para esa categoría o alcance.' });
+    }
+
+    const [partidosLocal, partidosVisitante] = await obtenerHistoricos(partido);
+    const evaluados = evaluarMercadosEspecificos({
+      partidosLocal,
+      teamLocal: partido.equipo_local.id,
+      partidosVisitante,
+      teamVisitante: partido.equipo_visitante.id,
+      mercados: mercadosObjetivo,
+      limite: 10,
+      halfLocal: periodo,
+      halfVisitante: periodo
+    });
+
+    const guardados = req.usuario?._id
+      ? await PickGuardado.find({
+          usuario: req.usuario._id,
+          partido_api_id: partido.api_id
+        }).select('mercado.id estado').lean()
+      : [];
+
+    const finalizado = esFinalizado(partido);
+
+    const mercados = evaluados.map(mercado => ({
+      ...mercado,
+      guardado: guardados.some(item => item.mercado.id === idMercadoPeriodo(mercado.id, periodo)),
+      resultado_historico: finalizado ? evaluarMercado(idMercadoPeriodo(mercado.id, periodo), partido) : null
+    }));
+
+    res.json({ mercados });
   } catch (error) {
     errorServidor(res, error);
   }
@@ -187,7 +243,21 @@ router.post('/seguimiento', async (req, res) => {
     }
 
     const resultado = await analizarPartido(partido, 10, periodo);
-    const mercado = resultado.mercados.find(item => item.id === mercadoId);
+    let mercado = resultado.mercados.find(item => item.id === mercadoId);
+    if (!mercado) {
+      const [partidosLocal, partidosVisitante] = await obtenerHistoricos(partido);
+      mercado = explicarMercado({
+        partidosLocal,
+        teamLocal: partido.equipo_local.id,
+        partidosVisitante,
+        teamVisitante: partido.equipo_visitante.id,
+        mercadoId,
+        limite: 10,
+        halfLocal: periodo,
+        halfVisitante: periodo,
+        detalle: 0
+      });
+    }
     if (!mercado) return res.status(400).json({ error: 'Ese mercado no se puede evaluar.' });
     const pick = await PickGuardado.create({
       usuario: req.usuario._id,

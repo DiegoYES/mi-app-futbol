@@ -1,6 +1,8 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { confianza, explicarMercado, frecuencia, generarPicks } = require('../services/pickEngine');
+const { confianza, evaluarMercadosEspecificos, explicarMercado, frecuencia, generarPicks } = require('../services/pickEngine');
+const { construirMercadosPersonalizados, obtenerMercado } = require('../services/marketCatalog');
+const { evaluarMercado } = require('../services/pickTracking');
 
 function partido(id, localId, golesLocal, visitanteId, golesVisitante) {
   return {
@@ -259,4 +261,82 @@ test('conserva la condición por rol cuando hay muestra suficiente', () => {
   assert.equal(resultado.filtros.visitante.condicion_efectiva, 'visitante');
   const over15 = resultado.mercados.find(item => item.id === 'over_1_5');
   assert.equal(over15.evidencia_parcial, false);
+});
+
+test('resuelve mercados dinámicos y ampliados para líneas altas de tiros', () => {
+  const m18 = obtenerMercado('tiros_local_over_18_5');
+  assert.ok(m18);
+  assert.equal(m18.linea, 18.5);
+  assert.equal(m18.categoria, 'tiros');
+  assert.equal(m18.alcance, 'local');
+  assert.equal(m18.tipo, 'over');
+  assert.equal(m18.nombre, 'Más de 18.5 tiros del local');
+  assert.equal(m18.cumple({ tiros: 19 }, { tiros: 10 }), true);
+  assert.equal(m18.cumple({ tiros: 18 }, { tiros: 10 }), false);
+
+  const mCustom = obtenerMercado('tiros_local_over_24_5');
+  assert.ok(mCustom);
+  assert.equal(mCustom.linea, 24.5);
+  assert.equal(mCustom.nombre, 'Más de 24.5 tiros del local');
+  assert.equal(mCustom.cumple({ tiros: 25 }, { tiros: 5 }), true);
+  assert.equal(mCustom.cumple({ tiros: 24 }, { tiros: 5 }), false);
+});
+
+test('construirMercadosPersonalizados genera pares over y under para cualquier línea', () => {
+  const mercados = construirMercadosPersonalizados({ categoria: 'tiros', alcance: 'local', linea: 20.5 });
+  assert.equal(mercados.length, 2);
+  const over = mercados.find(m => m.tipo === 'over');
+  const under = mercados.find(m => m.tipo === 'under');
+  assert.ok(over && under);
+  assert.equal(over.id, 'tiros_local_over_20_5');
+  assert.equal(under.id, 'tiros_local_under_20_5');
+});
+
+test('evalúa mercados específicos con partidos reales y permite su liquidación', () => {
+  function partidoConTiros(id, localId, tirosL, visitaId, tirosV) {
+    return {
+      api_id: id,
+      fecha: new Date(`2024-08-${String(id + 1).padStart(2, '0')}T15:00:00Z`),
+      estado: 'FT',
+      estadisticas_completas: true,
+      equipo_local: { id: localId, nombre: `Local`, goles: 2, tiros_total: tirosL },
+      equipo_visitante: { id: visitaId, nombre: `Visita`, goles: 0, tiros_total: tirosV }
+    };
+  }
+
+  const partidosLocal = [
+    partidoConTiros(1, 10, 20, 20, 5),
+    partidoConTiros(2, 10, 22, 21, 6),
+    partidoConTiros(3, 10, 18, 22, 7)
+  ];
+  const partidosVisitante = [
+    partidoConTiros(4, 30, 15, 40, 19),
+    partidoConTiros(5, 31, 16, 40, 21),
+    partidoConTiros(6, 32, 12, 40, 17)
+  ];
+
+  const mercadosObjetivo = construirMercadosPersonalizados({ categoria: 'tiros', alcance: 'local', linea: 18.5 });
+  const evaluados = evaluarMercadosEspecificos({
+    partidosLocal,
+    teamLocal: 10,
+    partidosVisitante,
+    teamVisitante: 40,
+    mercados: mercadosObjetivo
+  });
+
+  assert.equal(evaluados.length, 2);
+  const over18 = evaluados.find(m => m.tipo === 'over');
+  assert.ok(over18);
+  assert.equal(over18.linea, 18.5);
+  assert.ok(Number.isFinite(over18.estimacion));
+  assert.ok(over18.estimacion > 0);
+
+  // Liquidación con evaluarMercado
+  const partidoFinalizadoGanoOver = partidoConTiros(99, 10, 21, 40, 8);
+  const resultadoOver = evaluarMercado('tiros_local_over_18_5', partidoFinalizadoGanoOver);
+  assert.equal(resultadoOver, true);
+
+  const partidoFinalizadoPerdioOver = partidoConTiros(100, 10, 17, 40, 8);
+  const resultadoUnder = evaluarMercado('tiros_local_over_18_5', partidoFinalizadoPerdioOver);
+  assert.equal(resultadoUnder, false);
 });

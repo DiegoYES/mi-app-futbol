@@ -204,4 +204,22 @@ function generarPicks({
   };
 }
 
-module.exports = { confianza, explicarMercado, frecuencia, generarPicks, partidosEnCondicion };
+function evaluarMercadosEspecificos({
+  partidosLocal, teamLocal, partidosVisitante, teamVisitante,
+  mercados, limite = 10, halfLocal = 0, halfVisitante = 0,
+  condicionLocal = 'local', condicionVisitante = 'visitante'
+}) {
+  const seleccionLocal = seleccionarMuestra(partidosLocal, teamLocal, condicionLocal);
+  const seleccionVisitante = seleccionarMuestra(partidosVisitante, teamVisitante, condicionVisitante);
+  const registrosLocal = registrosPartidos(seleccionLocal.partidos, teamLocal, halfLocal);
+  const registrosVisitante = registrosPartidos(seleccionVisitante.partidos, teamVisitante, halfVisitante);
+  const condicionesEfectivas = { local: seleccionLocal.condicion, visitante: seleccionVisitante.condicion };
+
+  return mercados.map(mercado => {
+    const freqLocal = frecuenciaMercado(registrosLocal, 'local', mercado, limite);
+    const freqVisita = frecuenciaMercado(registrosVisitante, 'visitante', mercado, limite);
+    return combinar(mercado, freqLocal, freqVisita, condicionesEfectivas);
+  }).filter(Boolean).map(item => ({ ...item, evidencia_parcial: item.fuentes < 2 }));
+}
+
+module.exports = { confianza, evaluarMercadosEspecificos, explicarMercado, frecuencia, generarPicks, partidosEnCondicion };
