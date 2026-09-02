@@ -290,8 +290,24 @@ router.get('/competiciones/:id', cacheMiddleware, async (req, res) => {
         fecha: p.fecha,
         estado: p.estado,
         jornada: String(p.liga?.jornada || 'Sin jornada'),
-        local: { id: p.equipo_local.id, nombre: p.equipo_local.nombre, goles: p.equipo_local.goles },
-        visitante: { id: p.equipo_visitante.id, nombre: p.equipo_visitante.nombre, goles: p.equipo_visitante.goles }
+        local: {
+          id: p.equipo_local.id,
+          nombre: p.equipo_local.nombre,
+          goles: p.equipo_local.goles,
+          goles_1t: p.equipo_local.goles_primer_tiempo ?? null,
+          corners: p.equipo_local.corners ?? null,
+          amarillas: p.equipo_local.tarjetas_amarillas ?? null,
+          rojas: p.equipo_local.tarjetas_rojas ?? null
+        },
+        visitante: {
+          id: p.equipo_visitante.id,
+          nombre: p.equipo_visitante.nombre,
+          goles: p.equipo_visitante.goles,
+          goles_1t: p.equipo_visitante.goles_primer_tiempo ?? null,
+          corners: p.equipo_visitante.corners ?? null,
+          amarillas: p.equipo_visitante.tarjetas_amarillas ?? null,
+          rojas: p.equipo_visitante.tarjetas_rojas ?? null
+        }
       }))
     });
   } catch (error) {

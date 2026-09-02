@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Centro de competencia</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v15"><script src="/auth-client.js?v=20260902-v15"></script></head>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v16"><script src="/auth-client.js?v=20260902-v16"></script></head>
 <body><main class="catalog competition-center">
   <nav class="catalog-nav"><a href="/competiciones.html">← Competiciones</a><a href="/">Inicio</a><a href="/comparador.html">Comparador</a><a id="teams-link" href="/equipos.html">Equipos</a></nav>
   <header class="catalog-head"><div class="competition-identity"><img id="competition-logo" alt=""><div><p class="eyebrow">Centro de competencia</p><h1 id="title">Cargando <span>temporada.</span></h1><p id="subtitle">Clasificación reconstruida, cobertura y partidos guardados.</p></div></div><label class="competition-center-season"><span>Temporada</span><select id="season" aria-label="Temporada"></select></label></header>
@@ -12,6 +12,7 @@
     <button type="button" class="competition-tab-btn" data-tab="jugadores" role="tab" aria-selected="false" aria-controls="panel-jugadores"><span>👥</span> Rendimiento de jugadores</button>
     <button type="button" class="competition-tab-btn" data-tab="clasificacion" role="tab" aria-selected="false" aria-controls="panel-clasificacion"><span>🏆</span> Clasificación</button>
     <button type="button" class="competition-tab-btn" data-tab="partidos" role="tab" aria-selected="false" aria-controls="panel-partidos"><span>⚽</span> Partidos</button>
+    <button type="button" class="competition-tab-btn" data-tab="mercados" role="tab" aria-selected="false" aria-controls="panel-mercados"><span>🎯</span> Mercados</button>
   </nav>
 
   <!-- SECCIÓN 1: JORNADAS -->
@@ -69,6 +70,92 @@
       </div>
     </article>
   </section>
+ 
+  <!-- SECCIÓN 5: MERCADOS POR EQUIPO -->
+  <section id="panel-mercados" class="competition-tab-panel" role="tabpanel" aria-labelledby="tab-mercados">
+    <article class="competition-panel" style="margin-top:0">
+      <div class="competition-panel-head">
+        <div>
+          <p class="eyebrow">Estadísticas para apuestas</p>
+          <h2>Cumplimiento de mercados por equipo</h2>
+        </div>
+        <span id="mercados-contador" class="coverage-label">20 equipos</span>
+      </div>
+
+      <!-- Controles de mercados -->
+      <div class="market-stats-controls">
+        <div class="market-scope-pills" role="group" aria-label="Condición de juego">
+          <button type="button" class="pill-btn active" data-scope="general">General</button>
+          <button type="button" class="pill-btn" data-scope="local">Local</button>
+          <button type="button" class="pill-btn" data-scope="visitante">Visitante</button>
+        </div>
+
+        <div class="market-dropdowns">
+          <label class="market-select-label">
+            <span>Periodo</span>
+            <select id="filtro-mercados-periodo" aria-label="Periodo de juego">
+              <option value="completo" selected>Partido Completo</option>
+              <option value="1t">1er Tiempo (1T)</option>
+              <option value="2t">2do Tiempo (2T)</option>
+            </select>
+          </label>
+
+          <label class="market-select-label">
+            <span>Mercado</span>
+            <select id="filtro-mercados-tipo" aria-label="Tipo de mercado">
+              <optgroup label="Goles Totales">
+                <option value="over_05">Más de 0.5 goles (+0.5)</option>
+                <option value="over_15">Más de 1.5 goles (+1.5)</option>
+                <option value="over_25" selected>Más de 2.5 goles (+2.5)</option>
+                <option value="over_35">Más de 3.5 goles (+3.5)</option>
+                <option value="under_15">Menos de 1.5 goles (-1.5)</option>
+                <option value="under_25">Menos de 2.5 goles (-2.5)</option>
+                <option value="under_35">Menos de 3.5 goles (-3.5)</option>
+              </optgroup>
+              <optgroup label="Ambos Equipos Anotan">
+                <option value="btts_si">Ambos Anotan: Sí</option>
+                <option value="btts_no">Ambos Anotan: No</option>
+              </optgroup>
+              <optgroup label="Defensa y Portería">
+                <option value="porteria_cero">Portería a cero (Clean sheet)</option>
+                <option value="sin_marcar">Se quedó sin anotar</option>
+              </optgroup>
+              <optgroup label="Córners Totales">
+                <option value="corners_over_85">Más de 8.5 córners</option>
+                <option value="corners_over_95">Más de 9.5 córners</option>
+                <option value="corners_over_105">Más de 10.5 córners</option>
+              </optgroup>
+              <optgroup label="Tarjetas Totales">
+                <option value="tarjetas_over_35">Más de 3.5 tarjetas</option>
+                <option value="tarjetas_over_45">Más de 4.5 tarjetas</option>
+              </optgroup>
+            </select>
+          </label>
+        </div>
+
+        <div class="market-search-box">
+          <input id="buscar-mercado-equipo" type="search" placeholder="Buscar equipo en la tabla…" aria-label="Buscar equipo">
+        </div>
+      </div>
+
+      <!-- Tabla de cumplimiento de mercados -->
+      <div class="table-scroll">
+        <table class="standings market-stats-table">
+          <thead>
+            <tr>
+              <th style="width:44px">#</th>
+              <th>Equipo</th>
+              <th style="width:70px;text-align:center">PJ</th>
+              <th style="width:100px;text-align:center">Cumplidos</th>
+              <th style="width:180px">Acierto (%)</th>
+              <th style="width:160px;text-align:center">Racha (Últimos 5)</th>
+            </tr>
+          </thead>
+          <tbody id="lista-tabla-mercados"></tbody>
+        </table>
+      </div>
+    </article>
+  </section>
 
 </main><script>
 const params=new URLSearchParams(location.search);const ID=Number(params.get('id'));const esc=v=>String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -81,6 +168,7 @@ let datosCompeticion=null;
 let jugadoresActuales=[];
 let partidosTemporada=[];
 let pestañaActiva='jornadas';
+let filtroMercadoAmbito='general';
 
 function activarPestaña(tabName){
   pestañaActiva=tabName;
@@ -98,6 +186,9 @@ function activarPestaña(tabName){
       selPartidosJornada.value = calcularJornadaSiguiente(datosCompeticion.jornadas);
       pintarPartidos();
     }
+  }
+  if(tabName==='mercados'){
+    pintarMercados();
   }
   const u=new URL(location.href);
   u.hash=tabName;
@@ -257,6 +348,212 @@ function pintarPartidos(){
   }).join('');
 }
 
+function evaluarMercado(p, mercado, periodo, equipoId){
+  const esLocal = p.local.id === equipoId;
+  const esVis = p.visitante.id === equipoId;
+  if (!esLocal && !esVis) return null;
+
+  // Goles según periodo
+  let gf = 0;
+  let gc = 0;
+  if (periodo === '1t') {
+    gf = esLocal ? (p.local.goles_1t ?? 0) : (p.visitante.goles_1t ?? 0);
+    gc = esLocal ? (p.visitante.goles_1t ?? 0) : (p.local.goles_1t ?? 0);
+  } else if (periodo === '2t') {
+    const gfTot = esLocal ? (p.local.goles ?? 0) : (p.visitante.goles ?? 0);
+    const gcTot = esLocal ? (p.visitante.goles ?? 0) : (p.local.goles ?? 0);
+    const gf1 = esLocal ? (p.local.goles_1t ?? 0) : (p.visitante.goles_1t ?? 0);
+    const gc1 = esLocal ? (p.visitante.goles_1t ?? 0) : (p.local.goles_1t ?? 0);
+    gf = Math.max(0, gfTot - gf1);
+    gc = Math.max(0, gcTot - gc1);
+  } else {
+    gf = esLocal ? (p.local.goles ?? 0) : (p.visitante.goles ?? 0);
+    gc = esLocal ? (p.visitante.goles ?? 0) : (p.local.goles ?? 0);
+  }
+
+  const golesTotales = gf + gc;
+
+  switch (mercado) {
+    case 'over_05': return golesTotales > 0.5;
+    case 'over_15': return golesTotales > 1.5;
+    case 'over_25': return golesTotales > 2.5;
+    case 'over_35': return golesTotales > 3.5;
+    case 'under_15': return golesTotales < 1.5;
+    case 'under_25': return golesTotales < 2.5;
+    case 'under_35': return golesTotales < 3.5;
+    case 'btts_si': return gf > 0 && gc > 0;
+    case 'btts_no': return gf === 0 || gc === 0;
+    case 'porteria_cero': return gc === 0;
+    case 'sin_marcar': return gf === 0;
+    case 'corners_over_85': {
+      if (p.local.corners == null || p.visitante.corners == null) return null;
+      return (p.local.corners + p.visitante.corners) > 8.5;
+    }
+    case 'corners_over_95': {
+      if (p.local.corners == null || p.visitante.corners == null) return null;
+      return (p.local.corners + p.visitante.corners) > 9.5;
+    }
+    case 'corners_over_105': {
+      if (p.local.corners == null || p.visitante.corners == null) return null;
+      return (p.local.corners + p.visitante.corners) > 10.5;
+    }
+    case 'tarjetas_over_35': {
+      if (p.local.amarillas == null || p.visitante.amarillas == null) return null;
+      const t = (p.local.amarillas + (p.local.rojas || 0)) + (p.visitante.amarillas + (p.visitante.rojas || 0));
+      return t > 3.5;
+    }
+    case 'tarjetas_over_45': {
+      if (p.local.amarillas == null || p.visitante.amarillas == null) return null;
+      const t = (p.local.amarillas + (p.local.rojas || 0)) + (p.visitante.amarillas + (p.visitante.rojas || 0));
+      return t > 4.5;
+    }
+    default:
+      return golesTotales > 2.5;
+  }
+}
+
+function pintarMercados(){
+  const tbody = document.getElementById('lista-tabla-mercados');
+  if (!tbody) return;
+
+  const selPeriodo = document.getElementById('filtro-mercados-periodo');
+  const selTipo = document.getElementById('filtro-mercados-tipo');
+  const inputBuscar = document.getElementById('buscar-mercado-equipo');
+
+  const periodo = selPeriodo?.value || 'completo';
+  const tipoMercado = selTipo?.value || 'over_25';
+  const q = (inputBuscar?.value || '').trim().toLowerCase();
+
+  // Obtener lista de equipos
+  let equipos = [];
+  if (datosCompeticion?.clasificacion && datosCompeticion.clasificacion.length) {
+    equipos = datosCompeticion.clasificacion.map(c => ({ id: c.id, nombre: c.nombre }));
+  } else {
+    const ids = new Map();
+    for (const p of partidosTemporada) {
+      if (p.local?.id && !ids.has(p.local.id)) ids.set(p.local.id, p.local.nombre);
+      if (p.visitante?.id && !ids.has(p.visitante.id)) ids.set(p.visitante.id, p.visitante.nombre);
+    }
+    equipos = Array.from(ids.entries()).map(([id, nombre]) => ({ id, nombre }));
+  }
+
+  if (!equipos.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="catalog-empty">Sin equipos disponibles.</td></tr>';
+    return;
+  }
+
+  const finalizados = partidosTemporada.filter(p => ['FT', 'AET', 'PEN'].includes(p.estado));
+  if (!finalizados.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="catalog-empty">Aún no hay partidos finalizados en esta temporada para calcular estadísticas de mercados.</td></tr>';
+    const cont = document.getElementById('mercados-contador');
+    if (cont) cont.textContent = 'Sin partidos finalizados';
+    return;
+  }
+
+  // Calcular métricas para cada equipo
+  const resultados = [];
+  for (const eq of equipos) {
+    let partidosEq = [];
+    if (filtroMercadoAmbito === 'local') {
+      partidosEq = finalizados.filter(p => p.local.id === eq.id);
+    } else if (filtroMercadoAmbito === 'visitante') {
+      partidosEq = finalizados.filter(p => p.visitante.id === eq.id);
+    } else {
+      partidosEq = finalizados.filter(p => p.local.id === eq.id || p.visitante.id === eq.id);
+    }
+
+    partidosEq.sort((a, b) => new Date(b.fecha) - new Date(a.fecha));
+
+    let cumplidos = 0;
+    let validos = 0;
+    const racha = [];
+
+    for (const p of partidosEq) {
+      const evalRes = evaluarMercado(p, tipoMercado, periodo, eq.id);
+      if (evalRes !== null) {
+        validos++;
+        if (evalRes) cumplidos++;
+        if (racha.length < 5) {
+          const esLocal = p.local.id === eq.id;
+          const rivalNom = esLocal ? p.visitante.nombre : p.local.nombre;
+          const marcador = `${p.local.goles ?? 0} - ${p.visitante.goles ?? 0}`;
+          racha.push({
+            cumplio: evalRes,
+            desc: `vs ${rivalNom} (${marcador}) [${esLocal ? 'L' : 'V'}] - ${evalRes ? 'Cumplió' : 'No cumplió'}`
+          });
+        }
+      }
+    }
+
+    const porcentaje = validos > 0 ? Math.round((cumplidos / validos) * 100) : 0;
+    resultados.push({
+      id: eq.id,
+      nombre: eq.nombre,
+      pj: validos,
+      cumplidos,
+      porcentaje,
+      racha
+    });
+  }
+
+  // Ordenar de mayor a menor porcentaje y luego por cumplidos
+  resultados.sort((a, b) => {
+    if (b.porcentaje !== a.porcentaje) return b.porcentaje - a.porcentaje;
+    if (b.cumplidos !== a.cumplidos) return b.cumplidos - a.cumplidos;
+    return a.nombre.localeCompare(b.nombre);
+  });
+
+  const visibles = q
+    ? resultados.filter(r => r.nombre.toLowerCase().includes(q))
+    : resultados;
+
+  const cont = document.getElementById('mercados-contador');
+  if (cont) {
+    cont.textContent = q
+      ? `${visibles.length} de ${resultados.length} equipos`
+      : `${resultados.length} equipos analizados`;
+  }
+
+  if (!visibles.length) {
+    tbody.innerHTML = '<tr><td colspan="6" class="catalog-empty">No se encontraron equipos para este filtro.</td></tr>';
+    return;
+  }
+
+  const season = datosCompeticion?.competencia?.temporada || '';
+
+  tbody.innerHTML = visibles.map((r, index) => {
+    const badgeClass = r.porcentaje >= 70 ? 'high' : r.porcentaje >= 40 ? 'mid' : 'low';
+    const rachaHtml = r.racha.length
+      ? r.racha.map(dot => `<span class="streak-dot ${dot.cumplio ? 'hit' : 'miss'}" title="${esc(dot.desc)}">${dot.cumplio ? '✓' : '✗'}</span>`).join('')
+      : '<span style="color:var(--muted);font-size:.7rem">—</span>';
+
+    return `
+      <tr>
+        <td style="color:var(--muted);font-weight:700">${index + 1}</td>
+        <td>
+          <a href="/equipo.html?id=${r.id}&league=${ID}&season=${season}" style="display:inline-flex;align-items:center;gap:10px;text-decoration:none;color:inherit;font-weight:700">
+            <img src="/api/equipos/${r.id}/escudo" alt="" style="width:20px;height:20px;object-fit:contain">
+            <span>${esc(r.nombre)}</span>
+          </a>
+        </td>
+        <td style="text-align:center;font-weight:700">${r.pj}</td>
+        <td style="text-align:center;font-weight:800;color:var(--ink)">${r.cumplidos} / ${r.pj}</td>
+        <td>
+          <div class="market-pct-bar-wrap">
+            <span class="market-pct-badge ${badgeClass}">${r.porcentaje}%</span>
+            <div class="market-pct-track">
+              <div class="market-pct-fill ${badgeClass}" style="width:${r.porcentaje}%"></div>
+            </div>
+          </div>
+        </td>
+        <td style="text-align:center">
+          <div class="market-streak">${rachaHtml}</div>
+        </td>
+      </tr>
+    `;
+  }).join('');
+}
+
 async function cargar(round=''){
   if(!Number.isInteger(ID)){document.getElementById('title').textContent='Competición inválida';return}
   const season=document.getElementById('season').value||params.get('season')||'';
@@ -300,6 +597,7 @@ async function cargar(round=''){
       selPartidosJornada.value = jornadaSiguiente;
     }
     pintarPartidos();
+    pintarMercados();
 
     const hash=location.hash.replace('#','')||'jornadas';
     activarPestaña(hash);
@@ -332,6 +630,22 @@ document.addEventListener('DOMContentLoaded',()=>{
   const inputPartidos=document.getElementById('buscar-partidos');
   if(selJornada)selJornada.onchange=()=>pintarPartidos();
   if(inputPartidos)inputPartidos.oninput=()=>pintarPartidos();
+
+  // Filtros de mercados
+  document.querySelectorAll('.market-scope-pills .pill-btn').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      document.querySelectorAll('.market-scope-pills .pill-btn').forEach(b=>b.classList.toggle('active',b===btn));
+      filtroMercadoAmbito=btn.dataset.scope;
+      pintarMercados();
+    });
+  });
+
+  const selPeriodoMercado=document.getElementById('filtro-mercados-periodo');
+  const selTipoMercado=document.getElementById('filtro-mercados-tipo');
+  const inputBuscarMercado=document.getElementById('buscar-mercado-equipo');
+  if(selPeriodoMercado)selPeriodoMercado.onchange=()=>pintarMercados();
+  if(selTipoMercado)selTipoMercado.onchange=()=>pintarMercados();
+  if(inputBuscarMercado)inputBuscarMercado.oninput=()=>pintarMercados();
 
   cargar(params.get('round')||'');
 });

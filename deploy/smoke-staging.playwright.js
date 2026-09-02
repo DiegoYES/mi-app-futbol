@@ -257,6 +257,17 @@ async function recorrer(nombre, opcionesContexto) {
           }
         }
       }
+
+      // Probar pestaña de mercados
+      const tabMercados = pagina.locator('[data-tab="mercados"]');
+      if (await tabMercados.count()) {
+        await tabMercados.click();
+        await pagina.waitForTimeout(200);
+        const filasMercados = await pagina.locator('#lista-tabla-mercados tr').count();
+        if (filasMercados === 0) {
+          errores.push(`[${nombre}] /competicion.html pestaña mercados no mostró filas en la tabla.`);
+        }
+      }
     }
   } catch (err) {
     errores.push(`[${nombre}] fallo interactuando con /competicion.html: ${err.message}`);
