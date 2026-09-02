@@ -1,7 +1,11 @@
 const { chromium } = require('playwright');
 const mongoose = require('mongoose');
 const path = require('path');
-require('dotenv').config({ path: path.join(__dirname, '../../.env') });
+const baseURL = process.env.BASE_URL || 'https://data-fut.com';
+const envPath = baseURL.includes('staging')
+  ? path.join(__dirname, '../../../mi-app-futbol-staging/.env')
+  : path.join(__dirname, '../../.env');
+require('dotenv').config({ path: envPath, override: true });
 const Usuario = require('../../models/Usuario');
 
 (async () => {
