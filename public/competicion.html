@@ -1,5 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Centro de competencia</title>
-<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v13"><script src="/auth-client.js?v=20260902-v13"></script></head>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml"><meta name="theme-color" content="#07100d"><link rel="stylesheet" href="/styles.css"><link rel="stylesheet" href="/catalog.css?v=20260902-v14"><script src="/auth-client.js?v=20260902-v14"></script></head>
 <body><main class="catalog competition-center">
   <nav class="catalog-nav"><a href="/competiciones.html">← Competiciones</a><a href="/">Inicio</a><a href="/comparador.html">Comparador</a><a id="teams-link" href="/equipos.html">Equipos</a></nav>
   <header class="catalog-head"><div class="competition-identity"><img id="competition-logo" alt=""><div><p class="eyebrow">Centro de competencia</p><h1 id="title">Cargando <span>temporada.</span></h1><p id="subtitle">Clasificación reconstruida, cobertura y partidos guardados.</p></div></div><label class="competition-center-season"><span>Temporada</span><select id="season" aria-label="Temporada"></select></label></header>
@@ -55,11 +55,6 @@
         <span id="partidos-contador" class="coverage-label"></span>
       </div>
       <div class="matches-list-controls">
-        <div class="matches-filter-pills" role="tablist" aria-label="Filtrar por estado">
-          <button type="button" id="filtro-partidos-todos" class="pill-btn active">Todos (<span id="count-partidos-todos">0</span>)</button>
-          <button type="button" id="filtro-partidos-finalizados" class="pill-btn">Anteriores (<span id="count-partidos-finalizados">0</span>)</button>
-          <button type="button" id="filtro-partidos-proximos" class="pill-btn">Próximos (<span id="count-partidos-proximos">0</span>)</button>
-        </div>
         <label class="matches-round-filter">
           <select id="filtro-partidos-jornada" aria-label="Filtrar por jornada">
             <option value="">Todas las jornadas</option>
@@ -85,7 +80,6 @@ function urlPartido(p,season){const dia=new Date(p.fecha).toISOString().slice(0,
 let datosCompeticion=null;
 let jugadoresActuales=[];
 let partidosTemporada=[];
-let filtroEstadoPartidos='todos';
 let pestañaActiva='jornadas';
 
 function activarPestaña(tabName){
@@ -168,17 +162,7 @@ function pintarPartidos(){
   const roundFiltro=selJornada?.value||'';
   const q=(inputBuscar?.value||'').trim().toLowerCase();
 
-  const finalizados=partidosTemporada.filter(p=>['FT','AET','PEN'].includes(p.estado));
-  const proximos=partidosTemporada.filter(p=>!['FT','AET','PEN'].includes(p.estado));
-
-  document.getElementById('count-partidos-todos').textContent=partidosTemporada.length;
-  document.getElementById('count-partidos-finalizados').textContent=finalizados.length;
-  document.getElementById('count-partidos-proximos').textContent=proximos.length;
-
   let base=partidosTemporada;
-  if(filtroEstadoPartidos==='finalizados')base=finalizados;
-  if(filtroEstadoPartidos==='proximos')base=proximos;
-
   if(roundFiltro){
     base=base.filter(p=>p.jornada===roundFiltro);
   }
@@ -188,7 +172,7 @@ function pintarPartidos(){
 
   const contador=document.getElementById('partidos-contador');
   if(contador){
-    contador.textContent=`${base.length} de ${partidosTemporada.length} partidos`;
+    contador.textContent=base.length===partidosTemporada.length?`${partidosTemporada.length} partidos`:`${base.length} de ${partidosTemporada.length} partidos`;
   }
 
   if(!base.length){
@@ -288,22 +272,8 @@ document.addEventListener('DOMContentLoaded',()=>{
   }
 
   // Filtros de partidos
-  const btnTodos=document.getElementById('filtro-partidos-todos');
-  const btnFin=document.getElementById('filtro-partidos-finalizados');
-  const btnProx=document.getElementById('filtro-partidos-proximos');
   const selJornada=document.getElementById('filtro-partidos-jornada');
   const inputPartidos=document.getElementById('buscar-partidos');
-
-  function setFiltroPartidos(tipo, btnActivo){
-    filtroEstadoPartidos=tipo;
-    [btnTodos,btnFin,btnProx].forEach(b=>b?.classList.remove('active'));
-    btnActivo?.classList.add('active');
-    pintarPartidos();
-  }
-
-  if(btnTodos)btnTodos.onclick=()=>setFiltroPartidos('todos',btnTodos);
-  if(btnFin)btnFin.onclick=()=>setFiltroPartidos('finalizados',btnFin);
-  if(btnProx)btnProx.onclick=()=>setFiltroPartidos('proximos',btnProx);
   if(selJornada)selJornada.onchange=()=>pintarPartidos();
   if(inputPartidos)inputPartidos.oninput=()=>pintarPartidos();
 

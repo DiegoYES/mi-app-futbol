@@ -238,11 +238,14 @@ async function recorrer(nombre, opcionesContexto) {
         errores.push(`[${nombre}] /competicion.html no mostró ningún partido en el listado.`);
       }
 
-      // Probar filtro de partidos finalizados
-      const btnFin = pagina.locator('#filtro-partidos-finalizados');
-      if (await btnFin.count()) {
-        await btnFin.click();
-        await pagina.waitForTimeout(200);
+      // Probar filtro de jornada en listado de partidos
+      const selJornadasPartidos = pagina.locator('#filtro-partidos-jornada');
+      if (await selJornadasPartidos.count()) {
+        const opciones = await selJornadasPartidos.locator('option').all();
+        if (opciones.length > 1) {
+          await selJornadasPartidos.selectOption({ index: 1 });
+          await pagina.waitForTimeout(200);
+        }
       }
     }
   } catch (err) {
