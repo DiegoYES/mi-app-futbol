@@ -17,8 +17,7 @@
   <!-- SECCIÓN 1: JORNADAS -->
   <section id="panel-jornadas" class="competition-tab-panel active" role="tabpanel" aria-labelledby="tab-jornadas">
     <div class="competition-rounds competition-panel">
-      <div class="competition-panel-head"><div><p class="eyebrow">Jornadas</p><h2>Partidos y análisis por jornada</h2></div><label class="round-select"><span>Jornada</span><select id="round" aria-label="Jornada"></select></label></div>
-      <div id="round-tabs" class="round-tabs" aria-label="Jornadas de la temporada"></div>
+      <div class="competition-panel-head"><div><p class="eyebrow">Jornadas</p><h2>Partidos y análisis por jornada</h2></div><label class="round-select"><span>Elegir jornada</span><select id="round" aria-label="Elegir jornada"></select></label></div>
       <div id="round-kpis" class="round-kpis"></div>
       <div class="round-layout">
         <div><h3>Partidos de la jornada</h3><div id="round-matches" class="round-matches"></div></div>
@@ -104,11 +103,34 @@ function activarPestaña(tabName){
   history.replaceState(null,'',u.toString());
 }
 
+function formatearJornada(nombre){
+  if(!nombre)return 'Jornada';
+  const s=String(nombre).trim();
+  const mReg=s.match(/^(?:Regular\s*Season|Temporada\s*Regular)\s*-\s*(\d+)$/i);
+  if(mReg)return `Jornada ${mReg[1]}`;
+  const mApe=s.match(/^Apertura\s*-\s*(\d+)$/i);
+  if(mApe)return `Jornada ${mApe[1]} (Apertura)`;
+  const mCla=s.match(/^Clausura\s*-\s*(\d+)$/i);
+  if(mCla)return `Jornada ${mCla[1]} (Clausura)`;
+  const mJor=s.match(/^(?:Round|Jornada|Fecha|Matchday|Semana)\s*[-:]?\s*(\d+)$/i);
+  if(mJor)return `Jornada ${mJor[1]}`;
+  const mNum=s.match(/^.*?\s*-\s*(\d+)$/);
+  if(mNum)return `Jornada ${mNum[1]}`;
+  const fases={
+    'Quarter-finals':'Cuartos de final',
+    'Semi-finals':'Semifinales',
+    'Final':'Final',
+    '3rd Place Final':'Tercer puesto',
+    'Round of 16':'Octavos de final',
+    'Round of 32':'Dieciseisavos de final'
+  };
+  return fases[s]||s;
+}
+
 function pintarJornada(d){
   const j=d.jornada;
   const sel=document.getElementById('round');
-  sel.innerHTML=d.jornadas.map(item=>`<option value="${esc(item.nombre)}" ${item.nombre===j?.nombre?'selected':''}>${esc(item.nombre)} · ${item.finalizados}/${item.partidos}</option>`).join('');
-  document.getElementById('round-tabs').innerHTML=d.jornadas.map(item=>`<button type="button" data-round="${esc(item.nombre)}" class="${item.nombre===j?.nombre?'active':''}"><span>${esc(item.nombre.replace(/^.*? - /,''))}</span><small>${item.finalizados===item.partidos?'Finalizada':item.finalizados?'En juego':'Próxima'}</small></button>`).join('');
+  sel.innerHTML=d.jornadas.map(item=>`<option value="${esc(item.nombre)}" ${item.nombre===j?.nombre?'selected':''}>${esc(formatearJornada(item.nombre))} · ${item.finalizados}/${item.partidos} finalizados</option>`).join('');
   
   if(!j){
     document.getElementById('round-matches').innerHTML='<div class="catalog-empty">Sin jornadas guardadas.</div>';
@@ -121,7 +143,6 @@ function pintarJornada(d){
   
   jugadoresActuales=j.jugadores||[];
   pintarJugadores();
-  document.querySelectorAll('[data-round]').forEach(btn=>btn.onclick=()=>cargar(btn.dataset.round));
 }
 
 function pintarJugadores(){
@@ -181,7 +202,7 @@ function pintarPartidos(){
     const badgeClass=esFin?'ft':esLive?'live':'';
     const badgeLabel=esFin?(p.estado==='PEN'?'Penales':p.estado==='AET'?'Prórroga':'Finalizado'):esLive?'En vivo':'Próximo';
     const scoreText=esFin||esLive?`${p.local.goles??0} - ${p.visitante.goles??0}`:`vs ${horaCorta(p.fecha)}`;
-    const roundEtiqueta=String(p.jornada||'').replace(/^.*? - /,'Jornada ')||'Partido';
+    const roundEtiqueta=formatearJornada(p.jornada);
 
     return `<a href="${urlPartido(p,datosCompeticion?.competencia?.temporada)}" class="match-list-item">
       <div class="match-list-time">
@@ -237,7 +258,7 @@ async function cargar(round=''){
     // Configurar listado completo de partidos
     partidosTemporada=d.partidos_temporada||d.recientes||[];
     const selPartidosJornada=document.getElementById('filtro-partidos-jornada');
-    selPartidosJornada.innerHTML='<option value="">Todas las jornadas</option>'+d.jornadas.map(j=>`<option value="${esc(j.nombre)}">${esc(j.nombre)}</option>`).join('');
+    selPartidosJornada.innerHTML='<option value="">Todas las jornadas</option>'+d.jornadas.map(j=>`<option value="${esc(j.nombre)}">${esc(formatearJornada(j.nombre))}</option>`).join('');
     pintarPartidos();
 
     const hash=location.hash.replace('#','')||'jornadas';
