@@ -7,6 +7,26 @@ const seleccionesBoleta = new Map();
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
 const datosComparacion = { a: null, b: null };
+const equiposObjetivoUrl = { a: null, b: null };
+const temporizadoresReintento = { a: null, b: null };
+
+async function fetchConReintento(url, opciones = {}, maxReintentos = 3, esperaBaseMs = 800) {
+    for (let intento = 0; intento <= maxReintentos; intento++) {
+        try {
+            const res = await fetch(url, opciones);
+            if (res.status === 429 && intento < maxReintentos) {
+                const headerRetry = Number(res.headers.get('Retry-After'));
+                const espera = headerRetry > 0 ? headerRetry * 1000 : esperaBaseMs * Math.pow(2, intento);
+                await new Promise(r => setTimeout(r, Math.min(espera, 4000)));
+                continue;
+            }
+            return res;
+        } catch (err) {
+            if (intento >= maxReintentos) throw err;
+            await new Promise(r => setTimeout(r, esperaBaseMs * Math.pow(2, intento)));
+        }
+    }
+}
 
 const NOMBRES_CATEGORIAS = {
     goles: 'Goles', resultado: 'Resultado', corners: 'Córners', tarjetas: 'Tarjetas',
@@ -265,7 +285,7 @@ async function cargarLigas() {
         } catch {}
 
         if (!ligasArray) {
-            const res = await fetch('/api/ligas');
+            const res = await fetchConReintento('/api/ligas');
             if (!res.ok) throw new Error(`HTTP ${res.status}`);
             ligasArray = await res.json();
             try { sessionStorage.setItem('datafut_ligas', JSON.stringify(ligasArray)); } catch {}
@@ -329,19 +349,38 @@ async function cargarEquipos(lado) {
     document.getElementById(`trends-${lado}`).textContent = 'Selecciona competición y equipo';
     document.getElementById(`matches-${lado}`).innerHTML = '';
     actualizarAccionesComparacion();
-    if (!leagueId || !season) return;
+    if (!leagueId || !season) return false;
 
     try {
-        const res = await fetch(`/api/ligas/${leagueId}/equipos?season=${season}`);
+        const res = await fetchConReintento(`/api/ligas/${leagueId}/equipos?season=${season}`, {}, 3, 1000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const equiposArray = await res.json();
         equiposArray.forEach(eq => agregarOpcion(teamSel, eq.id, eq.nombre));
         teamSel.equiposDisponibles = equiposArray;
         teamSel.disabled = false;
         teamSel.actualizarSelectorVisual?.();
+        return true;
     } catch (err) {
         console.error(`Error cargando equipos para lado ${lado}:`, err);
+        return false;
     }
+}
+
+function programarReintentoPreseleccion(lado, teamId, config) {
+    if (temporizadoresReintento[lado]) clearTimeout(temporizadoresReintento[lado]);
+    temporizadoresReintento[lado] = setTimeout(async () => {
+        if (!equiposObjetivoUrl[lado] || equiposObjetivoUrl[lado] !== teamId) return;
+        const select = document.getElementById(`team-${lado}`);
+        if (select.value === teamId) return;
+        const ok = await cargarEquipos(lado);
+        if (ok && [...select.options].some(option => option.value === teamId)) {
+            select.value = teamId;
+            select.actualizarSelectorVisual?.();
+            equiposObjetivoUrl[lado] = null;
+            actualizarAccionesComparacion();
+            await actualizarEstadisticas(lado);
+        }
+    }, 3500);
 }
 
 async function preseleccionarDesdeUrl() {
@@ -367,27 +406,36 @@ async function preseleccionarDesdeUrl() {
         leagueSelect.value = leagueId;
         leagueSelect.actualizarSelectorVisual?.();
         cargarTemporadas(config.lado, params.get(config.season));
-        await cargarEquipos(config.lado);
+
+        if (teamId) {
+            equiposObjetivoUrl[config.lado] = String(teamId);
+        }
+
+        const equiposOk = await cargarEquipos(config.lado);
 
         if (!teamId) continue;
 
         const teamSelect = document.getElementById(`team-${config.lado}`);
-        if (![...teamSelect.options].some(option => option.value === teamId)) continue;
-        teamSelect.value = teamId;
-        teamSelect.actualizarSelectorVisual?.();
-        for (const filtro of ['scope', 'limit', 'half']) {
-            const valor = params.get(config[filtro]);
-            const select = document.getElementById(`${filtro}-${config.lado}`);
-            if (valor && [...select.options].some(option => option.value === valor)) select.value = valor;
+        if ([...teamSelect.options].some(option => option.value === String(teamId))) {
+            teamSelect.value = String(teamId);
+            teamSelect.actualizarSelectorVisual?.();
+            equiposObjetivoUrl[config.lado] = null;
+            for (const filtro of ['scope', 'limit', 'half']) {
+                const valor = params.get(config[filtro]);
+                const select = document.getElementById(`${filtro}-${config.lado}`);
+                if (valor && [...select.options].some(option => option.value === valor)) select.value = valor;
+            }
+            await actualizarEstadisticas(config.lado);
+        } else if (!equiposOk) {
+            programarReintentoPreseleccion(config.lado, String(teamId), config);
         }
-        await actualizarEstadisticas(config.lado);
     }
 }
 
 function urlComparador() {
     const params = new URLSearchParams();
     for (const [lado, rol] of [['a', 'Local'], ['b', 'Visitante']]) {
-        const equipo = document.getElementById(`team-${lado}`).value;
+        const equipo = document.getElementById(`team-${lado}`).value || equiposObjetivoUrl[lado];
         const liga = document.getElementById(`league-${lado}`).value;
         if (equipo) params.set(lado === 'a' ? 'local' : 'visitante', equipo);
         if (liga) params.set(`league${rol}`, liga);
@@ -576,7 +624,7 @@ async function actualizarEstadisticas(lado) {
     matchesDiv.innerHTML = '';
 
     try {
-        const res = await fetch(`/api/equipos/${teamId}/estadisticas-detalladas?league=${leagueId}&season=${season}&scope=${scope}&limit=${limit}&half=${half}`);
+        const res = await fetchConReintento(`/api/equipos/${teamId}/estadisticas-detalladas?league=${leagueId}&season=${season}&scope=${scope}&limit=${limit}&half=${half}`, {}, 3, 1000);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
         nameEl.innerText = data.info.equipo;
@@ -684,8 +732,11 @@ async function actualizarEstadisticas(lado) {
         actualizarAccionesComparacion();
     } catch (err) {
         nameEl.innerText = 'Error';
-        statsDiv.innerHTML = 'No se pudieron cargar los datos.';
-        trendsDiv.innerHTML = 'No se pudieron cargar los datos.';
+        const msgError = err?.message?.includes('429')
+            ? '<div class="empty-state">Límite temporal de consultas alcanzado. Reintentando en breve...</div>'
+            : 'No se pudieron cargar los datos.';
+        statsDiv.innerHTML = msgError;
+        trendsDiv.innerHTML = msgError;
         datosComparacion[lado] = null;
         actualizarConfrontacionDirecta();
         console.error(err);
@@ -958,11 +1009,21 @@ function configurarEventos() {
             });
         });
         document.getElementById(`league-${lado}`).addEventListener('change', async () => {
+            equiposObjetivoUrl[lado] = null;
+            if (temporizadoresReintento[lado]) clearTimeout(temporizadoresReintento[lado]);
             cargarTemporadas(lado);
             await cargarEquipos(lado);
         });
-        document.getElementById(`season-${lado}`).addEventListener('change', () => cargarEquipos(lado));
-        document.getElementById(`team-${lado}`).addEventListener('change', () => actualizarEstadisticas(lado));
+        document.getElementById(`season-${lado}`).addEventListener('change', () => {
+            equiposObjetivoUrl[lado] = null;
+            if (temporizadoresReintento[lado]) clearTimeout(temporizadoresReintento[lado]);
+            cargarEquipos(lado);
+        });
+        document.getElementById(`team-${lado}`).addEventListener('change', () => {
+            equiposObjetivoUrl[lado] = null;
+            if (temporizadoresReintento[lado]) clearTimeout(temporizadoresReintento[lado]);
+            actualizarEstadisticas(lado);
+        });
         for (const filtro of ['scope', 'limit', 'half']) {
             document.getElementById(`${filtro}-${lado}`).addEventListener('change', () => actualizarEstadisticas(lado));
         }
