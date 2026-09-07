@@ -21,3 +21,4 @@ var/playdoit/
 /docs/STAGING-nuevo.md
 /deploy/*-nuevo.sh
 /test/e2e/smokeStaging.js
+.vscode/

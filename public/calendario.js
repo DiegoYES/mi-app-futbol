@@ -251,8 +251,10 @@ function pintarCompeticiones(competiciones, fechaRef) {
         const marcador = p.finalizado || enJuego
           ? `<div class="marcador ${enJuego ? 'live' : ''}" aria-label="${esc(FutbolMarcador.descripcionMarcador(p))}">${p.local.goles ?? 0} - ${p.visitante.goles ?? 0}${textoPenales ? `<small class="penales">${esc(textoPenales)}</small>` : ''}</div>`
           : `<div class="marcador vs">vs</div>`;
+        const ligaLocal = p.local.liga_id || c.liga_id;
+        const ligaVisitante = p.visitante.liga_id || c.liga_id;
         const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
-        const urlComparador=`/comparador.html?local=${p.local.id}&leagueLocal=${c.liga_id}&visitante=${p.visitante.id}&leagueVisitante=${c.liga_id}`;
+        const urlComparador=`/comparador.html?local=${p.local.id}&leagueLocal=${ligaLocal}&visitante=${p.visitante.id}&leagueVisitante=${ligaVisitante}`;
         const favorito = FutbolLibrary.esPartidoFavorito(p.api_id);
         return `<div class="match-shell"><div class="match" role="link" tabindex="0" data-match-open="${esc(url)}">
           <div class="hora ${enJuego ? 'live-badge' : ''}">${enJuego ? '<span class="live-dot"></span>' : ''}${esc(estadoVisible)}</div>
@@ -266,7 +268,7 @@ function pintarCompeticiones(competiciones, fechaRef) {
             <span>${esc(p.visitante.nombre)}</span>
           </div>
           <div class="match-actions">
-            <a href="${esc(urlComparador)}" class="btn-quick-compare" title="Abrir en el Comparador" onclick="event.stopPropagation();">⚔️</a>
+            <a href="${esc(urlComparador)}" class="btn-quick-compare" title="Abrir en el Comparador" aria-label="Abrir en el Comparador">⚔️</a>
             <button type="button" class="favorite-match ${favorito ? 'active' : ''}" data-favorite-match="${p.api_id}" data-league="${c.liga_id}" data-date="${esc(p.fecha)}" data-local-id="${p.local.id}" data-local-name="${esc(p.local.nombre)}" data-away-id="${p.visitante.id}" data-away-name="${esc(p.visitante.nombre)}" aria-label="${favorito ? 'Quitar partido de favoritos' : 'Marcar partido como favorito'}" aria-pressed="${favorito}">${favorito ? '★' : '☆'}</button>
           </div>
         </div>${p.finalizado?'':`<div class="match-picks" data-pick-match="${p.api_id}" data-match-url="${url}" data-compare-url="${urlComparador}"><span class="pick-loading">Calculando candidatos…</span></div>`}</div>`;
@@ -338,6 +340,13 @@ function abrirPartido(local, visitante, liga, apiId, fechaRef) {
 }
 
 document.addEventListener('click', event => {
+  const enlaceComparador = event.target.closest('.btn-quick-compare');
+  if (enlaceComparador) {
+    event.preventDefault();
+    event.stopPropagation();
+    window.location.href = enlaceComparador.href;
+    return;
+  }
   const favorito = event.target.closest('[data-favorite-match]');
   if (favorito) {
     event.preventDefault(); event.stopPropagation();
@@ -352,11 +361,14 @@ document.addEventListener('click', event => {
     return;
   }
   const tarjeta = event.target.closest('[data-match-open]');
-  if (tarjeta) window.location.href = tarjeta.dataset.matchOpen;
+  if (tarjeta && !event.target.closest('a, button')) {
+    window.location.href = tarjeta.dataset.matchOpen;
+  }
 });
 
 document.addEventListener('keydown', event => {
   if (event.key !== 'Enter' && event.key !== ' ') return;
+  if (event.target.closest('a, button')) return;
   const tarjeta = event.target.closest('[data-match-open]');
   if (!tarjeta) return;
   event.preventDefault();

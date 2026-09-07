@@ -74,19 +74,37 @@ function ordenarCompeticiones(competiciones) {
 }
 
 
-async function paisesDeEquipos(partidos) {
-  const ids = [...new Set(partidos.flatMap(p => [p.equipo_local?.id, p.equipo_visitante?.id]).filter(Number.isFinite))];
-  if (!ids.length) return new Map();
-  const equipos = await Equipo.find({ api_id: { $in: ids } }).select('api_id pais').lean();
-  return new Map(equipos.filter(e => e.pais).map(e => [e.api_id, e.pais]));
+function resolverLigaPrincipal(equipo) {
+  if (!equipo) return null;
+  const ligas = Array.isArray(equipo.ligas) && equipo.ligas.length
+    ? equipo.ligas
+    : (equipo.liga ? [equipo.liga] : []);
+  const principales = ligas.filter(id => config.ligas[id]?.liga_principal === true);
+  if (!principales.length) {
+    if (config.ligas[equipo.liga]?.liga_principal) return equipo.liga;
+    return null;
+  }
+  if (principales.length === 1) return principales[0];
+  principales.sort((a, b) => (PRIORIDAD_LIGAS[a] || 999) - (PRIORIDAD_LIGAS[b] || 999));
+  return principales[0];
 }
 
-function paisDePartido(partido, paises) {
+async function metadataDeEquipos(partidos) {
+  const ids = [...new Set(partidos.flatMap(p => [p.equipo_local?.id, p.equipo_visitante?.id]).filter(Number.isFinite))];
+  if (!ids.length) return new Map();
+  const equipos = await Equipo.find({ api_id: { $in: ids } }).select('api_id pais liga ligas').lean();
+  return new Map(equipos.map(e => [e.api_id, {
+    pais: e.pais || '',
+    liga_principal: resolverLigaPrincipal(e)
+  }]));
+}
+
+function paisDePartido(partido, metaEquipos) {
   const configurado = config.ligas[partido.liga?.id]?.pais;
   if (configurado) return configurado;
   if (partido.liga?.pais) return partido.liga.pais;
-  const local = paises.get(partido.equipo_local?.id);
-  const visitante = paises.get(partido.equipo_visitante?.id);
+  const local = metaEquipos.get(partido.equipo_local?.id)?.pais;
+  const visitante = metaEquipos.get(partido.equipo_visitante?.id)?.pais;
   return local && local === visitante ? local : (local || visitante || '');
 }
 
@@ -141,7 +159,7 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
 
     const candidatos = await Partido.find(filtro).select(CAMPOS_CALENDARIO).sort({ fecha: 1 }).lean();
     const partidos = candidatos.filter(p => fechaISOEnZona(p.fecha, zonaHoraria) === texto);
-    const paises = await paisesDeEquipos(partidos);
+    const metaEquipos = await metadataDeEquipos(partidos);
 
     const porLiga = new Map();
     for (const p of partidos) {
@@ -150,10 +168,16 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
         porLiga.set(idLiga, {
           liga_id: idLiga,
           liga: p.liga?.nombre || config.ligas[idLiga]?.nombre || `Liga ${idLiga}`,
-          pais: paisDePartido(p, paises),
+          pais: paisDePartido(p, metaEquipos),
           partidos: []
         });
       }
+
+      const esPrincipal = config.ligas[idLiga]?.liga_principal === true;
+      const metaLocal = metaEquipos.get(p.equipo_local?.id);
+      const metaVisitante = metaEquipos.get(p.equipo_visitante?.id);
+      const ligaLocalId = esPrincipal ? idLiga : (metaLocal?.liga_principal || idLiga);
+      const ligaVisitanteId = esPrincipal ? idLiga : (metaVisitante?.liga_principal || idLiga);
 
       const finalizado = esFinalizado(p.estado);
       porLiga.get(idLiga).partidos.push({
@@ -170,13 +194,15 @@ router.get('/dia', cacheMiddleware, async (req, res) => {
           id: p.equipo_local?.id,
           nombre: p.equipo_local?.nombre,
           logo: p.equipo_local?.logo,
-          goles: p.equipo_local?.goles ?? null
+          goles: p.equipo_local?.goles ?? null,
+          liga_id: ligaLocalId
         },
         visitante: {
           id: p.equipo_visitante?.id,
           nombre: p.equipo_visitante?.nombre,
           logo: p.equipo_visitante?.logo,
-          goles: p.equipo_visitante?.goles ?? null
+          goles: p.equipo_visitante?.goles ?? null,
+          liga_id: ligaVisitanteId
         }
       });
     }
@@ -219,7 +245,7 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
     }
 
     const partidos = candidatos.filter(p => porDia.has(fechaISOEnZona(p.fecha, zonaHoraria)));
-    const paises = await paisesDeEquipos(partidos);
+    const metaEquipos = await metadataDeEquipos(partidos);
 
     for (const p of partidos) {
       const clave = fechaISOEnZona(p.fecha, zonaHoraria);
@@ -231,10 +257,16 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
         dia.competiciones.set(idLiga, {
           liga_id: idLiga,
           liga: p.liga?.nombre || config.ligas[idLiga]?.nombre || `Liga ${idLiga}`,
-          pais: paisDePartido(p, paises),
+          pais: paisDePartido(p, metaEquipos),
           partidos: []
         });
       }
+
+      const esPrincipal = config.ligas[idLiga]?.liga_principal === true;
+      const metaLocal = metaEquipos.get(p.equipo_local?.id);
+      const metaVisitante = metaEquipos.get(p.equipo_visitante?.id);
+      const ligaLocalId = esPrincipal ? idLiga : (metaLocal?.liga_principal || idLiga);
+      const ligaVisitanteId = esPrincipal ? idLiga : (metaVisitante?.liga_principal || idLiga);
 
       const finalizado = esFinalizado(p.estado);
       dia.competiciones.get(idLiga).partidos.push({
@@ -251,13 +283,15 @@ router.get('/proximos', cacheMiddleware, async (req, res) => {
           id: p.equipo_local?.id,
           nombre: p.equipo_local?.nombre,
           logo: p.equipo_local?.logo,
-          goles: p.equipo_local?.goles ?? null
+          goles: p.equipo_local?.goles ?? null,
+          liga_id: ligaLocalId
         },
         visitante: {
           id: p.equipo_visitante?.id,
           nombre: p.equipo_visitante?.nombre,
           logo: p.equipo_visitante?.logo,
-          goles: p.equipo_visitante?.goles ?? null
+          goles: p.equipo_visitante?.goles ?? null,
+          liga_id: ligaVisitanteId
         }
       });
       dia.total++;
@@ -399,4 +433,5 @@ router.get('/rango', cacheMiddleware, async (req, res) => {
   }
 });
 
+router.resolverLigaPrincipal = resolverLigaPrincipal;
 module.exports = router;
