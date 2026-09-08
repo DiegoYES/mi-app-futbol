@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { SYSTEM_INSTRUCTION, sanitizarRespuesta, responderConsulta } = require('../services/aiChat');
 
-test('SYSTEM_INSTRUCTION contiene lineamientos clave de Data-Fut', () => {
+test('SYSTEM_INSTRUCTION contiene lineamientos clave de Data-Fut y regla anti-alucinacion', () => {
   assert.match(SYSTEM_INSTRUCTION, /FutBot/);
   assert.match(SYSTEM_INSTRUCTION, /data-fut\.com/);
   assert.match(SYSTEM_INSTRUCTION, /Comparador/);
@@ -12,6 +12,7 @@ test('SYSTEM_INSTRUCTION contiene lineamientos clave de Data-Fut', () => {
   assert.match(SYSTEM_INSTRUCTION, /BTTS/);
   assert.match(SYSTEM_INSTRUCTION, /\$70 MXN/);
   assert.match(SYSTEM_INSTRUCTION, /Juego Responsable/);
+  assert.match(SYSTEM_INSTRUCTION, /PROHIBICIÓN ESTRICTA DE ALUCINACIONES/);
 });
 
 test('responderConsulta rechaza mensajes vacíos o solo espacios', async () => {
@@ -163,6 +164,10 @@ test('formatearContextoDeportivo estructura partidos y picks correctamente', () 
       { id: 'tiros_puerta_local_over_1_5', mercado: 'Más de 1.5 tiros a puerta del local', estimacion: 95, confianza: 'alta' },
       { id: 'over_0_5', mercado: 'Más de 0.5 goles', estimacion: 98, confianza: 'alta' }
     ],
+    mercados_clave: [
+      { id: 'ambos_anotan', mercado: 'Ambos anotan', estimacion: 65, confianza: 'media' },
+      { id: 'over_1_5', mercado: 'Más de 1.5 goles', estimacion: 88, confianza: 'alta' }
+    ],
     mercados: [
       { mercado: 'Over 1.5 goles', estimacion: 90, confianza: 'alta' },
       { id: 'under_0_5', mercado: 'Menos de 0.5 goles', estimacion: 30, confianza: 'baja' }
@@ -174,6 +179,8 @@ test('formatearContextoDeportivo estructura partidos y picks correctamente', () 
   assert.match(bloque, /Pantalla activa: Comparador/);
   assert.match(bloque, /Partido en análisis: Real Madrid vs Barcelona \(La Liga\)/);
   assert.match(bloque, /Over 2\.5 goles \(Estimación: 82%, Confianza: alta, Muestra: 20 partidos\)/);
+  assert.match(bloque, /Mercados de referencia calculados por Data-Fut/);
+  assert.match(bloque, /Ambos anotan \(Estimación: 65%, Confianza: media\)/);
   assert.match(bloque, /Over 1\.5 goles \(Estimación: 90%, Confianza: alta\)/);
   assert.match(bloque, /Menos de 0\.5 goles/);
   // Picks triviales no deben aparecer en el bloque

@@ -90,3 +90,11 @@ FutBot y el motor estadístico de Data-Fut (`services/pickRules.js`) tienen proh
     `- **[Mercado/Pick]** (Estimación: XX% | Confianza: alta/media): Justificación estadística concisa.`
   - Nunca agrupa los picks dentro de párrafos corridos y densos.
 
+---
+
+## 8. Prevención Estricta de Alucinaciones y Mercados Clave (Benchmark)
+- **Prohibición de números inventados:** FutBot tiene terminantemente prohibido inventar o estimar libremente porcentajes de probabilidad o cuotas.
+- **Inyección de Mercados Clave (`mercados_clave`):** Para evitar que el asistente invente probabilidades en los mercados más consultados (Over/Under 2.5 goles, Ambos Anotan, Over 1.5), `public/app-picks.js` y `public/partido.js` inyectan explícitamente estos mercados con sus frecuencias matemáticas calculadas por Data-Fut.
+- **Honestidad estadística:** Si un mercado como *Over 2.5 goles* o *Ambos anotan* tiene una estimación baja o no califica como pick candidato (ej. Over 2.5 al 46.5%), FutBot lo comunica con total transparencia, explicando que el modelo no lo recomienda o que la tendencia se inclina hacia el Under, y redirige al usuario hacia los picks que sí cuentan con respaldo en *Candidatos*.
+
+

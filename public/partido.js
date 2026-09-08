@@ -887,21 +887,44 @@ window.obtenerContextoFutBot = function () {
   const todosMercados = Array.isArray(datosPicksPartido?.mercados) ? datosPicksPartido.mercados : [];
   const listaCandidatos = todosMercados.filter(m => recSet.has(m.id));
 
-  return {
-    pagina: 'Centro de Partido',
-    partido: `${nombreL} vs ${nombreV}`,
-    candidatos: listaCandidatos.filter(r => !esPickTrivialClient(r)).slice(0, 5).map(r => ({
-      id: r.id,
-      mercado: r.mercado,
-      estimacion: r.estimacion,
-      confianza: r.confianza,
-      muestra: r.muestra
-    })),
-    mercados: todosMercados.filter(m => !esPickTrivialClient(m)).slice(0, 8).map(m => ({
+  const candidatos = listaCandidatos.filter(r => !esPickTrivialClient(r)).slice(0, 5).map(r => ({
+    id: r.id,
+    mercado: r.mercado,
+    estimacion: r.estimacion,
+    confianza: r.confianza,
+    muestra: r.muestra
+  }));
+
+  const idsClave = ['over_2_5', 'under_2_5', 'ambos_anotan', 'ambos_no_anotan', 'over_1_5', 'under_1_5'];
+  const mercadosClave = todosMercados
+    .filter(m => idsClave.includes(m.id))
+    .map(m => ({
       id: m.id,
       mercado: m.mercado,
       estimacion: m.estimacion,
       confianza: m.confianza
-    }))
+    }));
+
+  const idsExcluidos = new Set([
+    ...candidatos.map(c => c.id),
+    ...mercadosClave.map(k => k.id)
+  ]);
+
+  const otrosMercados = todosMercados
+    .filter(m => !esPickTrivialClient(m) && !idsExcluidos.has(m.id))
+    .slice(0, 8)
+    .map(m => ({
+      id: m.id,
+      mercado: m.mercado,
+      estimacion: m.estimacion,
+      confianza: m.confianza
+    }));
+
+  return {
+    pagina: 'Centro de Partido',
+    partido: `${nombreL} vs ${nombreV}`,
+    candidatos: candidatos,
+    mercados_clave: mercadosClave,
+    mercados: otrosMercados
   };
 };

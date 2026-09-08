@@ -39,6 +39,11 @@ Directrices de conversación:
     - Eres el copiloto analítico de ese partido. Si el usuario pregunta por recomendaciones, qué pick conviene, cuál es el más seguro, o sobre goles/córners/tarjetas, BASA tu respuesta directamente en los datos calculados por el modelo que se incluyen en el contexto.
     - Prioriza y destaca los picks clasificados como "Candidatos" y aquellos con mayor porcentaje de estimación y confianza (alta/media).
     - Explica con claridad deportiva por qué el modelo sugiere eso (mencionando las estimaciones porcentuales y muestras observadas).
+    - PROHIBICIÓN ESTRICTA DE ALUCINACIONES Y NÚMEROS INVENTADOS:
+      * NUNCA inventes números, estimaciones porcentuales ni cuotas que no existan en el contexto proporcionado.
+      * Si el usuario pide picks recomendados o más viables, recomienda EXCLUSIVAMENTE los que aparecen en la lista de "Picks Candidatos destacados" o en los mercados calculados del contexto.
+      * NUNCA inventes picks de goles (ej. Over 2.5 o Ambos Anotan) con porcentajes inventados (como 70%, 68%, etc.). Si un mercado consultado aparece en el contexto con estimación baja o media (por ejemplo, Over 2.5 con 46.5%), sé 100% transparente con el usuario: menciona su porcentaje exacto de Data-Fut, explica que no alcanza el umbral de recomendación y destaca las opciones que sí tienen respaldo estadístico.
+      * Si un mercado NO aparece en el contexto, no inventes una estimación: indica amablemente que no figura entre las selecciones destacadas del modelo y sugiere consultarlo en la tabla correspondiente de la herramienta.
     - REGLA ESTRICTA DE PICKS TRIVIALES (SIN VALOR): Jamás recomiendes picks con líneas triviales que carezcan de valor real o cuota competitiva, aunque tengan alta estimación matemática:
       1. Over 0.5 goles (cualquier total o por equipo).
       2. Over <= 2.5 tiros totales (o líneas triviales de tiros <= 2.5).
@@ -81,7 +86,7 @@ function formatearContextoDeportivo(contexto) {
   const candidatosFiltrados = (Array.isArray(contexto.candidatos) ? contexto.candidatos : [])
     .filter(c => !esPickTrivial(c));
   if (candidatosFiltrados.length > 0) {
-    partes.push('- Picks Candidatos destacados por el modelo estadístico de Data-Fut:');
+    partes.push('- Picks Candidatos destacados por el modelo estadístico de Data-Fut (picks recomendados con valor):');
     candidatosFiltrados.slice(0, 6).forEach(c => {
       if (!c || typeof c !== 'object') return;
       const mercado = String(c.mercado || '').slice(0, 60).trim();
@@ -90,6 +95,21 @@ function formatearContextoDeportivo(contexto) {
       const muestra = c.muestra ? `, Muestra: ${String(c.muestra).slice(0, 20)} partidos` : '';
       if (mercado) {
         partes.push(`  * ${mercado} (Estimación: ${est}${conf}${muestra})`);
+      }
+    });
+  }
+
+  const mercadosClaveFiltrados = (Array.isArray(contexto.mercados_clave) ? contexto.mercados_clave : [])
+    .filter(m => !esPickTrivial(m));
+  if (mercadosClaveFiltrados.length > 0) {
+    partes.push('- Mercados de referencia calculados por Data-Fut (Goles y Ambos Anotan):');
+    mercadosClaveFiltrados.forEach(m => {
+      if (!m || typeof m !== 'object') return;
+      const mercado = String(m.mercado || '').slice(0, 60).trim();
+      const est = m.estimacion != null ? `${m.estimacion}%` : 'N/A';
+      const conf = m.confianza ? `, Confianza: ${String(m.confianza).slice(0, 20)}` : '';
+      if (mercado) {
+        partes.push(`  * ${mercado} (Estimación: ${est}${conf})`);
       }
     });
   }
