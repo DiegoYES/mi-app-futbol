@@ -1,0 +1,321 @@
+/* Widget Flotante del Asistente de IA (FutBot) */
+.asistente-launcher {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #0e291e, #1a4d36);
+  border: 1.5px solid #54e38e;
+  color: #54e38e;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45), 0 0 16px rgba(84, 227, 142, 0.2);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9990;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  outline: none;
+}
+
+.asistente-launcher:hover {
+  transform: scale(1.08);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.55), 0 0 22px rgba(84, 227, 142, 0.35);
+}
+
+.asistente-launcher:active {
+  transform: scale(0.95);
+}
+
+.asistente-launcher-icon {
+  width: 28px;
+  height: 28px;
+  fill: currentColor;
+}
+
+.asistente-launcher-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: #54e38e;
+  border: 2px solid #07100d;
+  box-shadow: 0 0 6px #54e38e;
+}
+
+/* Ventana de Chat */
+.asistente-modal {
+  position: fixed;
+  bottom: 88px;
+  right: 22px;
+  width: min(390px, calc(100vw - 32px));
+  height: min(530px, calc(100vh - 110px));
+  border-radius: 18px;
+  background: #091510;
+  border: 1px solid #1a392a;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 20px rgba(84, 227, 142, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  z-index: 9991;
+  transition: opacity 0.25s ease, transform 0.25s ease, visibility 0.25s;
+  font-family: inherit;
+}
+
+.asistente-modal.oculto {
+  opacity: 0;
+  transform: translateY(16px) scale(0.96);
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Cabecera */
+.asistente-header {
+  padding: 14px 16px;
+  background: #0d1e17;
+  border-bottom: 1px solid #183325;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.asistente-header-info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.asistente-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: #143525;
+  border: 1.5px solid #54e38e;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #54e38e;
+  font-size: 1.1rem;
+}
+
+.asistente-title-group h3 {
+  margin: 0;
+  font-size: 0.96rem;
+  font-weight: 800;
+  color: #f1f9f4;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.asistente-online-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #54e38e;
+  box-shadow: 0 0 6px #54e38e;
+}
+
+.asistente-subtitle {
+  margin: 0;
+  font-size: 0.74rem;
+  color: #8da99b;
+}
+
+.asistente-close-btn {
+  background: transparent;
+  border: none;
+  color: #8da99b;
+  font-size: 1.3rem;
+  cursor: pointer;
+  padding: 4px 8px;
+  border-radius: 8px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.asistente-close-btn:hover {
+  color: #ffffff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Cuerpo de Mensajes */
+.asistente-messages {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  scroll-behavior: smooth;
+}
+
+.asistente-messages::-webkit-scrollbar {
+  width: 5px;
+}
+.asistente-messages::-webkit-scrollbar-thumb {
+  background: #1a382b;
+  border-radius: 4px;
+}
+
+/* Mensajes individuales */
+.asistente-msg {
+  max-width: 86%;
+  padding: 10px 14px;
+  font-size: 0.86rem;
+  line-height: 1.45;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.asistente-msg-bot {
+  align-self: flex-start;
+  background: #11231a;
+  color: #e6f5ec;
+  border-radius: 14px 14px 14px 4px;
+  border: 1px solid rgba(84, 227, 142, 0.14);
+}
+
+.asistente-msg-user {
+  align-self: flex-end;
+  background: #1b4732;
+  color: #ffffff;
+  border-radius: 14px 14px 4px 14px;
+}
+
+/* Chips de Preguntas Rápidas */
+.asistente-chips-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 4px;
+}
+
+.asistente-chip-btn {
+  background: #10241b;
+  border: 1px solid #1c3d2e;
+  color: #54e38e;
+  padding: 7px 11px;
+  border-radius: 10px;
+  font-size: 0.78rem;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  line-height: 1.3;
+}
+
+.asistente-chip-btn:hover {
+  background: #183829;
+  border-color: #54e38e;
+  transform: translateX(2px);
+}
+
+/* Indicador de escritura (Thinking) */
+.asistente-typing {
+  align-self: flex-start;
+  background: #11231a;
+  border: 1px solid rgba(84, 227, 142, 0.14);
+  border-radius: 14px 14px 14px 4px;
+  padding: 10px 14px;
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.asistente-typing span {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #54e38e;
+  opacity: 0.4;
+  animation: asistente-pulse 1.3s infinite ease-in-out;
+}
+
+.asistente-typing span:nth-child(2) { animation-delay: 0.2s; }
+.asistente-typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes asistente-pulse {
+  0%, 100% { opacity: 0.3; transform: scale(0.85); }
+  50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Input y Footer */
+.asistente-footer {
+  padding: 10px 12px 8px;
+  background: #0d1e17;
+  border-top: 1px solid #183325;
+}
+
+.asistente-form {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.asistente-input {
+  flex: 1;
+  background: #07120d;
+  border: 1px solid #1b392b;
+  border-radius: 10px;
+  padding: 9px 12px;
+  font-size: 0.86rem;
+  color: #f1f9f4;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.asistente-input:focus {
+  border-color: #54e38e;
+}
+
+.asistente-input::placeholder {
+  color: #5b796c;
+  font-size: 0.82rem;
+}
+
+.asistente-send-btn {
+  background: #54e38e;
+  color: #07100d;
+  border: none;
+  border-radius: 10px;
+  width: 38px;
+  height: 38px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-weight: bold;
+  transition: opacity 0.15s, transform 0.1s;
+}
+
+.asistente-send-btn:hover {
+  opacity: 0.9;
+  transform: scale(1.04);
+}
+
+.asistente-send-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.asistente-disclaimer {
+  margin: 6px 0 0;
+  text-align: center;
+  font-size: 0.68rem;
+  color: #5b796c;
+}
+
+@media (max-width: 480px) {
+  .asistente-modal {
+    bottom: 0;
+    right: 0;
+    width: 100vw;
+    height: calc(100vh - 60px);
+    border-radius: 18px 18px 0 0;
+  }
+}

@@ -27,6 +27,7 @@ const billingRoutes = require('./routes/billing');
 const productEventsRoutes = require('./routes/productEvents');
 const socialLinksRoutes = require('./routes/socialLinks');
 const mercadoPagoWebhookRoutes = require('./routes/mercadoPagoWebhook');
+const aiChatRoutes = require('./routes/aiChat');
 const { protegido, requireAuth, requireAdmin, usuarioDeSesion } = require('./middleware/auth');
 const { resumirEventosPorMinuto } = require('./services/minuteRangeAnalysis');
 const { paginasPrivadas } = require('./middleware/paginasPrivadas');
@@ -127,6 +128,7 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/eventos-producto', productEventsRoutes);
+app.use('/api/asistente', aiChatRoutes);
 // Billing sólo exige sesión: una prueba vencida también debe poder pagar.
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
