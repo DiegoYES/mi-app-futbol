@@ -195,14 +195,29 @@ function pintarPicks() {
 function prepararFiltrosComparador() {
     const controles = ['pick-category', 'pick-scope', 'pick-direction', 'pick-line'].map(id => document.getElementById(id));
     const categoria = controles[0];
-    categoria.innerHTML = '<option value="">Todas las categorías</option>' + picksActuales.categorias.map(item => {
-        const total = picksActuales.mercados.filter(mercado => mercado.categoria === item).length;
-        return `<option value="${escaparHtml(item)}">${escaparHtml(NOMBRES_CATEGORIAS[item] || item)} (${total})</option>`;
-    }).join('');
+    if (categoria) categoria.value = '';
+
+    const tabsContainer = document.getElementById('comparator-category-tabs');
+    if (tabsContainer) {
+        const totalTodos = picksActuales.mercados.length;
+        const htmlTabs = [`<button type="button" class="market-tab-btn active" data-comparator-category="" role="tab" aria-selected="true">Todas (${totalTodos})</button>`];
+        picksActuales.categorias.forEach(item => {
+            const total = picksActuales.mercados.filter(mercado => mercado.categoria === item).length;
+            if (total > 0) {
+                htmlTabs.push(`<button type="button" class="market-tab-btn" data-comparator-category="${escaparHtml(item)}" role="tab" aria-selected="false">${escaparHtml(NOMBRES_CATEGORIAS[item] || item)} (${total})</button>`);
+            }
+        });
+        tabsContainer.innerHTML = htmlTabs.join('');
+    }
+
     const alcances = { total: 'Ambos equipos', local: 'Equipo local', visitante: 'Equipo visitante' };
-    controles[1].innerHTML = '<option value="">Todos los alcances</option>' + [...new Set(picksActuales.mercados.map(item => item.alcance).filter(Boolean))].map(item => `<option value="${item}">${alcances[item] || escaparHtml(item)}</option>`).join('');
-    controles[2].innerHTML = '<option value="">Over y Under</option><option value="over">Over · Más de</option><option value="under">Under · Menos de</option>';
-    controles.forEach(control => { control.disabled = false; control.value = ''; });
+    if (controles[1]) {
+        controles[1].innerHTML = '<option value="">Todos los alcances</option>' + [...new Set(picksActuales.mercados.map(item => item.alcance).filter(Boolean))].map(item => `<option value="${item}">${alcances[item] || escaparHtml(item)}</option>`).join('');
+    }
+    if (controles[2]) {
+        controles[2].innerHTML = '<option value="">Over y Under</option><option value="over">Over · Más de</option><option value="under">Under · Menos de</option>';
+    }
+    controles.forEach(control => { if (control) { control.disabled = false; control.value = ''; } });
     actualizarLineasComparador();
 }
 
@@ -304,8 +319,13 @@ async function mostrarPicks() {
         if (!data.mercados.length) {
             const muestra = data.local && data.visitante ? `Muestra encontrada: ${data.local.muestra} para ${escaparHtml(data.local.nombre)} y ${data.visitante.muestra} para ${escaparHtml(data.visitante.nombre)}.` : '';
             content.innerHTML = `<div class="empty-state"><strong>No hay mercados calculables con estos filtros.</strong><br>${muestra}<br><small>${escaparHtml(data.metodologia || 'Prueba ampliando la condición o usando el partido completo.')}</small></div>`;
-            ['pick-category', 'pick-scope', 'pick-direction', 'pick-line'].forEach(id => { document.getElementById(id).disabled = true; });
+            ['pick-category', 'pick-scope', 'pick-direction', 'pick-line'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.disabled = true;
+            });
             document.getElementById('pick-recommended-toggle').disabled = true;
+            const tabsCont = document.getElementById('comparator-category-tabs');
+            if (tabsCont) tabsCont.innerHTML = '';
             return;
         }
 

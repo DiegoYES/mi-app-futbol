@@ -92,7 +92,7 @@
   .market-explorer { margin-bottom:16px;padding:15px;border:1px solid rgba(84,227,142,.25);border-radius:14px;background:rgba(84,227,142,.045); }
   .market-explorer h4 { margin:0 0 5px;font-size:.92rem; }
   .market-explorer > p { margin:0 0 13px;color:var(--muted);font-size:.7rem;line-height:1.5; }
-  .market-explorer-controls { display:grid;grid-template-columns:repeat(5,minmax(120px,1fr));gap:9px; }
+  .market-explorer-controls { display:grid;grid-template-columns:repeat(4,minmax(120px,1fr));gap:9px; }
   .market-explorer label { display:grid;gap:5px;color:var(--muted);font-size:.65rem;font-weight:750; }
   .market-explorer input,.market-explorer select { width:100%;min-height:42px;border:1px solid var(--line);border-radius:9px;background:var(--surface-soft);color:var(--ink);padding:8px 11px; }
   @media (max-width:720px) { .market-explorer-controls { grid-template-columns:1fr; } }

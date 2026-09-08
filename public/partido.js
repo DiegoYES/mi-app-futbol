@@ -530,10 +530,6 @@ function pintarPicksPartido() {
         ${categoriasExplorables.map(item => `<button type="button" class="market-tab-btn ${item === filtrosMercado.categoria ? 'active' : ''}" data-category-tab="${esc(item)}">${esc(NOMBRES_CATEGORIAS[item] || item)}</button>`).join('')}
       </div>
       <div class="market-explorer-controls">
-        <label>Categoría<select id="categoriaPicksPartido" aria-label="Categoría de mercado">
-          <option value="todas" ${filtrosMercado.categoria === 'todas' ? 'selected' : ''}>Todas</option>
-          ${categoriasExplorables.map(item => `<option value="${esc(item)}" ${item === filtrosMercado.categoria ? 'selected' : ''}>${esc(NOMBRES_CATEGORIAS[item] || item)}</option>`).join('')}
-        </select></label>
         <label>Periodo<select id="periodoMercadoPartido">
           <option value="0" ${filtrosMercado.periodo === 0 ? 'selected' : ''}>Partido completo</option>
           <option value="1" ${filtrosMercado.periodo === 1 ? 'selected' : ''}>Primer tiempo</option>
@@ -784,13 +780,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (boton) guardarPick(boton.dataset.guardarPick);
   });
   document.getElementById('bloquePicks').addEventListener('change', event => {
-    if (event.target.id === 'categoriaPicksPartido') {
-      filtrosMercado.categoria = event.target.value;
-      filtrosMercado.familia = 'todas';
-      filtrosMercado.linea = '';
-      filtrosMercado.modoPersonalizado = false;
-      filtrosMercado.errorPersonalizada = '';
-    } else if (event.target.id === 'periodoMercadoPartido') {
+    if (event.target.id === 'periodoMercadoPartido') {
       filtrosMercado.periodo = Number(event.target.value);
       filtrosMercado.linea = '';
       filtrosMercado.errorPersonalizada = '';

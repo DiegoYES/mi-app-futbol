@@ -1035,7 +1035,27 @@ function configurarEventos() {
     document.getElementById('save-comparison').addEventListener('click', guardarComparacionActual);
     document.getElementById('share-comparison').addEventListener('click', compartirComparacion);
     document.getElementById('pick-shortcut').addEventListener('click', mostrarPicks);
-    ['pick-category', 'pick-scope', 'pick-direction'].forEach(id => document.getElementById(id).addEventListener('change', () => { actualizarLineasComparador(); pintarPicks(); }));
+    ['pick-category', 'pick-scope', 'pick-direction'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('change', () => { actualizarLineasComparador(); pintarPicks(); });
+    });
+    const comparatorCatTabs = document.getElementById('comparator-category-tabs');
+    if (comparatorCatTabs) {
+        comparatorCatTabs.addEventListener('click', event => {
+            const btn = event.target.closest('[data-comparator-category]');
+            if (!btn) return;
+            const cat = btn.dataset.comparatorCategory || '';
+            const catInput = document.getElementById('pick-category');
+            if (catInput) catInput.value = cat;
+            comparatorCatTabs.querySelectorAll('.market-tab-btn').forEach(tab => {
+                const isActive = tab === btn;
+                tab.classList.toggle('active', isActive);
+                tab.setAttribute('aria-selected', String(isActive));
+            });
+            actualizarLineasComparador();
+            pintarPicks();
+        });
+    }
     document.getElementById('pick-line').addEventListener('change', pintarPicks);
     document.getElementById('pick-recommended-toggle').addEventListener('click', () => {
         soloRecomendadosPicks = !soloRecomendadosPicks;

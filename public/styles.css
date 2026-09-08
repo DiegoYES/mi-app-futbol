@@ -1101,6 +1101,9 @@ a:focus-visible,button:focus-visible,select:focus-visible,input:focus-visible,di
   padding: 4px 0 12px;
   scrollbar-width: none;
 }
+.market-filter-tabs:empty {
+  display: none;
+}
 .market-filter-tabs::-webkit-scrollbar {
   display: none;
 }

@@ -96,8 +96,9 @@ test('los picks del comparador reciben los filtros visibles de ambos equipos', (
 test('partido y comparador permiten filtrar todas las categorías y líneas exactas', () => {
   const partido = fuentePublica('partido.html', 'partido.js');
   const comparador = fs.readFileSync(path.join(__dirname, '..', 'public', 'index.html'), 'utf8');
-  assert.match(partido, />Todas<\/option>/);
+  assert.match(partido, /data-category-tab="todas"/);
   assert.match(partido, /Todas las líneas/);
+  assert.match(comparador, /id="comparator-category-tabs"/);
   assert.match(comparador, /id="pick-scope"/);
   assert.match(comparador, /id="pick-direction"/);
   assert.match(comparador, /id="pick-line"/);
