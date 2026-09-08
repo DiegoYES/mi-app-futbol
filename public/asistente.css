@@ -1,10 +1,10 @@
 /* Widget Flotante del Asistente de IA (FutBot) */
 .asistente-launcher {
   position: fixed;
-  bottom: 22px;
-  right: 22px;
-  width: 56px;
-  height: 56px;
+  bottom: 84px;
+  right: 20px;
+  width: 54px;
+  height: 54px;
   border-radius: 50%;
   background: linear-gradient(135deg, #0e291e, #1a4d36);
   border: 1.5px solid #54e38e;
@@ -17,19 +17,6 @@
   z-index: 9990;
   transition: transform 0.2s ease, box-shadow 0.2s ease, bottom 0.25s ease;
   outline: none;
-}
-
-/* Si existe el botón flotante de Mis picks (usuario autenticado), apilar FutBot arriba para no encimarse */
-body.has-global-picks .asistente-launcher,
-body:has(#global-picks-trigger) .asistente-launcher,
-body:has(.global-picks-widget) .asistente-launcher {
-  bottom: 84px;
-}
-
-body.has-global-picks .asistente-modal,
-body:has(#global-picks-trigger) .asistente-modal,
-body:has(.global-picks-widget) .asistente-modal {
-  bottom: 84px;
 }
 
 .asistente-launcher:hover {
@@ -325,16 +312,10 @@ body:has(.global-picks-widget) .asistente-modal {
 
 @media (max-width: 600px) {
   .asistente-launcher {
-    bottom: 14px;
+    bottom: 72px;
     right: 14px;
     width: 48px;
     height: 48px;
-  }
-  body.has-global-picks .asistente-launcher,
-  body:has(#global-picks-trigger) .asistente-launcher,
-  body:has(.global-picks-widget) .asistente-launcher {
-    bottom: 68px;
-    right: 14px;
   }
 }
 

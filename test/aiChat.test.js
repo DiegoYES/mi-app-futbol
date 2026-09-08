@@ -1,6 +1,6 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { SYSTEM_INSTRUCTION, responderConsulta } = require('../services/aiChat');
+const { SYSTEM_INSTRUCTION, sanitizarRespuesta, responderConsulta } = require('../services/aiChat');
 
 test('SYSTEM_INSTRUCTION contiene lineamientos clave de Data-Fut', () => {
   assert.match(SYSTEM_INSTRUCTION, /FutBot/);
@@ -135,4 +135,10 @@ test('responderConsulta maneja timeout (AbortError)', async () => {
 
   assert.equal(res.ok, true);
   assert.match(res.respuesta, /tardó demasiado/i);
+});
+
+test('sanitizarRespuesta remueve rutas tecnicas y convierte enlaces markdown en texto limpio', () => {
+  const texto = 'Visita nuestra sección de **[Mejores Picks](/picks.html)** o el Comparador (/comparador.html) para analizar.';
+  const limpio = sanitizarRespuesta(texto);
+  assert.equal(limpio, 'Visita nuestra sección de **Mejores Picks** o el Comparador para analizar.');
 });
