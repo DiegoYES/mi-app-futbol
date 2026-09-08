@@ -47,3 +47,17 @@ FutBot es el asistente conversacional con Inteligencia Artificial integrado en D
 - Archivo: `services/aiChat.js`
 - Función: `responderConsulta(mensaje, opciones)`
 - Sanitizador regex: `sanitizarRespuesta(texto)` elimina de forma defensiva cualquier URL, enlace markdown o ruta técnica huérfana antes de emitir la respuesta JSON al cliente.
+
+---
+
+## 5. Copiloto Analista y Contexto en Pantalla (Context-Aware AI)
+- **Hook frontend `window.obtenerContextoFutBot()`**:
+  - Implementado en el **Comparador** (`public/app-picks.js`) y en el **Centro de Partido** (`public/partido.js`).
+  - Retorna un objeto con `{ pagina, partido, liga, candidatos, mercados }`.
+- **Inyección y procesamiento en backend**:
+  - `routes/aiChat.js` valida y limita el objeto `contexto`.
+  - `services/aiChat.js` formatea el bloque `[Contexto actual del usuario en pantalla]` y lo inyecta en el `system_instruction` de Gemini.
+  - FutBot interpreta los datos calculados por el motor de Data-Fut para responder qué picks recomienda, explicar la probabilidad de un mercado específico (Over 2.5 goles, córners, tarjetas) o contrastar las cuotas/estimaciones de ambos clubes.
+- **Chips contextuales inteligentes**:
+  - `public/asistente.js` adapta los chips iniciales a preguntas sobre el partido activo en pantalla (ej. *"¿Qué pick ves más sólido para este partido?"*, *"¿Ves probable el Over 2.5 goles?"*).
+

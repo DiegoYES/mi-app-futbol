@@ -10,6 +10,18 @@
     '¿Qué incluye la suscripción de $70 MXN?'
   ];
 
+  function obtenerPreguntasContextuales() {
+    const ctx = typeof window.obtenerContextoFutBot === 'function' ? window.obtenerContextoFutBot() : null;
+    if (ctx && ctx.partido) {
+      return [
+        '¿Qué pick ves más sólido para este partido?',
+        '¿Ves probable el Over 2.5 goles?',
+        '¿Cómo ve el modelo los córners y tarjetas?'
+      ];
+    }
+    return PREGUNTAS_RAPIDAS;
+  }
+
   function iniciarAsistente() {
     if (document.getElementById('asistente-launcher-btn')) return;
 
@@ -65,12 +77,21 @@
 
     let enviando = false;
 
+    function refrescarChipsSiEsInicial() {
+      const contenedorChips = messagesList.querySelector('.asistente-chips-container');
+      if (contenedorChips && messagesList.querySelectorAll('.asistente-msg-user').length === 0) {
+        contenedorChips.remove();
+        renderizarChips(obtenerPreguntasContextuales());
+      }
+    }
+
     function toggleChat(abrir) {
       const estaOculto = modal.classList.contains('oculto');
       const nuevoEstado = typeof abrir === 'boolean' ? abrir : estaOculto;
       if (nuevoEstado) {
         modal.classList.remove('oculto');
         sessionStorage.setItem(STORAGE_OPEN_KEY, '1');
+        refrescarChipsSiEsInicial();
         input.focus();
         desplazarAbajo();
       } else {
@@ -167,10 +188,14 @@
       mostrarTyping();
 
       try {
+        const contexto = typeof window.obtenerContextoFutBot === 'function'
+          ? window.obtenerContextoFutBot()
+          : null;
+
         const res = await fetch('/api/asistente/chat', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ mensaje: texto })
+          body: JSON.stringify({ mensaje: texto, contexto: contexto })
         });
 
         const datos = await res.json();
@@ -216,7 +241,7 @@
         '¡Hola! Soy FutBot 🤖, el asistente virtual de Data-Fut. ¿En qué te puedo ayudar hoy?',
         'bot'
       );
-      renderizarChips(PREGUNTAS_RAPIDAS);
+      renderizarChips(obtenerPreguntasContextuales());
     }
 
     // Restaurar si el usuario lo tenía abierto

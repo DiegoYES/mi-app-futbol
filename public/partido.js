@@ -835,3 +835,25 @@ window.addEventListener('pageshow', event => {
 window.addEventListener('futbol:picks-actualizados', () => {
   if (ID_PARTIDO) cargarPicks(true);
 });
+
+window.obtenerContextoFutBot = function () {
+  const nombreL = datosLocal?.info?.equipo || 'Local';
+  const nombreV = datosVisitante?.info?.equipo || 'Visitante';
+  if (nombreL === 'Local' && nombreV === 'Visitante' && !datosPicksPartido) return null;
+
+  return {
+    pagina: 'Centro de Partido',
+    partido: `${nombreL} vs ${nombreV}`,
+    candidatos: (datosPicksPartido?.recomendados || []).slice(0, 5).map(r => ({
+      mercado: r.mercado,
+      estimacion: r.estimacion,
+      confianza: r.confianza,
+      muestra: r.muestra
+    })),
+    mercados: (datosPicksPartido?.mercados || []).slice(0, 8).map(m => ({
+      mercado: m.mercado,
+      estimacion: m.estimacion,
+      confianza: m.confianza
+    }))
+  };
+};

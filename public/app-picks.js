@@ -343,3 +343,25 @@ async function mostrarPicks() {
         console.error(error);
     }
 }
+
+window.obtenerContextoFutBot = function () {
+    if (!picksActuales || !picksActuales.local || !picksActuales.visitante) return null;
+    const liga = picksActuales.ligas?.local?.nombre || picksActuales.ligas?.visitante?.nombre || '';
+    return {
+        pagina: 'Comparador',
+        partido: `${picksActuales.local.nombre} vs ${picksActuales.visitante.nombre}`,
+        liga: liga,
+        temporada: picksActuales.temporadas?.local || '',
+        candidatos: (picksActuales.recomendados || []).slice(0, 5).map(r => ({
+            mercado: r.mercado,
+            estimacion: r.estimacion,
+            confianza: r.confianza,
+            muestra: r.muestra
+        })),
+        mercados: (picksActuales.mercados || []).slice(0, 8).map(m => ({
+            mercado: m.mercado,
+            estimacion: m.estimacion,
+            confianza: m.confianza
+        }))
+    };
+};

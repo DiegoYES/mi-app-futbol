@@ -36,7 +36,17 @@ router.post('/chat', limiteAsistente, async (req, res) => {
       return res.status(400).json({ error: 'El mensaje no debe superar los 400 caracteres.', codigo: 'MENSAJE_DEMASIADO_LARGO' });
     }
 
-    const resultado = await responderConsulta(texto);
+    let contexto = null;
+    if (req.body?.contexto && typeof req.body.contexto === 'object' && !Array.isArray(req.body.contexto)) {
+      try {
+        const serializado = JSON.stringify(req.body.contexto);
+        if (serializado.length <= 2500) {
+          contexto = req.body.contexto;
+        }
+      } catch (_) {}
+    }
+
+    const resultado = await responderConsulta(texto, { contexto });
     if (!resultado.ok) {
       return res.status(400).json({ error: resultado.error });
     }

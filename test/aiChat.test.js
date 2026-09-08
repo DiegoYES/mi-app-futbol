@@ -146,3 +146,60 @@ test('sanitizarRespuesta remueve rutas tecnicas y convierte enlaces markdown en 
   const limpio2 = sanitizarRespuesta(textoConUrls);
   assert.equal(limpio2, 'Entra a Data-Fut o revisa el Calendario y la sección de Mejores Picks directamente.');
 });
+
+test('formatearContextoDeportivo estructura partidos y picks correctamente', () => {
+  const { formatearContextoDeportivo } = require('../services/aiChat');
+  assert.equal(formatearContextoDeportivo(null), '');
+  assert.equal(formatearContextoDeportivo('invalido'), '');
+  assert.equal(formatearContextoDeportivo({}), '');
+
+  const contexto = {
+    pagina: 'Comparador',
+    partido: 'Real Madrid vs Barcelona',
+    liga: 'La Liga',
+    candidatos: [
+      { mercado: 'Over 2.5 goles', estimacion: 82, confianza: 'alta', muestra: 20 },
+      { mercado: 'Over 8.5 córners', estimacion: 75, confianza: 'media', muestra: 20 }
+    ],
+    mercados: [
+      { mercado: 'Over 1.5 goles', estimacion: 90, confianza: 'alta' }
+    ]
+  };
+
+  const bloque = formatearContextoDeportivo(contexto);
+  assert.match(bloque, /\[Contexto actual del usuario en pantalla\]:/);
+  assert.match(bloque, /Pantalla activa: Comparador/);
+  assert.match(bloque, /Partido en análisis: Real Madrid vs Barcelona \(La Liga\)/);
+  assert.match(bloque, /Over 2\.5 goles \(Estimación: 82%, Confianza: alta, Muestra: 20 partidos\)/);
+  assert.match(bloque, /Over 1\.5 goles \(Estimación: 90%, Confianza: alta\)/);
+});
+
+test('responderConsulta inyecta el bloque de contexto en el system_instruction de Gemini', async () => {
+  let systemInstructionCapturado = '';
+  const mockFetch = async (url, options) => {
+    const body = JSON.parse(options.body);
+    systemInstructionCapturado = body.system_instruction?.parts?.[0]?.text || '';
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Para este partido, el Over 2.5 goles tiene 82% de respaldo.' }] } }]
+      })
+    };
+  };
+
+  const res = await responderConsulta('¿Qué pick recomiendas?', {
+    apiKey: 'test-api-key',
+    fetchImpl: mockFetch,
+    contexto: {
+      pagina: 'Comparador',
+      partido: 'América vs Chivas',
+      candidatos: [{ mercado: 'Over 2.5 goles', estimacion: 82, confianza: 'alta' }]
+    }
+  });
+
+  assert.equal(res.ok, true);
+  assert.match(systemInstructionCapturado, /América vs Chivas/);
+  assert.match(systemInstructionCapturado, /Over 2\.5 goles/);
+  assert.match(res.respuesta, /Over 2\.5 goles/);
+});
