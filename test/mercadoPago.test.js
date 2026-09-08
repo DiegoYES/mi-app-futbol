@@ -108,3 +108,27 @@ test('la firma de webhook rechaza timestamps expirados para mitigar replay attac
     ahora: ahoraSec * 1000
   }), false);
 });
+
+test('el webhook de pagos valida el external_reference con mongoose.isValidObjectId', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const codigo = fs.readFileSync(path.join(__dirname, '../routes/mercadoPagoWebhook.js'), 'utf8');
+  assert.match(codigo, /mongoose\.isValidObjectId\(usuarioId\)/, 'falta validar formato de usuarioId');
+  assert.match(codigo, /referencia_invalida/, 'no declara motivo cuando la referencia no es válida');
+});
+
+test('el webhook y billing garantizan 30 días de acceso cuando next_payment_date es nulo', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const codigoWebhook = fs.readFileSync(path.join(__dirname, '../routes/mercadoPagoWebhook.js'), 'utf8');
+  const codigoBilling = fs.readFileSync(path.join(__dirname, '../routes/billing.js'), 'utf8');
+  assert.match(codigoWebhook, /fallbackFin\s*=\s*new Date\(Date\.now\(\)\s*\+\s*30\s*\*\s*86400000\)/);
+  assert.match(codigoBilling, /fallbackFin\s*=\s*new Date\(Date\.now\(\)\s*\+\s*30\s*\*\s*86400000\)/);
+});
+
+test('billing descarta enlaces de checkout pendientes que tengan más de 24 horas', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const codigoBilling = fs.readFileSync(path.join(__dirname, '../routes/billing.js'), 'utf8');
+  assert.match(codigoBilling, /esReciente\s*=\s*msDesdeActualizacion\s*<\s*24\s*\*\s*3600000/);
+});

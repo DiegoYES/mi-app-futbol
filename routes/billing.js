@@ -28,10 +28,12 @@ router.get('/status', requireAuth, async (req, res) => {
       if (['authorized', 'cancelled', 'paused'].includes(remota.status)) {
         const proximoCobro = remota.next_payment_date ? new Date(remota.next_payment_date) : null;
         const estado = ({ authorized: 'autorizada', cancelled: 'cancelada', paused: 'pausada' })[remota.status];
+        const fallbackFin = new Date(Date.now() + 30 * 86400000);
+        const periodoFin = proximoCobro || (estado === 'autorizada' ? fallbackFin : null);
         suscripcion.estado = estado;
         suscripcion.periodo_inicio = remota.date_created ? new Date(remota.date_created) : new Date();
-        suscripcion.periodo_fin = estado === 'autorizada' ? proximoCobro : null;
-        suscripcion.proximo_cobro = estado === 'autorizada' ? proximoCobro : null;
+        suscripcion.periodo_fin = periodoFin;
+        suscripcion.proximo_cobro = estado === 'autorizada' ? (proximoCobro || fallbackFin) : null;
         if (estado === 'cancelada') suscripcion.cancelada_en = new Date();
         suscripcion.ultimo_evento_en = new Date();
         suscripcion.ultimo_error = null;
@@ -39,7 +41,7 @@ router.get('/status', requireAuth, async (req, res) => {
 
         if (estado === 'autorizada') {
           req.usuario.plan = 'premium';
-          req.usuario.suscripcion_termina = proximoCobro;
+          req.usuario.suscripcion_termina = periodoFin;
           await req.usuario.save();
         }
       }
@@ -75,7 +77,9 @@ router.post('/subscribe', requireAuth, limiteBilling, async (req, res) => {
     if (existente?.estado === 'autorizada') {
       return res.status(409).json({ error: 'Ya tienes una suscripción activa.', codigo: 'SUSCRIPCION_ACTIVA' });
     }
-    if (existente?.estado === 'pendiente' && existente.checkout_url) {
+    const msDesdeActualizacion = existente ? Date.now() - new Date(existente.updatedAt || existente.createdAt || existente.terminos_aceptados_en || 0).getTime() : Infinity;
+    const esReciente = msDesdeActualizacion < 24 * 3600000;
+    if (existente?.estado === 'pendiente' && existente.checkout_url && esReciente) {
       existente.terminos_aceptados_en = aceptadosEn;
       existente.terminos_version = TERMS_VERSION;
       await existente.save();

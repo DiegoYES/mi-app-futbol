@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const EventoPago = require('../models/EventoPago');
 const Suscripcion = require('../models/Suscripcion');
 const Usuario = require('../models/Usuario');
@@ -50,12 +51,18 @@ router.post('/mercadopago', async (req, res) => {
     }
     const remota = await obtenerSuscripcion(suscripcionId);
     const usuarioId = String(remota.external_reference || '');
+    if (!mongoose.isValidObjectId(usuarioId)) {
+      return res.status(200).json({ recibido: true, ignorado: true, motivo: 'referencia_invalida' });
+    }
     const usuario = await Usuario.findById(usuarioId);
     if (!usuario) return res.status(200).json({ recibido: true, ignorado: true });
 
     const periodoInicio = fecha(remota.date_created);
     const proximoCobro = fecha(remota.next_payment_date);
     const estado = estadoLocal(remota.status);
+    const fallbackFin = new Date(Date.now() + 30 * 86400000);
+    const periodoFin = proximoCobro || (estado === 'autorizada' ? fallbackFin : null);
+
     await Suscripcion.findOneAndUpdate(
       { usuario: usuario._id },
       {
@@ -63,17 +70,17 @@ router.post('/mercadopago', async (req, res) => {
         proveedor_suscripcion_id: String(remota.id),
         estado,
         periodo_inicio: periodoInicio,
-        periodo_fin: proximoCobro,
-        proximo_cobro: estado === 'autorizada' ? proximoCobro : null,
+        periodo_fin: periodoFin,
+        proximo_cobro: estado === 'autorizada' ? (proximoCobro || fallbackFin) : null,
         ultimo_evento_en: new Date(),
         ultimo_error: null
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    if (estado === 'autorizada' && proximoCobro) {
+    if (estado === 'autorizada') {
       usuario.plan = 'premium';
-      usuario.suscripcion_termina = proximoCobro;
+      usuario.suscripcion_termina = periodoFin;
       await usuario.save();
     }
     return res.status(200).json({ recibido: true });
