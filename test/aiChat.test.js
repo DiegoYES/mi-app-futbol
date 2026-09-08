@@ -141,4 +141,8 @@ test('sanitizarRespuesta remueve rutas tecnicas y convierte enlaces markdown en 
   const texto = 'Visita nuestra sección de **[Mejores Picks](/picks.html)** o el Comparador (/comparador.html) para analizar.';
   const limpio = sanitizarRespuesta(texto);
   assert.equal(limpio, 'Visita nuestra sección de **Mejores Picks** o el Comparador para analizar.');
+
+  const textoConUrls = 'Entra a https://data-fut.com/picks.html o revisa /calendario y /picks directamente.';
+  const limpio2 = sanitizarRespuesta(textoConUrls);
+  assert.equal(limpio2, 'Entra a Data-Fut o revisa el Calendario y la sección de Mejores Picks directamente.');
 });

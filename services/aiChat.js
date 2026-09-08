@@ -41,10 +41,22 @@ function sanitizarRespuesta(texto) {
   if (!texto) return '';
   return texto
     .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/\s*\(\/[a-zA-Z0-9_\-\/]+\.html\)/g, '')
-    .replace(/\/[a-zA-Z0-9_\-\/]+\.html/g, '')
+    .replace(/https?:\/\/(?:www\.)?data-fut\.com(?:\/[^\s)]*)?/gi, 'Data-Fut')
+    .replace(/https?:\/\/[^\s)]+/gi, '')
+    .replace(/\b(?:www\.)?data-fut\.com\b/gi, 'Data-Fut')
+    .replace(/\s*\(\/[a-zA-Z0-9_\-\/]+\.html\)/gi, '')
+    .replace(/\/[a-zA-Z0-9_\-\/]+\.html/gi, '')
+    .replace(/(^|\s)\/(?:picks|mejores-picks)\b/gi, '$1la sección de Mejores Picks')
+    .replace(/(^|\s)\/(?:calendario)\b/gi, '$1el Calendario')
+    .replace(/(^|\s)\/(?:comparador)\b/gi, '$1el Comparador')
+    .replace(/(^|\s)\/(?:boletas|mis-boletas)\b/gi, '$1Mis Boletas')
+    .replace(/(^|\s)\/(?:inicio)\b/gi, '$1Inicio')
+    .replace(/(^|\s)\/(?:suscripcion)\b/gi, '$1Suscripción')
+    .replace(/\s*\(\/[a-zA-Z0-9_\-]+\)/g, '')
     .replace(/\*{3,}/g, '**')
     .replace(/[ \t]{2,}/g, ' ')
+    .replace(/\s+\./g, '.')
+    .replace(/\s+,/g, ',')
     .trim();
 }
 

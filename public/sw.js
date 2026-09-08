@@ -1,4 +1,4 @@
-const CACHE_NAME = 'datafut-pwa-v19';
+const CACHE_NAME = 'datafut-pwa-v20';
 const STATIC_ASSETS = [
   '/brand-mark.svg',
   '/brand-social-avatar.png',
@@ -45,11 +45,12 @@ self.addEventListener('fetch', event => {
     return;
   }
 
-  // Network-first para páginas HTML y scripts JS (para asegurar código siempre fresco en móviles)
+  // Network-first para páginas HTML, scripts JS y estilos CSS (para asegurar código y maquetación siempre fresca)
   if (
     event.request.mode === 'navigate' ||
     url.pathname.endsWith('.html') ||
     url.pathname.endsWith('.js') ||
+    url.pathname.endsWith('.css') ||
     url.pathname === '/'
   ) {
     event.respondWith(

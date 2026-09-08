@@ -224,17 +224,40 @@
       toggleChat(true);
     }
 
-    // Evitar encimarse con el widget flotante de Mis picks
-    function verificarPicksWidget() {
-      if (document.querySelector('.global-picks-widget') || document.getElementById('global-picks-trigger')) {
+    // Evitar encimarse con el widget flotante de Mis picks o cualquier elemento inferior
+    function reposicionarLauncher() {
+      const btn = document.getElementById('asistente-launcher-btn');
+      if (!btn) return;
+
+      const esMovil = window.innerWidth <= 600;
+      const baseBottom = esMovil ? 72 : 84;
+      const baseRight = esMovil ? 14 : 20;
+
+      const picks = document.querySelector('.global-picks-widget') || document.getElementById('global-picks-trigger');
+      if (picks) {
         document.body.classList.add('has-global-picks');
+        const rect = picks.getBoundingClientRect();
+        if (rect.height > 0 && rect.top > 0) {
+          const distFromBottom = Math.round(window.innerHeight - rect.top);
+          const targetBottom = Math.max(baseBottom, distFromBottom + 14);
+          btn.style.setProperty('bottom', `${targetBottom}px`, 'important');
+          btn.style.setProperty('right', `${baseRight}px`, 'important');
+          return;
+        }
       }
+
+      btn.style.setProperty('bottom', `${baseBottom}px`, 'important');
+      btn.style.setProperty('right', `${baseRight}px`, 'important');
     }
-    verificarPicksWidget();
-    window.addEventListener('futbol:usuario-cargado', verificarPicksWidget);
-    window.addEventListener('futbol:picks-actualizados', verificarPicksWidget);
+
+    reposicionarLauncher();
+    window.addEventListener('resize', reposicionarLauncher);
+    window.addEventListener('scroll', reposicionarLauncher, { passive: true });
+    window.addEventListener('futbol:usuario-cargado', reposicionarLauncher);
+    window.addEventListener('futbol:picks-actualizados', reposicionarLauncher);
+    [200, 600, 1200, 2500, 5000].forEach(ms => setTimeout(reposicionarLauncher, ms));
     if (typeof MutationObserver !== 'undefined') {
-      const picksObserver = new MutationObserver(verificarPicksWidget);
+      const picksObserver = new MutationObserver(reposicionarLauncher);
       picksObserver.observe(document.body, { childList: true, subtree: true });
     }
   }

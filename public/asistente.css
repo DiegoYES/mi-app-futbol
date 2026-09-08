@@ -1,8 +1,8 @@
 /* Widget Flotante del Asistente de IA (FutBot) */
 .asistente-launcher {
   position: fixed;
-  bottom: 84px;
-  right: 20px;
+  bottom: 84px !important;
+  right: 20px !important;
   width: 54px;
   height: 54px;
   border-radius: 50%;
@@ -312,8 +312,8 @@
 
 @media (max-width: 600px) {
   .asistente-launcher {
-    bottom: 72px;
-    right: 14px;
+    bottom: 72px !important;
+    right: 14px !important;
     width: 48px;
     height: 48px;
   }
