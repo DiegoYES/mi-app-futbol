@@ -299,3 +299,17 @@ test('la ficha de jugador desglosa faltas y tarjetas por partido y contextualiza
   assert.match(ruta, /totales\.tarjetas = totales\.amarillas \+ totales\.rojas/);
   assert.match(ruta, /faltas_recibidas/);
 });
+
+test('FutBot y Mis picks tienen exclusión mutua limpia y no causan bucles de MutationObserver', () => {
+  const asistenteJs = fs.readFileSync(path.join(__dirname, '..', 'public', 'asistente.js'), 'utf8');
+  const asistenteCss = fs.readFileSync(path.join(__dirname, '..', 'public', 'asistente.css'), 'utf8');
+
+  // No debe observar subtree o attributeFilter en document.body para evitar bucle infinito y bloqueo de CPU
+  assert.ok(!asistenteJs.includes("observe(document.body, { childList: true, subtree: true"), 'No debe tener MutationObserver recursivo en subtree de document.body');
+  assert.ok(!asistenteJs.includes("attributeFilter: ['class']"), 'No debe observar mutaciones de clases en document.body');
+
+  // En CSS debe ocultar el lanzador con exclusión mutua limpia
+  assert.match(asistenteCss, /body\.global-picks-open\s+#asistente-launcher-btn/);
+  assert.match(asistenteCss, /body\.asistente-chat-abierto\s+#asistente-launcher-btn/);
+});
+

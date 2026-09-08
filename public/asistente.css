@@ -1,8 +1,8 @@
 /* Widget Flotante del Asistente de IA (FutBot) */
 .asistente-launcher {
   position: fixed;
-  bottom: 84px !important;
-  right: 20px !important;
+  bottom: 84px;
+  right: 20px;
   width: 54px;
   height: 54px;
   border-radius: 50%;
@@ -17,6 +17,12 @@
   z-index: 9990;
   transition: transform 0.2s ease, box-shadow 0.2s ease, bottom 0.25s ease;
   outline: none;
+}
+
+/* Ocultar el lanzador cuando el chat de FutBot o el panel de boletas estén abiertos */
+body.global-picks-open #asistente-launcher-btn,
+body.asistente-chat-abierto #asistente-launcher-btn {
+  display: none !important;
 }
 
 .asistente-launcher:hover {
@@ -380,8 +386,8 @@ body.asistente-chat-abierto .global-picks-widget {
 
 @media (max-width: 600px) {
   .asistente-launcher {
-    bottom: 72px !important;
-    right: 14px !important;
+    bottom: 72px;
+    right: 14px;
     width: 48px;
     height: 48px;
   }

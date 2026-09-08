@@ -331,51 +331,32 @@
       toggleChat(true);
     }
 
-    // Evitar encimarse con el widget flotante de Mis picks o cualquier elemento inferior
+    // Ajustar posición inferior según la presencia del botón de Mis picks
     function reposicionarLauncher() {
       const btn = document.getElementById('asistente-launcher-btn');
       if (!btn) return;
 
-      // Si el panel de Mis boletas está abierto o el chat de FutBot está activo, ocultar lanzador
-      if (document.body.classList.contains('global-picks-open') || document.body.classList.contains('asistente-chat-abierto')) {
-        btn.style.setProperty('display', 'none', 'important');
-        return;
-      }
-      btn.style.removeProperty('display');
-
       const esMovil = window.innerWidth <= 600;
-      const baseRight = esMovil ? 14 : 20;
+      const baseRight = esMovil ? '14px' : '20px';
+      btn.style.setProperty('right', baseRight);
 
       const trigger = document.getElementById('global-picks-trigger');
-      if (trigger && trigger.offsetParent !== null) {
-        document.body.classList.add('has-global-picks');
-        const rect = trigger.getBoundingClientRect();
-        if (rect.height > 0 && rect.top > 0) {
-          const distFromBottom = Math.round(window.innerHeight - rect.top);
-          const targetBottom = distFromBottom + 12;
-          btn.style.setProperty('bottom', `${targetBottom}px`, 'important');
-          btn.style.setProperty('right', `${baseRight}px`, 'important');
-          return;
-        }
-      }
+      const tienePicks = trigger && trigger.offsetParent !== null;
 
-      // Si no hay botón de picks presente o visible en pantalla, ubicarlo en la esquina estándar
-      const soloBottom = esMovil ? 16 : 20;
-      btn.style.setProperty('bottom', `${soloBottom}px`, 'important');
-      btn.style.setProperty('right', `${baseRight}px`, 'important');
+      if (tienePicks) {
+        btn.style.setProperty('bottom', esMovil ? '72px' : '84px');
+      } else {
+        btn.style.setProperty('bottom', esMovil ? '16px' : '20px');
+      }
     }
 
     reposicionarLauncher();
-    window.addEventListener('resize', reposicionarLauncher);
-    window.addEventListener('scroll', reposicionarLauncher, { passive: true });
+    window.addEventListener('resize', reposicionarLauncher, { passive: true });
     window.addEventListener('futbol:usuario-cargado', reposicionarLauncher);
     window.addEventListener('futbol:picks-actualizados', reposicionarLauncher);
     window.addEventListener('futbol:picks-panel-cerrado', reposicionarLauncher);
-    [200, 600, 1200, 2500, 5000].forEach(ms => setTimeout(reposicionarLauncher, ms));
-    if (typeof MutationObserver !== 'undefined') {
-      const picksObserver = new MutationObserver(reposicionarLauncher);
-      picksObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
-    }
+    setTimeout(reposicionarLauncher, 300);
+    setTimeout(reposicionarLauncher, 1200);
   }
 
   if (document.readyState === 'loading') {
