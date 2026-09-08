@@ -9,51 +9,130 @@
   <link rel="stylesheet" href="/styles.css">
   <link rel="stylesheet" href="/catalog.css">
   <style>
-    .terms-panel{max-width:920px}.terms-panel h2{margin-top:30px}.terms-panel li,.terms-panel p{color:var(--muted);line-height:1.75}.terms-panel strong{color:var(--ink)}.terms-meta{padding:12px 15px;border:1px solid var(--line);border-radius:10px;background:var(--surface-soft);font-size:.75rem}
+    .terms-panel { max-width: 920px; }
+    .terms-panel h2 { margin-top: 36px; font-size: 1.25rem; color: var(--ink); border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    .terms-panel h3 { margin-top: 20px; font-size: 1rem; color: var(--ink); }
+    .terms-panel li, .terms-panel p { color: var(--muted); line-height: 1.75; font-size: 0.88rem; }
+    .terms-panel strong { color: var(--ink); }
+    .terms-panel ul { padding-left: 20px; margin: 12px 0; }
+    .terms-meta { padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-soft); font-size: 0.78rem; margin-bottom: 24px; }
+    .terms-highlight { padding: 16px 20px; border-left: 4px solid var(--green); border-radius: 0 12px 12px 0; background: rgba(84, 227, 142, 0.05); margin: 18px 0; }
+    .terms-highlight p { margin: 0; color: var(--ink); font-size: 0.88rem; line-height: 1.6; }
+    .terms-toc { display: flex; flex-wrap: wrap; gap: 8px 14px; padding: 14px 18px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); margin-bottom: 26px; }
+    .terms-toc a { color: var(--muted); font-size: 0.76rem; font-weight: 700; text-decoration: none; }
+    .terms-toc a:hover { color: var(--green); }
   </style>
 </head>
 <body>
 <main class="catalog">
-  <nav class="catalog-nav"><a href="/">← Inicio</a><a href="/legal.html">Aviso legal y fuentes</a></nav>
-  <header class="catalog-head"><div><p class="eyebrow">Condiciones del servicio</p><h1>Términos y <span>Condiciones.</span></h1><p>Reglas de acceso, prueba gratuita, membresía y uso responsable de Data-Fut.</p></div></header>
+  <nav class="catalog-nav">
+    <a href="/">← Inicio</a>
+    <a href="/privacidad.html">Aviso de Privacidad</a>
+    <a href="/legal.html">Aviso legal y fuentes</a>
+  </nav>
+
+  <header class="catalog-head">
+    <div>
+      <p class="eyebrow">Condiciones del Servicio</p>
+      <h1>Términos y <span>Condiciones.</span></h1>
+      <p>Reglas de acceso, prueba gratuita, membresía, uso responsable y derechos en Data-Fut.</p>
+    </div>
+  </header>
+
   <section class="competition-panel terms-panel">
-    <p class="terms-meta"><strong>Versión vigente:</strong> 8 de agosto de 2026.</p>
+    <div class="terms-meta">
+      <strong>Versión vigente:</strong> 8 de agosto de 2026. &nbsp;|&nbsp; <strong>Última revisión:</strong> 8 de septiembre de 2026. &nbsp;|&nbsp; <strong>Ámbito:</strong> Plataforma Data-Fut.
+    </div>
 
-    <h2>1. Aceptación y elegibilidad</h2>
-    <p>Al crear una cuenta, utilizar Data-Fut o contratar una membresía aceptas estas condiciones. El servicio es exclusivamente para personas mayores de 18 años. Si no estás de acuerdo, no debes utilizarlo.</p>
+    <div class="terms-highlight">
+      <p><strong>Aviso esencial:</strong> Data-Fut es una plataforma de análisis estadístico e inteligencia deportiva independiente con fines estrictamente informativos y de entretenimiento. <strong>Data-Fut no es una casa de apuestas, no recibe, no intermedia ni ejecuta apuestas deportivas, ni administra fondos de juego de los usuarios, ni proporciona asesoría financiera o de inversión.</strong></p>
+    </div>
 
-    <h2>2. Cuenta y seguridad</h2>
-    <p>Debes proporcionar información correcta, mantener tus credenciales seguras y avisarnos si detectas un acceso no autorizado. La cuenta es personal y no debe venderse, compartirse ni transferirse.</p>
+    <nav class="terms-toc" aria-label="Índice de Términos y Condiciones">
+      <a href="#elegibilidad">1. Elegibilidad (+18)</a>
+      <a href="#naturaleza">2. Naturaleza del servicio</a>
+      <a href="#juego-responsable">3. Juego responsable</a>
+      <a href="#cuenta">4. Cuentas y seguridad</a>
+      <a href="#prueba-gratuita">5. Prueba gratuita (7 días)</a>
+      <a href="#membresia">6. Membresía y cobros</a>
+      <a href="#datos-deportivos">7. Datos y cuotas deportivas</a>
+      <a href="#futbot">8. Copiloto analítico (FutBot)</a>
+      <a href="#conductas-prohibidas">9. Usos prohibidos</a>
+      <a href="#propiedad-intelectual">10. Propiedad intelectual</a>
+      <a href="#responsabilidad">11. Responsabilidad e indemnidad</a>
+      <a href="#legislacion">12. Ley y resolución</a>
+    </nav>
 
-    <h2>3. Una prueba gratuita por persona</h2>
-    <p><strong>Cada persona puede utilizar una sola prueba gratuita de 7 días.</strong> No está permitido crear, solicitar o utilizar cuentas adicionales para repetir, extender o eludir el límite de la prueba, incluso mediante otros correos, dispositivos o redes.</p>
-    <p>Podemos limitar una prueba cuando existan indicadores técnicos razonables de uso duplicado. Una coincidencia de red o dispositivo no demuestra por sí sola que dos cuentas pertenezcan a la misma persona; si varias personas comparten conexión y una prueba fue limitada por error, pueden solicitar una revisión.</p>
+    <h2 id="elegibilidad">1. Aceptación y Elegibilidad (Mayoría de Edad)</h2>
+    <p>Al registrar una cuenta, navegar en el sitio web, interactuar con nuestras herramientas o contratar una suscripción, aceptas obligarte legalmente por estos Términos y Condiciones, así como por nuestro <a href="/privacidad.html">Aviso de Privacidad</a>.</p>
+    <p><strong>El servicio es exclusivo para personas mayores de 18 años</strong> que cuenten con plena capacidad legal para obligarse bajo las leyes de su residencia. Si no cumples con la mayoría de edad legal o no estás de acuerdo con la totalidad de estos términos, debes abstenerte de registrarte y cesar el uso de Data-Fut de inmediato.</p>
 
-    <h2>4. Membresía, cobro y cancelación</h2>
+    <h2 id="naturaleza">2. Naturaleza del Servicio</h2>
+    <p>Data-Fut proporciona herramientas tecnológicas avanzadas de visualización estadística, comparación entre equipos de fútbol, explorador de mercados, cálculo de frecuencias históricas y organización de boletas personales de seguimiento.</p>
+    <p>Los datos, porcentajes y frecuencias expuestos corresponden al comportamiento numérico pasado de partidos, clubes y competiciones. <strong>En ningún caso constituyen certezas, probabilidades garantizadas, recomendaciones financieras ni invitaciones vinculantes a apostar.</strong> Toda decisión tomada con base en la información del sitio es responsabilidad única y exclusiva del usuario.</p>
+
+    <h2 id="juego-responsable">3. Compromiso con el Juego Responsable</h2>
+    <p>Fomentamos el uso sano, recreativo y consciente de nuestras herramientas de análisis. Recomendamos enfáticamente a todas las personas usuarias:</p>
     <ul>
-      <li>La membresía cuesta $70 MXN al mes, IVA incluido, salvo que antes del pago se muestre una promoción o precio diferente.</li>
-      <li>El cobro es recurrente y se procesa mediante Mercado Pago.</li>
-      <li>Puedes cancelar la renovación sin penalización. Conservarás el acceso hasta finalizar el periodo ya pagado.</li>
-      <li>Cancelar evita cobros futuros; no devuelve automáticamente importes correspondientes a periodos ya iniciados, sin perjuicio de los derechos obligatorios que reconozca la legislación aplicable.</li>
+      <li>Establecer presupuestos estrictos y límites que no comprometan su bienestar económico personal o familiar.</li>
+      <li>Nunca apostar dinero que no se esté en plena disposición de perder.</li>
+      <li>No concebir las apuestas o los análisis deportivos como una fuente de ingresos, solución a dificultades financieras o alternativa al trabajo productivo.</li>
+      <li>Monitorear el tiempo dedicado a la plataforma y tomar descansos regulares.</li>
+    </ul>
+    <p>Si consideras que tú o alguien cercano experimenta problemas de control o ludopatía, busca apoyo profesional y confidencial en recursos especializados (en México: <em>Comisión Nacional contra las Adicciones - Línea de la Vida: 800 911 2000</em> o <em>Jugadores Anónimos</em>).</p>
+
+    <h2 id="cuenta">4. Cuenta, Credenciales y Seguridad</h2>
+    <p>Para acceder a funciones personalizadas, debes registrarte proporcionando una dirección de correo electrónico válida. Al hacerlo, asumes los siguientes compromisos:</p>
+    <ul>
+      <li>Proporcionar información verídica y mantenerla actualizada.</li>
+      <li>Mantener la estricta confidencialidad de tu contraseña, la cual se resguarda cifrada de forma irreversible.</li>
+      <li>La cuenta es personal, única e intransferible. Está prohibido ceder, prestar, vender, arrendar o transferir credenciales de acceso a terceras personas.</li>
+      <li>Notificar inmediatamente a través de nuestro canal de soporte ante cualquier sospecha razonable de acceso indebido o vulneración de seguridad.</li>
     </ul>
 
-    <h2>5. Datos deportivos y disponibilidad</h2>
-    <p>La información procede de proveedores externos y puede contener retrasos, correcciones u omisiones. No garantizamos que todos los partidos, ligas o mercados tengan la misma cobertura ni que el servicio permanezca disponible sin interrupciones.</p>
+    <h2 id="prueba-gratuita">5. Una Prueba Gratuita por Persona y Prevención de Abusos</h2>
+    <p><strong>Cada persona física puede utilizar una sola prueba gratuita de 7 días.</strong> No está permitido crear, solicitar o utilizar cuentas adicionales para repetir, extender o eludir el límite de la prueba, incluso mediante otros correos, dispositivos o redes.</p>
+    <p>Data-Fut implementa sistemas automatizados y defensas de seguridad para salvaguardar la sustentabilidad del servicio e identificar patrones de creación recurrente o fraudulenta de cuentas de prueba. Podemos suspender o limitar el acceso a la prueba gratuita cuando existan indicadores técnicos razonables de uso duplicado o multi-cuentas organizadas.</p>
+    <p>Reconocemos que una coincidencia de red (por ejemplo, redes compartidas en universidades, hogares o espacios de trabajo) no demuestra por sí sola que dos cuentas pertenezcan a la misma persona física. Si varias personas comparten conexión y una prueba fue limitada de forma errónea, pueden solicitar una revisión manual a través de nuestro <a href="/sugerencias.html">buzón de soporte</a>.</p>
 
-    <h2>6. Uso informativo y responsable</h2>
-    <p>Data-Fut ofrece herramientas estadísticas y de organización. No garantiza resultados, no constituye asesoría financiera y no recibe ni ejecuta apuestas. Cualquier decisión tomada a partir de la información del servicio es responsabilidad de la persona usuaria.</p>
+    <h2 id="membresia">6. Membresía, Cobros Recurrentes y Cancelación</h2>
+    <ul>
+      <li><strong>Tarifa y facturación:</strong> La suscripción mensual Premium a Data-Fut tiene un costo vigente de $70 MXN (pesos mexicanos) al mes, con el Impuesto al Valor Agregado (IVA) incluido, salvo que antes de iniciar el pago se muestre expresamente una promoción o tarifa diferencial.</li>
+      <li><strong>Procesamiento seguro:</strong> El cobro se realiza de forma periódica y automatizada a través de la plataforma certificada <strong>Mercado Pago</strong>. Data-Fut nunca solicita ni almacena datos bancarios ni códigos de seguridad de tarjetas.</li>
+      <li><strong>Renovación automática:</strong> Salvo que manifiestes la cancelación antes del fin del ciclo de facturación, la membresía se renovará mensualmente en la fecha de corte indicada en tu cuenta.</li>
+      <li><strong>Cancelación sin penalizaciones:</strong> Puedes cancelar la renovación automática en cualquier momento desde la sección de <a href="/suscripcion.html">Suscripción</a> con un solo clic. Conservarás el acceso Premium completo hasta que termine el periodo mensual ya pagado.</li>
+      <li><strong>Política de no reembolsos retroactivos:</strong> La cancelación voluntaria suspende cobros posteriores, pero no genera reembolsos retroactivos proporcionales por periodos que ya hubiesen comenzado, salvo por fallas técnicas graves imputables directamente a Data-Fut o en los supuestos irrenunciables previstos por la legislación de protección al consumidor aplicable.</li>
+    </ul>
 
-    <h2>7. Uso prohibido</h2>
-    <p>No puedes intentar vulnerar el servicio, evadir controles de acceso, automatizar extracciones abusivas, revender los datos o utilizar Data-Fut de forma ilegal. Podemos limitar o suspender cuentas ante incumplimientos, fraude, abuso o riesgos para la plataforma.</p>
+    <h2 id="datos-deportivos">7. Datos Deportivos y Disponibilidad de Proveedores Externos</h2>
+    <p>La información sobre calendarios, marcadores, estadísticas históricas, alineaciones y cuotas referenciales proviene de proveedores externos de datos (API-SPORTS/API-Football) y registros públicos deportivos. Por su propia naturaleza, los datos pueden presentar demoras de transmisión, ajustes posteriores de federaciones o discrepancias con casas de apuestas particulares.</p>
+    <p>Data-Fut no garantiza que todos los eventos, ligas o mercados cuenten con la misma profundidad de cobertura, ni que la plataforma opere de manera ininterrumpida o libre de incidencias fuera de nuestro control razonable.</p>
 
-    <h2>8. Propiedad intelectual y fuentes</h2>
-    <p>Data-Fut es un producto independiente. Los derechos sobre nombres, marcas, escudos, fotografías y datos de terceros pertenecen a sus titulares. Consulta el <a href="/legal.html">Aviso legal y fuentes</a> para conocer más.</p>
+    <h2 id="futbot">8. Copiloto Analítico Inteligente (FutBot)</h2>
+    <p>El asistente interactivo FutBot es un copiloto analítico basado en modelos de inteligencia artificial diseñado para resumir tendencias, responder dudas de navegación y contrastar las estadísticas disponibles en el sistema.</p>
+    <p>Las respuestas generadas por FutBot son resúmenes analíticos generados automáticamente. <strong>No constituyen predicciones infalibles ni certezas de ningún tipo.</strong> Es responsabilidad exclusiva del usuario contrastar los números en las fichas del partido y adoptar un criterio propio y ponderado.</p>
 
-    <h2>9. Cambios en estas condiciones</h2>
-    <p>Podemos actualizar estas condiciones cuando cambien el servicio, sus precios o sus obligaciones. Mostraremos la fecha de la versión vigente y solicitaremos una nueva aceptación cuando el cambio lo requiera.</p>
+    <h2 id="conductas-prohibidas">9. Usos Prohibidos y Conductas Sancionables</h2>
+    <p>Queda estrictamente prohibido y será motivo de rescisión inmediata del servicio sin derecho a indemnización:</p>
+    <ul>
+      <li>Realizar extracción masiva no autorizada de información, raspado web (<em>scraping</em>), indexación automatizada no autorizada o bots sobre la plataforma o sus APIs.</li>
+      <li>Intentar eludir controles de autenticación, realizar pruebas de penetración no coordinadas, ataques de denegación de servicio (DoS/DDoS) o saturación intencional de la infraestructura.</li>
+      <li>Desensamblar, descompilar, realizar ingeniería inversa o crear trabajos derivados de las herramientas o algoritmos de Data-Fut.</li>
+      <li>Revender, sublicenciar, comercializar o redistribuir los datos estadísticos, reportes o accesos a terceros sin autorización previa por escrito.</li>
+      <li>Utilizar la plataforma para actividades ilícitas, fraudulentas o contrarias al orden público.</li>
+    </ul>
 
-    <h2>10. Contacto y revisiones</h2>
-    <p>Para reportar una limitación incorrecta de prueba, un problema de cobro o una inconsistencia, utiliza el <a href="/sugerencias.html">buzón de soporte</a>.</p>
+    <h2 id="propiedad-intelectual">10. Propiedad Intelectual y Uso Nominativo</h2>
+    <p>El diseño del software, arquitectura, código fuente, interfaz visual, textos, logotipos y marca Data-Fut son propiedad exclusiva de Data-Fut y están protegidos por las leyes de propiedad intelectual e industrial vigentes.</p>
+    <p>Los nombres de competiciones, federaciones, clubes, jugadores y los escudos o imágenes distintivas pertenecen a sus legítimos titulares. Su inclusión en Data-Fut se realiza al amparo del derecho de información y uso nominativo/descriptivo con fines estrictamente identificativos, sin implicar afiliación, patrocinio o respaldo comercial alguno. Para mayor detalle, consulta nuestro <a href="/legal.html">Aviso legal y fuentes</a>.</p>
+
+    <h2 id="responsabilidad">11. Limitación de Responsabilidad e Indemnidad</h2>
+    <p>En la máxima medida permitida por la legislación aplicable, Data-Fut, sus desarrolladores, directivos y colaboradores no serán responsables por daños directos, indirectos, incidentales, consecuenciales o pérdidas económicas (incluidas, a título enunciativo, pérdidas en apuestas deportivas, lucro cesante o pérdida de oportunidades) derivados del uso o la imposibilidad de uso de la plataforma o de la exactitud de sus datos.</p>
+    <p>El usuario acepta indemnizar y mantener en paz y a salvo a Data-Fut ante cualquier reclamación, sanción o gasto que resulte del incumplimiento comprobable de estos términos por parte del usuario.</p>
+
+    <h2 id="legislacion">12. Modificaciones, Legislación y Jurisdicción Aplicable</h2>
+    <p>Podemos modificar estos términos periódicamente para adaptarlos a mejoras técnicas, nuevos módulos o disposiciones legales. En caso de cambios sustanciales, publicaremos la versión actualizada señalando su fecha de vigencia.</p>
+    <p>Estos Términos y Condiciones se rigen e interpretan de conformidad con las leyes vigentes en los Estados Unidos Mexicanos. Para cualquier controversia que no pueda resolverse de común acuerdo mediante nuestro <a href="/sugerencias.html">canal de soporte</a>, las partes se someten a la jurisdicción de los tribunales competentes de la Ciudad de México, renunciando a cualquier otro fuero que pudiera corresponderles por razón de sus domicilios presentes o futuros.</p>
   </section>
 </main>
 </body>

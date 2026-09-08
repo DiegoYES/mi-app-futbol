@@ -667,7 +667,7 @@
     const pie = document.createElement('footer');
     pie.id = 'site-legal-footer';
     pie.className = 'site-legal-footer';
-    pie.innerHTML = `<div class="site-social-links" data-social-links hidden></div><p><strong>Sitio independiente.</strong> No está afiliado, patrocinado ni respaldado por las ligas, clubes, jugadores o casas mostradas. Nombres, marcas, escudos y fotografías pertenecen a sus respectivos titulares y se usan únicamente para identificación e información estadística.</p><p>Las estimaciones son frecuencias históricas, no garantizan resultados ni constituyen asesoría financiera. Verifica mercados y juega responsablemente. Sólo para mayores de 18 años. <a href="/legal.html">Aviso legal y fuentes</a>.</p>`;
+    pie.innerHTML = `<div class="site-social-links" data-social-links hidden></div><p><strong>Sitio independiente.</strong> No está afiliado, patrocinado ni respaldado por las ligas, clubes, jugadores o casas mostradas. Nombres, marcas, escudos y fotografías pertenecen a sus respectivos titulares y se usan únicamente para identificación e información estadística.</p><p>Las estimaciones son frecuencias históricas, no garantizan resultados ni constituyen asesoría financiera. Verifica mercados y juega responsablemente. Sólo para mayores de 18 años. <a href="/legal.html">Aviso legal y fuentes</a> · <a href="/terminos.html">Términos y Condiciones</a> · <a href="/privacidad.html">Aviso de Privacidad</a>.</p>`;
     document.body.appendChild(pie);
     cargarRedesSociales();
   }

@@ -313,3 +313,35 @@ test('FutBot y Mis picks tienen exclusión mutua limpia y no causan bucles de Mu
   assert.match(asistenteCss, /body\.asistente-chat-abierto\s+#asistente-launcher-btn/);
 });
 
+test('Aviso de Privacidad y Términos y Condiciones están completos y enlazados en toda la plataforma', () => {
+  const privacidad = fs.readFileSync(path.join(__dirname, '..', 'public', 'privacidad.html'), 'utf8');
+  const terminos = fs.readFileSync(path.join(__dirname, '..', 'public', 'terminos.html'), 'utf8');
+  const landing = fs.readFileSync(path.join(__dirname, '..', 'public', 'landing.html'), 'utf8');
+  const login = fs.readFileSync(path.join(__dirname, '..', 'public', 'login.html'), 'utf8');
+  const authClient = fs.readFileSync(path.join(__dirname, '..', 'public', 'auth-client.js'), 'utf8');
+  const config = fs.readFileSync(path.join(__dirname, '..', 'public', 'configuracion.html'), 'utf8');
+
+  // Privacidad detalla qué datos se tratan, que no se guardan tarjetas y derechos ARCO
+  assert.match(privacidad, /Aviso de Privacidad/);
+  assert.match(privacidad, /No vendemos, no alquilamos y no comercializamos/);
+  assert.match(privacidad, /bcrypt/);
+  assert.match(privacidad, /NO recopila, no procesa, no almacena y no tiene acceso/);
+  assert.match(privacidad, /Mercado Pago/);
+  assert.match(privacidad, /Derechos ARCO/);
+  assert.match(privacidad, /18 años/);
+
+  // Términos declara naturaleza de servicio, no casa de apuestas y juego responsable
+  assert.match(terminos, /Términos y Condiciones/);
+  assert.match(terminos, /Data-Fut no es una casa de apuestas/);
+  assert.match(terminos, /Juego Responsable/);
+  assert.match(terminos, /No está permitido crear, solicitar o utilizar cuentas adicionales/);
+  assert.match(terminos, /href="\/privacidad\.html"/);
+
+  // Enlaces en puntos clave
+  assert.match(landing, /href="\/privacidad\.html"/);
+  assert.match(login, /href="\/privacidad\.html"/);
+  assert.match(authClient, /href="\/privacidad\.html"/);
+  assert.match(config, /href="\/privacidad\.html"/);
+});
+
+
