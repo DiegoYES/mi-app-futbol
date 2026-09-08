@@ -127,10 +127,83 @@
       }
     }
 
+    function escaparHTML(str) {
+      return String(str || '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    function procesarInlineMarkdown(texto) {
+      let s = escaparHTML(texto);
+      s = s.replace(/`([^`]+)`/g, '<code class="asistente-inline-code">$1</code>');
+      s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      s = s.replace(/(^|[^*])\*([^*]+)\*([^*]|$)/g, '$1<em>$2</em>$3');
+      return s;
+    }
+
+    function formatearMarkdownBot(texto) {
+      if (!texto) return '';
+      const lineas = String(texto).split(/\r?\n/);
+      const resultado = [];
+      let enLista = false;
+      let bufferParrafo = [];
+
+      function volcarParrafo() {
+        if (bufferParrafo.length > 0) {
+          resultado.push(`<p>${bufferParrafo.join('<br>')}</p>`);
+          bufferParrafo = [];
+        }
+      }
+
+      function cerrarLista() {
+        if (enLista) {
+          resultado.push('</ul>');
+          enLista = false;
+        }
+      }
+
+      for (let i = 0; i < lineas.length; i++) {
+        const rawLinea = lineas[i];
+        const linea = rawLinea.trim();
+
+        if (!linea) {
+          volcarParrafo();
+          cerrarLista();
+          continue;
+        }
+
+        const matchLista = linea.match(/^(?:[-*•]|\d+\.)\s+(.+)$/);
+        if (matchLista) {
+          volcarParrafo();
+          if (!enLista) {
+            resultado.push('<ul class="asistente-bullet-list">');
+            enLista = true;
+          }
+          const contenido = procesarInlineMarkdown(matchLista[1]);
+          resultado.push(`<li>${contenido}</li>`);
+        } else {
+          cerrarLista();
+          bufferParrafo.push(procesarInlineMarkdown(linea));
+        }
+      }
+
+      volcarParrafo();
+      cerrarLista();
+
+      return resultado.join('');
+    }
+
     function renderizarMensaje(texto, remitente) {
       const div = document.createElement('div');
       div.className = `asistente-msg asistente-msg-${remitente}`;
-      div.textContent = texto;
+      if (remitente === 'bot') {
+        div.innerHTML = formatearMarkdownBot(texto);
+      } else {
+        div.textContent = texto;
+      }
       messagesList.appendChild(div);
       desplazarAbajo();
       return div;

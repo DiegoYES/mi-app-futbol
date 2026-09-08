@@ -13,7 +13,7 @@
   <link rel="apple-touch-icon" href="/brand-mark.svg">
   <meta name="theme-color" content="#07100d">
   <link rel="stylesheet" href="/styles.css">
-  <link rel="stylesheet" href="/asistente.css?v=20260908-v4">
+  <link rel="stylesheet" href="/asistente.css?v=20260908-format">
   <link rel="stylesheet" href="/catalog.css">
   <script src="/auth-client.js?v=20260827-v11"></script>
   <script src="/user-library.js?v=20260902-v12"></script>
@@ -85,6 +85,6 @@ async function cargar(){if(!Number.isInteger(TEAM)||!Number.isInteger(LEAGUE)){d
 document.addEventListener('click',event=>{const b=event.target.closest('[data-team-match-favorite]');if(!b)return;FutbolLibrary.alternarPartidoFavorito({api_id:Number(b.dataset.teamMatchFavorite),liga_id:Number(b.dataset.league),fecha:b.dataset.date,local:{id:Number(b.dataset.localId),nombre:b.dataset.localName},visitante:{id:Number(b.dataset.awayId),nombre:b.dataset.awayName}});if(datosActuales)pintar(datosActuales)});
 document.addEventListener('DOMContentLoaded',async()=>{const img=document.getElementById('team-logo');img.src=`/api/equipos/${TEAM}/escudo`;img.hidden=false;document.getElementById('format').value=formatoFrecuencia;document.getElementById('favorite-team').onclick=()=>{const b=document.getElementById('favorite-team');FutbolLibrary.alternarFavorito({id:TEAM,league:LEAGUE,nombre:b.dataset.nombre||`Equipo ${TEAM}`,competicion:b.dataset.competicion});b.textContent=FutbolLibrary.esFavorito(TEAM,LEAGUE)?'★ En favoritos':'☆ Guardar favorito';b.classList.toggle('active',FutbolLibrary.esFavorito(TEAM,LEAGUE))};for(const id of ['scope','limit','period'])document.getElementById(id).onchange=cargar;document.getElementById('season').onchange=()=>{temporadaActual=Number(document.getElementById('season').value);history.replaceState(null,'',`/equipo.html?id=${TEAM}&league=${LEAGUE}&season=${temporadaActual}`);actualizarEnlaces();cargar();cargarJugadores()};document.getElementById('format').onchange=event=>{formatoFrecuencia=event.target.value==='count'?'count':'percent';localStorage.setItem(CLAVE_FORMATO_FRECUENCIA,formatoFrecuencia);if(datosActuales)pintar(datosActuales)};actualizarEnlaces();await cargarHistorial();await Promise.all([cargar(),cargarJugadores()])});
 </script>
-<script src="/asistente.js?v=20260908-copilot" defer></script>
+<script src="/asistente.js?v=20260908-format" defer></script>
 </body>
 </html>

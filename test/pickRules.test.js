@@ -101,3 +101,4 @@ test('Otros mercados (ambos anotan, resultado, etc.) no se descartan', () => {
   assert.equal(esPickTrivial({ id: 'ambos_anotan', mercado: 'Ambos anotan', categoria: 'goles' }), false);
   assert.equal(esPickTrivial({ id: 'local_no_pierde', mercado: 'Local gana o empata', categoria: 'resultado' }), false);
 });
+

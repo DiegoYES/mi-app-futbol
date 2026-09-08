@@ -75,3 +75,18 @@ FutBot y el motor estadístico de Data-Fut (`services/pickRules.js`) tienen proh
 * **Excepción clave:** Los **Under** equivalentes (ej. *Menos de 0.5 goles*, *Menos de 2.5 faltas*) **sí tienen valor** y son válidos si la estadística del encuentro los sustenta.
 * FutBot descarta activamente los Over triviales en sus recomendaciones analíticas y solo prioriza selecciones con valor de mercado real.
 
+---
+
+## 7. Formato Visual y Renderizado de Mensajes (Markdown)
+- **Parseo seguro en cliente (`public/asistente.js`)**:
+  - `escaparHTML(str)` desinfecta caracteres especiales (`&`, `<`, `>`, `"`, `'`) previniendo cualquier riesgo de inyección XSS.
+  - `procesarInlineMarkdown(texto)` convierte `**texto**` en `<strong>texto</strong>` y `*texto*` en `<em>texto</em>`.
+  - `formatearMarkdownBot(texto)` detecta viñetas (`* `, `- `, `• ` o `\d+\. `) y las agrupa semánticamente en listas `<ul class="asistente-bullet-list"><li>...</li></ul>`.
+- **Estilos en `public/asistente.css`**:
+  - `strong`: destacado en verde neón (`#54e38e`) de alta legibilidad.
+  - `.asistente-bullet-list`: espacio vertical adecuado con marcadores en verde neón (`li::marker { color: #54e38e; }`).
+- **Directriz de generación (`services/aiChat.js`)**:
+  - FutBot siempre presenta picks separados en renglones independientes con viñetas:
+    `- **[Mercado/Pick]** (Estimación: XX% | Confianza: alta/media): Justificación estadística concisa.`
+  - Nunca agrupa los picks dentro de párrafos corridos y densos.
+

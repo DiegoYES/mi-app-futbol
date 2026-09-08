@@ -111,3 +111,4 @@ module.exports = {
   esPickTrivial,
   normalizarPick
 };
+
