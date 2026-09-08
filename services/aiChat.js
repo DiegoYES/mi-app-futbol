@@ -1,4 +1,5 @@
 const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+const { esPickTrivial } = require('./pickRules');
 
 function obtenerEndpointGemini(modelo, apiKey) {
   const mod = modelo || DEFAULT_GEMINI_MODEL;
@@ -38,6 +39,14 @@ Directrices de conversación:
     - Eres el copiloto analítico de ese partido. Si el usuario pregunta por recomendaciones, qué pick conviene, cuál es el más seguro, o sobre goles/córners/tarjetas, BASA tu respuesta directamente en los datos calculados por el modelo que se incluyen en el contexto.
     - Prioriza y destaca los picks clasificados como "Candidatos" y aquellos con mayor porcentaje de estimación y confianza (alta/media).
     - Explica con claridad deportiva por qué el modelo sugiere eso (mencionando las estimaciones porcentuales y muestras observadas).
+    - REGLA ESTRICTA DE PICKS TRIVIALES (SIN VALOR): Jamás recomiendes picks con líneas triviales que carezcan de valor real o cuota competitiva, aunque tengan alta estimación matemática:
+      1. Over 0.5 goles (cualquier total o por equipo).
+      2. Over <= 2.5 tiros totales (o líneas triviales de tiros <= 2.5).
+      3. Over <= 1.5 tiros a puerta (total o por equipo; ej. "Más de 1.5 tiros a puerta del local").
+      4. Over <= 1.5 córners (total o por equipo).
+      5. Over 0.5 tarjetas por equipo (o tarjetas totales <= 0.5).
+      6. Over <= 2.5 faltas.
+      (Los Under equivalentes como Menos de 0.5 goles o Menos de 2.5 faltas SÍ pueden tener valor si las estadísticas los apoyan, pero los Over en estas líneas tan bajas carecen de valor de apuesta). Si te preguntan por picks recomendados o más viables, descarta estas líneas triviales y enfócate en opciones competitivas con verdadero valor.
     - Si preguntan por un mercado específico (ej. córners, tarjetas), busca en los mercados calculados la estimación para esa categoría. Si no aparece, sugiere explorar la categoría correspondiente en las pestañas de mercados.
     - Mantén la advertencia responsable de que son probabilidades estadísticas pasadas y el fútbol tiene varianza.
   * Si NO hay un partido en el contexto y el usuario pide picks o recomendaciones de un partido específico:
@@ -60,9 +69,11 @@ function formatearContextoDeportivo(contexto) {
     partes.push(`- Partido en análisis: ${contexto.partido.slice(0, 80).trim()}${liga}`);
   }
 
-  if (Array.isArray(contexto.candidatos) && contexto.candidatos.length > 0) {
+  const candidatosFiltrados = (Array.isArray(contexto.candidatos) ? contexto.candidatos : [])
+    .filter(c => !esPickTrivial(c));
+  if (candidatosFiltrados.length > 0) {
     partes.push('- Picks Candidatos destacados por el modelo estadístico de Data-Fut:');
-    contexto.candidatos.slice(0, 6).forEach(c => {
+    candidatosFiltrados.slice(0, 6).forEach(c => {
       if (!c || typeof c !== 'object') return;
       const mercado = String(c.mercado || '').slice(0, 60).trim();
       const est = c.estimacion != null ? `${c.estimacion}%` : 'N/A';
@@ -74,9 +85,11 @@ function formatearContextoDeportivo(contexto) {
     });
   }
 
-  if (Array.isArray(contexto.mercados) && contexto.mercados.length > 0) {
+  const mercadosFiltrados = (Array.isArray(contexto.mercados) ? contexto.mercados : [])
+    .filter(m => !esPickTrivial(m));
+  if (mercadosFiltrados.length > 0) {
     partes.push('- Otros mercados calculados en pantalla:');
-    contexto.mercados.slice(0, 8).forEach(m => {
+    mercadosFiltrados.slice(0, 8).forEach(m => {
       if (!m || typeof m !== 'object') return;
       const mercado = String(m.mercado || '').slice(0, 60).trim();
       const est = m.estimacion != null ? `${m.estimacion}%` : 'N/A';

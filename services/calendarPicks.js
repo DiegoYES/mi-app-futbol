@@ -1,5 +1,6 @@
 const Partido = require('../models/partido');
 const { generarPicks } = require('./pickEngine');
+const { esPickTrivial } = require('./pickRules');
 
 const FINALIZADOS = ['FT', 'AET', 'PEN'];
 const CAMPOS_HISTORICOS = [
@@ -42,7 +43,7 @@ function seleccionarPicksDiversos(mercados, limite = 5) {
 
 function candidatosConEvidencia(mercados) {
   return mercados.filter(pick => (
-    pick.id !== 'over_0_5'
+    !esPickTrivial(pick)
     && pick.estimacion >= 65
     && pick.muestra >= 5
     && pick.fuentes === 2

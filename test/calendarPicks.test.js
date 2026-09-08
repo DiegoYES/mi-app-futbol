@@ -6,10 +6,13 @@ function pick(id, categoria, estimacion, extra = {}) {
   return { id, mercado: id, categoria, estimacion, muestra: 10, fuentes: 2, alcance: 'total', tipo: 'over', ...extra };
 }
 
-test('el calendario excluye over 0.5 y candidatos con evidencia insuficiente', () => {
+test('el calendario excluye over 0.5, picks triviales y candidatos con evidencia insuficiente', () => {
   const resultado = seleccionarPicksDiversos([
-    pick('over_0_5', 'goles', 95),
-    pick('over_1_5', 'goles', 75),
+    pick('over_0_5', 'goles', 95, { linea: 0.5 }),
+    pick('tiros_puerta_local_over_1_5', 'tiros_puerta', 92, { linea: 1.5, alcance: 'local' }),
+    pick('corners_local_over_1_5', 'corners', 90, { linea: 1.5, alcance: 'local' }),
+    pick('amarillas_local_over_0_5', 'tarjetas', 88, { linea: 0.5, alcance: 'local' }),
+    pick('over_1_5', 'goles', 75, { linea: 1.5 }),
     pick('corners_total_over_8_5', 'corners', 80, { muestra: 4 }),
     pick('ambos_anotan', 'goles', 64, { tipo: null })
   ]);

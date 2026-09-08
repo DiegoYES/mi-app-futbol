@@ -1,5 +1,6 @@
 const { contextoPartido } = require('./teamStats');
 const { MERCADOS, obtenerMercado } = require('./marketCatalog');
+const { esPickTrivial } = require('./pickRules');
 
 function casoParticular(partido, contexto, perspectiva, mercado) {
   const statsLocal = perspectiva === 'local' ? contexto.statsEquipo : contexto.statsRival;
@@ -186,10 +187,10 @@ function generarPicks({
     .filter(Boolean)
     .map(item => ({ ...item, evidencia_parcial: item.fuentes < 2 }))
     .sort((a, b) => b.estimacion - a.estimacion || a.mercado.localeCompare(b.mercado, 'es'));
-  // Un pick solo se recomienda con evidencia de ambos lados: un mercado de
-  // total construido con una sola fuente describe media ecuación.
+  // Un pick solo se recomienda con evidencia de ambos lados y sin líneas
+  // triviales que carezcan de valor de apuesta.
   const recomendados = mercados.filter(item => (
-    item.estimacion >= 65 && item.muestra >= 5 && item.fuentes === 2 && !item.evidencia_parcial
+    item.estimacion >= 65 && item.muestra >= 5 && item.fuentes === 2 && !item.evidencia_parcial && !esPickTrivial(item)
   ));
 
   return {
@@ -222,4 +223,4 @@ function evaluarMercadosEspecificos({
   }).filter(Boolean).map(item => ({ ...item, evidencia_parcial: item.fuentes < 2 }));
 }
 
-module.exports = { confianza, evaluarMercadosEspecificos, explicarMercado, frecuencia, generarPicks, partidosEnCondicion };
+module.exports = { confianza, esPickTrivial, evaluarMercadosEspecificos, explicarMercado, frecuencia, generarPicks, partidosEnCondicion };

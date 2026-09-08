@@ -836,21 +836,69 @@ window.addEventListener('futbol:picks-actualizados', () => {
   if (ID_PARTIDO) cargarPicks(true);
 });
 
+function esPickTrivialClient(pick) {
+  if (!pick || typeof pick !== 'object') return false;
+  let tipo = pick.tipo ? String(pick.tipo).toLowerCase() : null;
+  let categoria = pick.categoria ? String(pick.categoria).toLowerCase() : null;
+  let linea = Number(pick.linea);
+  const id = typeof pick.id === 'string' ? pick.id.toLowerCase() : '';
+  const mercado = typeof pick.mercado === 'string' ? pick.mercado : '';
+
+  if (!tipo) {
+    if (id.includes('_over_') || id.startsWith('over_') || /^\s*más\s+de/i.test(mercado)) tipo = 'over';
+    else if (id.includes('_under_') || id.startsWith('under_') || /^\s*menos\s+de/i.test(mercado)) tipo = 'under';
+  }
+  if (tipo !== 'over') return false;
+
+  if (!categoria) {
+    if (id.includes('gol') || /gol/i.test(mercado)) categoria = 'goles';
+    else if (id.includes('corner') || /córner|corner/i.test(mercado)) categoria = 'corners';
+    else if (id.includes('tarjeta') || id.includes('amarilla') || id.includes('roja') || /tarjeta|amarilla/i.test(mercado)) categoria = 'tarjetas';
+    else if (id.includes('tiros_puerta') || /tiros?\s+a\s+puerta/i.test(mercado)) categoria = 'tiros_puerta';
+    else if (id.includes('tiro') || /tiros?/i.test(mercado)) categoria = 'tiros';
+    else if (id.includes('falta') || /faltas?/i.test(mercado)) categoria = 'faltas';
+  }
+
+  if (!Number.isFinite(linea)) {
+    const matchId = id.match(/(?:over|under)_(\d+(?:_\d+)?)/);
+    if (matchId) linea = Number(matchId[1].replace('_', '.'));
+    else {
+      const matchMercado = mercado.match(/(?:más|menos)\s+de\s+(\d+(?:[.,]\d+)?)/i);
+      if (matchMercado) linea = Number(matchMercado[1].replace(',', '.'));
+    }
+  }
+  if (!Number.isFinite(linea)) return false;
+
+  if (categoria === 'goles' && linea <= 0.5) return true;
+  if (categoria === 'tiros' && linea <= 2.5) return true;
+  if (categoria === 'tiros_puerta' && linea <= 1.5) return true;
+  if (categoria === 'corners' && linea <= 1.5) return true;
+  if (categoria === 'tarjetas' && linea <= 0.5) return true;
+  if (categoria === 'faltas' && linea <= 2.5) return true;
+  return false;
+}
+
 window.obtenerContextoFutBot = function () {
   const nombreL = datosLocal?.info?.equipo || 'Local';
   const nombreV = datosVisitante?.info?.equipo || 'Visitante';
   if (nombreL === 'Local' && nombreV === 'Visitante' && !datosPicksPartido) return null;
 
+  const recSet = new Set(datosPicksPartido?.recomendados || []);
+  const todosMercados = Array.isArray(datosPicksPartido?.mercados) ? datosPicksPartido.mercados : [];
+  const listaCandidatos = todosMercados.filter(m => recSet.has(m.id));
+
   return {
     pagina: 'Centro de Partido',
     partido: `${nombreL} vs ${nombreV}`,
-    candidatos: (datosPicksPartido?.recomendados || []).slice(0, 5).map(r => ({
+    candidatos: listaCandidatos.filter(r => !esPickTrivialClient(r)).slice(0, 5).map(r => ({
+      id: r.id,
       mercado: r.mercado,
       estimacion: r.estimacion,
       confianza: r.confianza,
       muestra: r.muestra
     })),
-    mercados: (datosPicksPartido?.mercados || []).slice(0, 8).map(m => ({
+    mercados: todosMercados.filter(m => !esPickTrivialClient(m)).slice(0, 8).map(m => ({
+      id: m.id,
       mercado: m.mercado,
       estimacion: m.estimacion,
       confianza: m.confianza

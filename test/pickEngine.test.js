@@ -261,6 +261,7 @@ test('conserva la condición por rol cuando hay muestra suficiente', () => {
   assert.equal(resultado.filtros.visitante.condicion_efectiva, 'visitante');
   const over15 = resultado.mercados.find(item => item.id === 'over_1_5');
   assert.equal(over15.evidencia_parcial, false);
+  assert.ok(!resultado.recomendados.some(item => item.id === 'over_0_5'));
 });
 
 test('resuelve mercados dinámicos y ampliados para líneas altas de tiros', () => {

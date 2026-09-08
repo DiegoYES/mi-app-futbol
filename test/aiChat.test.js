@@ -159,10 +159,13 @@ test('formatearContextoDeportivo estructura partidos y picks correctamente', () 
     liga: 'La Liga',
     candidatos: [
       { mercado: 'Over 2.5 goles', estimacion: 82, confianza: 'alta', muestra: 20 },
-      { mercado: 'Over 8.5 córners', estimacion: 75, confianza: 'media', muestra: 20 }
+      { mercado: 'Over 8.5 córners', estimacion: 75, confianza: 'media', muestra: 20 },
+      { id: 'tiros_puerta_local_over_1_5', mercado: 'Más de 1.5 tiros a puerta del local', estimacion: 95, confianza: 'alta' },
+      { id: 'over_0_5', mercado: 'Más de 0.5 goles', estimacion: 98, confianza: 'alta' }
     ],
     mercados: [
-      { mercado: 'Over 1.5 goles', estimacion: 90, confianza: 'alta' }
+      { mercado: 'Over 1.5 goles', estimacion: 90, confianza: 'alta' },
+      { id: 'under_0_5', mercado: 'Menos de 0.5 goles', estimacion: 30, confianza: 'baja' }
     ]
   };
 
@@ -172,6 +175,10 @@ test('formatearContextoDeportivo estructura partidos y picks correctamente', () 
   assert.match(bloque, /Partido en análisis: Real Madrid vs Barcelona \(La Liga\)/);
   assert.match(bloque, /Over 2\.5 goles \(Estimación: 82%, Confianza: alta, Muestra: 20 partidos\)/);
   assert.match(bloque, /Over 1\.5 goles \(Estimación: 90%, Confianza: alta\)/);
+  assert.match(bloque, /Menos de 0\.5 goles/);
+  // Picks triviales no deben aparecer en el bloque
+  assert.doesNotMatch(bloque, /Más de 1\.5 tiros a puerta/);
+  assert.doesNotMatch(bloque, /Más de 0\.5 goles/);
 });
 
 test('responderConsulta inyecta el bloque de contexto en el system_instruction de Gemini', async () => {

@@ -61,3 +61,17 @@ FutBot es el asistente conversacional con Inteligencia Artificial integrado en D
 - **Chips contextuales inteligentes**:
   - `public/asistente.js` adapta los chips iniciales a preguntas sobre el partido activo en pantalla (ej. *"¿Qué pick ves más sólido para este partido?"*, *"¿Ves probable el Over 2.5 goles?"*).
 
+---
+
+## 6. Reglas de Exclusión de Picks Triviales (Sin Valor)
+FutBot y el motor estadístico de Data-Fut (`services/pickRules.js`) tienen prohibido recomendar mercados con líneas triviales que carezcan de valor de cuota o competitividad:
+1. **Over 0.5 goles** (total o por equipo).
+2. **Over ≤ 2.5 tiros totales** (o líneas ≤ 2.5 de tiros).
+3. **Over ≤ 1.5 tiros a puerta** (total o por equipo; ej. *"Más de 1.5 tiros a puerta del local"*).
+4. **Over ≤ 1.5 córners** (total o por equipo; ej. *"Más de 1.5 córners del local"*).
+5. **Over 0.5 tarjetas por equipo** (amarillas o totales registradas por equipo ≤ 0.5).
+6. **Over ≤ 2.5 faltas** (total o por equipo).
+
+* **Excepción clave:** Los **Under** equivalentes (ej. *Menos de 0.5 goles*, *Menos de 2.5 faltas*) **sí tienen valor** y son válidos si la estadística del encuentro los sustenta.
+* FutBot descarta activamente los Over triviales en sus recomendaciones analíticas y solo prioriza selecciones con valor de mercado real.
+
