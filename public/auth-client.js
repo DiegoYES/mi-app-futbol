@@ -258,7 +258,7 @@
     estilos.nonce = document.querySelector('meta[name="csp-nonce"]')?.content || '';
     estilos.id = 'global-picks-styles';
     estilos.textContent = `
-      .global-picks-widget{position:fixed;right:18px;bottom:18px;z-index:140;font-family:Inter,system-ui,sans-serif;color:#eef8f2}
+      .global-picks-widget{position:fixed;right:18px;bottom:18px;z-index:140;font-family:Inter,system-ui,sans-serif;color:#eef8f2;transition:opacity .2s ease,transform .2s ease,visibility .2s}
       .global-picks-trigger{min-height:50px;display:flex;align-items:center;gap:9px;padding:0 15px;border:1px solid rgba(84,227,142,.45);border-radius:999px;background:#14241f;color:#eef8f2;box-shadow:0 16px 42px rgba(0,0,0,.48);font-size:.78rem;font-weight:850;cursor:pointer;transition:transform .15s ease, border-color .15s ease}
       .global-picks-trigger:hover{border-color:#54e38e;transform:translateY(-1px)}
       .global-picks-trigger>span:first-child{width:27px;height:27px;display:grid;place-items:center;border-radius:50%;background:rgba(84,227,142,.14);color:#54e38e}
@@ -515,15 +515,23 @@
       panel.setAttribute('hidden', 'until-found');
       trigger.setAttribute('aria-expanded', 'false');
       document.body.classList.remove('global-picks-open');
+      window.dispatchEvent(new CustomEvent('futbol:picks-panel-cerrado'));
     };
 
     const abrir = () => {
+      // Si el chat de FutBot está abierto, cerrarlo para evitar sobreposiciones
+      const asistenteModal = document.getElementById('asistente-modal-container');
+      if (asistenteModal && !asistenteModal.classList.contains('oculto')) {
+        document.getElementById('asistente-close-btn')?.click();
+      }
       panel.hidden = false;
       panel.removeAttribute('hidden');
       trigger.setAttribute('aria-expanded', 'true');
       document.body.classList.add('global-picks-open');
       actualizarPicksFlotantes();
     };
+
+    window.addEventListener('futbol:cerrar-picks-panel', cerrar);
 
     trigger.addEventListener('click', (e) => {
       e.stopPropagation();

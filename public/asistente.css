@@ -49,10 +49,10 @@
 /* Ventana de Chat */
 .asistente-modal {
   position: fixed;
-  bottom: 88px;
-  right: 22px;
+  bottom: 20px;
+  right: 20px;
   width: min(390px, calc(100vw - 32px));
-  height: min(530px, calc(100vh - 110px));
+  height: min(540px, calc(100vh - 40px));
   border-radius: 18px;
   background: #091510;
   border: 1px solid #1a392a;
@@ -70,6 +70,23 @@
   transform: translateY(16px) scale(0.96);
   visibility: hidden;
   pointer-events: none;
+}
+
+/* Exclusión mutua: ocultar lanzador y modal del asistente si el panel de Mis boletas está abierto */
+body.global-picks-open #asistente-launcher-btn,
+body.global-picks-open #asistente-modal-container {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transform: scale(0.85) !important;
+}
+
+/* Exclusión mutua: ocultar el botón flotante de Mis picks mientras el chat esté abierto */
+body.asistente-chat-abierto .global-picks-widget {
+  opacity: 0 !important;
+  pointer-events: none !important;
+  visibility: hidden !important;
+  transform: scale(0.88) !important;
 }
 
 /* Cabecera */

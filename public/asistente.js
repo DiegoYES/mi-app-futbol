@@ -89,15 +89,24 @@
       const estaOculto = modal.classList.contains('oculto');
       const nuevoEstado = typeof abrir === 'boolean' ? abrir : estaOculto;
       if (nuevoEstado) {
+        // Cerrar panel de boletas si estuviera abierto
+        window.dispatchEvent(new CustomEvent('futbol:cerrar-picks-panel'));
+        const panelPicks = document.getElementById('global-picks-panel');
+        if (panelPicks && !panelPicks.hidden) {
+          document.getElementById('global-picks-close')?.click();
+        }
+        document.body.classList.add('asistente-chat-abierto');
         modal.classList.remove('oculto');
         sessionStorage.setItem(STORAGE_OPEN_KEY, '1');
         refrescarChipsSiEsInicial();
         input.focus();
         desplazarAbajo();
       } else {
+        document.body.classList.remove('asistente-chat-abierto');
         modal.classList.add('oculto');
         sessionStorage.removeItem(STORAGE_OPEN_KEY);
       }
+      reposicionarLauncher();
     }
 
     launcher.addEventListener('click', function () {
@@ -327,24 +336,32 @@
       const btn = document.getElementById('asistente-launcher-btn');
       if (!btn) return;
 
+      // Si el panel de Mis boletas está abierto o el chat de FutBot está activo, ocultar lanzador
+      if (document.body.classList.contains('global-picks-open') || document.body.classList.contains('asistente-chat-abierto')) {
+        btn.style.setProperty('display', 'none', 'important');
+        return;
+      }
+      btn.style.removeProperty('display');
+
       const esMovil = window.innerWidth <= 600;
-      const baseBottom = esMovil ? 72 : 84;
       const baseRight = esMovil ? 14 : 20;
 
-      const picks = document.querySelector('.global-picks-widget') || document.getElementById('global-picks-trigger');
-      if (picks) {
+      const trigger = document.getElementById('global-picks-trigger');
+      if (trigger && trigger.offsetParent !== null) {
         document.body.classList.add('has-global-picks');
-        const rect = picks.getBoundingClientRect();
+        const rect = trigger.getBoundingClientRect();
         if (rect.height > 0 && rect.top > 0) {
           const distFromBottom = Math.round(window.innerHeight - rect.top);
-          const targetBottom = Math.max(baseBottom, distFromBottom + 14);
+          const targetBottom = distFromBottom + 12;
           btn.style.setProperty('bottom', `${targetBottom}px`, 'important');
           btn.style.setProperty('right', `${baseRight}px`, 'important');
           return;
         }
       }
 
-      btn.style.setProperty('bottom', `${baseBottom}px`, 'important');
+      // Si no hay botón de picks presente o visible en pantalla, ubicarlo en la esquina estándar
+      const soloBottom = esMovil ? 16 : 20;
+      btn.style.setProperty('bottom', `${soloBottom}px`, 'important');
       btn.style.setProperty('right', `${baseRight}px`, 'important');
     }
 
@@ -353,10 +370,11 @@
     window.addEventListener('scroll', reposicionarLauncher, { passive: true });
     window.addEventListener('futbol:usuario-cargado', reposicionarLauncher);
     window.addEventListener('futbol:picks-actualizados', reposicionarLauncher);
+    window.addEventListener('futbol:picks-panel-cerrado', reposicionarLauncher);
     [200, 600, 1200, 2500, 5000].forEach(ms => setTimeout(reposicionarLauncher, ms));
     if (typeof MutationObserver !== 'undefined') {
       const picksObserver = new MutationObserver(reposicionarLauncher);
-      picksObserver.observe(document.body, { childList: true, subtree: true });
+      picksObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] });
     }
   }
 
