@@ -25,14 +25,15 @@ FutBot es el asistente conversacional con Inteligencia Artificial integrado en D
 
 ---
 
-## 2. Arquitectura y Posicionamiento de Interfaz (Widget Flotante)
+## 2. Arquitectura y Posicionamiento de Interfaz (Widget Flotante y Exclusión Mutua)
 - **Lanzador flotante (`#asistente-launcher-btn`):**
-  - Ubicación base en desktop: `bottom: 84px !important; right: 20px !important;`.
-  - Ubicación base en móviles: `bottom: 72px !important; right: 14px !important;`.
-  - Apilado dinámico: `reposicionarLauncher()` en `public/asistente.js` calcula el `getBoundingClientRect()` del widget de *"Mis picks"* (`.global-picks-widget`) y aplica una propiedad en línea `bottom: (distFromBottom + 14)px !important`.
-  - De esta forma, FutBot **nunca se encima con "Mis picks"** bajo ninguna resolución, zoom o estado de autenticación.
+  - Apilado en reposo: Se posiciona dinámicamente justo encima del botón de *"Mis picks"* (`#global-picks-trigger`), calculando su altura real para mantener una separación limpia de 12px. Si no hay botón de picks presente (ej. usuario no autenticado o páginas administrativas), se ancla a `bottom: 20px; right: 20px;`.
 - **Ventana modal de chat (`#asistente-modal-container`):**
-  - Desplegable sobre el lanzador con `bottom: 88px; right: 22px; z-index: 9991`. En móviles menores a 480px se maximiza estilo bottom-sheet.
+  - Se ancla limpiamente a `bottom: 20px; right: 20px; z-index: 9991;` aprovechando toda la altura de la pantalla sin flotar en el aire. En móviles menores a 480px se despliega como bottom-sheet (`bottom: 0; right: 0`).
+- **Exclusión mutua garantizada (Zero-Collision):**
+  - **Al abrir "Mis boletas":** La clase `body.global-picks-open` oculta inmediatamente el lanzador y modal de FutBot (`display: none !important`), impidiendo que el botón verde se encime sobre el pie del panel o tape enlaces como *"Ir a Mis boletas"*.
+  - **Al abrir FutBot:** La clase `body.asistente-chat-abierto` oculta suavemente el botón de *"Mis picks"* (`opacity: 0; pointer-events: none; visibility: hidden`), y si el panel de boletas estaba abierto, lo cierra de forma automática.
+  - Ninguno de los dos paneles compite por espacio ni se solapan bajo ninguna resolución.
 
 ---
 
