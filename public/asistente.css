@@ -15,8 +15,21 @@
   align-items: center;
   justify-content: center;
   z-index: 9990;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, bottom 0.25s ease;
   outline: none;
+}
+
+/* Si existe el botón flotante de Mis picks (usuario autenticado), apilar FutBot arriba para no encimarse */
+body.has-global-picks .asistente-launcher,
+body:has(#global-picks-trigger) .asistente-launcher,
+body:has(.global-picks-widget) .asistente-launcher {
+  bottom: 84px;
+}
+
+body.has-global-picks .asistente-modal,
+body:has(#global-picks-trigger) .asistente-modal,
+body:has(.global-picks-widget) .asistente-modal {
+  bottom: 84px;
 }
 
 .asistente-launcher:hover {
@@ -308,6 +321,21 @@
   text-align: center;
   font-size: 0.68rem;
   color: #5b796c;
+}
+
+@media (max-width: 600px) {
+  .asistente-launcher {
+    bottom: 14px;
+    right: 14px;
+    width: 48px;
+    height: 48px;
+  }
+  body.has-global-picks .asistente-launcher,
+  body:has(#global-picks-trigger) .asistente-launcher,
+  body:has(.global-picks-widget) .asistente-launcher {
+    bottom: 68px;
+    right: 14px;
+  }
 }
 
 @media (max-width: 480px) {

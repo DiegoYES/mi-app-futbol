@@ -1,4 +1,4 @@
-const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.6-flash';
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
 
 function obtenerEndpointGemini(modelo, apiKey) {
   const mod = modelo || DEFAULT_GEMINI_MODEL;
@@ -56,7 +56,7 @@ async function responderConsulta(mensaje, { apiKey = process.env.GEMINI_API_KEY,
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 35000);
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
 
     const respuesta = await fetchImpl(endpoint, {
       method: 'POST',
@@ -74,10 +74,7 @@ async function responderConsulta(mensaje, { apiKey = process.env.GEMINI_API_KEY,
         ],
         generationConfig: {
           temperature: 0.4,
-          maxOutputTokens: 800,
-          thinkingConfig: {
-            thinkingBudget: 100
-          }
+          maxOutputTokens: 600
         }
       })
     });

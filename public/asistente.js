@@ -223,6 +223,20 @@
     if (sessionStorage.getItem(STORAGE_OPEN_KEY) === '1') {
       toggleChat(true);
     }
+
+    // Evitar encimarse con el widget flotante de Mis picks
+    function verificarPicksWidget() {
+      if (document.querySelector('.global-picks-widget') || document.getElementById('global-picks-trigger')) {
+        document.body.classList.add('has-global-picks');
+      }
+    }
+    verificarPicksWidget();
+    window.addEventListener('futbol:usuario-cargado', verificarPicksWidget);
+    window.addEventListener('futbol:picks-actualizados', verificarPicksWidget);
+    if (typeof MutationObserver !== 'undefined') {
+      const picksObserver = new MutationObserver(verificarPicksWidget);
+      picksObserver.observe(document.body, { childList: true, subtree: true });
+    }
   }
 
   if (document.readyState === 'loading') {
