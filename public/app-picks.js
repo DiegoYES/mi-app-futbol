@@ -17,7 +17,6 @@ function pintarBoleta() {
         <small>${item.estimacion}% · muestra ${item.muestra}</small>
     </article>`).join('');
     pintarAdvertenciasCorrelacion(items);
-    if (items.length) document.getElementById('pick-shortcut').hidden = true;
 }
 
 function pintarAdvertenciasCorrelacion(items) {
@@ -299,7 +298,6 @@ async function mostrarPicks() {
     const section = document.getElementById('picks-section');
     const content = document.getElementById('picks-content');
     section.style.display = 'block';
-    document.getElementById('pick-shortcut').hidden = true;
     content.innerHTML = '<div class="loader">Calculando frecuencias históricas...</div>';
 
     try {
@@ -345,23 +343,41 @@ async function mostrarPicks() {
 }
 
 window.obtenerContextoFutBot = function () {
-    if (!picksActuales || !picksActuales.local || !picksActuales.visitante) return null;
-    const liga = picksActuales.ligas?.local?.nombre || picksActuales.ligas?.visitante?.nombre || '';
-    return {
-        pagina: 'Comparador',
-        partido: `${picksActuales.local.nombre} vs ${picksActuales.visitante.nombre}`,
-        liga: liga,
-        temporada: picksActuales.temporadas?.local || '',
-        candidatos: (picksActuales.recomendados || []).slice(0, 5).map(r => ({
-            mercado: r.mercado,
-            estimacion: r.estimacion,
-            confianza: r.confianza,
-            muestra: r.muestra
-        })),
-        mercados: (picksActuales.mercados || []).slice(0, 8).map(m => ({
-            mercado: m.mercado,
-            estimacion: m.estimacion,
-            confianza: m.confianza
-        }))
-    };
+    if (picksActuales && picksActuales.local && picksActuales.visitante) {
+        const liga = picksActuales.ligas?.local?.nombre || picksActuales.ligas?.visitante?.nombre || '';
+        return {
+            pagina: 'Comparador',
+            partido: `${picksActuales.local.nombre} vs ${picksActuales.visitante.nombre}`,
+            liga: liga,
+            temporada: picksActuales.temporadas?.local || '',
+            candidatos: (picksActuales.recomendados || []).slice(0, 5).map(r => ({
+                mercado: r.mercado,
+                estimacion: r.estimacion,
+                confianza: r.confianza,
+                muestra: r.muestra
+            })),
+            mercados: (picksActuales.mercados || []).slice(0, 8).map(m => ({
+                mercado: m.mercado,
+                estimacion: m.estimacion,
+                confianza: m.confianza
+            }))
+        };
+    }
+
+    const teamSelectA = document.getElementById('team-a');
+    const teamSelectB = document.getElementById('team-b');
+    const nombreA = teamSelectA?.selectedOptions[0]?.text;
+    const nombreB = teamSelectB?.selectedOptions[0]?.text;
+    if (nombreA && nombreB && teamSelectA.value && teamSelectB.value) {
+        const ligaA = document.getElementById('league-a')?.selectedOptions[0]?.text || '';
+        return {
+            pagina: 'Comparador',
+            partido: `${nombreA} vs ${nombreB}`,
+            liga: ligaA,
+            candidatos: [],
+            mercados: []
+        };
+    }
+
+    return null;
 };

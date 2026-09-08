@@ -255,21 +255,6 @@ function actualizarAccionesComparacion() {
     document.getElementById('share-comparison').disabled = !listoPicks;
     document.querySelector('.compare-action')?.classList.toggle('is-ready', listoPicks);
     if (!restaurandoEstadoUrl) actualizarUrlComparador();
-
-    const acceso = document.getElementById('pick-shortcut');
-    const pareja = listoPicks ? `${teamA}:${teamB}:${leagueA}:${leagueB}:${seasonA}:${seasonB}` : '';
-    if (!listoPicks) {
-        acceso.hidden = true;
-        acceso.dataset.pareja = '';
-        return;
-    }
-    if (acceso.dataset.pareja !== pareja) {
-        acceso.dataset.pareja = pareja;
-        acceso.hidden = true;
-    }
-    const nombreA = document.getElementById('team-a').selectedOptions[0]?.text || 'Equipo A';
-    const nombreB = document.getElementById('team-b').selectedOptions[0]?.text || 'Equipo B';
-    document.getElementById('pick-shortcut-label').textContent = `Ver picks: ${nombreA} (L) vs ${nombreB} (V)`;
 }
 
 // Carga inicial de ligas (ahora recibe un array ordenado)
@@ -1034,7 +1019,6 @@ function configurarEventos() {
     document.getElementById('btn-picks').addEventListener('click', mostrarPicks);
     document.getElementById('save-comparison').addEventListener('click', guardarComparacionActual);
     document.getElementById('share-comparison').addEventListener('click', compartirComparacion);
-    document.getElementById('pick-shortcut').addEventListener('click', mostrarPicks);
     ['pick-category', 'pick-scope', 'pick-direction'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.addEventListener('change', () => { actualizarLineasComparador(); pintarPicks(); });
@@ -1165,16 +1149,4 @@ document.addEventListener('DOMContentLoaded', async () => {
         restaurandoEstadoUrl = false;
         actualizarAccionesComparacion();
     }
-
-    const accesoPicks = document.getElementById('pick-shortcut');
-    const seccionPicks = document.getElementById('picks-section');
-    const observadorPicks = new IntersectionObserver(([entrada]) => {
-        if (!accesoPicks.dataset.pareja || seccionPicks.style.display === 'none') return;
-        if (seleccionesBoleta.size) {
-            accesoPicks.hidden = true;
-            return;
-        }
-        accesoPicks.hidden = entrada.isIntersecting;
-    }, { threshold: 0.15 });
-    observadorPicks.observe(seccionPicks);
 });
