@@ -148,7 +148,7 @@ function mostrarMomio(decimal, americano) {
 const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjetas', tiros:'Tiros', tiros_puerta:'Tiros a puerta', faltas:'Faltas', offsides:'Fueras de juego' };
 let catalogoGeneralCargado = false;
 let picksGuardados = new Set();
-let esAdmin = false;
+let puedeGestionarRec = false;
 
 async function cargarRecomendacionesEditoriales() {
   const contenedor = document.getElementById('recomendaciones-editoriales');
@@ -162,7 +162,7 @@ async function cargarRecomendacionesEditoriales() {
     }
     contenedor.innerHTML = datos.recomendaciones.map(item => {
       const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
-      const botonEliminar = esAdmin
+      const botonEliminar = puedeGestionarRec
         ? `<button type="button" class="btn-eliminar-rec" data-delete-rec="${item._id}" title="Eliminar recomendación del día">🗑️ Quitar</button>`
         : '';
       const badgeResultado = item.resultado === 'acertado' || item.resultado === 'acertada'
@@ -326,16 +326,16 @@ document.getElementById('recomendaciones-editoriales')?.addEventListener('click'
 });
 
 window.addEventListener('futbol:usuario-cargado', (e) => {
-  if (e.detail?.rol === 'admin') {
-    esAdmin = true;
+  if (['admin', 'marketing'].includes(e.detail?.rol)) {
+    puedeGestionarRec = true;
     cargarRecomendacionesEditoriales();
   }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   fetch('/api/auth/me').then(r => r.json()).then(d => {
-    if (d.usuario?.rol === 'admin') {
-      esAdmin = true;
+    if (['admin', 'marketing'].includes(d.usuario?.rol)) {
+      puedeGestionarRec = true;
     }
   }).finally(() => {
     cargarRecomendacionesEditoriales();

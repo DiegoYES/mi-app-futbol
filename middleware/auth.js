@@ -101,6 +101,13 @@ function requireAdmin(req, res, next) {
   next();
 }
 
+function requireEditorial(req, res, next) {
+  if (!['admin', 'marketing'].includes(req.usuario?.rol)) {
+    return res.status(403).json({ error: 'Requiere permisos de administrador o marketing', codigo: 'NO_AUTORIZADO' });
+  }
+  next();
+}
+
 // Atajo para proteger endpoints de datos: sesión válida + acceso vigente
 const protegido = [requireAuth, limiteUsuario, requireAcceso];
 
@@ -110,6 +117,7 @@ module.exports = {
   requireAuth,
   requireAcceso,
   requireAdmin,
+  requireEditorial,
   usuarioDeSesion,
   protegido
 };

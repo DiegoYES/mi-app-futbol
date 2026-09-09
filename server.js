@@ -120,8 +120,8 @@ app.get(['/', '/index.html'], async (req, res) => {
 });
 app.get('/comparador.html', (_req, res) => enviarHtml(res, 'index.html'));
 app.use(paginasPrivadas({
-  '/admin.html': ['admin'],
-  '/configuracion.html': ['usuario', 'admin']
+  '/admin.html': ['admin', 'marketing'],
+  '/configuracion.html': ['usuario', 'admin', 'marketing']
 }, path.join(__dirname, 'public'), enviarHtml));
 app.use(bannerEstatico(path.join(__dirname, 'public')));
 app.use(express.static(path.join(__dirname, 'public'), { index: false }));

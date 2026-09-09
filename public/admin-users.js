@@ -19,8 +19,8 @@ async function cargarUsuarios() {
   }
 
   tbody.innerHTML = usuarios.map(u => {
-    const clase = u.rol === 'admin' ? 'admin' : u.plan;
-    const etiqueta = u.rol === 'admin' ? 'admin' : u.plan;
+    const clase = u.rol === 'admin' ? 'admin' : (u.rol === 'marketing' ? 'marketing' : u.plan);
+    const etiqueta = u.rol === 'admin' ? 'admin' : (u.rol === 'marketing' ? 'marketing' : u.plan);
     const esSuspendido = u.suspendido_hasta && new Date(u.suspendido_hasta) > new Date();
     const esBloqIP = u.bloqueado_ip_duplicada;
     const estadoBadges = [
@@ -44,8 +44,9 @@ async function cargarUsuarios() {
         ${esSuspendido
           ? `<button type="button" class="btn-levantar" data-accion="levantar" data-usuario="${u.id}">✅ Levantar</button>`
           : `<button type="button" class="btn-suspender" data-accion="suspender" data-usuario="${u.id}">⏸ Suspender</button>`}
-        ${puedeGestionarAdmins && !u.esAdministradorPrincipal && u.rol !== 'admin' ? `<button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="admin">Dar admin</button>` : ''}
-        ${puedeGestionarAdmins && !u.esAdministradorPrincipal && u.rol === 'admin' ? `<button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="usuario">Quitar admin</button>` : ''}
+        ${puedeGestionarAdmins && !u.esAdministradorPrincipal && u.rol === 'usuario' ? `<button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="marketing">Dar marketing</button><button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="admin">Dar admin</button>` : ''}
+        ${puedeGestionarAdmins && !u.esAdministradorPrincipal && u.rol === 'marketing' ? `<button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="admin">Subir a admin</button><button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="usuario">Quitar marketing</button>` : ''}
+        ${puedeGestionarAdmins && !u.esAdministradorPrincipal && u.rol === 'admin' ? `<button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="usuario">Quitar admin</button><button type="button" class="btn-rol" data-accion="rol" data-usuario="${u.id}" data-rol="marketing">Bajar a marketing</button>` : ''}
         ${esBloqIP ? `<button type="button" class="btn-desbloquear-ip" data-accion="desbloquear-ip" data-usuario="${u.id}">🔓 Desbloquear IP</button>` : ''}
         <button type="button" class="${u.activo ? 'btn-off' : 'btn-on'}" data-accion="alternar" data-usuario="${u.id}" data-activo="${!u.activo}">${u.activo ? 'Desactivar' : 'Activar'}</button>
       </td>
@@ -79,8 +80,12 @@ async function cortesia(id) {
 }
 
 async function cambiarRol(id, rol) {
-  const accion = rol === 'admin' ? 'dar permisos de administrador' : 'quitar los permisos de administrador';
-  if (!confirm(`¿Seguro que quieres ${accion} a este usuario?`)) return;
+  const accion = rol === 'admin'
+    ? 'dar permisos de administrador'
+    : rol === 'marketing'
+      ? 'dar perfil de marketing (gestión de picks/redes)'
+      : 'dejar a este usuario con rol normal';
+  if (!confirm(`¿Seguro que quieres ${accion}?`)) return;
   const resp = await fetch(`/api/admin/usuarios/${id}/rol`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ rol }) });
   const d = await resp.json();
   if (!resp.ok) return alert(d.error);

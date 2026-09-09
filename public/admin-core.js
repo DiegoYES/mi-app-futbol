@@ -1,10 +1,40 @@
 let temporizador;
+let rolUsuarioAdmin = 'admin';
 const PANELES_ADMIN = new Set(['resumen', 'picks', 'usuarios', 'tickets', 'calidad', 'redes', 'seguridad']);
+const PANELES_MARKETING = new Set(['picks', 'redes', 'resumen']);
+
+function configurarVistasPorRol(usuario) {
+  if (!usuario) return;
+  rolUsuarioAdmin = usuario.rol;
+  if (rolUsuarioAdmin === 'marketing') {
+    document.querySelectorAll('[data-admin-panel]').forEach(boton => {
+      const panel = boton.dataset.adminPanel;
+      if (!PANELES_MARKETING.has(panel)) {
+        boton.hidden = true;
+      }
+    });
+    document.querySelectorAll('[data-admin-panel-content]').forEach(seccion => {
+      const panel = seccion.dataset.adminPanelContent;
+      if (!PANELES_MARKETING.has(panel)) {
+        seccion.hidden = true;
+      }
+    });
+    const encabezado = document.querySelector('.admin-heading p');
+    if (encabezado) {
+      encabezado.textContent = 'Gestión editorial de picks y parlays para la plataforma.';
+    }
+  }
+}
 
 function mostrarPanelAdmin(nombre, actualizarUrl = true) {
-  const panel = PANELES_ADMIN.has(nombre) ? nombre : 'resumen';
+  const permitidos = rolUsuarioAdmin === 'marketing' ? PANELES_MARKETING : PANELES_ADMIN;
+  const panel = permitidos.has(nombre) ? nombre : (rolUsuarioAdmin === 'marketing' ? 'picks' : 'resumen');
   document.querySelectorAll('[data-admin-panel-content]').forEach(seccion => {
-    seccion.hidden = seccion.dataset.adminPanelContent !== panel;
+    if (rolUsuarioAdmin === 'marketing' && !PANELES_MARKETING.has(seccion.dataset.adminPanelContent)) {
+      seccion.hidden = true;
+    } else {
+      seccion.hidden = seccion.dataset.adminPanelContent !== panel;
+    }
   });
   document.querySelectorAll('[data-admin-panel]').forEach(boton => {
     const activo = boton.dataset.adminPanel === panel;
@@ -15,7 +45,7 @@ function mostrarPanelAdmin(nombre, actualizarUrl = true) {
   if (actualizarUrl && location.hash !== `#${panel}`) {
     history.replaceState(null, '', `${location.pathname}${location.search}#${panel}`);
   }
-  if (panel === 'calidad') cargarCalidadDatos();
+  if (panel === 'calidad' && typeof cargarCalidadDatos === 'function') cargarCalidadDatos();
 }
 
 function escaparHtml(valor) {

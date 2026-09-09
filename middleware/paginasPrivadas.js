@@ -31,7 +31,7 @@ function paginasPrivadas(reglas, directorio, enviarHtml) {
     if (ruta === null) return res.status(400).type('text/plain').send('Solicitud inválida');
 
     const rolesPermitidos = rutas.get(ruta)
-      || (/^\/admin.*?\.(?:js|css)$/i.test(ruta) ? new Set(['admin']) : null);
+      || (/^\/admin.*?\.(?:js|css)$/i.test(ruta) ? new Set(['admin', 'marketing']) : null);
     if (!rolesPermitidos) return next();
 
     try {

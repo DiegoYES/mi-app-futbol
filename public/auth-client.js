@@ -168,25 +168,28 @@
     document.querySelector('.barra-sesion')?.remove();
 
     const esAdmin = usuario.rol === 'admin';
+    const esMarketing = usuario.rol === 'marketing';
     const diasBajos = usuario.diasRestantes != null && usuario.diasRestantes <= 3;
     const etiqueta = esAdmin
       ? 'Administrador'
-      : usuario.motivo === 'prueba_activa'
-        ? `Prueba · ${usuario.diasRestantes} día(s)`
-        : usuario.motivo === 'suscripcion_activa'
-          ? `Premium · ${usuario.diasRestantes} día(s)`
-          : usuario.motivo === 'ip_duplicada'
-            ? 'Prueba limitada'
-            : 'Acceso expirado';
-    const claseChip = esAdmin ? 'admin' : (diasBajos ? 'alerta' : '');
+      : esMarketing
+        ? 'Marketing'
+        : usuario.motivo === 'prueba_activa'
+          ? `Prueba · ${usuario.diasRestantes} día(s)`
+          : usuario.motivo === 'suscripcion_activa'
+            ? `Premium · ${usuario.diasRestantes} día(s)`
+            : usuario.motivo === 'ip_duplicada'
+              ? 'Prueba limitada'
+              : 'Acceso expirado';
+    const claseChip = (esAdmin || esMarketing) ? 'admin' : (diasBajos ? 'alerta' : '');
 
     const enlaces = ENLACES_NAV.map(e =>
       `<a href="${e.href}" class="${esRutaActiva(e.href) ? 'activo' : ''}">
         <span class="ico">${e.icono}</span> <span class="txt">${escaparHtml(e.texto)}</span>
       </a>`).join('');
-    const enlaceAdmin = esAdmin
+    const enlaceAdmin = (esAdmin || esMarketing)
       ? `<a href="/admin.html" class="admin ${esRutaActiva('/admin.html') ? 'activo' : ''}">
-          <span class="ico">🛠️</span> <span class="txt">Panel admin</span></a>`
+          <span class="ico">${esMarketing ? '🎯' : '🛠️'}</span> <span class="txt">${esMarketing ? 'Picks y Redes' : 'Panel admin'}</span></a>`
       : '';
     const enlacesCuenta = ENLACES_CUENTA.map(e =>
       `<a href="${e.href}" class="${esRutaActiva(e.href) ? 'activo' : ''}">

@@ -152,7 +152,7 @@
 const boletasPorId = new Map();
 let todasLasBoletas = [];
 let filtroActual = 'todas';
-let esAdmin = false;
+let puedeRecomendar = false;
 
 function esc(valor) {
   return String(valor ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -210,7 +210,7 @@ function renderizarListaBoletas() {
         </div>`;
       }).join('')}</div>
       <div class="boleta-actions">
-        ${esAdmin ? `<button type="button" class="btn-admin-recomendar" data-recommend-admin="${esc(boleta._id)}">🌟 Recomendar en Picks del Día</button>` : ''}
+        ${puedeRecomendar ? `<button type="button" class="btn-admin-recomendar" data-recommend-admin="${esc(boleta._id)}">🌟 Recomendar en Picks del Día</button>` : ''}
         <button type="button" data-copy="${esc(boleta._id)}">📋 Copiar</button>
         <button type="button" data-share="${esc(boleta._id)}">📲 Compartir</button>
         <button type="button" data-download-image="${esc(boleta._id)}">🖼️ Guardar imagen</button>
@@ -488,16 +488,16 @@ document.getElementById('boletas').addEventListener('click', async event => {
 });
 
 window.addEventListener('futbol:usuario-cargado', (e) => {
-  if (e.detail?.rol === 'admin') {
-    esAdmin = true;
+  if (['admin', 'marketing'].includes(e.detail?.rol)) {
+    puedeRecomendar = true;
     cargarBoletas();
   }
 });
 
 document.addEventListener('DOMContentLoaded', () => {
   fetch('/api/auth/me').then(r => r.json()).then(d => {
-    if (d.usuario?.rol === 'admin') {
-      esAdmin = true;
+    if (['admin', 'marketing'].includes(d.usuario?.rol)) {
+      puedeRecomendar = true;
     }
     cargarBoletas();
   }).catch(() => cargarBoletas());

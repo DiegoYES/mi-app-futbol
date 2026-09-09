@@ -115,7 +115,7 @@ async function enviar(evento, tipo) {
     }
 
     mostrar('¡Listo! Entrando...', 'ok');
-    window.location.href = datos.usuario.rol === 'admin' ? '/admin.html' : '/';
+    window.location.href = datos.usuario.rol === 'admin' ? '/admin.html' : datos.usuario.rol === 'marketing' ? '/admin.html#picks' : '/';
   } catch (err) {
     mostrar('No se pudo conectar con el servidor', 'error');
     boton.disabled = false;

@@ -25,7 +25,7 @@ const usuarioSchema = new mongoose.Schema({
   },
   sesion_version: { type: Number, min: 0, default: 0 },
   password_actualizada_en: { type: Date, default: null },
-  rol: { type: String, enum: ['usuario', 'admin'], default: 'usuario' },
+  rol: { type: String, enum: ['usuario', 'admin', 'marketing'], default: 'usuario' },
   plan: { type: String, enum: ['prueba', 'premium', 'expirado'], default: 'prueba' },
   fecha_registro: { type: Date, default: Date.now },
   prueba_termina: {
@@ -74,8 +74,8 @@ usuarioSchema.methods.estadoAcceso = function () {
     return { tieneAcceso: false, motivo: 'suspendido', plan: this.plan, suspendido_hasta: this.suspendido_hasta };
   }
 
-  if (this.rol === 'admin') {
-    return { tieneAcceso: true, motivo: 'admin', plan: 'premium', diasRestantes: null };
+  if (this.rol === 'admin' || this.rol === 'marketing') {
+    return { tieneAcceso: true, motivo: this.rol, plan: 'premium', diasRestantes: null };
   }
 
   if (this.suscripcion_termina && this.suscripcion_termina > ahora) {

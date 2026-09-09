@@ -1,9 +1,11 @@
 function refrescar() {
-  cargarResumen();
-  cargarUsuarios();
-  cargarIPsDuplicadas();
-  cargarTickets();
   cargarRecomendacionesAdmin();
+  cargarResumen();
+  if (rolUsuarioAdmin !== 'marketing') {
+    cargarUsuarios();
+    cargarIPsDuplicadas();
+    cargarTickets();
+  }
 }
 
 function instalarEventos() {
@@ -97,9 +99,25 @@ function instalarEventos() {
   });
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  mostrarPanelAdmin(location.hash.slice(1) || 'resumen');
+document.addEventListener('DOMContentLoaded', async () => {
   limpiarRecomendacion();
   instalarEventos();
+  try {
+    const res = await fetch('/api/auth/me');
+    if (res.ok) {
+      const data = await res.json();
+      configurarVistasPorRol(data.usuario);
+    }
+  } catch (_) {}
+  mostrarPanelAdmin(location.hash.slice(1) || (rolUsuarioAdmin === 'marketing' ? 'picks' : 'resumen'));
   refrescar();
+});
+
+window.addEventListener('futbol:usuario-cargado', evento => {
+  if (evento.detail) {
+    configurarVistasPorRol(evento.detail);
+    if (evento.detail.rol === 'marketing' && (!location.hash || location.hash === '#resumen')) {
+      mostrarPanelAdmin('picks');
+    }
+  }
 });

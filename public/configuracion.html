@@ -151,9 +151,9 @@ function pintarCuenta(usuario) {
   document.getElementById('cuenta-avatar').textContent = [...nombre][0]?.toLocaleUpperCase('es-MX') || 'U';
   document.getElementById('cuenta-nombre').textContent = nombre;
   document.getElementById('cuenta-email').textContent = usuario.email;
-  document.getElementById('cuenta-rol').textContent = usuario.rol === 'admin' ? 'Administrador' : 'Usuario';
+  document.getElementById('cuenta-rol').textContent = usuario.rol === 'admin' ? 'Administrador' : (usuario.rol === 'marketing' ? 'Marketing' : 'Usuario');
   document.getElementById('cuenta-acceso').textContent = usuario.tieneAcceso
-    ? (usuario.rol === 'admin' ? 'Administrador' : usuario.plan === 'premium' ? 'Premium' : 'Prueba activa')
+    ? (usuario.rol === 'admin' ? 'Administrador' : (usuario.rol === 'marketing' ? 'Staff Marketing' : (usuario.plan === 'premium' ? 'Premium' : 'Prueba activa')))
     : 'Sin acceso premium';
   document.getElementById('cuenta-registro').textContent = fechaCuenta(usuario.fecha_registro);
   document.getElementById('config-nombre').value = usuario.nombre || '';

@@ -1,6 +1,6 @@
 const express = require('express');
 const Usuario = require('../models/Usuario');
-const { requireAuth, requireAdmin } = require('../middleware/auth');
+const { requireAuth, requireAdmin, requireEditorial } = require('../middleware/auth');
 const { errorServidor, escaparRegex, textoDeConsulta } = require('../middleware/security');
 const { crearControlCuota } = require('../services/apiQuota');
 const MercadoCasa = require('../models/MercadoCasa');
@@ -30,7 +30,17 @@ const { reintentarEstadisticasPendientes, revalidarPartidoPorId, revalidarPendie
 
 const router = express.Router();
 
-router.use(requireAuth, requireAdmin);
+router.use(requireAuth);
+
+// Control de acceso por rol: el perfil de marketing puede gestionar recomendaciones,
+// redes sociales y consultar el resumen. Las secciones de usuarios, calidad, tickets,
+// seguridad y estado del sistema exigen exclusivamente rol admin.
+router.use((req, res, next) => {
+  if (req.path.startsWith('/recomendaciones') || req.path.startsWith('/redes-sociales') || req.path === '/resumen') {
+    return requireEditorial(req, res, next);
+  }
+  return requireAdmin(req, res, next);
+});
 
 function validarIdMongo(req, res, next) {
   if (!mongoose.isValidObjectId(req.params.id)) {
@@ -625,15 +635,20 @@ router.post('/usuarios/:id/cortesia', validarIdMongo, async (req, res) => {
 
 router.patch('/usuarios/:id/rol', validarIdMongo, async (req, res) => {
   try {
-    if (!(await esAdministradorPrincipal(req.usuario))) return res.status(403).json({ error: 'Solo el administrador principal puede gestionar administradores' });
+    if (!(await esAdministradorPrincipal(req.usuario))) return res.status(403).json({ error: 'Solo el administrador principal puede gestionar roles' });
     const rol = req.body?.rol;
-    if (!['usuario', 'admin'].includes(rol)) return res.status(400).json({ error: 'Rol no válido' });
+    if (!['usuario', 'admin', 'marketing'].includes(rol)) return res.status(400).json({ error: 'Rol no válido' });
     const usuario = await Usuario.findById(req.params.id);
     if (!usuario) return res.status(404).json({ error: 'Usuario no encontrado' });
     if (usuario._id.equals(req.usuario._id)) return res.status(400).json({ error: 'No puedes cambiar tu propio rol' });
     usuario.rol = rol;
     await usuario.save();
-    res.json({ mensaje: rol === 'admin' ? 'Permisos de administrador otorgados' : 'Permisos de administrador retirados', usuario: usuario.aJSON() });
+    const mensaje = rol === 'admin'
+      ? 'Permisos de administrador otorgados'
+      : rol === 'marketing'
+        ? 'Permisos de marketing otorgados'
+        : 'Permisos especiales retirados (usuario regular)';
+    res.json({ mensaje, usuario: usuario.aJSON() });
   } catch (error) {
     errorServidor(res, error);
   }
