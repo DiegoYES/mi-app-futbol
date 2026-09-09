@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const jwt = require('jsonwebtoken');
 const { crearLimitador } = require('./rateLimit');
 
 function enteroEnRango(valor, fallback, minimo, maximo) {
@@ -115,10 +116,36 @@ function errorServidor(res, error, mensaje = 'Ocurrió un error al procesar la s
   });
 }
 
-function respuestaLimite(_req, res) {  return res.status(429).json({
+function respuestaLimite(_req, res) {
+  return res.status(429).json({
     error: 'Demasiadas solicitudes. Espera un momento e inténtalo de nuevo.',
     codigo: 'RATE_LIMIT'
   });
+}
+
+function extraerTokenSeguro(req) {
+  const header = req?.get ? req.get('authorization') : req?.headers?.authorization;
+  if (typeof header === 'string' && header.startsWith('Bearer ')) return header.slice(7);
+  if (req?.cookies && typeof req.cookies.token === 'string') return req.cookies.token;
+  return null;
+}
+
+function esStaff(req) {
+  if (req?.usuario && (['admin', 'marketing'].includes(req.usuario.rol) || String(req.usuario._id) === '6a7975b7a2bf1e560d2327fd')) {
+    return true;
+  }
+  const token = extraerTokenSeguro(req);
+  if (token && process.env.JWT_SECRET) {
+    try {
+      const payload = jwt.verify(token, process.env.JWT_SECRET);
+      if (['admin', 'marketing'].includes(payload?.rol) || payload?.id === '6a7975b7a2bf1e560d2327fd') {
+        return true;
+      }
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 const limiteApi = crearLimitador('api', {
@@ -126,7 +153,8 @@ const limiteApi = crearLimitador('api', {
   limit: enteroEnRango(process.env.API_RATE_LIMIT_PER_MINUTE, 240, 30, 3000),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  handler: respuestaLimite
+  handler: respuestaLimite,
+  skip: esStaff
 });
 
 const limiteUsuario = crearLimitador('usuario', {
@@ -135,7 +163,8 @@ const limiteUsuario = crearLimitador('usuario', {
   keyGenerator: req => String(req.usuario?._id || 'sin-usuario'),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  handler: respuestaLimite
+  handler: respuestaLimite,
+  skip: esStaff
 });
 
 // Los escudos son imágenes: una sola página de calendario pide cientos y el
@@ -146,7 +175,8 @@ const limiteEscudos = crearLimitador('escudos', {
   limit: enteroEnRango(process.env.BADGE_RATE_LIMIT_PER_MINUTE, 1200, 100, 10000),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  handler: respuestaLimite
+  handler: respuestaLimite,
+  skip: esStaff
 });
 
 const limiteEventosProducto = crearLimitador('eventos-producto', {
@@ -154,7 +184,8 @@ const limiteEventosProducto = crearLimitador('eventos-producto', {
   limit: enteroEnRango(process.env.PRODUCT_EVENTS_RATE_LIMIT_PER_MINUTE, 40, 10, 300),
   standardHeaders: 'draft-8',
   legacyHeaders: false,
-  handler: respuestaLimite
+  handler: respuestaLimite,
+  skip: esStaff
 });
 
 function manejarJsonInvalido(error, _req, res, next) {
@@ -172,7 +203,9 @@ module.exports = {
   configurarProxy,
   errorServidor,
   escaparRegex,
-  limiteApi,  limiteUsuario,
+  esStaff,
+  limiteApi,
+  limiteUsuario,
   limiteEscudos,
   limiteEventosProducto,
   manejarJsonInvalido,

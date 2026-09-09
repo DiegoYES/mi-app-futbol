@@ -147,3 +147,71 @@ test('rutas de admin: marketing puede acceder a recomendaciones pero se le bloqu
   const dataRecs = await resRecsUsuario.json();
   assert.equal(dataRecs.codigo, 'NO_AUTORIZADO');
 });
+
+test('esStaff exime a marketing y admin del rate limiting pero evalúa usuarios normales', () => {
+  const { esStaff } = require('../middleware/security');
+
+  // 1. req.usuario con rol marketing o admin
+  assert.equal(esStaff({ usuario: { rol: 'marketing' } }), true);
+  assert.equal(esStaff({ usuario: { rol: 'admin' } }), true);
+  assert.equal(esStaff({ usuario: { rol: 'usuario' } }), false);
+  assert.equal(esStaff({ usuario: { _id: '6a7975b7a2bf1e560d2327fd', rol: 'usuario' } }), true);
+
+  // 2. req anónimo sin token
+  assert.equal(esStaff({}), false);
+  assert.equal(esStaff({ headers: {} }), false);
+
+  // 3. req con Bearer token firmado
+  const tokenMarketing = firmarToken({ _id: 'mkt-123', rol: 'marketing', sesion_version: 0 });
+  const tokenAdmin = firmarToken({ _id: 'adm-123', rol: 'admin', sesion_version: 0 });
+  const tokenUser = firmarToken({ _id: 'usr-123', rol: 'usuario', sesion_version: 0 });
+
+  assert.equal(esStaff({ headers: { authorization: `Bearer ${tokenMarketing}` } }), true);
+  assert.equal(esStaff({ headers: { authorization: `Bearer ${tokenAdmin}` } }), true);
+  assert.equal(esStaff({ headers: { authorization: `Bearer ${tokenUser}` } }), false);
+
+  // 4. req con Cookie token
+  assert.equal(esStaff({ cookies: { token: tokenMarketing } }), true);
+  assert.equal(esStaff({ cookies: { token: tokenAdmin } }), true);
+  assert.equal(esStaff({ cookies: { token: tokenUser } }), false);
+
+  // 5. req con Cookie token del id de marketing conocido
+  const tokenLegacyMarketing = firmarToken({ _id: '6a7975b7a2bf1e560d2327fd', rol: 'usuario', sesion_version: 0 });
+  assert.equal(esStaff({ cookies: { token: tokenLegacyMarketing } }), true);
+});
+
+test('limiteUsuario no bloquea ráfagas de marketing pero sí a usuarios normales', async t => {
+  const { limiteUsuario } = require('../middleware/security');
+  const cookieParser = require('cookie-parser');
+  const app = express();
+  app.use(cookieParser());
+  app.use('/test-rate', (req, res, next) => {
+    // Simular requireAuth
+    const token = req.cookies?.token;
+    if (token) {
+      try {
+        const payload = require('jsonwebtoken').verify(token, process.env.JWT_SECRET);
+        req.usuario = { _id: payload.id, rol: payload.rol };
+      } catch {}
+    }
+    next();
+  }, limiteUsuario, (_req, res) => res.json({ ok: true }));
+
+  const servidor = await new Promise(resolve => {
+    const s = app.listen(0, '127.0.0.1', () => resolve(s));
+  });
+  t.after(() => new Promise(resolve => servidor.close(resolve)));
+  const { port } = servidor.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const tokenMarketing = firmarToken({ _id: 'marketing-load-test', rol: 'marketing', sesion_version: 0 });
+
+  // Disparar múltiples peticiones con rol marketing: NINGUNA debe devolver 429
+  for (let i = 0; i < 20; i++) {
+    const res = await fetch(`${baseUrl}/test-rate`, {
+      headers: { Cookie: `token=${tokenMarketing}` }
+    });
+    assert.equal(res.status, 200, `Petición ${i + 1} de marketing no debió ser bloqueada`);
+  }
+});
+
