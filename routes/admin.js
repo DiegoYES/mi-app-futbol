@@ -14,8 +14,12 @@ const mongoose = require('mongoose');
 const { obtenerMetricasHttp } = require('../middleware/observability');
 const Recomendacion = require('../models/Recomendacion');
 const Boleta = require('../models/Boleta');
-const { normalizarRecomendacion, normalizarMomio } = require('../services/recomendaciones');
 const Partido = require('../models/partido');
+const {
+  normalizarRecomendacion,
+  normalizarMomio,
+  enriquecerRecomendacionesConEvaluacion
+} = require('../services/recomendaciones');
 const { obtenerMercado } = require('../services/marketCatalog');
 const { analizarPartido } = require('./picks');
 const EnlaceSocial = require('../models/EnlaceSocial');
@@ -211,7 +215,8 @@ router.get('/recomendaciones', async (_req, res) => {
       .sort({ destacada: -1, creada_en: -1 })
       .limit(200)
       .lean();
-    res.json({ recomendaciones });
+    const enriquecidas = await enriquecerRecomendacionesConEvaluacion(recomendaciones, { persistir: true });
+    res.json({ recomendaciones: enriquecidas });
   } catch (error) {
     errorServidor(res, error);
   }

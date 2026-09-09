@@ -8,7 +8,8 @@ const {
   normalizarMomio,
   normalizarRecomendacion,
   recomendacionParaUsuario,
-  filtroRecomendacionesPublicas
+  filtroRecomendacionesPublicas,
+  enriquecerRecomendacionesConEvaluacion
 } = require('../services/recomendaciones');
 
 const entradaBase = {
@@ -27,9 +28,15 @@ const entradaBase = {
   }]
 };
 
-test('la vista pública exige que la recomendación cierre después de la hora actual', () => {
+test('la vista pública incluye recomendaciones activas y recientes de las últimas 48h', () => {
   const ahora = new Date('2026-08-22T00:00:00.000Z');
+  const limite48h = new Date('2026-08-20T00:00:00.000Z');
   assert.deepEqual(filtroRecomendacionesPublicas(ahora), {
+    estado_publicacion: 'publicada',
+    cierra_en: { $gte: limite48h }
+  });
+
+  assert.deepEqual(filtroRecomendacionesPublicas(ahora, { soloFuturas: true }), {
     estado_publicacion: 'publicada',
     cierra_en: { $gt: ahora }
   });
@@ -150,4 +157,145 @@ test('el modelo declara el índice de publicaciones y valida la cantidad por tip
     creada_por: new mongoose.Types.ObjectId()
   });
   await assert.rejects(invalida.validate(), /entre 2 y 20/);
+});
+
+test('enriquecerRecomendacionesConEvaluacion resuelve pick individual como acertado o fallado', async () => {
+  const partidosMap = new Map([
+    [101, {
+      api_id: 101,
+      estado: 'FT',
+      fecha: new Date(),
+      equipo_local: { goles: 2 },
+      equipo_visitante: { goles: 1 }
+    }],
+    [102, {
+      api_id: 102,
+      estado: 'FT',
+      fecha: new Date(),
+      equipo_local: { goles: 0 },
+      equipo_visitante: { goles: 0 }
+    }]
+  ]);
+
+  const recomendaciones = [
+    {
+      _id: 'rec-1',
+      tipo: 'pick',
+      resultado: 'pendiente',
+      selecciones: [{ partido_api_id: 101, mercado_id: 'over_2_5' }]
+    },
+    {
+      _id: 'rec-2',
+      tipo: 'pick',
+      resultado: 'pendiente',
+      selecciones: [{ partido_api_id: 102, mercado_id: 'over_2_5' }]
+    }
+  ];
+
+  const enriquecidas = await enriquecerRecomendacionesConEvaluacion(recomendaciones, { persistir: false, partidosMap });
+  assert.equal(enriquecidas[0].resultado, 'acertado');
+  assert.equal(enriquecidas[0].selecciones[0].estado_seleccion, 'acertado');
+  assert.equal(enriquecidas[0].selecciones[0].partido_info.goles_local, 2);
+
+  assert.equal(enriquecidas[1].resultado, 'fallado');
+  assert.equal(enriquecidas[1].selecciones[0].estado_seleccion, 'fallado');
+});
+
+test('enriquecerRecomendacionesConEvaluacion evalúa combinadas y parlays correctamente', async () => {
+  const partidosMap = new Map([
+    [201, {
+      api_id: 201,
+      estado: 'FT',
+      fecha: new Date(),
+      equipo_local: { goles: 1, corners: 6, tarjetas_amarillas: 2 },
+      equipo_visitante: { goles: 1, corners: 4, tarjetas_amarillas: 1 },
+      estadisticas_completas: true,
+      tiempos_completos: true
+    }],
+    [202, {
+      api_id: 202,
+      estado: 'FT',
+      fecha: new Date(),
+      equipo_local: { goles: 0 },
+      equipo_visitante: { goles: 0 }
+    }],
+    [203, {
+      api_id: 203,
+      estado: 'NS',
+      fecha: new Date(),
+      equipo_local: { goles: null },
+      equipo_visitante: { goles: null }
+    }],
+    [204, {
+      api_id: 204,
+      estado: 'CANC',
+      fecha: new Date(),
+      equipo_local: { goles: null },
+      equipo_visitante: { goles: null }
+    }]
+  ]);
+
+  // Combinada ganada (ambas selecciones cumplen)
+  const combinadaGanada = [
+    {
+      _id: 'rec-comb-win',
+      tipo: 'combinada',
+      resultado: 'pendiente',
+      selecciones: [
+        { partido_api_id: 201, mercado_id: 'ambos_anotan' },
+        { partido_api_id: 201, mercado_id: 'corners_total_over_8_5' }
+      ]
+    }
+  ];
+  const resComb = await enriquecerRecomendacionesConEvaluacion(combinadaGanada, { persistir: false, partidosMap });
+  assert.equal(resComb[0].resultado, 'acertado');
+  assert.equal(resComb[0].selecciones[0].estado_seleccion, 'acertado');
+  assert.equal(resComb[0].selecciones[1].estado_seleccion, 'acertado');
+
+  // Parlay donde 1 falla -> global fallado
+  const parlayPerdido = [
+    {
+      _id: 'rec-parlay-loss',
+      tipo: 'parlay',
+      resultado: 'pendiente',
+      selecciones: [
+        { partido_api_id: 201, mercado_id: 'ambos_anotan' },
+        { partido_api_id: 202, mercado_id: 'over_2_5' }
+      ]
+    }
+  ];
+  const resParlay = await enriquecerRecomendacionesConEvaluacion(parlayPerdido, { persistir: false, partidosMap });
+  assert.equal(resParlay[0].resultado, 'fallado');
+  assert.equal(resParlay[0].selecciones[0].estado_seleccion, 'acertado');
+  assert.equal(resParlay[0].selecciones[1].estado_seleccion, 'fallado');
+
+  // Parlay con partido pendiente -> global pendiente
+  const parlayPendiente = [
+    {
+      _id: 'rec-parlay-pend',
+      tipo: 'parlay',
+      resultado: 'pendiente',
+      selecciones: [
+        { partido_api_id: 201, mercado_id: 'ambos_anotan' },
+        { partido_api_id: 203, mercado_id: 'over_2_5' }
+      ]
+    }
+  ];
+  const resPend = await enriquecerRecomendacionesConEvaluacion(parlayPendiente, { persistir: false, partidosMap });
+  assert.equal(resPend[0].resultado, 'pendiente');
+  assert.equal(resPend[0].selecciones[0].estado_seleccion, 'acertado');
+  assert.equal(resPend[0].selecciones[1].estado_seleccion, 'pendiente');
+
+  // Pick cancelado -> global anulado
+  const pickCancelado = [
+    {
+      _id: 'rec-canc',
+      tipo: 'pick',
+      resultado: 'pendiente',
+      selecciones: [{ partido_api_id: 204, mercado_id: 'over_2_5' }]
+    }
+  ];
+  const resCanc = await enriquecerRecomendacionesConEvaluacion(pickCancelado, { persistir: false, partidosMap });
+  assert.equal(resCanc[0].resultado, 'anulado');
+  assert.equal(resCanc[0].selecciones[0].estado_seleccion, 'anulado');
 });

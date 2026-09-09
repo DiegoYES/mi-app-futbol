@@ -1,10 +1,24 @@
+const Partido = require('../models/partido');
+const { evaluarMercado, idMercadoPeriodo } = require('./pickTracking');
+
 const TIPOS = new Set(['pick', 'combinada', 'parlay']);
 const VISIBILIDADES = new Set(['gratis', 'premium']);
 const ESTADOS_PUBLICACION = new Set(['borrador', 'publicada']);
 const RESULTADOS = new Set(['pendiente', 'acertado', 'fallado', 'anulado']);
 
-function filtroRecomendacionesPublicas(ahora = new Date()) {
-  return { estado_publicacion: 'publicada', cierra_en: { $gt: ahora } };
+function filtroRecomendacionesPublicas(ahora = new Date(), opciones = {}) {
+  const { ventanaHoras = 48, soloFuturas = false } = typeof opciones === 'object' && opciones !== null
+    ? opciones
+    : { ventanaHoras: typeof opciones === 'number' ? opciones : 48 };
+
+  if (soloFuturas || ventanaHoras <= 0) {
+    return { estado_publicacion: 'publicada', cierra_en: { $gt: ahora } };
+  }
+  const limite = new Date(ahora.getTime() - ventanaHoras * 3600 * 1000);
+  return {
+    estado_publicacion: 'publicada',
+    cierra_en: { $gte: limite }
+  };
 }
 
 function texto(valor, maximo) {
@@ -144,11 +158,134 @@ function recomendacionParaUsuario(recomendacion, tieneAcceso) {
   };
 }
 
+async function enriquecerRecomendacionesConEvaluacion(recomendaciones, opciones = {}) {
+  const { persistir = true, partidosMap = null } = opciones;
+  if (!Array.isArray(recomendaciones) || !recomendaciones.length) return [];
+
+  let mapaPartidos = partidosMap;
+  if (!mapaPartidos) {
+    const partidoIds = [...new Set(
+      recomendaciones.flatMap(r => (r.selecciones || []).map(s => Number(s.partido_api_id))).filter(Boolean)
+    )];
+    mapaPartidos = new Map();
+    if (partidoIds.length > 0) {
+      const partidos = await Partido.find({ api_id: { $in: partidoIds } }).lean();
+      partidos.forEach(p => mapaPartidos.set(Number(p.api_id), p));
+    }
+  }
+
+  const operacionesBulk = [];
+
+  const enriquecidas = recomendaciones.map(rec => {
+    const item = rec.toObject ? rec.toObject() : { ...rec };
+    let hayFallados = false;
+    let hayPendientes = false;
+    let hayAnulados = false;
+    let aciertos = 0;
+    const selecciones = item.selecciones || [];
+
+    const seleccionesEnriquecidas = selecciones.map(s => {
+      const partidoId = Number(s.partido_api_id);
+      const partido = mapaPartidos.get(partidoId);
+      let estado_seleccion = 'pendiente';
+      let partido_info = null;
+
+      if (partido) {
+        partido_info = {
+          api_id: partido.api_id,
+          estado: partido.estado,
+          fecha: partido.fecha,
+          goles_local: partido.equipo_local?.goles != null ? Number(partido.equipo_local.goles) : null,
+          goles_visitante: partido.equipo_visitante?.goles != null ? Number(partido.equipo_visitante.goles) : null
+        };
+
+        const finalizado = ['FT', 'AET', 'PEN'].includes(partido.estado);
+        const cancelado = ['CANC', 'PST', 'ABD'].includes(partido.estado);
+
+        if (cancelado) {
+          estado_seleccion = 'anulado';
+          hayAnulados = true;
+        } else if (finalizado) {
+          const mercadoKey = (typeof s.mercado_id === 'string' && s.mercado_id.includes('__'))
+            ? s.mercado_id
+            : idMercadoPeriodo(s.mercado_id, s.periodo || 0);
+          const evaluacion = evaluarMercado(mercadoKey, partido);
+
+          if (evaluacion === true) {
+            estado_seleccion = 'acertado';
+            aciertos++;
+          } else if (evaluacion === false) {
+            estado_seleccion = 'fallado';
+            hayFallados = true;
+          } else {
+            estado_seleccion = 'pendiente';
+            hayPendientes = true;
+          }
+        } else {
+          estado_seleccion = 'pendiente';
+          hayPendientes = true;
+        }
+      } else {
+        estado_seleccion = 'pendiente';
+        hayPendientes = true;
+      }
+
+      return {
+        ...s,
+        estado_seleccion,
+        partido_info
+      };
+    });
+
+    let resultadoCalculado = item.resultado;
+    if (!resultadoCalculado || resultadoCalculado === 'pendiente') {
+      if (hayFallados) {
+        resultadoCalculado = 'fallado';
+      } else if (!hayPendientes && seleccionesEnriquecidas.length > 0) {
+        if (hayAnulados && aciertos === 0) {
+          resultadoCalculado = 'anulado';
+        } else {
+          resultadoCalculado = 'acertado';
+        }
+      } else {
+        resultadoCalculado = 'pendiente';
+      }
+
+      if (persistir && item._id && resultadoCalculado !== 'pendiente' && resultadoCalculado !== item.resultado) {
+        operacionesBulk.push({
+          updateOne: {
+            filter: { _id: item._id, resultado: 'pendiente' },
+            update: { $set: { resultado: resultadoCalculado } }
+          }
+        });
+      }
+    }
+
+    return {
+      ...item,
+      resultado: resultadoCalculado,
+      selecciones: seleccionesEnriquecidas
+    };
+  });
+
+  if (operacionesBulk.length > 0 && persistir) {
+    try {
+      const Recomendacion = require('../models/Recomendacion');
+      await Recomendacion.bulkWrite(operacionesBulk);
+    } catch {
+      // Escritura en segundo plano no bloqueante
+    }
+  }
+
+  return enriquecidas;
+}
+
 module.exports = {
   americanoADecimal,
   decimalAAmericano,
   normalizarMomio,
   normalizarRecomendacion,
   recomendacionParaUsuario,
-  filtroRecomendacionesPublicas
+  filtroRecomendacionesPublicas,
+  enriquecerRecomendacionesConEvaluacion
 };

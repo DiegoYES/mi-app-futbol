@@ -43,13 +43,26 @@
   .editorial-badges { display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end; }
   .editorial-badge { padding:5px 8px;border-radius:999px;background:rgba(84,227,142,.1);color:var(--green);font-size:.58rem;font-weight:900;text-transform:uppercase;white-space:nowrap; }
   .editorial-badge.premium { background:rgba(104,217,231,.1);color:var(--cyan); }
-  .editorial-badge.acertado { background:rgba(84,227,142,.12);color:var(--green); }
-  .editorial-badge.fallado { background:rgba(255,124,120,.12);color:var(--red); }
+  .editorial-badge.acertado, .editorial-badge.acertada { background:rgba(84,227,142,.18);color:var(--green);border:1px solid rgba(84,227,142,.45); }
+  .editorial-badge.fallado, .editorial-badge.fallada { background:rgba(255,124,120,.18);color:var(--red);border:1px solid rgba(255,124,120,.45); }
+  .editorial-badge.pendiente { background:rgba(245,190,91,.15);color:var(--amber);border:1px solid rgba(245,190,91,.35); }
+  .editorial-badge.anulado, .editorial-badge.anulada { background:rgba(148,163,184,.15);color:var(--muted);border:1px solid rgba(148,163,184,.35); }
   .btn-eliminar-rec { padding:4px 9px;border:1px solid rgba(255,124,120,.45);border-radius:999px;background:rgba(255,124,120,.12);color:var(--red);font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .15s,color .15s; }
   .btn-eliminar-rec:hover { background:var(--red);color:#07100d; }
   .editorial-analysis { margin:0;color:var(--muted);font-size:.77rem;line-height:1.65;white-space:pre-wrap; }
   .editorial-selections { display:grid;gap:8px;margin:0;padding:0;list-style:none; }
   .editorial-selection { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:11px 12px;border-left:3px solid var(--green);border-radius:0 9px 9px 0;background:rgba(84,227,142,.07); }
+  .editorial-selection.acertado { border-left-color:var(--green);background:rgba(84,227,142,.08); }
+  .editorial-selection.fallado { border-left-color:var(--red);background:rgba(255,124,120,.08); }
+  .editorial-selection.pendiente { border-left-color:var(--amber);background:rgba(245,190,91,.06); }
+  .editorial-selection.anulado { border-left-color:var(--muted);background:rgba(148,163,184,.06); }
+  .editorial-selection-right { display:flex;flex-direction:column;align-items:flex-end;gap:3px; }
+  .editorial-selection .match-score { color:var(--ink);font-weight:800;margin-left:4px;font-size:.74rem; }
+  .badge-sel { font-size:.58rem;font-weight:900;padding:2px 6px;border-radius:6px;text-transform:uppercase;white-space:nowrap;display:inline-block; }
+  .badge-sel.acertado { color:var(--green);background:rgba(84,227,142,.15);border:1px solid rgba(84,227,142,.35); }
+  .badge-sel.fallado { color:var(--red);background:rgba(255,124,120,.15);border:1px solid rgba(255,124,120,.35); }
+  .badge-sel.pendiente { color:var(--amber);background:rgba(245,190,91,.15);border:1px solid rgba(245,190,91,.35); }
+  .badge-sel.anulado { color:var(--muted);background:rgba(148,163,184,.15);border:1px solid rgba(148,163,184,.35); }
   .editorial-selection strong,.editorial-selection span { display:block; }
   .editorial-selection strong { font-size:.78rem; }
   .editorial-selection span { margin-top:3px;color:var(--muted);font-size:.68rem; }
@@ -152,10 +165,24 @@ async function cargarRecomendacionesEditoriales() {
       const botonEliminar = esAdmin
         ? `<button type="button" class="btn-eliminar-rec" data-delete-rec="${item._id}" title="Eliminar recomendación del día">🗑️ Quitar</button>`
         : '';
-      const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${item.resultado !== 'pendiente' ? `<span class="editorial-badge ${esc(item.resultado)}">${esc(item.resultado)}</span>` : ''}${botonEliminar}`;
+      const badgeResultado = item.resultado === 'acertado' || item.resultado === 'acertada'
+        ? '<span class="editorial-badge acertado">✓ Acertada</span>'
+        : item.resultado === 'fallado' || item.resultado === 'fallada'
+          ? '<span class="editorial-badge fallado">✕ Fallada</span>'
+          : item.resultado === 'anulado' || item.resultado === 'anulada'
+            ? '<span class="editorial-badge anulado">Anulada</span>'
+            : '<span class="editorial-badge pendiente">⏳ Pendiente</span>';
+      const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${botonEliminar}`;
       const contenido = item.bloqueada
         ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
-        : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => `<li class="editorial-selection"><div><strong>${esc(seleccion.evento)}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b></li>`).join('')}</ol>`;
+        : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => {
+            const estadoSel = seleccion.estado_seleccion || 'pendiente';
+            const labelSel = estadoSel === 'acertado' ? '✓ Acertado' : estadoSel === 'fallado' ? '✕ Fallado' : estadoSel === 'anulado' ? 'Anulado' : '⏳ Pendiente';
+            const marcador = seleccion.partido_info?.goles_local != null
+              ? `<small class="match-score">(${seleccion.partido_info.goles_local} - ${seleccion.partido_info.goles_visitante} ${seleccion.partido_info.estado || 'FT'})</small>`
+              : '';
+            return `<li class="editorial-selection ${estadoSel}"><div><strong>${esc(seleccion.evento)} ${marcador}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><div class="editorial-selection-right"><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b><span class="badge-sel ${estadoSel}">${labelSel}</span></div></li>`;
+          }).join('')}</ol>`;
       return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>Momio total ${mostrarMomio(item.cuota_total, item.momio_total_americano)}</strong></footer></article>`;
     }).join('');
   } catch (error) {

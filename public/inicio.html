@@ -123,11 +123,25 @@
     .home-rec-badge.tipo { background:rgba(84,227,142,.12);color:var(--green); }
     .home-rec-badge.destacada { background:rgba(245,190,91,.15);color:var(--amber); }
     .home-rec-badge.premium { background:rgba(104,217,231,.12);color:var(--cyan); }
+    .home-rec-badge.acertada, .home-rec-badge.acertado { background:rgba(84,227,142,.2);color:var(--green);border:1px solid rgba(84,227,142,.45); }
+    .home-rec-badge.fallada, .home-rec-badge.fallado { background:rgba(255,107,107,.18);color:#ff6b6b;border:1px solid rgba(255,107,107,.45); }
+    .home-rec-badge.pendiente { background:rgba(245,190,91,.15);color:var(--amber);border:1px solid rgba(245,190,91,.35); }
+    .home-rec-badge.anulada, .home-rec-badge.anulado { background:rgba(148,163,184,.15);color:var(--muted);border:1px solid rgba(148,163,184,.35); }
     .home-rec-selections { display:grid;gap:7px;margin:0;padding:0;list-style:none; }
     .home-rec-item { display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:10px;padding:10px 12px;border-left:3px solid var(--green);border-radius:0 10px 10px 0;background:rgba(84,227,142,.06);font-size:.78rem; }
+    .home-rec-item.acertado { border-left-color:var(--green);background:rgba(84,227,142,.08); }
+    .home-rec-item.fallado { border-left-color:#ff6b6b;background:rgba(255,107,107,.08); }
+    .home-rec-item.pendiente { border-left-color:var(--amber);background:rgba(245,190,91,.06); }
+    .home-rec-item.anulado { border-left-color:var(--muted);background:rgba(148,163,184,.06); }
+    .home-rec-item-right { display:flex;flex-direction:column;align-items:flex-end;gap:3px; }
     .home-rec-item strong { display:block;color:var(--ink); }
     .home-rec-item span { display:block;margin-top:2px;color:var(--muted);font-size:.66rem; }
     .home-rec-item b { color:var(--green);font-size:.85rem; }
+    .badge-sel { font-size:.58rem;font-weight:900;padding:2px 6px;border-radius:6px;text-transform:uppercase;white-space:nowrap;display:inline-block; }
+    .badge-sel.acertado { color:var(--green);background:rgba(84,227,142,.15);border:1px solid rgba(84,227,142,.35); }
+    .badge-sel.fallado { color:#ff6b6b;background:rgba(255,107,107,.15);border:1px solid rgba(255,107,107,.35); }
+    .badge-sel.pendiente { color:var(--amber);background:rgba(245,190,91,.15);border:1px solid rgba(245,190,91,.35); }
+    .badge-sel.anulado { color:var(--muted);background:rgba(148,163,184,.15);border:1px solid rgba(148,163,184,.35); }
     .home-rec-footer { display:flex;justify-content:space-between;align-items:center;margin-top:auto;padding-top:12px;border-top:1px solid var(--line); }
     .home-rec-odd { display:flex;align-items:baseline;gap:6px; }
     .home-rec-odd span { color:var(--muted);font-size:.68rem;text-transform:uppercase; }
@@ -443,6 +457,13 @@ async function cargarPicksRecomendadosPortada() {
       const cuota = rec.cuota_total ? Number(rec.cuota_total).toFixed(2) : '—';
       const momioAmericano = rec.momio_total_americano ? (rec.momio_total_americano > 0 ? `+${rec.momio_total_americano}` : rec.momio_total_americano) : '';
       const momioDisplay = momioAmericano ? `${cuota} (${momioAmericano})` : cuota;
+      const badgeResultado = rec.resultado === 'acertado' || rec.resultado === 'acertada'
+        ? '<span class="home-rec-badge acertada">✓ Acertada</span>'
+        : rec.resultado === 'fallado' || rec.resultado === 'fallada'
+          ? '<span class="home-rec-badge fallada">✕ Fallada</span>'
+          : rec.resultado === 'anulado' || rec.resultado === 'anulada'
+            ? '<span class="home-rec-badge anulada">Anulada</span>'
+            : '<span class="home-rec-badge pendiente">⏳ Pendiente</span>';
       return `<article class="home-rec-card ${rec.destacada ? 'destacada' : ''}">
         <div class="home-rec-head">
           <div>
@@ -453,6 +474,7 @@ async function cargarPicksRecomendadosPortada() {
             ${rec.destacada ? '<span class="home-rec-badge destacada">⭐ Destacada</span>' : ''}
             <span class="home-rec-badge tipo">${esc(rec.tipo)}</span>
             <span class="home-rec-badge ${rec.visibilidad}">${esc(rec.visibilidad)}</span>
+            ${badgeResultado}
           </div>
         </div>
         ${rec.descripcion ? `<p style="margin:0;color:var(--muted);font-size:.73rem;line-height:1.5;">${esc(rec.descripcion)}</p>` : ''}
@@ -463,15 +485,22 @@ async function cargarPicksRecomendadosPortada() {
           </div>
         ` : `
           <ul class="home-rec-selections">
-            ${(rec.selecciones || []).map(s => `
-              <li class="home-rec-item">
+            ${(rec.selecciones || []).map(s => {
+              const estadoSel = s.estado_seleccion || 'pendiente';
+              const labelSel = estadoSel === 'acertado' ? '✓ Acertado' : estadoSel === 'fallado' ? '✕ Fallado' : estadoSel === 'anulado' ? 'Anulado' : '⏳ Pendiente';
+              const marcadorTexto = s.partido_info?.goles_local != null ? ` · Marcador: <b style="color:var(--ink);">${s.partido_info.goles_local} - ${s.partido_info.goles_visitante} (${s.partido_info.estado || 'FT'})</b>` : '';
+              return `
+              <li class="home-rec-item ${estadoSel}">
                 <div>
                   <strong>${esc(s.mercado)}</strong>
-                  <span>${esc(s.evento)}</span>
+                  <span>${esc(s.evento)}${marcadorTexto}</span>
                 </div>
-                <b>${s.cuota ? Number(s.cuota).toFixed(2) : ''}</b>
-              </li>
-            `).join('')}
+                <div class="home-rec-item-right">
+                  <b>${s.cuota ? Number(s.cuota).toFixed(2) : ''}</b>
+                  <span class="badge-sel ${estadoSel}">${labelSel}</span>
+                </div>
+              </li>`;
+            }).join('')}
           </ul>
         `}
         <div class="home-rec-footer">
