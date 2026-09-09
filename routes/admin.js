@@ -195,12 +195,16 @@ async function enriquecerRecomendacion(datos) {
     .select(CAMPOS_PARTIDO_RECOMENDACION).lean();
   const porId = new Map(partidos.map(partido => [partido.api_id, partido]));
   const selecciones = [];
+  let fechaPrimerPartido = null;
 
   for (const seleccion of datos.selecciones) {
     const partido = porId.get(seleccion.partido_api_id);
     if (!partido) return { error: 'Uno de los partidos seleccionados ya no está disponible.' };
-    if (partido.fecha > datos.cierra_en) {
-      return { error: 'Todos los partidos deben comenzar antes de la fecha límite.' };
+    if (!fechaPrimerPartido || partido.fecha < fechaPrimerPartido) {
+      fechaPrimerPartido = partido.fecha;
+    }
+    if (partido.fecha < new Date(Date.now() - 4 * 3600 * 1000)) {
+      return { error: `El partido ${partido.equipo_local?.nombre || 'local'} vs ${partido.equipo_visitante?.nombre || 'visitante'} ya se jugó.` };
     }
     const periodo = [1, 2].includes(seleccion.periodo) ? seleccion.periodo : 0;
     const mercado = obtenerMercado(seleccion.mercado_id);
@@ -216,6 +220,12 @@ async function enriquecerRecomendacion(datos) {
       mercado: mercado.nombre + (periodo ? ` · ${periodo}T` : ``)
     });
   }
+
+  // La hora de cierre natural del parlay es el inicio del primer partido
+  if (!datos.cierra_en || (fechaPrimerPartido && new Date(datos.cierra_en) > fechaPrimerPartido)) {
+    datos.cierra_en = fechaPrimerPartido;
+  }
+
   return { datos: { ...datos, selecciones } };
 }
 
