@@ -40,6 +40,10 @@ test('la vista pública incluye recomendaciones activas y recientes de las últi
     estado_publicacion: 'publicada',
     cierra_en: { $gt: ahora }
   });
+
+  assert.deepEqual(filtroRecomendacionesPublicas(ahora, { todasPublicadas: true }), {
+    estado_publicacion: 'publicada'
+  });
 });
 
 test('normaliza un pick editorial válido sin duplicar el sistema de acceso', () => {

@@ -7,10 +7,13 @@ const ESTADOS_PUBLICACION = new Set(['borrador', 'publicada']);
 const RESULTADOS = new Set(['pendiente', 'acertado', 'fallado', 'anulado']);
 
 function filtroRecomendacionesPublicas(ahora = new Date(), opciones = {}) {
-  const { ventanaHoras = 48, soloFuturas = false } = typeof opciones === 'object' && opciones !== null
+  const { ventanaHoras = 48, soloFuturas = false, todasPublicadas = false } = typeof opciones === 'object' && opciones !== null
     ? opciones
     : { ventanaHoras: typeof opciones === 'number' ? opciones : 48 };
 
+  if (todasPublicadas) {
+    return { estado_publicacion: 'publicada' };
+  }
   if (soloFuturas || ventanaHoras <= 0) {
     return { estado_publicacion: 'publicada', cierra_en: { $gt: ahora } };
   }

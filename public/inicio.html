@@ -447,12 +447,48 @@ async function cargarPicksRecomendadosPortada() {
   try {
     const resp = await fetch('/api/recomendaciones', { cache: 'no-store' });
     if (!resp.ok) throw new Error('No se pudieron cargar las recomendaciones');
-    const { recomendaciones } = await resp.json();
-    if (!recomendaciones || !recomendaciones.length) {
-      cont.innerHTML = '<div class="home-rec-empty">No hay picks recomendados publicados para hoy todavía. <a href="/picks.html" style="color:var(--green);font-weight:800;">Explora los mejores picks por porcentaje →</a></div>';
+    const datos = await resp.json();
+    const activas = datos.activas || [];
+    const historial = datos.historial || [];
+
+    if (!activas.length) {
+      const ultimo = historial[0];
+      const ultimoAcertado = ultimo && (ultimo.resultado === 'acertado' || ultimo.resultado === 'acertada');
+      const cuota = ultimo?.cuota_total ? Number(ultimo.cuota_total).toFixed(2) : '';
+      const momioAmericano = ultimo?.momio_total_americano ? (ultimo.momio_total_americano > 0 ? `+${ultimo.momio_total_americano}` : ultimo.momio_total_americano) : '';
+      const momioDisplay = momioAmericano ? `${cuota} (${momioAmericano})` : cuota;
+
+      cont.innerHTML = `
+        <div class="home-rec-empty-box" style="grid-column: 1 / -1; padding: 24px 22px; border: 1px dashed rgba(84,227,142,.35); border-radius: 16px; background: rgba(84,227,142,.04); display: flex; flex-direction: column; gap: 14px;">
+          <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(84,227,142,.12);color:var(--green);display:grid;place-items:center;font-size:1.3rem;flex-shrink:0;">⏳</div>
+            <div style="flex:1;min-width:240px;">
+              <strong style="display:block;color:var(--ink);font-size:1rem;margin-bottom:3px;">No hay recomendaciones activas para esta hora</strong>
+              <p style="margin:0;color:var(--muted);font-size:.78rem;line-height:1.5;">El equipo editorial publica los picks y combinadas recomendadas del día antes del inicio de cada jornada.</p>
+            </div>
+          </div>
+          ${ultimo ? `
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;border:1px solid rgba(255,255,255,.07);border-radius:12px;background:rgba(255,255,255,.02);flex-wrap:wrap;">
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span style="color:var(--muted);font-size:.72rem;">📜 Último pick en historial:</span>
+                <strong style="color:var(--ink);font-size:.82rem;">${esc(ultimo.titulo)}</strong>
+                ${momioDisplay ? `<span style="color:var(--green);font-size:.78rem;font-weight:800;">@ ${momioDisplay}</span>` : ''}
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;">
+                <span class="home-rec-badge ${ultimoAcertado ? 'acertada' : 'fallada'}">${ultimoAcertado ? '✓ Acertada' : 'Finalizada'}</span>
+              </div>
+            </div>
+          ` : ''}
+          <div style="display:flex;justify-content:flex-end;padding-top:4px;">
+            <a href="/picks.html#historial" style="display:inline-flex;align-items:center;gap:6px;color:var(--green);font-size:.82rem;font-weight:800;text-decoration:none;">
+              Ver historial de picks y resultados (${historial.length}) →
+            </a>
+          </div>
+        </div>`;
       return;
     }
-    const visibles = recomendaciones.slice(0, 4);
+
+    const visibles = activas.slice(0, 4);
     cont.innerHTML = visibles.map(rec => {
       const cuota = rec.cuota_total ? Number(rec.cuota_total).toFixed(2) : '—';
       const momioAmericano = rec.momio_total_americano ? (rec.momio_total_americano > 0 ? `+${rec.momio_total_americano}` : rec.momio_total_americano) : '';

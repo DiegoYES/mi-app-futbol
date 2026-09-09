@@ -77,7 +77,17 @@
   @media (max-width:520px) { .general-actions{grid-template-columns:1fr} }
   @media (max-width:800px) { .pick-kpis { grid-template-columns:repeat(2,1fr); } .history-item { grid-template-columns:minmax(0,1fr) auto;gap:12px; } }
   @media (max-width:800px) { .general-grid,.editorial-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } }
-  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px} }
+  .editorial-tabs { display:flex; gap:8px; margin:16px 0; border-bottom:1px solid var(--line); padding-bottom:10px; }
+  .editorial-tab-btn { min-height:38px; padding:0 15px; border:1px solid var(--line); border-radius:10px; background:var(--surface-raised); color:var(--muted); font:inherit; font-size:.8rem; font-weight:800; cursor:pointer; transition:all .15s ease; }
+  .editorial-tab-btn:hover { color:var(--ink); border-color:rgba(84,227,142,.4); }
+  .editorial-tab-btn.active { background:rgba(84,227,142,.15); border-color:var(--green); color:var(--green); }
+  .historial-kpi-strip { display:none; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+  .hist-kpi { padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-raised); text-align:center; }
+  .hist-kpi span { display:block; color:var(--muted); font-size:.65rem; text-transform:uppercase; font-weight:800; }
+  .hist-kpi strong { display:block; font-size:1.15rem; margin-top:2px; }
+  .btn-rec-cambiar-historial { padding:9px 18px; border:1px solid var(--green); border-radius:9px; background:rgba(84,227,142,.12); color:var(--green); font:inherit; font-size:.8rem; font-weight:800; cursor:pointer; transition:all .15s ease; }
+  .btn-rec-cambiar-historial:hover { background:var(--green); color:#07100d; }
+  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px}.editorial-tabs{overflow-x:auto;white-space:nowrap} }
 </style>
 </head>
 <body>
@@ -97,6 +107,23 @@
       <span class="model-badge">Actualizados por nosotros</span>
     </div>
     <p>Recomendaciones editoriales del día publicadas por nuestro equipo. Los picks premium están incluidos en tus 7 días de prueba y membresía activa.</p>
+    
+    <div class="editorial-tabs" role="tablist">
+      <button type="button" id="tab-editorial-activas" class="editorial-tab-btn active" role="tab" aria-selected="true">
+        🎯 Picks Activos del Día (<span id="rec-count-activas">0</span>)
+      </button>
+      <button type="button" id="tab-editorial-historial" class="editorial-tab-btn" role="tab" aria-selected="false">
+        📜 Historial y Resultados (<span id="rec-count-historial">0</span>)
+      </button>
+    </div>
+
+    <div id="historial-kpis" class="historial-kpi-strip">
+      <div class="hist-kpi"><span>Total Historial</span><strong id="hist-total">0</strong></div>
+      <div class="hist-kpi"><span>Acertadas</span><strong id="hist-acertadas" style="color:var(--green)">0</strong></div>
+      <div class="hist-kpi"><span>Falladas</span><strong id="hist-falladas" style="color:var(--red)">0</strong></div>
+      <div class="hist-kpi"><span>Efectividad</span><strong id="hist-efectividad" style="color:var(--cyan)">0%</strong></div>
+    </div>
+
     <div id="recomendaciones-editoriales" class="editorial-grid"><div class="loader">Cargando recomendaciones…</div></div>
   </section>
 
@@ -149,6 +176,83 @@ const nombresCategorias = { goles:'Goles', corners:'Córners', tarjetas:'Tarjeta
 let catalogoGeneralCargado = false;
 let picksGuardados = new Set();
 let puedeGestionarRec = false;
+let listaActivas = [];
+let listaHistorial = [];
+let resumenEditorial = {};
+let tabEditorialActual = window.location.hash === '#historial' ? 'historial' : 'activas';
+
+function actualizarTabsUI() {
+  const btnActivas = document.getElementById('tab-editorial-activas');
+  const btnHistorial = document.getElementById('tab-editorial-historial');
+  const kpis = document.getElementById('historial-kpis');
+  if (btnActivas && btnHistorial) {
+    btnActivas.classList.toggle('active', tabEditorialActual === 'activas');
+    btnActivas.setAttribute('aria-selected', String(tabEditorialActual === 'activas'));
+    btnHistorial.classList.toggle('active', tabEditorialActual === 'historial');
+    btnHistorial.setAttribute('aria-selected', String(tabEditorialActual === 'historial'));
+  }
+  if (kpis) {
+    kpis.style.display = tabEditorialActual === 'historial' ? 'grid' : 'none';
+  }
+}
+
+function cambiarTabEditorial(tab) {
+  tabEditorialActual = tab;
+  actualizarTabsUI();
+  renderizarRecomendaciones();
+}
+window.cambiarTabEditorial = cambiarTabEditorial;
+
+function renderizarRecomendaciones() {
+  const contenedor = document.getElementById('recomendaciones-editoriales');
+  const lista = tabEditorialActual === 'activas' ? listaActivas : listaHistorial;
+
+  if (!lista.length) {
+    if (tabEditorialActual === 'activas') {
+      contenedor.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;padding:24px 18px;">
+          <p style="font-size:1.05rem;margin:0 0 6px;color:var(--ink);">⏳ <strong>No hay recomendaciones activas en este momento</strong></p>
+          <span style="color:var(--muted);font-size:.82rem;">El equipo editorial publica las selecciones recomendadas antes de cada jornada.</span>
+          ${listaHistorial.length > 0 ? `
+            <div style="margin-top:14px;">
+              <button type="button" class="btn-rec-cambiar-historial" onclick="cambiarTabEditorial('historial')">
+                Ver historial de picks y resultados (${listaHistorial.length}) →
+              </button>
+            </div>
+          ` : ''}
+        </div>`;
+    } else {
+      contenedor.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Todavía no hay historial de recomendaciones registradas.</div>';
+    }
+    return;
+  }
+
+  contenedor.innerHTML = lista.map(item => {
+    const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
+    const botonEliminar = puedeGestionarRec
+      ? `<button type="button" class="btn-eliminar-rec" data-delete-rec="${item._id}" title="Eliminar recomendación">🗑️ Quitar</button>`
+      : '';
+    const badgeResultado = item.resultado === 'acertado' || item.resultado === 'acertada'
+      ? '<span class="editorial-badge acertado">✓ Acertada</span>'
+      : item.resultado === 'fallado' || item.resultado === 'fallada'
+        ? '<span class="editorial-badge fallado">✕ Fallada</span>'
+        : item.resultado === 'anulado' || item.resultado === 'anulada'
+          ? '<span class="editorial-badge anulado">Anulada</span>'
+          : '<span class="editorial-badge pendiente">⏳ Pendiente</span>';
+    const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${botonEliminar}`;
+    const contenido = item.bloqueada
+      ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
+      : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${(item.selecciones || []).map(seleccion => {
+          const estadoSel = seleccion.estado_seleccion || 'pendiente';
+          const labelSel = estadoSel === 'acertado' ? '✓ Acertado' : estadoSel === 'fallado' ? '✕ Fallado' : estadoSel === 'anulado' ? 'Anulado' : '⏳ Pendiente';
+          const marcador = seleccion.partido_info?.goles_local != null
+            ? `<small class="match-score">(${seleccion.partido_info.goles_local} - ${seleccion.partido_info.goles_visitante} ${seleccion.partido_info.estado || 'FT'})</small>`
+            : '';
+          return `<li class="editorial-selection ${estadoSel}"><div><strong>${esc(seleccion.evento)} ${marcador}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><div class="editorial-selection-right"><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b><span class="badge-sel ${estadoSel}">${labelSel}</span></div></li>`;
+        }).join('')}</ol>`;
+    return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>Momio total ${mostrarMomio(item.cuota_total, item.momio_total_americano)}</strong></footer></article>`;
+  }).join('');
+}
 
 async function cargarRecomendacionesEditoriales() {
   const contenedor = document.getElementById('recomendaciones-editoriales');
@@ -156,35 +260,31 @@ async function cargarRecomendacionesEditoriales() {
     const respuesta = await fetch('/api/recomendaciones', { cache: 'no-store' });
     const datos = await respuesta.json().catch(() => ({}));
     if (!respuesta.ok) throw new Error(datos.error || 'No se pudieron cargar las recomendaciones.');
-    if (!datos.recomendaciones.length) {
-      contenedor.innerHTML = '<div class="empty-state">Todavía no hemos publicado picks, combinadas o parlays recomendados.</div>';
-      return;
+
+    listaActivas = datos.activas || [];
+    listaHistorial = datos.historial || [];
+    resumenEditorial = datos.resumen || {};
+
+    const countActEl = document.getElementById('rec-count-activas');
+    const countHistEl = document.getElementById('rec-count-historial');
+    const histTotalEl = document.getElementById('hist-total');
+    const histAcertadasEl = document.getElementById('hist-acertadas');
+    const histFalladasEl = document.getElementById('hist-falladas');
+    const histEfectividadEl = document.getElementById('hist-efectividad');
+
+    if (countActEl) countActEl.textContent = listaActivas.length;
+    if (countHistEl) countHistEl.textContent = listaHistorial.length;
+    if (histTotalEl) histTotalEl.textContent = resumenEditorial.total_historial || listaHistorial.length;
+    if (histAcertadasEl) histAcertadasEl.textContent = resumenEditorial.acertadas || 0;
+    if (histFalladasEl) histFalladasEl.textContent = resumenEditorial.falladas || 0;
+    if (histEfectividadEl) histEfectividadEl.textContent = resumenEditorial.efectividad != null ? `${resumenEditorial.efectividad}%` : '—';
+
+    if (window.location.hash === '#historial') {
+      tabEditorialActual = 'historial';
     }
-    contenedor.innerHTML = datos.recomendaciones.map(item => {
-      const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
-      const botonEliminar = puedeGestionarRec
-        ? `<button type="button" class="btn-eliminar-rec" data-delete-rec="${item._id}" title="Eliminar recomendación del día">🗑️ Quitar</button>`
-        : '';
-      const badgeResultado = item.resultado === 'acertado' || item.resultado === 'acertada'
-        ? '<span class="editorial-badge acertado">✓ Acertada</span>'
-        : item.resultado === 'fallado' || item.resultado === 'fallada'
-          ? '<span class="editorial-badge fallado">✕ Fallada</span>'
-          : item.resultado === 'anulado' || item.resultado === 'anulada'
-            ? '<span class="editorial-badge anulado">Anulada</span>'
-            : '<span class="editorial-badge pendiente">⏳ Pendiente</span>';
-      const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${botonEliminar}`;
-      const contenido = item.bloqueada
-        ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
-        : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${item.selecciones.map(seleccion => {
-            const estadoSel = seleccion.estado_seleccion || 'pendiente';
-            const labelSel = estadoSel === 'acertado' ? '✓ Acertado' : estadoSel === 'fallado' ? '✕ Fallado' : estadoSel === 'anulado' ? 'Anulado' : '⏳ Pendiente';
-            const marcador = seleccion.partido_info?.goles_local != null
-              ? `<small class="match-score">(${seleccion.partido_info.goles_local} - ${seleccion.partido_info.goles_visitante} ${seleccion.partido_info.estado || 'FT'})</small>`
-              : '';
-            return `<li class="editorial-selection ${estadoSel}"><div><strong>${esc(seleccion.evento)} ${marcador}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><div class="editorial-selection-right"><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b><span class="badge-sel ${estadoSel}">${labelSel}</span></div></li>`;
-          }).join('')}</ol>`;
-      return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>Momio total ${mostrarMomio(item.cuota_total, item.momio_total_americano)}</strong></footer></article>`;
-    }).join('');
+
+    actualizarTabsUI();
+    renderizarRecomendaciones();
   } catch (error) {
     contenedor.innerHTML = `<div class="empty-state">${esc(error.message)}</div>`;
   }
@@ -343,6 +443,13 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarPicksGuardados();
   });
 });
+document.getElementById('tab-editorial-activas')?.addEventListener('click', () => cambiarTabEditorial('activas'));
+document.getElementById('tab-editorial-historial')?.addEventListener('click', () => cambiarTabEditorial('historial'));
+window.addEventListener('hashchange', () => {
+  if (window.location.hash === '#historial') cambiarTabEditorial('historial');
+  else if (window.location.hash === '#activas') cambiarTabEditorial('activas');
+});
+
 window.addEventListener('futbol:picks-actualizados', cargarPicksGuardados);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarPicksGuardados(); });
 </script>
