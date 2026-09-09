@@ -1,7 +1,8 @@
 const EVENTOS_SEGURIDAD = new Set([
   'account_profile_updated',
   'account_password_changed',
-  'account_sessions_revoked'
+  'account_sessions_revoked',
+  'email_verified'
 ]);
 
 function crearAuditorSeguridad({

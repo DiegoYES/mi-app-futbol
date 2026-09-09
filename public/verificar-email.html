@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Verificar Correo · Data-Fut</title>
+<link rel="icon" href="/brand-mark.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #07100d;
+    --card: #0d1a15;
+    --card-border: rgba(84, 227, 142, 0.2);
+    --green: #54e38e;
+    --cyan: #68d9e7;
+    --text: #e5f4ee;
+    --text-muted: #8fa89d;
+    --danger: #ff7c78;
+  }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background: radial-gradient(circle at 50% 20%, #122920 0%, var(--bg) 75%);
+    color: var(--text);
+    margin: 0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--card-border);
+    border-radius: 16px;
+    box-shadow: 0 15px 40px rgba(0, 0, 0, 0.6);
+    width: 100%;
+    max-width: 440px;
+    overflow: hidden;
+    text-align: center;
+    padding: 36px 28px;
+  }
+  .brand-logo {
+    display: block;
+    width: 200px;
+    max-width: 80%;
+    height: auto;
+    margin: 0 auto 20px;
+  }
+  .status-icon {
+    font-size: 3rem;
+    line-height: 1;
+    margin-bottom: 16px;
+  }
+  h1 {
+    font-size: 1.35rem;
+    font-weight: 800;
+    margin: 0 0 12px;
+    color: #fff;
+  }
+  p {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--text-muted);
+    margin: 0 0 20px;
+  }
+  .btn {
+    display: inline-block;
+    width: 100%;
+    padding: 13px 24px;
+    background: var(--green);
+    color: #07100d;
+    font-size: 0.95rem;
+    font-weight: 800;
+    text-decoration: none;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    box-shadow: 0 4px 14px rgba(84, 227, 142, 0.35);
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+  .btn:hover {
+    transform: translateY(-1px);
+    opacity: 0.95;
+  }
+  .btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .btn-secondary {
+    background: transparent;
+    color: var(--cyan);
+    border: 1px solid rgba(104, 217, 231, 0.4);
+    box-shadow: none;
+    margin-top: 10px;
+  }
+  .btn-secondary:hover {
+    background: rgba(104, 217, 231, 0.08);
+  }
+  .form-group {
+    text-align: left;
+    margin-bottom: 16px;
+  }
+  label {
+    display: block;
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-bottom: 6px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  input[type="email"] {
+    width: 100%;
+    padding: 12px 14px;
+    background: #07100d;
+    border: 1px solid rgba(84, 227, 142, 0.25);
+    border-radius: 8px;
+    color: #fff;
+    font-size: 0.95rem;
+  }
+  input[type="email"]:focus {
+    outline: none;
+    border-color: var(--green);
+    box-shadow: 0 0 0 3px rgba(84, 227, 142, 0.15);
+  }
+  .alerta {
+    padding: 12px;
+    border-radius: 8px;
+    font-size: 0.88rem;
+    margin-bottom: 16px;
+    text-align: left;
+  }
+  .alerta-error {
+    background: rgba(255, 124, 120, 0.12);
+    border: 1px solid rgba(255, 124, 120, 0.3);
+    color: var(--danger);
+  }
+  .alerta-ok {
+    background: rgba(84, 227, 142, 0.12);
+    border: 1px solid rgba(84, 227, 142, 0.3);
+    color: var(--green);
+  }
+  .spinner {
+    width: 38px;
+    height: 38px;
+    border: 3px solid rgba(84, 227, 142, 0.2);
+    border-top-color: var(--green);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    margin: 10px auto 20px;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+  .hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div class="card">
+  <a href="/" aria-label="Data-Fut · Inicio">
+    <img src="/brand-logo.svg" alt="Data-Fut" class="brand-logo">
+  </a>
+
+  <!-- Estado: Cargando -->
+  <div id="seccionCargando">
+    <div class="spinner"></div>
+    <h1>Verificando correo electrónico</h1>
+    <p>Estamos procesando tu enlace de confirmación, espera un momento...</p>
+  </div>
+
+  <!-- Estado: Éxito -->
+  <div id="seccionExito" class="hidden">
+    <div class="status-icon">🎉</div>
+    <h1>¡Correo verificado!</h1>
+    <p id="textoExito">Tu dirección de correo electrónico ha sido confirmada con éxito. Ya tienes tu cuenta completamente protegida.</p>
+    <a href="/" class="btn">Continuar a Data-Fut</a>
+  </div>
+
+  <!-- Estado: Error o Reenvío -->
+  <div id="seccionError" class="hidden">
+    <div class="status-icon" id="iconoError">⚠️</div>
+    <h1 id="tituloError">Enlace no válido o expirado</h1>
+    <p id="textoError">El enlace de verificación no es válido o ha expirado (los enlaces tienen una duración de 24 horas).</p>
+    
+    <div id="alertaReenvio" class="alerta hidden"></div>
+
+    <form id="formReenviar">
+      <div class="form-group">
+        <label for="inputEmail">Ingresa tu correo registrado</label>
+        <input id="inputEmail" type="email" placeholder="tu@correo.com" required autocomplete="email">
+      </div>
+      <button type="submit" class="btn" id="btnReenviar">Reenviar enlace de verificación</button>
+    </form>
+    
+    <a href="/login.html" class="btn btn-secondary">Ir a Iniciar Sesión</a>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+  const seccionCargando = document.getElementById('seccionCargando');
+  const seccionExito = document.getElementById('seccionExito');
+  const seccionError = document.getElementById('seccionError');
+  const textoExito = document.getElementById('textoExito');
+  const tituloError = document.getElementById('tituloError');
+  const textoError = document.getElementById('textoError');
+  const formReenviar = document.getElementById('formReenviar');
+  const inputEmail = document.getElementById('inputEmail');
+  const btnReenviar = document.getElementById('btnReenviar');
+  const alertaReenvio = document.getElementById('alertaReenvio');
+
+  function mostrarAlerta(mensaje, esOk) {
+    alertaReenvio.textContent = mensaje;
+    alertaReenvio.className = 'alerta ' + (esOk ? 'alerta-ok' : 'alerta-error');
+    alertaReenvio.classList.remove('hidden');
+  }
+
+  function mostrarVista(vista) {
+    seccionCargando.classList.add('hidden');
+    seccionExito.classList.add('hidden');
+    seccionError.classList.add('hidden');
+    if (vista === 'exito') seccionExito.classList.remove('hidden');
+    if (vista === 'error') seccionError.classList.remove('hidden');
+    if (vista === 'cargando') seccionCargando.classList.remove('hidden');
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const token = params.get('token');
+
+  if (!token) {
+    tituloError.textContent = 'Verificación de cuenta';
+    textoError.textContent = 'No se especificó un token de verificación. Si necesitas confirmar tu cuenta, solicita un nuevo enlace abajo:';
+    mostrarVista('error');
+  } else {
+    try {
+      const resp = await fetch('/api/auth/verificar-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token })
+      });
+      const data = await resp.json();
+
+      if (resp.ok) {
+        textoExito.textContent = data.mensaje || 'Tu correo electrónico ha sido verificado con éxito.';
+        mostrarVista('exito');
+      } else {
+        tituloError.textContent = 'Enlace no disponible';
+        textoError.textContent = data.error || 'El enlace de verificación no es válido o ya caducó.';
+        mostrarVista('error');
+      }
+    } catch (err) {
+      tituloError.textContent = 'Error de conexión';
+      textoError.textContent = 'No pudimos comunicarnos con el servidor para verificar tu correo. Por favor inténtalo de nuevo.';
+      mostrarVista('error');
+    }
+  }
+
+  formReenviar.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = inputEmail.value.trim();
+    if (!email) return;
+
+    btnReenviar.disabled = true;
+    btnReenviar.textContent = 'Enviando...';
+    alertaReenvio.classList.add('hidden');
+
+    try {
+      const resp = await fetch('/api/auth/reenviar-verificacion', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      });
+      const data = await resp.json();
+
+      if (resp.ok) {
+        mostrarAlerta(data.mensaje || 'Enlace enviado. Revisa tu bandeja de entrada o spam.', true);
+        btnReenviar.textContent = '¡Enlace enviado!';
+      } else {
+        mostrarAlerta(data.error || 'No se pudo enviar el correo.', false);
+        btnReenviar.disabled = false;
+        btnReenviar.textContent = 'Reintentar reenvío';
+      }
+    } catch (err) {
+      mostrarAlerta('Error de conexión al intentar enviar el correo.', false);
+      btnReenviar.disabled = false;
+      btnReenviar.textContent = 'Reintentar reenvío';
+    }
+  });
+});
+</script>
+</body>
+</html>

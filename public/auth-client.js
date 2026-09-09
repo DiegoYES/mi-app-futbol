@@ -150,7 +150,16 @@
         .barra-sesion .btn-spotlight-nav { margin:4px 4px 4px 0;padding:6px 10px;font-size:.72rem;min-height:36px; }
         .barra-sesion .btn-spotlight-nav .spotlight-badge-key { display:none; }
         .barra-sesion .btn-spotlight-nav .spotlight-mobile-label { display:inline;font-size:.72rem;font-weight:750; }
-      }`;
+      }
+      .banner-verificar-email { background:linear-gradient(90deg,#132b21,#0d211a);border-bottom:1px solid rgba(84,227,142,.25);color:#e5f4ee;padding:8px 20px;font-size:.8rem;z-index:890;position:relative; }
+      .banner-verificar-contenido { max-width:1200px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap; }
+      .banner-verificar-email .banner-email { color:#54e38e;font-weight:700; }
+      .banner-verificar-acciones { display:flex;align-items:center;gap:10px; }
+      .btn-reenviar-banner { background:rgba(84,227,142,.15);border:1px solid rgba(84,227,142,.4);color:#54e38e;padding:4px 12px;border-radius:6px;font-size:.76rem;font-weight:700;cursor:pointer;transition:all .15s ease; }
+      .btn-reenviar-banner:hover { background:rgba(84,227,142,.28);border-color:#54e38e; }
+      .btn-reenviar-banner:disabled { opacity:.5;cursor:not-allowed; }
+      .banner-verificar-msg { font-size:.76rem;color:#68d9e7; }
+    `;
     document.head.appendChild(estilos);
   }
 
@@ -231,12 +240,74 @@
     if (devolverFoco) trigger.focus();
   }
 
+  function pintarBannerVerificacionEmail(usuario) {
+    document.getElementById('banner-verificar-email')?.remove();
+    if (!usuario || usuario.email_verificado !== false) return;
+
+    const banner = document.createElement('div');
+    banner.id = 'banner-verificar-email';
+    banner.className = 'banner-verificar-email';
+    banner.innerHTML = `
+      <div class="banner-verificar-contenido">
+        <span>✉️ <strong>Confirma tu correo</strong> (<span class="banner-email">${escaparHtml(usuario.email)}</span>) para proteger tu cuenta y tus pronósticos.</span>
+        <div class="banner-verificar-acciones">
+          <button type="button" id="btnReenviarBanner" class="btn-reenviar-banner">Reenviar correo</button>
+          <span id="mensajeBannerVerificacion" class="banner-verificar-msg" hidden></span>
+        </div>
+      </div>`;
+
+    const barra = document.querySelector('.barra-sesion');
+    if (barra && barra.parentNode) {
+      barra.insertAdjacentElement('afterend', banner);
+    } else {
+      document.body.prepend(banner);
+    }
+
+    const btnReenviar = document.getElementById('btnReenviarBanner');
+    const msgBanner = document.getElementById('mensajeBannerVerificacion');
+
+    btnReenviar?.addEventListener('click', async () => {
+      btnReenviar.disabled = true;
+      btnReenviar.textContent = 'Enviando...';
+      try {
+        const resp = await fetchOriginal('/api/auth/reenviar-verificacion', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: usuario.email })
+        });
+        const data = await resp.json().catch(() => ({}));
+        if (resp.ok) {
+          btnReenviar.textContent = '¡Enviado!';
+          if (msgBanner) {
+            msgBanner.textContent = 'Revisa tu bandeja o spam.';
+            msgBanner.hidden = false;
+          }
+        } else {
+          btnReenviar.disabled = false;
+          btnReenviar.textContent = 'Reintentar';
+          if (msgBanner) {
+            msgBanner.textContent = data.error || 'Error al enviar.';
+            msgBanner.hidden = false;
+          }
+        }
+      } catch (err) {
+        btnReenviar.disabled = false;
+        btnReenviar.textContent = 'Reintentar';
+        if (msgBanner) {
+          msgBanner.textContent = 'Error de conexión.';
+          msgBanner.hidden = false;
+        }
+      }
+    });
+  }
+
   function actualizarUsuarioInterfaz(usuario) {
     window.usuarioActual = usuario;
     const formato = ['ambos', 'decimal', 'americano'].includes(usuario?.preferencias?.formato_momio)
       ? usuario.preferencias.formato_momio : 'ambos';
     try { localStorage.setItem(CLAVE_FORMATO_MOMIO, formato); } catch {}
     pintarBarra(usuario);
+    pintarBannerVerificacionEmail(usuario);
   }
 
   const EVENTO_PICKS = 'futbol:picks-actualizados';

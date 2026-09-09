@@ -1,3 +1,4 @@
+const crypto = require('crypto');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 
@@ -15,6 +16,10 @@ const usuarioSchema = new mongoose.Schema({
   // El hash se carga sólo cuando un flujo lo solicita expresamente.
   password: { type: String, required: true, minlength: 8, select: false },
   nombre: { type: String, trim: true, maxlength: 80 },
+  email_verificado: { type: Boolean, default: false },
+  token_verificacion: { type: String, select: false, default: null },
+  token_verificacion_expira: { type: Date, select: false, default: null },
+  fecha_verificacion_email: { type: Date, default: null },
   preferencias: {
     formato_momio: { type: String, enum: ['ambos', 'decimal', 'americano'], default: 'ambos' }
   },
@@ -40,6 +45,8 @@ const usuarioSchema = new mongoose.Schema({
 // Defensa adicional ante una serialización accidental del documento.
 function ocultarPassword(_doc, salida) {
   delete salida.password;
+  delete salida.token_verificacion;
+  delete salida.token_verificacion_expira;
   return salida;
 }
 
@@ -100,11 +107,24 @@ usuarioSchema.methods.estadoAcceso = function () {
   return { tieneAcceso: false, motivo: 'expirado', plan: 'expirado', diasRestantes: 0 };
 };
 
+usuarioSchema.methods.generarTokenVerificacion = function () {
+  const tokenPlano = crypto.randomBytes(32).toString('hex');
+  this.token_verificacion = crypto.createHash('sha256').update(tokenPlano).digest('hex');
+  this.token_verificacion_expira = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 horas
+  return tokenPlano;
+};
+
+usuarioSchema.statics.hashearTokenVerificacion = function (tokenPlano) {
+  if (!tokenPlano || typeof tokenPlano !== 'string') return null;
+  return crypto.createHash('sha256').update(tokenPlano.trim()).digest('hex');
+};
+
 usuarioSchema.methods.aJSON = function () {
   const estado = this.estadoAcceso();
   return {
     id: this._id,
     email: this.email,
+    email_verificado: Boolean(this.email_verificado),
     nombre: this.nombre,
     preferencias: { formato_momio: this.preferencias?.formato_momio || 'ambos' },
     password_actualizada_en: this.password_actualizada_en || null,
@@ -124,3 +144,4 @@ usuarioSchema.methods.aJSON = function () {
 
 module.exports = mongoose.model('Usuario', usuarioSchema);
 module.exports.DIAS_PRUEBA = DIAS_PRUEBA;
+

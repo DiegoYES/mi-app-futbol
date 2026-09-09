@@ -11,6 +11,7 @@ const {
   validarPasswordNueva
 } = require('../services/accountSettings');
 const { registrarEventoSeguridad } = require('../services/securityAudit');
+const { enviarEmailVerificacion } = require('../services/mailer');
 
 // Hash bcrypt de costo 12 precalculado para neutralizar timing attacks cuando el correo no existe.
 const HASH_DUMMY = '$2a$12$e8Yk1A6/f206rQkQO5D1kOQv2eG3L8lW9M4m2Q4m2Q4m2Q4m2Q4m2';
@@ -21,6 +22,13 @@ const limiteIntentos = crearLimitador('auth', {
   windowMs: 15 * 60 * 1000,
   max: 10,
   message: { error: 'Demasiados intentos. Espera 15 minutos.', codigo: 'RATE_LIMIT' },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+const limiteReenvioVerificacion = crearLimitador('reenvio-verificacion', {
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  message: { error: 'Demasiadas solicitudes de reenvío. Por favor espera 15 minutos.', codigo: 'RATE_LIMIT' },
   standardHeaders: true,
   legacyHeaders: false
 });
@@ -92,12 +100,24 @@ router.post('/registro', limiteIntentos, async (req, res) => {
       ? await Usuario.findOne({ ip_registro: ip, rol: 'usuario', suscripcion_termina: null })
       : null;
 
-    const usuario = await Usuario.create({
-      email, password: passwordValidada.valor, nombre: nombreValidado.valor,
+    const usuario = new Usuario({
+      email,
+      password: passwordValidada.valor,
+      nombre: nombreValidado.valor,
       ip_registro: ip,
       ip_ultimo_acceso: ip,
-      bloqueado_ip_duplicada: !!cuentaConMismaIP
+      bloqueado_ip_duplicada: !!cuentaConMismaIP,
+      email_verificado: false
     });
+
+    const tokenVerificacion = usuario.generarTokenVerificacion();
+    await usuario.save();
+
+    enviarEmailVerificacion({
+      email: usuario.email,
+      nombre: usuario.nombre,
+      token: tokenVerificacion
+    }).catch(err => console.error('[auth/registro] Error enviando correo de verificación:', err));
 
     registrarEventoProducto(cuentaConMismaIP ? 'registration_ip_limited' : 'registration_active');
 
@@ -238,6 +258,83 @@ router.post('/revocar-sesiones', requireAuth, limitePerfil, async (req, res) => 
     return res.json({ mensaje: 'Las demás sesiones fueron cerradas.' });
   } catch (error) {
     return errorServidor(res, error, 'No se pudieron cerrar las demás sesiones.');
+  }
+});
+
+router.post('/verificar-email', limiteIntentos, async (req, res) => {
+  try {
+    const { token } = req.body || {};
+    if (typeof token !== 'string' || !token.trim()) {
+      return res.status(400).json({ error: 'Token de verificación no proporcionado.', codigo: 'TOKEN_REQUERIDO' });
+    }
+
+    const tokenHash = Usuario.hashearTokenVerificacion(token);
+    const ahora = new Date();
+
+    const usuario = await Usuario.findOne({
+      token_verificacion: tokenHash,
+      token_verificacion_expira: { $gt: ahora }
+    }).select('+token_verificacion +token_verificacion_expira');
+
+    if (!usuario) {
+      return res.status(400).json({
+        error: 'El enlace de verificación es inválido o ya ha expirado.',
+        codigo: 'TOKEN_INVALIDO_O_EXPIRADO'
+      });
+    }
+
+    usuario.email_verificado = true;
+    usuario.fecha_verificacion_email = ahora;
+    usuario.token_verificacion = null;
+    usuario.token_verificacion_expira = null;
+    await usuario.save();
+
+    registrarEventoSeguridad('email_verified', { usuario, requestId: req.requestId });
+
+    return res.json({
+      mensaje: '¡Correo electrónico verificado exitosamente!',
+      usuario: usuario.aJSON()
+    });
+  } catch (error) {
+    return errorServidor(res, error, 'No se pudo verificar el correo.');
+  }
+});
+
+router.post('/reenviar-verificacion', limiteReenvioVerificacion, async (req, res) => {
+  try {
+    let usuario = await usuarioDeSesion(req);
+    if (!usuario && req.body?.email && typeof req.body.email === 'string') {
+      usuario = await Usuario.findOne({ email: req.body.email.toLowerCase().trim() });
+    }
+
+    if (!usuario) {
+      return res.status(400).json({ error: 'Debes iniciar sesión o indicar un correo registrado.', codigo: 'USUARIO_NO_ENCONTRADO' });
+    }
+
+    if (usuario.email_verificado) {
+      return res.json({ mensaje: 'Tu correo ya está verificado.', ya_verificado: true });
+    }
+
+    const usuarioDoc = await Usuario.findById(usuario._id).select('+token_verificacion +token_verificacion_expira');
+    if (!usuarioDoc) {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+
+    const tokenVerificacion = usuarioDoc.generarTokenVerificacion();
+    await usuarioDoc.save();
+
+    enviarEmailVerificacion({
+      email: usuarioDoc.email,
+      nombre: usuarioDoc.nombre,
+      token: tokenVerificacion
+    }).catch(err => console.error('[auth/reenviar-verificacion] Error enviando correo:', err));
+
+    return res.json({
+      mensaje: 'Se ha enviado un nuevo enlace de verificación a tu correo.',
+      ok: true
+    });
+  } catch (error) {
+    return errorServidor(res, error, 'No se pudo reenviar la verificación.');
   }
 });
 
