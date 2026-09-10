@@ -20,6 +20,7 @@ const {
   normalizarMomio,
   enriquecerRecomendacionesConEvaluacion
 } = require('../services/recomendaciones');
+const { enriquecerBoletasConEvaluacion } = require('../services/boletas');
 const { obtenerMercado } = require('../services/marketCatalog');
 const { analizarPartido } = require('./picks');
 const EnlaceSocial = require('../models/EnlaceSocial');
@@ -33,10 +34,10 @@ const router = express.Router();
 router.use(requireAuth);
 
 // Control de acceso por rol: el perfil de marketing puede gestionar recomendaciones,
-// redes sociales y consultar el resumen. Las secciones de usuarios, calidad, tickets,
+// redes sociales, boletas de usuarios y consultar el resumen. Las secciones de usuarios, calidad, tickets,
 // seguridad y estado del sistema exigen exclusivamente rol admin.
 router.use((req, res, next) => {
-  if (req.path.startsWith('/recomendaciones') || req.path.startsWith('/redes-sociales') || req.path === '/resumen') {
+  if (req.path.startsWith('/recomendaciones') || req.path.startsWith('/redes-sociales') || req.path.startsWith('/boletas-usuarios') || req.path === '/resumen') {
     return requireEditorial(req, res, next);
   }
   return requireAdmin(req, res, next);
@@ -380,6 +381,117 @@ router.post('/recomendaciones/desde-boleta/:id', validarIdMongo, async (req, res
     if (error.name === 'ValidationError') {
       return res.status(400).json({ error: 'Revisa los datos de la recomendación.' });
     }
+    errorServidor(res, error);
+  }
+});
+
+router.get('/boletas-usuarios', async (req, res) => {
+  try {
+    res.set('Cache-Control', 'no-store');
+    const q = textoDeConsulta(req.query?.q || '', 100).toLowerCase();
+    const estadoFiltro = typeof req.query?.estado === 'string' ? req.query.estado.trim().toLowerCase() : '';
+
+    // Consultar boletas poblando estrictamente campos de perfil seguros (sin contraseñas ni IPs)
+    const boletas = await Boleta.find({})
+      .sort({ creada_en: -1 })
+      .limit(300)
+      .populate('usuario', '_id nombre email plan rol fecha_registro ultimo_acceso')
+      .lean();
+
+    const { boletas: boletasEnriquecidas } = await enriquecerBoletasConEvaluacion(boletas);
+
+    // Agrupar por usuario
+    const usuariosMap = new Map();
+
+    for (const boleta of boletasEnriquecidas) {
+      const u = boleta.usuario;
+      if (!u || typeof u !== 'object' || !u._id) continue;
+      const userId = String(u._id);
+
+      // Filtrar por estado si fue solicitado
+      if (estadoFiltro && ['pendiente', 'acertada', 'fallada'].includes(estadoFiltro)) {
+        if (boleta.estado_evaluacion !== estadoFiltro) continue;
+      }
+
+      // Filtrar por texto de búsqueda si fue solicitado
+      if (q) {
+        const matchUsuario = (u.nombre || '').toLowerCase().includes(q) || (u.email || '').toLowerCase().includes(q);
+        const matchBoleta = (boleta.nombre || '').toLowerCase().includes(q);
+        const matchSeleccion = (boleta.selecciones || []).some(s =>
+          (s.local?.nombre || '').toLowerCase().includes(q) ||
+          (s.visitante?.nombre || '').toLowerCase().includes(q) ||
+          (s.mercado?.nombre || '').toLowerCase().includes(q)
+        );
+        if (!matchUsuario && !matchBoleta && !matchSeleccion) continue;
+      }
+
+      if (!usuariosMap.has(userId)) {
+        usuariosMap.set(userId, {
+          usuario: {
+            id: userId,
+            nombre: u.nombre || 'Sin nombre',
+            email: u.email || 'Sin email',
+            rol: u.rol || 'usuario',
+            plan: u.plan || 'prueba',
+            fecha_registro: u.fecha_registro || null,
+            ultimo_acceso: u.ultimo_acceso || null
+          },
+          totalBoletas: 0,
+          pendientes: 0,
+          acertadas: 0,
+          falladas: 0,
+          efectividad: null,
+          boletas: []
+        });
+      }
+
+      const grupo = usuariosMap.get(userId);
+      grupo.totalBoletas++;
+      if (boleta.estado_evaluacion === 'acertada') grupo.acertadas++;
+      else if (boleta.estado_evaluacion === 'fallada') grupo.falladas++;
+      else grupo.pendientes++;
+
+      const { usuario: _, ...boletaLimpia } = boleta;
+      grupo.boletas.push(boletaLimpia);
+    }
+
+    let totalBoletasFiltradas = 0;
+    let totalAcertadas = 0;
+    let totalFalladas = 0;
+    let totalPendientes = 0;
+
+    for (const grupo of usuariosMap.values()) {
+      const resueltas = grupo.acertadas + grupo.falladas;
+      grupo.efectividad = resueltas > 0 ? Number(((grupo.acertadas / resueltas) * 100).toFixed(1)) : null;
+
+      totalBoletasFiltradas += grupo.totalBoletas;
+      totalAcertadas += grupo.acertadas;
+      totalFalladas += grupo.falladas;
+      totalPendientes += grupo.pendientes;
+    }
+
+    const totalResueltas = totalAcertadas + totalFalladas;
+    const efectividadGlobal = totalResueltas > 0 ? Number(((totalAcertadas / totalResueltas) * 100).toFixed(1)) : null;
+
+    const listaUsuarios = Array.from(usuariosMap.values())
+      .sort((a, b) => {
+        const fechaA = a.boletas[0]?.creada_en ? new Date(a.boletas[0].creada_en).getTime() : 0;
+        const fechaB = b.boletas[0]?.creada_en ? new Date(b.boletas[0].creada_en).getTime() : 0;
+        return fechaB - fechaA;
+      });
+
+    res.json({
+      resumen: {
+        totalUsuarios: listaUsuarios.length,
+        totalBoletas: totalBoletasFiltradas,
+        pendientes: totalPendientes,
+        acertadas: totalAcertadas,
+        falladas: totalFalladas,
+        efectividad: efectividadGlobal
+      },
+      usuarios: listaUsuarios
+    });
+  } catch (error) {
     errorServidor(res, error);
   }
 });

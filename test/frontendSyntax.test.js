@@ -34,7 +34,7 @@ test('app.js contiene JavaScript válido', () => {
   assert.doesNotThrow(() => new Function(codigo));
 });
 
-for (const archivo of ['app-picks.js', 'admin-core.js', 'admin-picks.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js', 'calendario.js', 'partido.js', 'asistente.js']) {
+for (const archivo of ['app-picks.js', 'admin-core.js', 'admin-picks.js', 'admin-boletas.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js', 'calendario.js', 'partido.js', 'asistente.js']) {
   test(archivo + ' contiene JavaScript válido', () => {
     assert.doesNotThrow(() => new Function(fuentePublica(archivo)));
   });

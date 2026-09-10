@@ -1,7 +1,7 @@
 let temporizador;
 let rolUsuarioAdmin = 'admin';
-const PANELES_ADMIN = new Set(['resumen', 'picks', 'usuarios', 'tickets', 'calidad', 'redes', 'seguridad']);
-const PANELES_MARKETING = new Set(['picks', 'redes', 'resumen']);
+const PANELES_ADMIN = new Set(['resumen', 'picks', 'boletas', 'usuarios', 'tickets', 'calidad', 'redes', 'seguridad']);
+const PANELES_MARKETING = new Set(['picks', 'boletas', 'redes', 'resumen']);
 
 function configurarVistasPorRol(usuario) {
   if (!usuario) return;

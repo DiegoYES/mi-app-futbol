@@ -17,6 +17,7 @@
   <nav class="admin-menu" id="admin-menu" aria-label="Secciones del panel">
     <button type="button" data-admin-panel="resumen" aria-controls="admin-resumen">📊 Resumen</button>
     <button type="button" data-admin-panel="picks" aria-controls="admin-picks">🎯 Picks</button>
+    <button type="button" data-admin-panel="boletas" aria-controls="admin-boletas">📋 Boletas</button>
     <button type="button" data-admin-panel="usuarios" aria-controls="admin-usuarios">👥 Usuarios</button>
     <button type="button" data-admin-panel="tickets" aria-controls="admin-tickets-panel">💡 Tickets</button>
     <button type="button" data-admin-panel="calidad" aria-controls="admin-calidad">🩺 Calidad</button>
@@ -54,6 +55,29 @@
         </div>
       </form>
       <div id="rec-lista" class="rec-list"><div class="ticket-empty">Cargando recomendaciones…</div></div>
+    </div>
+  </section>
+
+  <section class="seccion admin-section" id="admin-boletas" data-admin-panel-content="boletas" hidden>
+    <div class="quality-heading">
+      <div>
+        <h2>📋 Boletas armadas por usuarios</h2>
+        <p>Supervisa las combinadas de los usuarios, analiza su efectividad y publícalas en Picks del Día con 1 clic.</p>
+      </div>
+      <button class="rec-secondary" type="button" id="btn-refrescar-boletas-admin">Actualizar</button>
+    </div>
+    <div class="kpis" id="kpis-boletas-admin"></div>
+    <div class="barra">
+      <input type="search" id="buscar-boleta-admin" placeholder="Buscar por usuario, correo o nombre de boleta…">
+      <select id="filtro-boleta-estado">
+        <option value="">Todos los estados</option>
+        <option value="pendiente">⏳ Pendientes / En juego</option>
+        <option value="acertada">✓ Acertadas</option>
+        <option value="fallada">✗ Falladas</option>
+      </select>
+    </div>
+    <div id="lista-boletas-usuarios" class="user-boletas-list">
+      <div class="ticket-empty">Cargando boletas de usuarios…</div>
     </div>
   </section>
 
@@ -125,11 +149,58 @@
     <h2>⚠️ IPs duplicadas</h2>
     <div id="ips-duplicadas"><p style="color:#94a3b8">Cargando...</p></div>
   </section>
+  <dialog id="modal-recomendar-boleta-admin" class="modal-dialog-admin">
+    <div class="modal-content-admin">
+      <div class="modal-header-admin">
+        <h3>🌟 Publicar Boleta en Picks del Día</h3>
+        <button type="button" id="btn-cerrar-modal-boleta-admin" class="btn-close-modal">✕</button>
+      </div>
+      <form id="form-recomendar-boleta-admin" class="modal-form-admin">
+        <input type="hidden" id="rec-admin-modal-boleta-id">
+        <label>Título de la recomendación
+          <input id="rec-admin-modal-titulo" maxlength="140" required placeholder="Ej. Parlay de la Comunidad">
+        </label>
+        <div class="modal-row-admin">
+          <label>Acceso
+            <select id="rec-admin-modal-visibilidad">
+              <option value="premium">Premium</option>
+              <option value="gratis">Gratis</option>
+            </select>
+          </label>
+          <label>Publicación
+            <select id="rec-admin-modal-estado">
+              <option value="publicada">Publicada (inmediata)</option>
+              <option value="borrador">Borrador</option>
+            </select>
+          </label>
+        </div>
+        <div class="modal-row-admin">
+          <label>Momio total decimal
+            <input id="rec-admin-modal-momio" type="text" maxlength="20" required placeholder="Ej. 2.45">
+          </label>
+          <label>Partidos disponibles hasta
+            <input id="rec-admin-modal-cierra-en" type="datetime-local" required>
+          </label>
+        </div>
+        <label class="modal-check-admin">
+          <input id="rec-admin-modal-destacada" type="checkbox"> Destacar esta recomendación en portada
+        </label>
+        <label>Análisis o comentario editorial
+          <textarea id="rec-admin-modal-descripcion" rows="3" maxlength="3000" placeholder="Añade un breve contexto sobre este parlay armado por un usuario..."></textarea>
+        </label>
+        <div class="modal-actions-admin">
+          <button type="button" id="btn-cancelar-modal-boleta-admin" class="rec-secondary">Cancelar</button>
+          <button type="submit" id="btn-confirmar-modal-boleta-admin" class="rec-primary">Publicar Pick del Día ✓</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
 </div>
 
 <script src="/social-icons.js?v=20260824-social"></script>
 <script src="/admin-core.js?v=20260824-components"></script>
 <script src="/admin-picks.js?v=20260824-components"></script>
+<script src="/admin-boletas.js?v=20260910-boletas"></script>
 <script src="/admin-quality.js?v=20260824-coverage-state"></script>
 <script src="/admin-tickets.js?v=20260824-components"></script>
 <script src="/admin-users.js?v=20260824-components"></script>

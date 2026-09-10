@@ -1,6 +1,7 @@
 function refrescar() {
   cargarRecomendacionesAdmin();
   cargarResumen();
+  if (typeof cargarBoletasUsuariosAdmin === 'function') cargarBoletasUsuariosAdmin();
   if (rolUsuarioAdmin !== 'marketing') {
     cargarUsuarios();
     cargarIPsDuplicadas();
@@ -9,6 +10,7 @@ function refrescar() {
 }
 
 function instalarEventos() {
+  if (typeof inicializarEventosBoletasAdmin === 'function') inicializarEventosBoletasAdmin();
   document.getElementById('admin-menu').addEventListener('click', evento => {
     const boton = evento.target.closest('[data-admin-panel]');
     if (!boton) return;
