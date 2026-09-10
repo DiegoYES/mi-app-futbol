@@ -215,3 +215,176 @@ test('limiteUsuario no bloquea ráfagas de marketing pero sí a usuarios normale
   }
 });
 
+test('el usuario de marketing puede consultar y guardar picks de partidos terminados mientras usuario regular es rechazado', async t => {
+  const Partido = require('../models/partido');
+  const PickGuardado = require('../models/PickGuardado');
+  const cookieParser = require('cookie-parser');
+  const { requireAuth } = require('../middleware/auth');
+  const picksRoutes = require('../routes/picks');
+  const { liquidarPendientes } = require('../routes/picks');
+
+  const origUsuarioFindById = Usuario.findById;
+  const origPartidoFindOne = Partido.findOne;
+  const origPartidoFind = Partido.find;
+  const origPickFind = PickGuardado.find;
+  const origPickCreate = PickGuardado.create;
+  const origPickDelete = PickGuardado.findOneAndDelete;
+
+  Usuario.findById = async (id) => {
+    const rol = id === 'marketing-user' ? 'marketing' : 'usuario';
+    return {
+      _id: id,
+      rol,
+      activo: true,
+      sesion_version: 0,
+      estadoAcceso() {
+        return { tieneAcceso: true, plan: 'premium', motivo: rol, diasRestantes: null };
+      }
+    };
+  };
+
+  const partidoFinalizado = {
+    api_id: 9999,
+    fecha: new Date('2026-09-08T18:00:00Z'),
+    estado: 'FT',
+    liga: { id: 10, nombre: 'Liga MX', temporada: 2026 },
+    equipo_local: { id: 1, nombre: 'América', goles: 2 },
+    equipo_visitante: { id: 2, nombre: 'Chivas', goles: 1 }
+  };
+
+  Partido.findOne = () => ({
+    lean: async () => partidoFinalizado
+  });
+
+  const partidoHistorico = {
+    api_id: 1001,
+    fecha: new Date('2026-09-01T18:00:00Z'),
+    estado: 'FT',
+    liga: { id: 10, nombre: 'Liga MX', temporada: 2026 },
+    equipo_local: { id: 1, nombre: 'América', goles: 2 },
+    equipo_visitante: { id: 2, nombre: 'Chivas', goles: 1 },
+    goles: { local: 2, visitante: 1 }
+  };
+
+  Partido.find = () => ({
+    sort: () => ({
+      limit: () => ({
+        lean: async () => [partidoHistorico, partidoHistorico]
+      }),
+      lean: async () => [partidoHistorico, partidoHistorico]
+    }),
+    lean: async () => [partidoFinalizado]
+  });
+
+  let pickGuardadoMock = null;
+  PickGuardado.find = (filtro = {}) => ({
+    select: () => ({
+      lean: async () => []
+    }),
+    sort: () => ({
+      limit: () => ({
+        lean: async () => (pickGuardadoMock ? [pickGuardadoMock] : [])
+      })
+    }),
+    lean: async () => {
+      if (pickGuardadoMock) {
+        if (filtro.retrospectivo && filtro.retrospectivo.$ne === true && pickGuardadoMock.retrospectivo) {
+          return [];
+        }
+        return [pickGuardadoMock];
+      }
+      return [];
+    }
+  });
+
+  PickGuardado.create = async (datos) => {
+    pickGuardadoMock = { _id: 'mock-pick-id', estado: 'pendiente', ...datos };
+    return pickGuardadoMock;
+  };
+
+  PickGuardado.findOneAndDelete = async (filtro) => {
+    if (pickGuardadoMock && (!filtro.estado || pickGuardadoMock.estado === filtro.estado)) {
+      const res = pickGuardadoMock;
+      pickGuardadoMock = null;
+      return res;
+    }
+    return null;
+  };
+
+  t.after(() => {
+    Usuario.findById = origUsuarioFindById;
+    Partido.findOne = origPartidoFindOne;
+    Partido.find = origPartidoFind;
+    PickGuardado.find = origPickFind;
+    PickGuardado.create = origPickCreate;
+    PickGuardado.findOneAndDelete = origPickDelete;
+  });
+
+  const app = express();
+  app.use(cookieParser());
+  app.use(express.json());
+  app.use('/api/picks', requireAuth, picksRoutes);
+
+  const servidor = await new Promise(resolve => {
+    const s = app.listen(0, '127.0.0.1', () => resolve(s));
+  });
+  t.after(() => new Promise(resolve => servidor.close(resolve)));
+  const { port } = servidor.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const tokenUser = firmarToken({ _id: 'regular-user', rol: 'usuario', sesion_version: 0 });
+  const tokenMarketing = firmarToken({ _id: 'marketing-user', rol: 'marketing', sesion_version: 0 });
+
+  // 1. GET /api/picks/partido/9999 con usuario regular -> guardable: false
+  const resGetRegular = await fetch(`${baseUrl}/api/picks/partido/9999`, {
+    headers: { Authorization: `Bearer ${tokenUser}` }
+  });
+  assert.equal(resGetRegular.status, 200);
+  const dataGetRegular = await resGetRegular.json();
+  assert.equal(dataGetRegular.guardable, false, 'Usuario regular no debe poder guardar picks en partido terminado');
+  assert.match(dataGetRegular.motivo_no_guardable, /ya terminó/);
+
+  // 2. GET /api/picks/partido/9999 con marketing -> guardable: true
+  const resGetMarketing = await fetch(`${baseUrl}/api/picks/partido/9999`, {
+    headers: { Authorization: `Bearer ${tokenMarketing}` }
+  });
+  assert.equal(resGetMarketing.status, 200);
+  const dataGetMarketing = await resGetMarketing.json();
+  assert.equal(dataGetMarketing.guardable, true, 'Marketing sí debe tener guardable: true en partido terminado');
+  assert.equal(dataGetMarketing.motivo_no_guardable, null);
+
+  // 3. POST /api/picks/seguimiento con usuario regular en partido terminado -> 409
+  const resPostRegular = await fetch(`${baseUrl}/api/picks/seguimiento`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenUser}` },
+    body: JSON.stringify({ partido_id: 9999, mercado_id: 'over_25', periodo: 0 })
+  });
+  assert.equal(resPostRegular.status, 409, 'Usuario regular debe recibir 409 en partido terminado');
+
+  // 4. POST /api/picks/seguimiento con marketing en partido terminado -> 201 y retrospectivo: true
+  const resPostMarketing = await fetch(`${baseUrl}/api/picks/seguimiento`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenMarketing}` },
+    body: JSON.stringify({ partido_id: 9999, mercado_id: 'over_25', periodo: 0 })
+  });
+  assert.equal(resPostMarketing.status, 201, 'Marketing debe poder guardar el pick en partido terminado');
+  const dataPostMarketing = await resPostMarketing.json();
+  assert.ok(dataPostMarketing.pick);
+  assert.equal(dataPostMarketing.pick.retrospectivo, true, 'Debe marcarse como pick retrospectivo');
+  assert.equal(dataPostMarketing.pick.estado, 'pendiente', 'Debe crearse como pendiente para armar boletas');
+
+  // 5. liquidarPendientes NO debe liquidar automáticamente picks retrospectivos para no quitarlos de "Por armar"
+  let bulkWriteLlamado = false;
+  PickGuardado.bulkWrite = async () => { bulkWriteLlamado = true; };
+  await liquidarPendientes('marketing-user');
+  assert.equal(bulkWriteLlamado, false, 'liquidarPendientes no debe tocar picks retrospectivos');
+
+  // 6. DELETE /api/picks/seguimiento/:id permite a marketing eliminar el pick
+  const resDelete = await fetch(`${baseUrl}/api/picks/seguimiento/mock-pick-id`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${tokenMarketing}` }
+  });
+  assert.equal(resDelete.status, 200);
+});
+
+

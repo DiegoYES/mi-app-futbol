@@ -1,5 +1,5 @@
 const express = require('express');
-const { errorServidor } = require('../middleware/security');
+const { errorServidor, esStaff } = require('../middleware/security');
 const Partido = require('../models/partido');
 const PickGuardado = require('../models/PickGuardado');
 const { construirMercadosPersonalizados } = require('../services/marketCatalog');
@@ -158,7 +158,11 @@ function datosPartido(partido) {
 }
 
 async function liquidarPendientes(usuarioId) {
-  const pendientes = await PickGuardado.find({ usuario: usuarioId, estado: 'pendiente' }).lean();
+  const pendientes = await PickGuardado.find({
+    usuario: usuarioId,
+    estado: 'pendiente',
+    retrospectivo: { $ne: true }
+  }).lean();
   if (!pendientes.length) return;
 
   const partidos = await Partido.find({
@@ -203,6 +207,9 @@ router.get('/partido/:id', async (req, res) => {
 
     const resultado = await analizarPartido(partido, 10, periodo);
     const finalizado = esFinalizado(partido);
+    const yaComenzo = partido.fecha <= new Date();
+    const staff = esStaff(req);
+    const guardable = staff || (!finalizado && !yaComenzo);
     const guardados = await PickGuardado.find({
       usuario: req.usuario._id,
       partido_api_id: partido.api_id
@@ -210,12 +217,13 @@ router.get('/partido/:id', async (req, res) => {
 
     res.json({
       partido: datosPartido(partido),
-      guardable: !finalizado && partido.fecha > new Date(),
-      motivo_no_guardable: finalizado
-        ? 'El partido ya terminó; se muestra como retrospectiva y no cuenta en tu rendimiento.'
-        : partido.fecha <= new Date()
-          ? 'El partido ya comenzó; los picks solo se guardan antes del inicio.'
-          : null,
+      guardable,
+      motivo_no_guardable: guardable
+        ? null
+        : (finalizado
+            ? 'El partido ya terminó; se muestra como retrospectiva y no cuenta en tu rendimiento.'
+            : 'El partido ya comenzó; los picks solo se guardan antes del inicio.'),
+      es_staff: staff,
       periodo,
       mercados: resultado.mercados.map(mercado => ({
           ...mercado,
@@ -242,7 +250,10 @@ router.post('/seguimiento', async (req, res) => {
     }
     const partido = await Partido.findOne({ api_id: partidoId }).lean();
     if (!partido) return res.status(404).json({ error: 'Partido no encontrado.' });
-    if (esFinalizado(partido) || partido.fecha <= new Date()) {
+    const finalizado = esFinalizado(partido);
+    const yaComenzo = partido.fecha <= new Date();
+    const staff = esStaff(req);
+    if ((finalizado || yaComenzo) && !staff) {
       return res.status(409).json({ error: 'Solo puedes guardar picks antes del inicio del partido.' });
     }
 
@@ -283,7 +294,8 @@ router.post('/seguimiento', async (req, res) => {
       estimacion: mercado.estimacion,
       confianza: mercado.confianza,
       muestra: mercado.muestra,
-      evidencia: mercado.evidencia
+      evidencia: mercado.evidencia,
+      retrospectivo: (finalizado || yaComenzo) && staff
     });
     res.status(201).json({ pick });
   } catch (error) {
@@ -310,13 +322,17 @@ router.get('/seguimiento', async (req, res) => {
 router.delete('/seguimiento/:id', async (req, res) => {
   try {
     res.set('Cache-Control', 'no-store');
-    const eliminado = await PickGuardado.findOneAndDelete({
+    const staff = esStaff(req);
+    const filtro = {
       _id: req.params.id,
-      usuario: req.usuario._id,
-      estado: 'pendiente'
-    });
+      usuario: req.usuario._id
+    };
+    if (!staff) {
+      filtro.estado = 'pendiente';
+    }
+    const eliminado = await PickGuardado.findOneAndDelete(filtro);
     if (!eliminado) {
-      return res.status(404).json({ error: 'Pick pendiente no encontrado.' });
+      return res.status(404).json({ error: 'Pick no encontrado.' });
     }
     res.json({ mensaje: 'Pick eliminado.' });
   } catch (error) {

@@ -42,7 +42,8 @@ const pickGuardadoSchema = new mongoose.Schema({
     local: Number,
     visitante: Number
   },
-  liquidado_en: Date
+  liquidado_en: Date,
+  retrospectivo: { type: Boolean, default: false }
 }, { timestamps: { createdAt: 'creado_en', updatedAt: 'actualizado_en' } });
 
 pickGuardadoSchema.index(

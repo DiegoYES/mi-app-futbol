@@ -591,9 +591,14 @@ function pintarPicksPartido() {
           : '';
         let accion = '';
         if (datos.guardable) {
-          accion = item.guardado
+          const badgeHist = item.resultado_historico === true
+            ? '<span class="pick-result hit" style="margin-right:6px">✓ Acertó</span>'
+            : item.resultado_historico === false
+              ? '<span class="pick-result miss" style="margin-right:6px">× Falló</span>'
+              : '';
+          accion = badgeHist + (item.guardado
             ? '<span class="pick-result hit">Guardado</span>'
-            : `<button type="button" data-guardar-pick="${esc(item.id)}">Guardar pick</button>`;
+            : `<button type="button" data-guardar-pick="${esc(item.id)}">Guardar pick</button>`);
         } else if (item.resultado_historico === true) {
           accion = '<span class="pick-result hit">Habría acertado</span>';
         } else if (item.resultado_historico === false) {
