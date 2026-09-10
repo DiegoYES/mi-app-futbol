@@ -34,9 +34,12 @@ router.get('/', async (req, res) => {
       const fechaCierre = rec.cierra_en ? new Date(rec.cierra_en) : null;
       const vigente = fechaCierre && (fechaCierre.getTime() >= (ahora.getTime() - 15 * 60 * 1000));
 
-      if (esPendiente && vigente) {
+      const esActiva = Boolean(vigente && (esPendiente || rec.destacada || rec.resultado === 'acertado' || rec.resultado === 'acertada'));
+
+      if (esActiva) {
         activas.push(rec);
-      } else {
+      }
+      if (!esPendiente || !vigente) {
         historial.push(rec);
       }
     }
@@ -72,7 +75,7 @@ router.get('/', async (req, res) => {
         efectividad
       },
       // Preservado para retrocompatibilidad con clientes existentes
-      recomendaciones: [...activas, ...historial]
+      recomendaciones: sanitizadas
     });
   } catch (error) {
     errorServidor(res, error);

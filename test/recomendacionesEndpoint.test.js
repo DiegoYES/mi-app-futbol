@@ -97,3 +97,70 @@ test('GET /api/recomendaciones separa activas de historial y calcula resumen', a
   assert.equal(data.resumen.falladas, 1);
   assert.equal(data.resumen.efectividad, 50);
 });
+
+test('GET /api/recomendaciones incluye recomendación destacada acertada vigente en activas y en historial', async t => {
+  const ahora = new Date();
+  const manana = new Date(ahora.getTime() + 24 * 3600 * 1000);
+
+  const mockDb = [
+    {
+      _id: 'rec-destacada-resuelta',
+      tipo: 'parlay',
+      titulo: 'Parlay Triple MLS Ganador',
+      visibilidad: 'gratis',
+      estado_publicacion: 'publicada',
+      destacada: true,
+      resultado: 'acertado',
+      cierra_en: manana,
+      selecciones: []
+    }
+  ];
+
+  const origFind = Recomendacion.find;
+  Recomendacion.find = () => ({
+    sort() {
+      return this;
+    },
+    limit() {
+      return this;
+    },
+    async lean() {
+      return JSON.parse(JSON.stringify(mockDb));
+    }
+  });
+  t.after(() => { Recomendacion.find = origFind; });
+
+  const app = express();
+  app.use(express.json());
+  app.use((req, res, next) => {
+    req.usuario = {
+      _id: 'usuario-test',
+      rol: 'usuario',
+      estadoAcceso() {
+        return { tieneAcceso: true, plan: 'gratis' };
+      }
+    };
+    next();
+  });
+  app.use('/api/recomendaciones', router);
+
+  const servidor = await new Promise(resolve => {
+    const s = app.listen(0, '127.0.0.1', () => resolve(s));
+  });
+  t.after(() => new Promise(resolve => servidor.close(resolve)));
+  const { port } = servidor.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const res = await fetch(`${baseUrl}/api/recomendaciones`);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+
+  assert.equal(data.activas.length, 1, 'La recomendación destacada acertada debe aparecer en activas');
+  assert.equal(data.activas[0].titulo, 'Parlay Triple MLS Ganador');
+  assert.equal(data.activas[0].resultado, 'acertado');
+
+  assert.equal(data.historial.length, 1, 'La recomendación resuelta también debe constar en historial');
+  assert.equal(data.historial[0].titulo, 'Parlay Triple MLS Ganador');
+  assert.equal(data.resumen.acertadas, 1);
+  assert.equal(data.resumen.efectividad, 100);
+});
