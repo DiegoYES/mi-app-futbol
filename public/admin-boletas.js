@@ -119,7 +119,7 @@ function renderizarListaBoletasUsuarios(usuarios = []) {
 
     return [
       '<div class="user-boletas-group" data-user-group="' + escaparHtml(u.id) + '">',
-        '<div class="user-boletas-head" onclick="alternarGrupoUsuario(this)">',
+        '<div class="user-boletas-head" role="button" tabindex="0" aria-expanded="true">',
           '<div class="user-avatar">' + escaparHtml(inicial) + '</div>',
           '<div class="user-head-main">',
             '<div class="user-name-row">',
@@ -147,7 +147,8 @@ function renderizarListaBoletasUsuarios(usuarios = []) {
 function alternarGrupoUsuario(headerElem) {
   const grupo = headerElem.closest('.user-boletas-group');
   if (grupo) {
-    grupo.classList.toggle('collapsed');
+    const isCollapsed = grupo.classList.toggle('collapsed');
+    headerElem.setAttribute('aria-expanded', String(!isCollapsed));
   }
 }
 
@@ -244,5 +245,28 @@ function inicializarEventosBoletasAdmin() {
     clearTimeout(busquedaBoletasTimer);
     busquedaBoletasTimer = setTimeout(cargarBoletasUsuariosAdmin, 300);
   });
+
+  const contenedor = document.getElementById('lista-boletas-usuarios');
+  if (contenedor) {
+    contenedor.addEventListener('click', e => {
+      if (e.target.closest('[data-recommend-boleta]')) return;
+      const head = e.target.closest('.user-boletas-head');
+      if (head) {
+        alternarGrupoUsuario(head);
+      }
+    });
+
+    contenedor.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        const head = e.target.closest('.user-boletas-head');
+        if (head && e.target === head) {
+          e.preventDefault();
+          alternarGrupoUsuario(head);
+        }
+      }
+    });
+  }
+
   configurarModalRecomendarBoleta();
 }
+

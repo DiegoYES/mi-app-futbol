@@ -154,7 +154,7 @@ test('la prueba y el checkout enlazan condiciones y exigen consentimiento', () =
 });
 
 test('el panel de administración conecta sus controles sin eventos inline bloqueados por CSP', () => {
-  const html = fuentePublica('admin.html', 'admin-core.js', 'admin-picks.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js');
+  const html = fuentePublica('admin.html', 'admin-core.js', 'admin-picks.js', 'admin-boletas.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js');
   assert.doesNotMatch(html, /\son(?:click|change|input|submit)=/i);
   assert.match(html, /function instalarEventos\(\)/);
   assert.match(html, /data-accion="guardar-ticket"/);
@@ -162,6 +162,7 @@ test('el panel de administración conecta sus controles sin eventos inline bloqu
   assert.match(html, /data-accion="extender"/);
   assert.match(html, /data-quality-retry-stats/);
   assert.match(html, /manejarAccionCalidad/);
+  assert.match(html, /function alternarGrupoUsuario/);
 });
 
 test('el creador editorial tokeniza partidos y mercados y muestra el nombre completo de Audax', () => {
