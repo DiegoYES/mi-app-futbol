@@ -320,4 +320,139 @@ test('POST /api/admin/recomendaciones/desde-boleta/:id permite a marketing y adm
   assert.equal(recCreada.estado_publicacion, 'publicada');
   assert.equal(recCreada.destacada, true);
   assert.equal(recCreada.selecciones.length, 2);
+
+  // Probar publicación de boleta especificando momios individuales personalizados
+  const resConMomios = await fetch(`${baseUrl}/api/admin/recomendaciones/desde-boleta/6aa1d66a7c39f8cb03203dcc`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${tokenMarketing}`
+    },
+    body: JSON.stringify({
+      titulo: 'Parlay Personalizado Con Momios',
+      visibilidad: 'premium',
+      estado_publicacion: 'publicada',
+      momio_total: '+145',
+      selecciones: [
+        { momio: '1.30', casa: 'PlayDoIt' },
+        { momio: '-200', casa: 'PlayDoIt' }
+      ]
+    })
+  });
+  assert.equal(resConMomios.status, 201);
+  assert.equal(recCreada.selecciones[0].cuota, 1.3);
+  assert.equal(recCreada.selecciones[0].casa, 'PlayDoIt');
+  assert.equal(recCreada.selecciones[1].momio_americano, -200);
+  assert.equal(recCreada.selecciones[1].cuota, 1.5);
+  assert.equal(recCreada.momio_total_americano, 145);
+  assert.equal(recCreada.cuota_total, 2.45);
+});
+
+test('PATCH /api/admin/recomendaciones/:id/momios permite a marketing y admin actualizar momios individuales y total', async t => {
+  const origFindById = Usuario.findById;
+  const Recomendacion = require('../models/Recomendacion');
+  const origRecFindById = Recomendacion.findById;
+
+  Usuario.findById = async (id) => ({
+    _id: id,
+    rol: id === 'marketing-id' ? 'marketing' : id === 'admin-id' ? 'admin' : 'usuario',
+    activo: true,
+    sesion_version: 0,
+    estadoAcceso() {
+      return { tieneAcceso: true, plan: 'premium', motivo: 'marketing', diasRestantes: null };
+    }
+  });
+
+  const recMock = {
+    _id: 'rec-abc',
+    tipo: 'parlay',
+    cuota_total: 2.45,
+    momio_total_americano: 145,
+    formato_momio_total: 'americano',
+    momio_total_capturado: '+145',
+    selecciones: [
+      {
+        partido_api_id: 101,
+        mercado_id: 'over_25',
+        cuota: 1.27,
+        momio_americano: -370,
+        formato_momio: 'decimal',
+        momio_capturado: '1.27',
+        casa: ''
+      },
+      {
+        partido_api_id: 102,
+        mercado_id: 'under_55',
+        cuota: 1.22,
+        momio_americano: -455,
+        formato_momio: 'decimal',
+        momio_capturado: '1.22',
+        casa: ''
+      }
+    ],
+    async save() { return this; }
+  };
+
+  Recomendacion.findById = async (id) => {
+    if (id === '6aa1d66a7c39f8cb03203dcc') return recMock;
+    return null;
+  };
+
+  t.after(() => {
+    Usuario.findById = origFindById;
+    Recomendacion.findById = origRecFindById;
+  });
+
+  const app = express();
+  app.use(cookieParser());
+  app.use(express.json());
+  app.use('/api/admin', routerAdmin);
+
+  const servidor = await new Promise(resolve => {
+    const s = app.listen(0, '127.0.0.1', () => resolve(s));
+  });
+  t.after(() => new Promise(resolve => servidor.close(resolve)));
+  const { port } = servidor.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const tokenMarketing = firmarToken({ _id: 'marketing-id', rol: 'marketing', sesion_version: 0 });
+  const tokenUsuario = firmarToken({ _id: 'usuario-id', rol: 'usuario', sesion_version: 0 });
+
+  // 1. Usuario regular debe ser bloqueado
+  const resBloqueado = await fetch(`${baseUrl}/api/admin/recomendaciones/6aa1d66a7c39f8cb03203dcc/momios`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenUsuario}` },
+    body: JSON.stringify({ momio_total: '2.50' })
+  });
+  assert.equal(resBloqueado.status, 403);
+
+  // 2. Marketing puede actualizar momios individuales y total
+  const resEdicion = await fetch(`${baseUrl}/api/admin/recomendaciones/6aa1d66a7c39f8cb03203dcc/momios`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenMarketing}` },
+    body: JSON.stringify({
+      momio_total: '+180',
+      selecciones: [
+        { indice: 0, momio: '1.35', casa: 'PlayDoIt' },
+        { indice: 1, momio: '-250', casa: 'PlayDoIt' }
+      ]
+    })
+  });
+  assert.equal(resEdicion.status, 200);
+  const dataEdicion = await resEdicion.json();
+  assert.equal(dataEdicion.mensaje, 'Momios actualizados correctamente.');
+  assert.equal(recMock.selecciones[0].cuota, 1.35);
+  assert.equal(recMock.selecciones[0].casa, 'PlayDoIt');
+  assert.equal(recMock.selecciones[1].momio_americano, -250);
+  assert.equal(recMock.selecciones[1].cuota, 1.4);
+  assert.equal(recMock.momio_total_americano, 180);
+  assert.equal(recMock.cuota_total, 2.8);
+
+  // 3. Momio inválido debe responder 400
+  const resInvalido = await fetch(`${baseUrl}/api/admin/recomendaciones/6aa1d66a7c39f8cb03203dcc/momios`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenMarketing}` },
+    body: JSON.stringify({ momio_total: 'invalido' })
+  });
+  assert.equal(resInvalido.status, 400);
 });

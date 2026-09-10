@@ -47,8 +47,25 @@
   .editorial-badge.fallado, .editorial-badge.fallada { background:rgba(255,124,120,.18);color:var(--red);border:1px solid rgba(255,124,120,.45); }
   .editorial-badge.pendiente { background:rgba(245,190,91,.15);color:var(--amber);border:1px solid rgba(245,190,91,.35); }
   .editorial-badge.anulado, .editorial-badge.anulada { background:rgba(148,163,184,.15);color:var(--muted);border:1px solid rgba(148,163,184,.35); }
+  .btn-editar-rec { padding:4px 9px;border:1px solid rgba(84,227,142,.45);border-radius:999px;background:rgba(84,227,142,.12);color:var(--green);font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .15s,color .15s; }
+  .btn-editar-rec:hover { background:var(--green);color:#07100d; }
   .btn-eliminar-rec { padding:4px 9px;border:1px solid rgba(255,124,120,.45);border-radius:999px;background:rgba(255,124,120,.12);color:var(--red);font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .15s,color .15s; }
   .btn-eliminar-rec:hover { background:var(--red);color:#07100d; }
+  .rec-modal-dialog { border:0;padding:0;background:transparent;max-width:480px;width:calc(100vw - 32px);margin:auto;border-radius:20px;overflow:hidden;box-shadow:0 24px 64px rgba(0,0,0,.8); }
+  .rec-modal-dialog::backdrop { background:rgba(4,9,7,.82);backdrop-filter:blur(8px); }
+  .rec-modal-card { padding:24px;border:1px solid rgba(84,227,142,.35);border-radius:20px;background:#0f1d18;color:#eef8f2;display:grid;gap:14px; }
+  .rec-modal-head { display:flex;align-items:flex-start;justify-content:space-between;gap:12px; }
+  .rec-modal-head span { display:block;color:#54e38e;font-size:.62rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase; }
+  .rec-modal-head h3 { margin:3px 0 0;font-size:1.15rem; }
+  .rec-modal-close { width:32px;height:32px;padding:0;border:1px solid rgba(255,255,255,.15);border-radius:8px;background:transparent;color:#9db1a8;font-size:1.1rem;cursor:pointer; }
+  .rec-modal-field { display:grid;gap:5px; }
+  .rec-modal-field span { color:#9db1a8;font-size:.7rem;font-weight:750; }
+  .rec-modal-field input, .rec-modal-field select, .rec-modal-field textarea { width:100%;padding:10px 13px;border:1px solid rgba(84,227,142,.3);border-radius:11px;background:#14241f;color:#eef8f2;font:inherit;font-size:.85rem;outline:none; }
+  .rec-modal-actions { display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:6px; }
+  .rec-modal-selecciones-list { display:grid;gap:6px;max-height:220px;overflow-y:auto;padding-right:3px; }
+  .rec-sel-row { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:#14241f;border:1px solid rgba(84,227,142,.2);border-radius:9px; }
+  .btn-rec-sec { min-height:42px;padding:0 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:transparent;color:#9db1a8;font:inherit;font-size:.8rem;font-weight:750;cursor:pointer; }
+  .btn-rec-pri { min-height:42px;padding:0 16px;border:1px solid #54e38e;border-radius:10px;background:#54e38e;color:#07100d;font:inherit;font-size:.82rem;font-weight:900;cursor:pointer; }
   .editorial-analysis { margin:0;color:var(--muted);font-size:.77rem;line-height:1.65;white-space:pre-wrap; }
   .editorial-selections { display:grid;gap:8px;margin:0;padding:0;list-style:none; }
   .editorial-selection { display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;padding:11px 12px;border-left:3px solid var(--green);border-radius:0 9px 9px 0;background:rgba(84,227,142,.07); }
@@ -145,6 +162,35 @@
   <div class="explanation-dialog-head"><div><span>Evidencia del modelo</span><h3 id="general-explanation-title">Explicación del mercado</h3></div><button id="general-explanation-close" class="explanation-dialog-close" type="button" aria-label="Cerrar explicación">×</button></div>
   <div id="general-explanation-body" class="explanation-dialog-body"></div>
 </dialog>
+
+<dialog id="modal-editar-momios-rec" class="rec-modal-dialog">
+  <form id="form-editar-momios-rec" class="rec-modal-card">
+    <div class="rec-modal-head">
+      <div>
+        <span>Edición editorial de momios</span>
+        <h3 id="edit-momios-modal-titulo">Editar Momios</h3>
+      </div>
+      <button id="btn-cerrar-modal-edit-momios" class="rec-modal-close" type="button" aria-label="Cerrar">×</button>
+    </div>
+    <input type="hidden" id="edit-momios-rec-id">
+    
+    <div class="rec-modal-field">
+      <span>Momios individuales de cada selección:</span>
+      <div id="edit-momios-selecciones-list" class="rec-modal-selecciones-list"></div>
+    </div>
+
+    <div class="rec-modal-field">
+      <span>Momio total del parlay / recomendación:</span>
+      <input id="edit-momios-total-input" type="text" placeholder="Ej. 2.45 o +145" required>
+      <small style="color:var(--muted);font-size:.68rem;">Admite formato decimal (ej. 2.45) o americano (ej. +145).</small>
+    </div>
+
+    <div class="rec-modal-actions">
+      <button id="btn-cancelar-modal-edit-momios" class="btn-rec-sec" type="button">Cancelar</button>
+      <button id="btn-confirmar-modal-edit-momios" class="btn-rec-pri" type="submit">Guardar momios ✓</button>
+    </div>
+  </form>
+</dialog>
 <script>
 function esc(valor) {
   return String(valor ?? '')
@@ -229,6 +275,9 @@ function renderizarRecomendaciones() {
 
   contenedor.innerHTML = lista.map(item => {
     const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
+    const botonEditar = puedeGestionarRec
+      ? `<button type="button" class="btn-editar-rec" data-edit-rec="${item._id}" title="Editar momios">✏️ Editar momios</button>`
+      : '';
     const botonEliminar = puedeGestionarRec
       ? `<button type="button" class="btn-eliminar-rec" data-delete-rec="${item._id}" title="Eliminar recomendación">🗑️ Quitar</button>`
       : '';
@@ -239,7 +288,7 @@ function renderizarRecomendaciones() {
         : item.resultado === 'anulado' || item.resultado === 'anulada'
           ? '<span class="editorial-badge anulado">Anulada</span>'
           : '<span class="editorial-badge pendiente">⏳ Pendiente</span>';
-    const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${botonEliminar}`;
+    const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${botonEditar}${botonEliminar}`;
     const contenido = item.bloqueada
       ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
       : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${(item.selecciones || []).map(seleccion => {
@@ -406,7 +455,110 @@ document.getElementById('mejores-generales').addEventListener('click', async eve
 const dialogoGeneral = document.getElementById('general-explanation-dialog');
 document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
 dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
+const modalEditMomios = document.getElementById('modal-editar-momios-rec');
+const formEditMomios = document.getElementById('form-editar-momios-rec');
+const cerrarModalEditMomios = () => { if (modalEditMomios?.open) modalEditMomios.close(); };
+
+document.getElementById('btn-cerrar-modal-edit-momios')?.addEventListener('click', cerrarModalEditMomios);
+document.getElementById('btn-cancelar-modal-edit-momios')?.addEventListener('click', cerrarModalEditMomios);
+modalEditMomios?.addEventListener('click', (e) => { if (e.target === modalEditMomios) cerrarModalEditMomios(); });
+
+function cuotaDecimalDesdeTexto(valor) {
+  if (!valor) return null;
+  const t = String(valor).trim().replace(',', '.');
+  if (/^[+-]\d+$/.test(t)) {
+    const am = Number(t);
+    if (!Number.isInteger(am) || (am > -100 && am < 100)) return null;
+    return am > 0 ? 1 + am / 100 : 1 + 100 / Math.abs(am);
+  }
+  const dec = Number(t);
+  return Number.isFinite(dec) && dec > 1 ? dec : null;
+}
+
+function recalcularTotalEditModal() {
+  const inputs = [...document.querySelectorAll('#edit-momios-selecciones-list .edit-sel-momio-input')];
+  if (!inputs.length) return;
+  const cuotas = inputs.map(inp => cuotaDecimalDesdeTexto(inp.value));
+  if (cuotas.every(c => c !== null)) {
+    const total = cuotas.reduce((acc, c) => acc * c, 1);
+    document.getElementById('edit-momios-total-input').value = total.toFixed(2);
+  }
+}
+
+document.getElementById('edit-momios-selecciones-list')?.addEventListener('input', recalcularTotalEditModal);
+
+function abrirModalEditarMomios(recId) {
+  const item = [...listaActivas, ...listaHistorial].find(r => String(r._id) === String(recId));
+  if (!item) return;
+
+  document.getElementById('edit-momios-rec-id').value = item._id;
+  document.getElementById('edit-momios-modal-titulo').textContent = item.titulo || 'Editar Momios';
+
+  const contSelecciones = document.getElementById('edit-momios-selecciones-list');
+  if (contSelecciones) {
+    contSelecciones.innerHTML = (item.selecciones || []).map((s, idx) => {
+      const marcador = s.partido_info?.goles_local != null ? ` (${s.partido_info.goles_local} - ${s.partido_info.goles_visitante})` : '';
+      const momioVal = s.momio_capturado || s.cuota || '';
+      return `
+        <div class="rec-sel-row">
+          <div style="min-width:0;flex:1;">
+            <strong style="display:block;font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.evento)}${marcador}</strong>
+            <small style="color:var(--muted);font-size:.68rem;">${esc(s.mercado)}</small>
+          </div>
+          <div style="width:115px;flex-shrink:0;">
+            <input type="text" class="edit-sel-momio-input" data-sel-idx="${idx}" value="${esc(momioVal)}" placeholder="Ej. 1.35 / -285" required style="width:100%;padding:6px 8px;border:1px solid rgba(84,227,142,.4);border-radius:8px;background:#0d1814;color:#eef8f2;font-size:.82rem;font-weight:700;text-align:right;">
+          </div>
+        </div>
+      `;
+    }).join('');
+  }
+
+  document.getElementById('edit-momios-total-input').value = item.momio_total_capturado || item.cuota_total || '';
+  modalEditMomios?.showModal();
+}
+
+formEditMomios?.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const recId = document.getElementById('edit-momios-rec-id').value;
+  const btn = document.getElementById('btn-confirmar-modal-edit-momios');
+  btn.disabled = true;
+  btn.textContent = 'Guardando...';
+
+  try {
+    const selecciones = [...document.querySelectorAll('#edit-momios-selecciones-list .edit-sel-momio-input')].map(input => ({
+      indice: Number(input.dataset.selIdx),
+      momio: input.value.trim()
+    }));
+    const momioTotal = document.getElementById('edit-momios-total-input').value.trim();
+
+    const resp = await fetch(`/api/admin/recomendaciones/${recId}/momios`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        selecciones,
+        momio_total: momioTotal
+      })
+    });
+    const datos = await resp.json().catch(() => ({}));
+    if (!resp.ok) throw new Error(datos.error || 'No se pudieron actualizar los momios.');
+
+    cerrarModalEditMomios();
+    await cargarRecomendacionesEditoriales();
+  } catch (err) {
+    alert('Error al guardar momios: ' + err.message);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Guardar momios ✓';
+  }
+});
+
 document.getElementById('recomendaciones-editoriales')?.addEventListener('click', async event => {
+  const btnEdit = event.target.closest('[data-edit-rec]');
+  if (btnEdit) {
+    abrirModalEditarMomios(btnEdit.dataset.editRec);
+    return;
+  }
+
   const btnTab = event.target.closest('[data-tab-editorial]');
   if (btnTab) {
     event.preventDefault();

@@ -64,6 +64,8 @@
   .rec-modal-field textarea { min-height:65px;resize:vertical; }
   .rec-modal-grid-2 { display:grid;grid-template-columns:1fr 1fr;gap:10px; }
   .rec-modal-actions { display:grid;grid-template-columns:1fr 1.4fr;gap:10px;margin-top:6px; }
+  .rec-modal-selecciones-list { display:grid;gap:6px;max-height:180px;overflow-y:auto;padding-right:3px; }
+  .rec-sel-row { display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:#14241f;border:1px solid rgba(84,227,142,.2);border-radius:9px; }
   .btn-rec-sec { min-height:42px;padding:0 14px;border:1px solid rgba(255,255,255,.15);border-radius:10px;background:transparent;color:#9db1a8;font:inherit;font-size:.8rem;font-weight:750;cursor:pointer; }
   .btn-rec-pri { min-height:42px;padding:0 16px;border:1px solid #54e38e;border-radius:10px;background:#54e38e;color:#07100d;font:inherit;font-size:.82rem;font-weight:900;cursor:pointer; }
 
@@ -120,10 +122,14 @@
         </select>
       </label>
     </div>
+    <div class="rec-modal-field">
+      <span>Momios individuales de cada selección</span>
+      <div id="rec-modal-selecciones" class="rec-modal-selecciones-list"></div>
+    </div>
     <div class="rec-modal-grid-2">
       <label class="rec-modal-field">
         <span>Momio / Cuota total</span>
-        <input id="rec-modal-momio" type="text" placeholder="Ej. 2.45 o +145">
+        <input id="rec-modal-momio" type="text" placeholder="Ej. 2.45 o +145" required>
       </label>
       <label class="rec-modal-field">
         <span>Destacar</span>
@@ -381,6 +387,30 @@ document.getElementById('btn-cerrar-modal-rec')?.addEventListener('click', cerra
 document.getElementById('btn-cancelar-modal-rec')?.addEventListener('click', cerrarModalRec);
 modalRec?.addEventListener('click', (e) => { if (e.target === modalRec) cerrarModalRec(); });
 
+function cuotaDecimalDesdeEntradaTexto(valor) {
+  if (!valor) return null;
+  const t = String(valor).trim().replace(',', '.');
+  if (/^[+-]\d+$/.test(t)) {
+    const am = Number(t);
+    if (!Number.isInteger(am) || (am > -100 && am < 100)) return null;
+    return am > 0 ? 1 + am / 100 : 1 + 100 / Math.abs(am);
+  }
+  const dec = Number(t);
+  return Number.isFinite(dec) && dec > 1 ? dec : null;
+}
+
+function recalcularTotalBoletaModal() {
+  const inputs = [...document.querySelectorAll('#rec-modal-selecciones .rec-sel-momio-input')];
+  if (!inputs.length) return;
+  const cuotas = inputs.map(inp => cuotaDecimalDesdeEntradaTexto(inp.value));
+  if (cuotas.every(c => c !== null)) {
+    const total = cuotas.reduce((acc, c) => acc * c, 1);
+    document.getElementById('rec-modal-momio').value = total.toFixed(2);
+  }
+}
+
+document.getElementById('rec-modal-selecciones')?.addEventListener('input', recalcularTotalBoletaModal);
+
 formRec?.addEventListener('submit', async (e) => {
   e.preventDefault();
   const boletaId = document.getElementById('rec-modal-boleta-id').value;
@@ -398,6 +428,11 @@ formRec?.addEventListener('submit', async (e) => {
       }
     }
 
+    const selecciones = [...document.querySelectorAll('#rec-modal-selecciones .rec-sel-momio-input')].map(input => ({
+      indice: Number(input.dataset.selIdx),
+      momio: input.value.trim()
+    }));
+
     const payload = {
       titulo: document.getElementById('rec-modal-titulo').value,
       visibilidad: document.getElementById('rec-modal-visibilidad').value,
@@ -405,7 +440,8 @@ formRec?.addEventListener('submit', async (e) => {
       momio_total: document.getElementById('rec-modal-momio').value,
       destacada: document.getElementById('rec-modal-destacada').value === 'true',
       cierra_en: fechaIso,
-      descripcion: document.getElementById('rec-modal-descripcion').value
+      descripcion: document.getElementById('rec-modal-descripcion').value,
+      selecciones
     };
 
     const resp = await fetch(`/api/admin/recomendaciones/desde-boleta/${boletaId}`, {
@@ -433,8 +469,23 @@ document.getElementById('boletas').addEventListener('click', async event => {
     if (!boleta) return;
     document.getElementById('rec-modal-boleta-id').value = boleta._id;
     document.getElementById('rec-modal-titulo').value = boleta.nombre || 'Pick del Día';
-    const cuotaSugerida = (boleta.selecciones || []).reduce((acc, s) => acc * (100 / Math.min(Math.max(Number(s.estimacion) || 50, 5), 98)), 1);
-    document.getElementById('rec-modal-momio').value = cuotaSugerida.toFixed(2);
+
+    const contSelecciones = document.getElementById('rec-modal-selecciones');
+    if (contSelecciones) {
+      contSelecciones.innerHTML = (boleta.selecciones || []).map((s, idx) => `
+        <div class="rec-sel-row">
+          <div style="min-width:0;flex:1;">
+            <strong style="display:block;font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(s.local?.nombre || 'Local')} vs ${esc(s.visitante?.nombre || 'Visitante')}</strong>
+            <small style="color:var(--muted);font-size:.68rem;">${esc(s.mercado?.nombre || 'Mercado')}</small>
+          </div>
+          <div style="width:115px;flex-shrink:0;">
+            <input type="text" class="rec-sel-momio-input" data-sel-idx="${idx}" placeholder="Ej. 1.35 / -285" required style="width:100%;padding:6px 8px;border:1px solid rgba(84,227,142,.4);border-radius:8px;background:#0d1814;color:#eef8f2;font-size:.82rem;font-weight:700;text-align:right;">
+          </div>
+        </div>
+      `).join('');
+    }
+
+    document.getElementById('rec-modal-momio').value = '';
     document.getElementById('rec-modal-descripcion').value = '';
 
     const defaultFecha = new Date(Date.now() + 24 * 3600 * 1000);

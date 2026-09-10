@@ -332,8 +332,101 @@ async function cargarRecomendacionesAdmin() {
     ${item.descripcion ? `<p>${escaparHtml(item.descripcion)}</p>` : ''}
     <ol>${item.selecciones.map(seleccion => `<li><strong>${escaparHtml(seleccion.evento)}</strong> · ${escaparHtml(seleccion.mercado)} · ${resumenMomios(seleccion.cuota, seleccion.momio_americano)}${seleccion.casa ? ` · ${escaparHtml(seleccion.casa)}` : ''}<br><small>${fechaHora(seleccion.fecha_partido)}</small></li>`).join('')}</ol>
     <div class="rec-card-meta">Cierra ${fechaHora(item.cierra_en)} · Momio total ${resumenMomios(item.cuota_total, item.momio_total_americano)}${item.destacada ? ' · ⭐ Destacada' : ''}</div>
-    <div class="rec-actions" style="margin-top:11px"><button class="rec-secondary" type="button" data-rec-editar="${item._id}">Editar</button><button class="rec-danger" type="button" data-rec-eliminar="${item._id}">Eliminar</button></div>
+    <div class="rec-actions" style="margin-top:11px"><button class="rec-secondary" type="button" data-rec-editar-momios="${item._id}">✏️ Editar momios</button><button class="rec-secondary" type="button" data-rec-editar="${item._id}">Editar todo</button><button class="rec-danger" type="button" data-rec-eliminar="${item._id}">Eliminar</button></div>
   </article>`).join('');
+}
+
+function configurarModalEditarMomiosAdmin() {
+  const modal = document.getElementById('modal-editar-momios-admin');
+  const form = document.getElementById('form-editar-momios-admin');
+  if (!modal || !form) return;
+
+  const cerrarModal = () => { if (modal.open) modal.close(); };
+  document.getElementById('btn-cerrar-modal-edit-momios-admin')?.addEventListener('click', cerrarModal);
+  document.getElementById('btn-cancelar-modal-edit-momios-admin')?.addEventListener('click', cerrarModal);
+  modal.addEventListener('click', e => { if (e.target === modal) cerrarModal(); });
+
+  function cuotaDec(v) {
+    if (!v) return null;
+    const t = String(v).trim().replace(',', '.');
+    if (/^[+-]\d+$/.test(t)) {
+      const am = Number(t);
+      if (!Number.isInteger(am) || (am > -100 && am < 100)) return null;
+      return am > 0 ? 1 + am / 100 : 1 + 100 / Math.abs(am);
+    }
+    const dec = Number(t);
+    return Number.isFinite(dec) && dec > 1 ? dec : null;
+  }
+
+  document.getElementById('edit-momios-admin-selecciones')?.addEventListener('input', () => {
+    const inputs = [...document.querySelectorAll('#edit-momios-admin-selecciones .edit-admin-sel-momio-input')];
+    if (!inputs.length) return;
+    const cuotas = inputs.map(inp => cuotaDec(inp.value));
+    if (cuotas.every(c => c !== null)) {
+      const total = cuotas.reduce((acc, c) => acc * c, 1);
+      document.getElementById('edit-momios-admin-total').value = total.toFixed(2);
+    }
+  });
+
+  form.addEventListener('submit', async e => {
+    e.preventDefault();
+    const id = document.getElementById('edit-momios-admin-rec-id').value;
+    const btn = document.getElementById('btn-confirmar-modal-edit-momios-admin');
+    btn.disabled = true;
+    btn.textContent = 'Guardando...';
+
+    try {
+      const selecciones = [...document.querySelectorAll('#edit-momios-admin-selecciones .edit-admin-sel-momio-input')].map(input => ({
+        indice: Number(input.dataset.selIdx),
+        momio: input.value.trim()
+      }));
+      const momioTotal = document.getElementById('edit-momios-admin-total').value.trim();
+
+      const resp = await fetch(`/api/admin/recomendaciones/${id}/momios`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ selecciones, momio_total: momioTotal })
+      });
+      const datos = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(datos.error || 'No se pudieron actualizar los momios.');
+
+      cerrarModal();
+      alert('🎉 ¡Momios actualizados correctamente!');
+      await cargarRecomendacionesAdmin();
+    } catch (err) {
+      alert('Error: ' + err.message);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Guardar momios ✓';
+    }
+  });
+}
+
+function abrirModalEditarMomiosAdmin(id) {
+  const modal = document.getElementById('modal-editar-momios-admin');
+  const item = recomendacionesAdmin.find(r => r._id === id);
+  if (!modal || !item) return;
+
+  document.getElementById('edit-momios-admin-rec-id').value = item._id;
+  document.getElementById('edit-momios-admin-titulo').textContent = `✏️ Editar Momios: ${item.titulo}`;
+
+  const cont = document.getElementById('edit-momios-admin-selecciones');
+  if (cont) {
+    cont.innerHTML = (item.selecciones || []).map((s, idx) => `
+      <div class="rec-admin-sel-row">
+        <div style="min-width:0;flex:1;">
+          <strong style="display:block;font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escaparHtml(s.evento)}</strong>
+          <small style="color:#64748b;font-size:.68rem;">${escaparHtml(s.mercado)}</small>
+        </div>
+        <div style="width:115px;flex-shrink:0;">
+          <input type="text" class="edit-admin-sel-momio-input" data-sel-idx="${idx}" value="${escaparHtml(s.momio_capturado || s.cuota || '')}" placeholder="Ej. 1.35 / -285" required style="width:100%;padding:5px 8px;border:1px solid #94a3b8;border-radius:6px;font-size:.82rem;font-weight:700;text-align:right;">
+        </div>
+      </div>
+    `).join('');
+  }
+
+  document.getElementById('edit-momios-admin-total').value = item.momio_total_capturado || item.cuota_total || '';
+  modal.showModal();
 }
 
 async function editarRecomendacion(id) {

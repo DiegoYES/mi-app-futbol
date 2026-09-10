@@ -277,7 +277,8 @@ router.post('/recomendaciones/desde-boleta/:id', validarIdMongo, async (req, res
     const seleccionesEnriquecidas = [];
     let fechaMinima = null;
 
-    for (const sel of boleta.selecciones) {
+    for (let i = 0; i < boleta.selecciones.length; i++) {
+      const sel = boleta.selecciones[i];
       let partido = null;
       if (sel.partido_api_id) {
         partido = await Partido.findOne({ api_id: sel.partido_api_id }).lean();
@@ -297,12 +298,21 @@ router.post('/recomendaciones/desde-boleta/:id', validarIdMongo, async (req, res
 
       const partidoApiId = partido?.api_id || sel.partido_api_id || (sel.local.id * 10000 + sel.visitante.id);
       const periodo = sel.configuracion?.local?.periodo || sel.mercado?.periodo || 0;
-      const estimacion = Math.min(Math.max(Number(sel.estimacion) || 50, 5), 98);
-      const cuotaCalculada = Number((100 / estimacion).toFixed(2));
-      const momioObj = normalizarMomio(cuotaCalculada, 'decimal');
+
+      const entradaSel = Array.isArray(req.body?.selecciones) ? req.body.selecciones[i] : null;
+      let momioObj = null;
+      if (entradaSel && (entradaSel.momio || entradaSel.cuota)) {
+        momioObj = normalizarMomio(entradaSel.momio || entradaSel.cuota, entradaSel.formato_momio);
+      }
+      if (!momioObj) {
+        const estimacion = Math.min(Math.max(Number(sel.estimacion) || 50, 5), 98);
+        const cuotaCalculada = Number((100 / estimacion).toFixed(2));
+        momioObj = normalizarMomio(cuotaCalculada, 'decimal');
+      }
 
       const mercadoCatalogo = obtenerMercado(sel.mercado?.base_id || sel.mercado?.id);
       const nombreMercado = (mercadoCatalogo?.nombre || sel.mercado?.nombre || 'Mercado') + (periodo ? ` · ${periodo}T` : '');
+      const casaSel = entradaSel?.casa ? String(entradaSel.casa).trim().slice(0, 80) : (req.body?.casa ? String(req.body.casa).trim().slice(0, 80) : '');
 
       seleccionesEnriquecidas.push({
         partido_api_id: partidoApiId,
@@ -327,7 +337,7 @@ router.post('/recomendaciones/desde-boleta/:id', validarIdMongo, async (req, res
         momio_americano: momioObj.americano,
         formato_momio: momioObj.formato,
         momio_capturado: momioObj.capturado,
-        casa: req.body?.casa ? String(req.body.casa).trim().slice(0, 80) : ''
+        casa: casaSel
       });
     }
 
@@ -513,6 +523,66 @@ router.patch('/recomendaciones/:id', validarIdMongo, async (req, res) => {
   } catch (error) {
     if (error.name === 'CastError') return res.status(404).json({ error: 'Recomendación no encontrada.' });
     if (error.name === 'ValidationError') return res.status(400).json({ error: 'Revisa los datos de la recomendación.' });
+    errorServidor(res, error);
+  }
+});
+
+router.patch('/recomendaciones/:id/momios', validarIdMongo, async (req, res) => {
+  try {
+    const actual = await Recomendacion.findById(req.params.id);
+    if (!actual) return res.status(404).json({ error: 'Recomendación no encontrada.' });
+
+    // Actualizar momios individuales si se enviaron
+    if (Array.isArray(req.body?.selecciones)) {
+      for (let i = 0; i < req.body.selecciones.length; i++) {
+        const item = req.body.selecciones[i];
+        const idx = (typeof item?.indice === 'number' && item.indice >= 0 && item.indice < actual.selecciones.length)
+          ? item.indice
+          : i;
+        if (idx >= actual.selecciones.length) continue;
+
+        if (item?.momio !== undefined && item?.momio !== null && item?.momio !== '') {
+          const norm = normalizarMomio(item.momio, item.formato_momio);
+          if (!norm) {
+            return res.status(400).json({ error: `El momio para la selección #${idx + 1} no es válido.` });
+          }
+          actual.selecciones[idx].cuota = norm.cuota;
+          actual.selecciones[idx].momio_americano = norm.americano;
+          actual.selecciones[idx].formato_momio = norm.formato;
+          actual.selecciones[idx].momio_capturado = norm.capturado;
+        }
+        if (typeof item?.casa === 'string') {
+          actual.selecciones[idx].casa = item.casa.trim().slice(0, 80);
+        }
+      }
+    }
+
+    // Actualizar momio total
+    if (req.body?.momio_total !== undefined && req.body?.momio_total !== null && req.body?.momio_total !== '') {
+      const normTotal = normalizarMomio(req.body.momio_total, req.body.formato_momio_total);
+      if (!normTotal) {
+        return res.status(400).json({ error: 'El momio total no es válido.' });
+      }
+      actual.cuota_total = normTotal.cuota;
+      actual.momio_total_americano = normTotal.americano;
+      actual.formato_momio_total = normTotal.formato;
+      actual.momio_total_capturado = normTotal.capturado;
+    } else if (Array.isArray(req.body?.selecciones)) {
+      const cuotaTotalCalculada = actual.selecciones.reduce((acc, s) => acc * (s.cuota || 1), 1);
+      const normTotal = normalizarMomio(cuotaTotalCalculada.toFixed(2), 'decimal');
+      if (normTotal) {
+        actual.cuota_total = normTotal.cuota;
+        actual.momio_total_americano = normTotal.americano;
+        actual.formato_momio_total = normTotal.formato;
+        actual.momio_total_capturado = normTotal.capturado;
+      }
+    }
+
+    await actual.save();
+    res.json({ mensaje: 'Momios actualizados correctamente.', recomendacion: actual });
+  } catch (error) {
+    if (error.name === 'CastError') return res.status(404).json({ error: 'Recomendación no encontrada.' });
+    if (error.name === 'ValidationError') return res.status(400).json({ error: 'Revisa los datos de los momios.' });
     errorServidor(res, error);
   }
 });

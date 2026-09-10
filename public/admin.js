@@ -65,11 +65,16 @@ function instalarEventos() {
     actualizarMomioTotal(true);
   });
   document.getElementById('rec-lista').addEventListener('click', evento => {
+    const editarMomios = evento.target.closest('[data-rec-editar-momios]');
     const editar = evento.target.closest('[data-rec-editar]');
     const eliminar = evento.target.closest('[data-rec-eliminar]');
-    if (editar) editarRecomendacion(editar.dataset.recEditar);
-    if (eliminar) eliminarRecomendacion(eliminar.dataset.recEliminar);
+    if (editarMomios) abrirModalEditarMomiosAdmin(editarMomios.dataset.recEditarMomios);
+    else if (editar) editarRecomendacion(editar.dataset.recEditar);
+    else if (eliminar) eliminarRecomendacion(eliminar.dataset.recEliminar);
   });
+  if (typeof configurarModalEditarMomiosAdmin === 'function') {
+    configurarModalEditarMomiosAdmin();
+  }
   document.getElementById('quality-refresh').addEventListener('click', cargarCalidadDatos);
   document.getElementById('quality-revalidate-form').addEventListener('submit', revalidarDesdeCalidad);
   document.getElementById('quality-detail').addEventListener('click', manejarAccionCalidad);

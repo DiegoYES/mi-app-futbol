@@ -174,9 +174,12 @@
             </select>
           </label>
         </div>
+        <label>Momios individuales de cada selección
+          <div id="rec-admin-modal-selecciones" class="rec-admin-selecciones-list"></div>
+        </label>
         <div class="modal-row-admin">
-          <label>Momio total decimal
-            <input id="rec-admin-modal-momio" type="text" maxlength="20" required placeholder="Ej. 2.45">
+          <label>Momio total (decimal o americano)
+            <input id="rec-admin-modal-momio" type="text" maxlength="20" required placeholder="Ej. 2.45 o +145">
           </label>
           <label>Partidos disponibles hasta
             <input id="rec-admin-modal-cierra-en" type="datetime-local" required>
@@ -195,16 +198,39 @@
       </form>
     </div>
   </dialog>
+  <dialog id="modal-editar-momios-admin" class="modal-dialog-admin">
+    <div class="modal-content-admin">
+      <div class="modal-header-admin">
+        <h3 id="edit-momios-admin-titulo">✏️ Editar Momios del Parlay</h3>
+        <button type="button" id="btn-cerrar-modal-edit-momios-admin" class="btn-close-modal">✕</button>
+      </div>
+      <form id="form-editar-momios-admin" class="modal-form-admin">
+        <input type="hidden" id="edit-momios-admin-rec-id">
+        <label>Momios individuales de cada selección
+          <div id="edit-momios-admin-selecciones" class="rec-admin-selecciones-list"></div>
+        </label>
+        <div class="modal-row-admin">
+          <label>Momio total (decimal o americano)
+            <input id="edit-momios-admin-total" type="text" maxlength="20" required placeholder="Ej. 2.45 o +145">
+          </label>
+        </div>
+        <div class="modal-actions-admin">
+          <button type="button" id="btn-cancelar-modal-edit-momios-admin" class="rec-secondary">Cancelar</button>
+          <button type="submit" id="btn-confirmar-modal-edit-momios-admin" class="rec-primary">Guardar momios ✓</button>
+        </div>
+      </form>
+    </div>
+  </dialog>
 </div>
 
 <script src="/social-icons.js?v=20260824-social"></script>
 <script src="/admin-core.js?v=20260824-components"></script>
-<script src="/admin-picks.js?v=20260824-components"></script>
-<script src="/admin-boletas.js?v=20260910-boletas-toggle"></script>
+<script src="/admin-picks.js?v=20260910-momios-edit"></script>
+<script src="/admin-boletas.js?v=20260910-momios-boleta"></script>
 <script src="/admin-quality.js?v=20260824-coverage-state"></script>
 <script src="/admin-tickets.js?v=20260824-components"></script>
 <script src="/admin-users.js?v=20260824-components"></script>
 <script src="/admin-social.js?v=20260824-social"></script>
-<script src="/admin.js?v=20260824-coverage-state"></script>
+<script src="/admin.js?v=20260910-momios-edit"></script>
 </body>
 </html>

@@ -162,6 +162,30 @@ function configurarModalRecomendarBoleta() {
   document.getElementById('btn-cancelar-modal-boleta-admin')?.addEventListener('click', cerrarModal);
   modal.addEventListener('click', e => { if (e.target === modal) cerrarModal(); });
 
+  function cuotaDecimalDesdeTexto(valor) {
+    if (!valor) return null;
+    const t = String(valor).trim().replace(',', '.');
+    if (/^[+-]\d+$/.test(t)) {
+      const am = Number(t);
+      if (!Number.isInteger(am) || (am > -100 && am < 100)) return null;
+      return am > 0 ? 1 + am / 100 : 1 + 100 / Math.abs(am);
+    }
+    const dec = Number(t);
+    return Number.isFinite(dec) && dec > 1 ? dec : null;
+  }
+
+  function recalcularTotalModalAdmin() {
+    const inputs = [...document.querySelectorAll('#rec-admin-modal-selecciones .rec-admin-sel-momio-input')];
+    if (!inputs.length) return;
+    const cuotas = inputs.map(inp => cuotaDecimalDesdeTexto(inp.value));
+    if (cuotas.every(c => c !== null)) {
+      const total = cuotas.reduce((acc, c) => acc * c, 1);
+      document.getElementById('rec-admin-modal-momio').value = total.toFixed(2);
+    }
+  }
+
+  document.getElementById('rec-admin-modal-selecciones')?.addEventListener('input', recalcularTotalModalAdmin);
+
   form.addEventListener('submit', async e => {
     e.preventDefault();
     const boletaId = document.getElementById('rec-admin-modal-boleta-id').value;
@@ -177,6 +201,11 @@ function configurarModalRecomendarBoleta() {
         if (!isNaN(parsed.getTime())) fechaIso = parsed.toISOString();
       }
 
+      const selecciones = [...document.querySelectorAll('#rec-admin-modal-selecciones .rec-admin-sel-momio-input')].map(input => ({
+        indice: Number(input.dataset.selIdx),
+        momio: input.value.trim()
+      }));
+
       const payload = {
         titulo: document.getElementById('rec-admin-modal-titulo').value,
         visibilidad: document.getElementById('rec-admin-modal-visibilidad').value,
@@ -184,7 +213,8 @@ function configurarModalRecomendarBoleta() {
         momio_total: document.getElementById('rec-admin-modal-momio').value,
         destacada: document.getElementById('rec-admin-modal-destacada').checked,
         cierra_en: fechaIso,
-        descripcion: document.getElementById('rec-admin-modal-descripcion').value
+        descripcion: document.getElementById('rec-admin-modal-descripcion').value,
+        selecciones
       };
 
       const resp = await fetch('/api/admin/recomendaciones/desde-boleta/' + boletaId, {
@@ -221,12 +251,22 @@ function configurarModalRecomendarBoleta() {
     document.getElementById('rec-admin-modal-titulo').value = boleta.nombre || 'Pick del Día';
 
     const selecciones = boleta.selecciones || [];
-    const cuotaSugerida = selecciones.reduce((acc, s) => {
-      const est = Math.min(Math.max(Number(s.estimacion) || 50, 5), 98);
-      return acc * (100 / est);
-    }, 1);
+    const contSelecciones = document.getElementById('rec-admin-modal-selecciones');
+    if (contSelecciones) {
+      contSelecciones.innerHTML = selecciones.map((s, idx) => `
+        <div class="rec-admin-sel-row">
+          <div style="min-width:0;flex:1;">
+            <strong style="display:block;font-size:.76rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escaparHtml(s.local?.nombre || 'Local')} vs ${escaparHtml(s.visitante?.nombre || 'Visitante')}</strong>
+            <small style="color:#64748b;font-size:.68rem;">${escaparHtml(s.mercado?.nombre || 'Mercado')}</small>
+          </div>
+          <div style="width:115px;flex-shrink:0;">
+            <input type="text" class="rec-admin-sel-momio-input" data-sel-idx="${idx}" placeholder="Ej. 1.35 / -285" required style="width:100%;padding:5px 8px;border:1px solid #94a3b8;border-radius:6px;font-size:.82rem;font-weight:700;text-align:right;">
+          </div>
+        </div>
+      `).join('');
+    }
 
-    document.getElementById('rec-admin-modal-momio').value = cuotaSugerida.toFixed(2);
+    document.getElementById('rec-admin-modal-momio').value = '';
     document.getElementById('rec-admin-modal-descripcion').value = '';
     document.getElementById('rec-admin-modal-destacada').checked = false;
 

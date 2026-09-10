@@ -44,14 +44,33 @@ function americanoADecimal(americano) {
 
 function normalizarMomio(valor, formato) {
   const capturado = typeof valor === 'number' ? String(valor) : texto(valor, 30);
-  if (!capturado || !['decimal', 'americano'].includes(formato)) return null;
-  if (formato === 'decimal') {
+  if (!capturado) return null;
+
+  let fmt = formato;
+  if (!fmt || !['decimal', 'americano'].includes(fmt)) {
+    if (/^[+-]\d+$/.test(capturado.trim())) {
+      fmt = 'americano';
+    } else {
+      const num = Number(capturado.replace(',', '.'));
+      if (Number.isFinite(num) && (num <= 100 && num > 1)) {
+        fmt = 'decimal';
+      } else if (Number.isInteger(num) && (num >= 100 || num <= -100)) {
+        fmt = 'americano';
+      } else {
+        fmt = 'decimal';
+      }
+    }
+  } else if (fmt === 'decimal' && /^[+-]\d+$/.test(capturado.trim())) {
+    fmt = 'americano';
+  }
+
+  if (fmt === 'decimal') {
     const decimal = Number(capturado.replace(',', '.'));
     if (!Number.isFinite(decimal) || decimal <= 1 || decimal > 100000) return null;
     return {
       cuota: Number(decimal.toFixed(4)),
       americano: decimalAAmericano(decimal),
-      formato,
+      formato: 'decimal',
       capturado
     };
   }
@@ -63,7 +82,7 @@ function normalizarMomio(valor, formato) {
   return {
     cuota: Number(decimal.toFixed(4)),
     americano,
-    formato,
+    formato: 'americano',
     capturado: americano > 0 ? `+${americano}` : String(americano)
   };
 }

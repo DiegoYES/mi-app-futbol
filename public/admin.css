@@ -153,5 +153,7 @@
 .modal-check-admin{display:flex!important;align-items:center;gap:8px;cursor:pointer;font-weight:400!important}
 .modal-check-admin input{width:auto!important;margin:0!important}
 .modal-actions-admin{display:flex;justify-content:flex-end;gap:10px;margin-top:8px}
+.rec-admin-selecciones-list{display:grid;gap:6px;max-height:170px;overflow-y:auto;margin-top:5px;padding-right:3px}
+.rec-admin-sel-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:7px}
 @media(max-width:640px){.modal-row-admin{grid-template-columns:1fr}.boleta-admin-card-head{flex-direction:column;align-items:flex-start}.user-boletas-head{flex-direction:column;align-items:flex-start}}
 
