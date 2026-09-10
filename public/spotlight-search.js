@@ -125,6 +125,11 @@
 
     inputEl = backdropEl.querySelector('.spotlight-input');
     resultsEl = backdropEl.querySelector('.spotlight-results');
+    resultsEl.addEventListener('error', e => {
+      if (e.target?.classList?.contains('spotlight-item-icon')) {
+        e.target.src = '/brand-mark.svg';
+      }
+    }, true);
 
     // Cerrar al dar clic en el fondo
     backdropEl.addEventListener('click', e => {
@@ -205,7 +210,7 @@
 
     resultsEl.innerHTML = itemsAMostrar.map((item, idx) => `
       <a href="${item.url}" class="spotlight-item ${idx === indiceActivo ? 'active' : ''}" data-url="${item.url}" role="option" aria-selected="${idx === indiceActivo}">
-        <img src="${item.icono}" alt="" class="spotlight-item-icon" onerror="this.src='/brand-mark.svg'">
+        <img src="${item.icono}" alt="" class="spotlight-item-icon">
         <div class="spotlight-item-text">
           <span class="spotlight-item-title">${item.nombre}</span>
           <span class="spotlight-item-sub">${item.sub}</span>

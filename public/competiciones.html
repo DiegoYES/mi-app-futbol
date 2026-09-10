@@ -211,7 +211,8 @@ document.addEventListener('DOMContentLoaded',async()=>{
     pintar();
   }catch(error){
     console.error('Error cargando competiciones:', error);
-    lista.innerHTML=`<div class="catalog-empty"><strong>No pudimos cargar las competiciones en este momento</strong><span>Revisa tu conexión o intenta recargar la página.</span><button type="button" class="pill-btn" onclick="location.reload()" style="margin-top:14px;cursor:pointer">Reintentar</button></div>`;
+    lista.innerHTML=`<div class="catalog-empty"><strong>No pudimos cargar las competiciones en este momento</strong><span>Revisa tu conexión o intenta recargar la página.</span><button type="button" class="pill-btn" id="btn-reintentar-competiciones" style="margin-top:14px;cursor:pointer">Reintentar</button></div>`;
+    document.getElementById('btn-reintentar-competiciones')?.addEventListener('click', () => location.reload());
   }
 });
 </script><script src="/asistente.js?v=20260908-v22" defer></script></body></html>

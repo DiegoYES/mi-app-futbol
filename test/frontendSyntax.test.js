@@ -165,6 +165,21 @@ test('el panel de administración conecta sus controles sin eventos inline bloqu
   assert.match(html, /function alternarGrupoUsuario/);
 });
 
+test('todas las páginas públicas conectan sus controles sin eventos inline bloqueados por CSP', () => {
+  const archivosVerificar = [
+    'picks.html', 'inicio.html', 'partido.html', 'calendario.html',
+    'competiciones.html', 'competicion.html', 'equipos.html', 'equipo.html',
+    'jugadores.html', 'jugador.html', 'spotlight-search.js', 'auth-client.js'
+  ];
+  const contenido = fuentePublica(...archivosVerificar);
+  assert.doesNotMatch(contenido, /\son(?:click|change|input|submit|error|load)=/i);
+
+  // Picks.html debe alternar historial con data-tab-editorial y event listeners
+  const picksHtml = fuentePublica('picks.html');
+  assert.match(picksHtml, /data-tab-editorial="historial"/);
+  assert.match(picksHtml, /data-tab-editorial/);
+});
+
 test('el creador editorial tokeniza partidos y mercados y muestra el nombre completo de Audax', () => {
   const html = fuentePublica('admin.html', 'admin-core.js', 'admin-picks.js', 'admin-quality.js', 'admin-tickets.js', 'admin-users.js', 'admin.js');
   assert.match(html, /<script src="\/search-utils\.js"><\/script>/);

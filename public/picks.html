@@ -215,7 +215,7 @@ function renderizarRecomendaciones() {
           <span style="color:var(--muted);font-size:.82rem;">El equipo editorial publica las selecciones recomendadas antes de cada jornada.</span>
           ${listaHistorial.length > 0 ? `
             <div style="margin-top:14px;">
-              <button type="button" class="btn-rec-cambiar-historial" onclick="cambiarTabEditorial('historial')">
+              <button type="button" class="btn-rec-cambiar-historial" data-tab-editorial="historial">
                 Ver historial de picks y resultados (${listaHistorial.length}) →
               </button>
             </div>
@@ -407,6 +407,14 @@ const dialogoGeneral = document.getElementById('general-explanation-dialog');
 document.getElementById('general-explanation-close').addEventListener('click', () => dialogoGeneral.close());
 dialogoGeneral.addEventListener('click', event => { if (event.target === dialogoGeneral) dialogoGeneral.close(); });
 document.getElementById('recomendaciones-editoriales')?.addEventListener('click', async event => {
+  const btnTab = event.target.closest('[data-tab-editorial]');
+  if (btnTab) {
+    event.preventDefault();
+    cambiarTabEditorial(btnTab.dataset.tabEditorial);
+    try { history.replaceState(null, '', '#' + btnTab.dataset.tabEditorial); } catch {}
+    return;
+  }
+
   const btn = event.target.closest('[data-delete-rec]');
   if (!btn) return;
   const id = btn.dataset.deleteRec;
@@ -422,6 +430,15 @@ document.getElementById('recomendaciones-editoriales')?.addEventListener('click'
     alert('Error al eliminar: ' + err.message);
     btn.disabled = false;
     btn.textContent = '🗑️ Quitar';
+  }
+});
+
+document.addEventListener('click', event => {
+  const btnTab = event.target.closest('[data-tab-editorial]');
+  if (btnTab) {
+    event.preventDefault();
+    cambiarTabEditorial(btnTab.dataset.tabEditorial);
+    try { history.replaceState(null, '', '#' + btnTab.dataset.tabEditorial); } catch {}
   }
 });
 
@@ -443,8 +460,14 @@ document.addEventListener('DOMContentLoaded', () => {
     cargarPicksGuardados();
   });
 });
-document.getElementById('tab-editorial-activas')?.addEventListener('click', () => cambiarTabEditorial('activas'));
-document.getElementById('tab-editorial-historial')?.addEventListener('click', () => cambiarTabEditorial('historial'));
+document.getElementById('tab-editorial-activas')?.addEventListener('click', () => {
+  cambiarTabEditorial('activas');
+  try { history.replaceState(null, '', '#activas'); } catch {}
+});
+document.getElementById('tab-editorial-historial')?.addEventListener('click', () => {
+  cambiarTabEditorial('historial');
+  try { history.replaceState(null, '', '#historial'); } catch {}
+});
 window.addEventListener('hashchange', () => {
   if (window.location.hash === '#historial') cambiarTabEditorial('historial');
   else if (window.location.hash === '#activas') cambiarTabEditorial('activas');
