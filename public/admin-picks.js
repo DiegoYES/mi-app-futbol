@@ -54,6 +54,8 @@ function etiquetaPartido(partido) {
 
 function textoIndexPartido(partido) {
   return [
+    partido.api_id,
+    partido.liga?.id,
     etiquetaPartido(partido),
     partido.local?.nombre,
     partido.visitante?.nombre,

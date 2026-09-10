@@ -138,7 +138,7 @@ function pintarResultadosBusqueda() {
   }
   const catalogo = catalogoCalendario();
   const paises = catalogo.paises.filter(p => coincide(p.nombre, consulta)).slice(0, 5);
-  const ligas = catalogo.ligas.filter(l => coincide(l.nombre, consulta) || (!paises.length && coincide(l.pais, consulta))).slice(0, 7);
+  const ligas = catalogo.ligas.filter(l => coincide(`${l.id} ${l.nombre}`, consulta) || (!paises.length && coincide(l.pais, consulta))).slice(0, 7);
   const equipos = catalogo.equipos.filter(e => coincide(e.nombre, consulta) && !paises.some(p => p.selecciones.has(e.id))).slice(0, 7);
   let html = '';
   if (paises.length) html += `<div class="search-heading">Países</div>${paises.map(p => {

@@ -81,7 +81,7 @@ function pintarSelectorLiga(){
 function pintarResultadosLiga(){
   const consulta=document.getElementById('buscar-liga').value;
   const select=document.getElementById('liga');
-  const encontradas=FutbolSearch.ordenar(ligas,consulta,liga=>`${liga.pais} ${liga.nombre}`);
+  const encontradas=FutbolSearch.ordenar(ligas,consulta,liga=>`${liga.id} ${liga.pais} ${liga.nombre}`);
   const porPais=new Map();
   for(const liga of encontradas){
     const pais=liga.pais||'Otras competiciones';

@@ -283,7 +283,7 @@ test('el directorio de jugadores permite buscar la competición por país o nomb
   const html = fs.readFileSync(path.join(__dirname, '..', 'public', 'jugadores.html'), 'utf8');
   assert.match(html, /id="selector-liga" class="league-picker"/);
   assert.match(html, /id="buscar-liga" class="picker-search"/);
-  assert.match(html, /FutbolSearch\.ordenar\(competiciones,consulta,item=>`\$\{item\.pais\} \$\{item\.nombre\}`\)/);
+  assert.match(html, /FutbolSearch\.ordenar\(competiciones,consulta,item=>`\$\{item\.id\} \$\{item\.pais\} \$\{item\.nombre\}`\)/);
   assert.match(html, /data-league-value/);
   assert.match(html, /id="selector-basico"/);
   assert.match(html, /function seleccionarLiga\(id\)/);

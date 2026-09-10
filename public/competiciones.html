@@ -99,8 +99,8 @@ function pintar(){
   let visibles=base;
   if(q){
     visibles=typeof FutbolSearch!=='undefined' && typeof FutbolSearch.ordenar==='function'
-      ? FutbolSearch.ordenar(base,q,c=>`${c.nombre} ${c.pais||''}`)
-      : base.filter(c=>`${c.nombre} ${c.pais||''}`.toLowerCase().includes(q.toLowerCase()));
+      ? FutbolSearch.ordenar(base,q,c=>`${c.id} ${c.nombre} ${c.pais||''}`)
+      : base.filter(c=>`${c.id} ${c.nombre} ${c.pais||''}`.toLowerCase().includes(q.toLowerCase()));
   }
 
   visibles=ordenarCompeticiones(visibles);

@@ -107,7 +107,7 @@ function prepararSelectorLiga(select) {
     };
     const pintarOpciones = () => {
         const opciones = [...select.options].filter(opcion => opcion.value).map(opcion => ligasDisponibles[opcion.value]).filter(Boolean);
-        const filtradas = opciones.filter(liga => coincideBusqueda(`${liga.nombre} ${liga.pais}`, buscador.value));
+        const filtradas = opciones.filter(liga => coincideBusqueda(`${liga.id} ${liga.nombre} ${liga.pais}`, buscador.value));
         const porPais = new Map();
         filtradas.forEach(liga => {
             const pais = liga.pais || 'Otras competiciones';
