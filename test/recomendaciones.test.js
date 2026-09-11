@@ -302,4 +302,48 @@ test('enriquecerRecomendacionesConEvaluacion evalúa combinadas y parlays correc
   const resCanc = await enriquecerRecomendacionesConEvaluacion(pickCancelado, { persistir: false, partidosMap });
   assert.equal(resCanc[0].resultado, 'anulado');
   assert.equal(resCanc[0].selecciones[0].estado_seleccion, 'anulado');
+
+  // Parlay corregido de fallado a acertado tras exclusión de tarjetas en banquillo
+  partidosMap.set(205, {
+    api_id: 205,
+    estado: 'FT',
+    fecha: new Date(),
+    estadisticas_completas: true,
+    equipo_local: {
+      goles: 2,
+      tarjetas_amarillas: 5,
+      tarjetas_amarillas_banquillo: 1,
+      eventos: [
+        { minuto: 10, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 20, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 30, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 40, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 46, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: true },
+        { minuto: 60, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false }
+      ]
+    },
+    equipo_visitante: {
+      goles: 0,
+      tarjetas_amarillas: 2,
+      eventos: [
+        { minuto: 15, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 25, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false }
+      ]
+    }
+  });
+  const parlayCorregido = [
+    {
+      _id: 'rec-parlay-corregido',
+      tipo: 'parlay',
+      resultado: 'fallado',
+      selecciones: [
+        { partido_api_id: 201, mercado_id: 'ambos_anotan' },
+        { partido_api_id: 205, mercado_id: 'amarillas_total_under_7_5' }
+      ]
+    }
+  ];
+  const resCorr = await enriquecerRecomendacionesConEvaluacion(parlayCorregido, { persistir: false, partidosMap });
+  assert.equal(resCorr[0].resultado, 'acertado', 'El parlay debe corregirse a acertado al excluir la amarilla de banquillo');
+  assert.equal(resCorr[0].selecciones[1].estado_seleccion, 'acertado');
 });
+

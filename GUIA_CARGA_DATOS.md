@@ -161,3 +161,21 @@ node -e "require('dotenv').config();const m=require('mongoose');m.connect(proces
 # Ver log del cron
 tail -30 /tmp/futbol-batch1.log
 ```
+```bash
+# Auditar ceros sospechosos en estadísticas (solo lectura; informe en artifacts/)
+npm run audit:stats-zeros
+npm run audit:stats-zeros -- --temporada-min=2025 --liga=262
+
+# Con --incluir-pendientes suma los finalizados sin estadísticas que el cron ya
+# no revisita (temporada 2025 completa y 2026 con más de 14 días).
+npm run audit:stats-zeros -- --temporada-min=2025 --incluir-pendientes
+
+# Reparar revalidando contra la API (1 llamada por cada 20 partidos). Cada
+# partido queda como `completas` o `sin_cobertura_proveedor` en una sola pasada.
+# Respeta una reserva de cuota para el cron horario (250/h × horas restantes del
+# día UTC, mínimo 1000) y espera si un cron:* tiene el bloqueo activo. Es
+# reanudable: los api_id ya revisados quedan en `auditoria_cobertura`.
+node scripts/auditarCerosEstadisticas.js --execute --allow-prod \
+  --confirm-production=REPARAR_CEROS_PRODUCCION \
+  --temporada-min=2025 --incluir-pendientes --max-partidos=2000 --max-llamadas=100
+```

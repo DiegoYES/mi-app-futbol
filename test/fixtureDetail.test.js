@@ -124,3 +124,65 @@ test('reconcilia tarjetas cuando los eventos tienen amonestaciones pero las esta
   assert.equal(update['equipo_visitante.tarjetas_amarillas'], 1);
 });
 
+test('identifica tarjetas en el banquillo y no las cuenta en tarjetas_amarillas activas', () => {
+  const detalle = {
+    statistics: [
+      { team: { id: 1 }, statistics: [
+        { type: 'Total Shots', value: 15 }, { type: 'Shots on Goal', value: 6 },
+        { type: 'Corner Kicks', value: 4 }, { type: 'Fouls', value: 16 },
+        { type: 'Yellow Cards', value: 6 }, { type: 'Red Cards', value: 0 }
+      ] },
+      { team: { id: 2 }, statistics: [
+        { type: 'Total Shots', value: 10 }, { type: 'Shots on Goal', value: 3 },
+        { type: 'Corner Kicks', value: 5 }, { type: 'Fouls', value: 12 },
+        { type: 'Yellow Cards', value: 2 }, { type: 'Red Cards', value: 0 }
+      ] }
+    ],
+    lineups: [
+      {
+        team: { id: 1 },
+        startXI: [
+          { player: { id: 11 } }, { player: { id: 12 } }, { player: { id: 13 } },
+          { player: { id: 14 } }, { player: { id: 15 } }
+        ],
+        substitutes: [
+          { player: { id: 99, name: 'Suplente En Banquillo' } }
+        ]
+      },
+      {
+        team: { id: 2 },
+        startXI: [{ player: { id: 21 } }, { player: { id: 22 } }],
+        substitutes: []
+      }
+    ],
+    events: [
+      { time: { elapsed: 14 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 11 } },
+      { time: { elapsed: 36 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 12 } },
+      { time: { elapsed: 45 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 13 } },
+      { time: { elapsed: 45 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 14 } },
+      { time: { elapsed: 46 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 99 }, comments: 'Dissent' },
+      { time: { elapsed: 68 }, team: { id: 1 }, type: 'Card', detail: 'Yellow Card', player: { id: 15 } },
+      { time: { elapsed: 11 }, team: { id: 2 }, type: 'Card', detail: 'Yellow Card', player: { id: 21 } },
+      { time: { elapsed: 21 }, team: { id: 2 }, type: 'Card', detail: 'Yellow Card', player: { id: 22 } }
+    ]
+  };
+
+  const update = construirUpdatePartido(detalle, partido);
+  assert.equal(update['equipo_local.tarjetas_amarillas'], 5, 'Deben ser 5 amarillas en campo (excluyendo la del suplente en banca)');
+  assert.equal(update['equipo_local.tarjetas_amarillas_banquillo'], 1, 'Debe registrar 1 amarilla de banquillo');
+  assert.equal(update['equipo_visitante.tarjetas_amarillas'], 2);
+
+  const eventosLocal = update['equipo_local.eventos'];
+  const evBanquillo = eventosLocal.find(e => e.jugador_id === 99);
+  assert.ok(evBanquillo);
+  assert.equal(evBanquillo.en_banquillo, true);
+
+  const evCampo = eventosLocal.find(e => e.jugador_id === 11);
+  assert.equal(evCampo.en_banquillo, false);
+
+  // Rango 46-60 no debe tener la amarilla de banquillo del minuto 46
+  const rango4660 = update['equipo_local.estadisticas_por_rango'].find(r => r.rango_minutos === '46-60');
+  assert.equal(rango4660?.amarillas || 0, 0);
+});
+
+

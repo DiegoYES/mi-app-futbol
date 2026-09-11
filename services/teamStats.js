@@ -83,12 +83,37 @@ function estadisticasPeriodo(equipo, half) {
     let amarillas = numeroNullable(equipo.tarjetas_amarillas);
     let rojas = numeroNullable(equipo.tarjetas_rojas);
     if (Array.isArray(equipo.eventos) && equipo.eventos.length > 0) {
-      const amarillasEv = equipo.eventos.filter(e => e.tipo_evento === 'Tarjeta' && /yellow|amarilla/i.test(e.detalle || '')).length;
-      const rojasEv = equipo.eventos.filter(e => e.tipo_evento === 'Tarjeta' && /red|roja/i.test(e.detalle || '') && !/yellow|amarilla/i.test(e.detalle || '')).length;
-      if (amarillas !== null && amarillasEv > amarillas) amarillas = amarillasEv;
-      if (rojas !== null && rojasEv > rojas) rojas = rojasEv;
-      if (amarillas === null && amarillasEv > 0) amarillas = amarillasEv;
-      if (rojas === null && rojasEv > 0) rojas = rojasEv;
+      const eventosValidos = equipo.eventos.filter(e => !e.en_banquillo);
+      const amarillasEv = eventosValidos.filter(e => e.tipo_evento === 'Tarjeta' && /yellow|amarilla/i.test(e.detalle || '')).length;
+      const rojasEv = eventosValidos.filter(e => e.tipo_evento === 'Tarjeta' && /red|roja/i.test(e.detalle || '') && !/yellow|amarilla/i.test(e.detalle || '')).length;
+      const amarillasBanquillo = equipo.eventos.filter(e => e.tipo_evento === 'Tarjeta' && e.en_banquillo && /yellow|amarilla/i.test(e.detalle || '')).length;
+      const rojasBanquillo = equipo.eventos.filter(e => e.tipo_evento === 'Tarjeta' && e.en_banquillo && /red|roja/i.test(e.detalle || '') && !/yellow|amarilla/i.test(e.detalle || '')).length;
+      const tieneTarjetasEv = equipo.eventos.some(e => e.tipo_evento === 'Tarjeta');
+
+      if (tieneTarjetasEv) {
+        amarillas = amarillasEv;
+        rojas = rojasEv;
+      } else {
+        if (amarillasBanquillo > 0 && amarillas !== null) {
+          amarillas = Math.max(0, amarillas - amarillasBanquillo);
+        }
+        if (rojasBanquillo > 0 && rojas !== null) {
+          rojas = Math.max(0, rojas - rojasBanquillo);
+        }
+        if (amarillas !== null && amarillasEv > amarillas) amarillas = amarillasEv;
+        if (rojas !== null && rojasEv > rojas) rojas = rojasEv;
+        if (amarillas === null && amarillasEv > 0) amarillas = amarillasEv;
+        if (rojas === null && rojasEv > 0) rojas = rojasEv;
+      }
+    } else {
+      const banquilloAmarillas = numeroNullable(equipo.tarjetas_amarillas_banquillo) || 0;
+      const banquilloRojas = numeroNullable(equipo.tarjetas_rojas_banquillo) || 0;
+      if (banquilloAmarillas > 0 && amarillas !== null) {
+        amarillas = Math.max(0, amarillas - banquilloAmarillas);
+      }
+      if (banquilloRojas > 0 && rojas !== null) {
+        rojas = Math.max(0, rojas - banquilloRojas);
+      }
     }
     return {
       goles: numero(equipo.goles),
@@ -108,14 +133,26 @@ function estadisticasPeriodo(equipo, half) {
     ? golesPrimerTiempo
     : Math.max(0, numero(equipo.goles) - golesPrimerTiempo);
 
+  let amarillasHalf = numeroNullable(datos.tarjetas_amarillas);
+  let rojasHalf = numeroNullable(datos.tarjetas_rojas);
+  if (Array.isArray(equipo.eventos) && equipo.eventos.length > 0) {
+    const eventosValidos = equipo.eventos.filter(e => !e.en_banquillo);
+    const tieneTarjetasEv = equipo.eventos.some(e => e.tipo_evento === 'Tarjeta');
+    if (tieneTarjetasEv) {
+      const enPeriodo = eventosValidos.filter(e => half === 1 ? e.minuto <= 45 : e.minuto > 45);
+      amarillasHalf = enPeriodo.filter(e => e.tipo_evento === 'Tarjeta' && /yellow|amarilla/i.test(e.detalle || '')).length;
+      rojasHalf = enPeriodo.filter(e => e.tipo_evento === 'Tarjeta' && /red|roja/i.test(e.detalle || '') && !/yellow|amarilla/i.test(e.detalle || '')).length;
+    }
+  }
+
   return {
     goles,
     tiros: numeroNullable(datos.tiros_total),
     tiros_puerta: numeroNullable(datos.tiros_puerta),
     corners: numeroNullable(datos.corners),
     faltas: numeroNullable(datos.faltas),
-    amarillas: numeroNullable(datos.tarjetas_amarillas),
-    rojas: numeroNullable(datos.tarjetas_rojas),
+    amarillas: amarillasHalf,
+    rojas: rojasHalf,
     offsides: numeroNullable(datos.offsides)
   };
 }

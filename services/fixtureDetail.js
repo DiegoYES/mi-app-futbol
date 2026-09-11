@@ -46,6 +46,90 @@ function eventoGuardable(evento) {
   };
 }
 
+function clasificarEventosEquipo(eventosEquipo, alineacionEquipo, jugadoresEquipo) {
+  const startXIIds = new Set(
+    (alineacionEquipo?.startXI || []).map(p => p.player?.id).filter(Boolean)
+  );
+  const subIds = new Set(
+    (alineacionEquipo?.substitutes || []).map(p => p.player?.id).filter(Boolean)
+  );
+  const tieneAlineacion = startXIIds.size > 0 || subIds.size > 0;
+
+  const minutosJugador = new Map();
+  if (Array.isArray(jugadoresEquipo?.players)) {
+    for (const p of jugadoresEquipo.players) {
+      if (p.player?.id) {
+        minutosJugador.set(p.player.id, numero(p.statistics?.[0]?.games?.minutes));
+      }
+    }
+  }
+
+  const sustituciones = [];
+  for (const ev of eventosEquipo) {
+    const t = tipoEvento(ev);
+    if (t === 'Sustitución' || ev.type === 'subst' || /subst/i.test(ev.type || '')) {
+      sustituciones.push({
+        minuto: numero(ev.time?.elapsed),
+        inId: ev.player?.id || null,
+        outId: ev.assist?.id || null
+      });
+    }
+  }
+
+  return eventosEquipo.map(evento => {
+    const esTarjeta = tipoEvento(evento) === 'Tarjeta' || /card/i.test(evento.type || '');
+    let enBanquillo = Boolean(evento.en_banquillo);
+
+    if (esTarjeta && !enBanquillo) {
+      const jId = evento.player?.id || evento.jugador_id || null;
+      const minuto = numero(evento.time?.elapsed ?? evento.minuto);
+      const comments = String(evento.comments || evento.comentario || '').toLowerCase();
+
+      if (/bench|banquillo|substitute/i.test(comments) && !/foul/i.test(comments)) {
+        enBanquillo = true;
+      } else if (jId && minutosJugador.has(jId) && minutosJugador.get(jId) === 0) {
+        // En estadísticas de jugadores jugó 0 minutos (suplente no utilizado)
+        enBanquillo = true;
+      } else if (tieneAlineacion) {
+        if (!jId || (!startXIIds.has(jId) && !subIds.has(jId))) {
+          // No es jugador de la convocatoria en campo (cuerpo técnico / staff / etc.)
+          enBanquillo = true;
+        } else if (startXIIds.has(jId)) {
+          // Titular: si fue sustituido antes o en este minuto, la amonestación fue en banquillo
+          const subSalida = sustituciones.find(s => s.outId === jId && s.minuto <= minuto);
+          if (subSalida) {
+            enBanquillo = true;
+          }
+        } else if (subIds.has(jId)) {
+          // Suplente: si no ingresó antes o en este minuto, estaba en banquillo
+          const subEntrada = sustituciones.find(s => s.inId === jId && s.minuto <= minuto);
+          if (!subEntrada) {
+            enBanquillo = true;
+          } else {
+            // Ingresó, pero ¿volvió a salir antes o en este minuto?
+            const subSalidaDespues = sustituciones.find(s => s.outId === jId && s.minuto > subEntrada.minuto && s.minuto <= minuto);
+            if (subSalidaDespues) {
+              enBanquillo = true;
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      minuto: numero(evento.time?.elapsed ?? evento.minuto),
+      tipo_evento: tipoEvento(evento),
+      detalle: evento.detail || evento.detalle || '',
+      jugador_id: evento.player?.id || evento.jugador_id || null,
+      jugador: evento.player?.name || evento.jugador || null,
+      asistencia_id: evento.assist?.id || evento.asistencia_id || null,
+      asistencia: evento.assist?.name || evento.asistencia || null,
+      comentario: evento.comments || evento.comentario || null,
+      en_banquillo: enBanquillo
+    };
+  });
+}
+
 function obtenerRango(minuto) {
   const superior = Math.max(15, Math.ceil(Math.max(1, minuto) / 15) * 15);
   return `${superior - 14}-${superior}`;
@@ -54,6 +138,7 @@ function obtenerRango(minuto) {
 function agruparEventos(eventos) {
   const rangos = new Map();
   for (const evento of eventos) {
+    if (evento.en_banquillo) continue;
     const rango = obtenerRango(evento.minuto);
     if (!rangos.has(rango)) {
       rangos.set(rango, {
@@ -81,11 +166,18 @@ function construirUpdatePartido(detalle, partido) {
   const awayStats = detalle.statistics?.find(item => item.team?.id === awayId);
   const update = { fecha_actualizacion: new Date() };
 
+  const localLineup = Array.isArray(detalle.lineups) ? detalle.lineups.find(item => item.team?.id === homeId) : null;
+  const awayLineup = Array.isArray(detalle.lineups) ? detalle.lineups.find(item => item.team?.id === awayId) : null;
+  const localPlayers = Array.isArray(detalle.players) ? detalle.players.find(item => item.team?.id === homeId) : null;
+  const awayPlayers = Array.isArray(detalle.players) ? detalle.players.find(item => item.team?.id === awayId) : null;
+
   let locales = [];
   let visitantes = [];
   if (Array.isArray(detalle.events)) {
-    locales = detalle.events.filter(item => item.team?.id === homeId).map(eventoGuardable);
-    visitantes = detalle.events.filter(item => item.team?.id === awayId).map(eventoGuardable);
+    const rawLocales = detalle.events.filter(item => item.team?.id === homeId);
+    const rawVisitantes = detalle.events.filter(item => item.team?.id === awayId);
+    locales = clasificarEventosEquipo(rawLocales, localLineup, localPlayers);
+    visitantes = clasificarEventosEquipo(rawVisitantes, awayLineup, awayPlayers);
     update['equipo_local.eventos'] = locales;
     update['equipo_visitante.eventos'] = visitantes;
     update['equipo_local.estadisticas_por_rango'] = agruparEventos(locales);
@@ -93,33 +185,41 @@ function construirUpdatePartido(detalle, partido) {
     update.eventos_completos = true;
   }
 
-  const amarillasEvLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && String(e.detalle || '').toLowerCase().includes('yellow')).length;
-  const rojasEvLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && detailIsRed(String(e.detalle || '').toLowerCase())).length;
-  const amarillasEvVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && String(e.detalle || '').toLowerCase().includes('yellow')).length;
-  const rojasEvVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && detailIsRed(String(e.detalle || '').toLowerCase())).length;
+  const amarillasValidasLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && !e.en_banquillo && String(e.detalle || '').toLowerCase().includes('yellow')).length;
+  const rojasValidasLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && !e.en_banquillo && detailIsRed(String(e.detalle || '').toLowerCase())).length;
+  const amarillasBanquilloLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && e.en_banquillo && String(e.detalle || '').toLowerCase().includes('yellow')).length;
+  const rojasBanquilloLocal = locales.filter(e => e.tipo_evento === 'Tarjeta' && e.en_banquillo && detailIsRed(String(e.detalle || '').toLowerCase())).length;
+
+  const amarillasValidasVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && !e.en_banquillo && String(e.detalle || '').toLowerCase().includes('yellow')).length;
+  const rojasValidasVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && !e.en_banquillo && detailIsRed(String(e.detalle || '').toLowerCase())).length;
+  const amarillasBanquilloVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && e.en_banquillo && String(e.detalle || '').toLowerCase().includes('yellow')).length;
+  const rojasBanquilloVis = visitantes.filter(e => e.tipo_evento === 'Tarjeta' && e.en_banquillo && detailIsRed(String(e.detalle || '').toLowerCase())).length;
 
   if (homeStats && awayStats) {
     Object.assign(update, camposEstadisticas('equipo_local', homeStats));
     Object.assign(update, camposEstadisticas('equipo_visitante', awayStats));
 
-    // Reconciliación defensiva de tarjetas si los eventos ya registran amonestaciones
-    if (amarillasEvLocal > 0 && (update['equipo_local.tarjetas_amarillas'] ?? 0) < amarillasEvLocal) {
-      update['equipo_local.tarjetas_amarillas'] = amarillasEvLocal;
+    // Si los eventos registran amonestaciones, usar las tarjetas válidas en campo (excluyendo banquillo)
+    if (locales.some(e => e.tipo_evento === 'Tarjeta')) {
+      update['equipo_local.tarjetas_amarillas'] = amarillasValidasLocal;
+      update['equipo_local.tarjetas_rojas'] = rojasValidasLocal;
     }
-    if (rojasEvLocal > 0 && (update['equipo_local.tarjetas_rojas'] ?? 0) < rojasEvLocal) {
-      update['equipo_local.tarjetas_rojas'] = rojasEvLocal;
+    if (visitantes.some(e => e.tipo_evento === 'Tarjeta')) {
+      update['equipo_visitante.tarjetas_amarillas'] = amarillasValidasVis;
+      update['equipo_visitante.tarjetas_rojas'] = rojasValidasVis;
     }
-    if (amarillasEvVis > 0 && (update['equipo_visitante.tarjetas_amarillas'] ?? 0) < amarillasEvVis) {
-      update['equipo_visitante.tarjetas_amarillas'] = amarillasEvVis;
-    }
-    if (rojasEvVis > 0 && (update['equipo_visitante.tarjetas_rojas'] ?? 0) < rojasEvVis) {
-      update['equipo_visitante.tarjetas_rojas'] = rojasEvVis;
-    }
+
+    if (amarillasBanquilloLocal > 0) update['equipo_local.tarjetas_amarillas_banquillo'] = amarillasBanquilloLocal;
+    if (rojasBanquilloLocal > 0) update['equipo_local.tarjetas_rojas_banquillo'] = rojasBanquilloLocal;
+    if (amarillasBanquilloVis > 0) update['equipo_visitante.tarjetas_amarillas_banquillo'] = amarillasBanquilloVis;
+    if (rojasBanquilloVis > 0) update['equipo_visitante.tarjetas_rojas_banquillo'] = rojasBanquilloVis;
 
     const golesLocal = partido.equipo_local?.goles ?? detalle.goals?.home;
     const golesVis = partido.equipo_visitante?.goles ?? detalle.goals?.away;
-    update.estadisticas_completas = tieneMetricasBasicas(homeStats, { goles: golesLocal, tarjetasEventos: amarillasEvLocal + rojasEvLocal }) &&
-      tieneMetricasBasicas(awayStats, { goles: golesVis, tarjetasEventos: amarillasEvVis + rojasEvVis });
+    const totalTarjetasEvLocal = amarillasValidasLocal + rojasValidasLocal + amarillasBanquilloLocal + rojasBanquilloLocal;
+    const totalTarjetasEvVis = amarillasValidasVis + rojasValidasVis + amarillasBanquilloVis + rojasBanquilloVis;
+    update.estadisticas_completas = tieneMetricasBasicas(homeStats, { goles: golesLocal, tarjetasEventos: totalTarjetasEvLocal }) &&
+      tieneMetricasBasicas(awayStats, { goles: golesVis, tarjetasEventos: totalTarjetasEvVis });
   } else {
     Object.assign(update, camposEstadisticas("equipo_local", { statistics: [] }));
     Object.assign(update, camposEstadisticas("equipo_visitante", { statistics: [] }));
@@ -225,6 +325,7 @@ async function guardarDetalleFixture(detalle, partido, {
 
 module.exports = {
   agruparEventos,
+  clasificarEventosEquipo,
   construirUpdatePartido,
   datosJugador,
   guardarDetalleFixture,

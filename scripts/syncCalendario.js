@@ -158,23 +158,23 @@ async function completarEstadisticasDePartidos(finalizados) {
       const update = {};
       if (homeStats) {
         const s = homeStats.statistics;
-        update['equipo_local.tiros_total']         = parseInt(s.find(x => x.type === 'Total Shots')?.value)  || 0;
-        update['equipo_local.tiros_puerta']         = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
+        update['equipo_local.tiros_total']         = valorEstadistica(s, 'Total Shots');
+        update['equipo_local.tiros_puerta']         = valorEstadistica(s, 'Shots on Goal');
         update['equipo_local.corners']              = valorEstadistica(s, 'Corner Kicks');
-        update['equipo_local.faltas']               = parseInt(s.find(x => x.type === 'Fouls')?.value)         || 0;
-        update['equipo_local.tarjetas_amarillas']   = parseInt(s.find(x => x.type === 'Yellow Cards')?.value)  || 0;
-        update['equipo_local.tarjetas_rojas']       = parseInt(s.find(x => x.type === 'Red Cards')?.value)     || 0;
-        update['equipo_local.offsides']             = parseInt(s.find(x => x.type === 'Offsides')?.value)      || 0;
+        update['equipo_local.faltas']               = valorEstadistica(s, 'Fouls');
+        update['equipo_local.tarjetas_amarillas']   = valorEstadistica(s, 'Yellow Cards');
+        update['equipo_local.tarjetas_rojas']       = valorEstadistica(s, 'Red Cards');
+        update['equipo_local.offsides']             = valorEstadistica(s, 'Offsides');
       }
       if (awayStats) {
         const s = awayStats.statistics;
-        update['equipo_visitante.tiros_total']       = parseInt(s.find(x => x.type === 'Total Shots')?.value)  || 0;
-        update['equipo_visitante.tiros_puerta']      = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
+        update['equipo_visitante.tiros_total']       = valorEstadistica(s, 'Total Shots');
+        update['equipo_visitante.tiros_puerta']      = valorEstadistica(s, 'Shots on Goal');
         update['equipo_visitante.corners']           = valorEstadistica(s, 'Corner Kicks');
-        update['equipo_visitante.faltas']            = parseInt(s.find(x => x.type === 'Fouls')?.value)         || 0;
-        update['equipo_visitante.tarjetas_amarillas']= parseInt(s.find(x => x.type === 'Yellow Cards')?.value)  || 0;
-        update['equipo_visitante.tarjetas_rojas']   = parseInt(s.find(x => x.type === 'Red Cards')?.value)     || 0;
-        update['equipo_visitante.offsides']         = parseInt(s.find(x => x.type === 'Offsides')?.value)      || 0;
+        update['equipo_visitante.faltas']            = valorEstadistica(s, 'Fouls');
+        update['equipo_visitante.tarjetas_amarillas']= valorEstadistica(s, 'Yellow Cards');
+        update['equipo_visitante.tarjetas_rojas']   = valorEstadistica(s, 'Red Cards');
+        update['equipo_visitante.offsides']         = valorEstadistica(s, 'Offsides');
       }
 
       if (Object.keys(update).length > 0) {

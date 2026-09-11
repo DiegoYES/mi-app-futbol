@@ -260,28 +260,34 @@ async function enriquecerRecomendacionesConEvaluacion(recomendaciones, opciones 
     });
 
     let resultadoCalculado = item.resultado;
-    if (!resultadoCalculado || resultadoCalculado === 'pendiente') {
-      if (hayFallados) {
-        resultadoCalculado = 'fallado';
-      } else if (!hayPendientes && seleccionesEnriquecidas.length > 0) {
-        if (hayAnulados && aciertos === 0) {
-          resultadoCalculado = 'anulado';
-        } else {
-          resultadoCalculado = 'acertado';
-        }
-      } else {
-        resultadoCalculado = 'pendiente';
-      }
+    const todasResueltas = seleccionesEnriquecidas.length > 0 && seleccionesEnriquecidas.every(s => ['acertado', 'fallado', 'anulado'].includes(s.estado_seleccion));
 
-      if (persistir && item._id && resultadoCalculado !== 'pendiente' && resultadoCalculado !== item.resultado) {
-        operacionesBulk.push({
-          updateOne: {
-            filter: { _id: item._id, resultado: 'pendiente' },
-            update: { $set: { resultado: resultadoCalculado } }
-          }
-        });
+    let nuevoResultado = item.resultado;
+    if (todasResueltas) {
+      if (hayFallados) {
+        nuevoResultado = 'fallado';
+      } else if (hayAnulados && aciertos === 0) {
+        nuevoResultado = 'anulado';
+      } else {
+        nuevoResultado = 'acertado';
+      }
+    } else if (!item.resultado || item.resultado === 'pendiente') {
+      if (hayFallados) {
+        nuevoResultado = 'fallado';
+      } else {
+        nuevoResultado = 'pendiente';
       }
     }
+
+    if (persistir && item._id && nuevoResultado !== item.resultado) {
+      operacionesBulk.push({
+        updateOne: {
+          filter: { _id: item._id },
+          update: { $set: { resultado: nuevoResultado } }
+        }
+      });
+    }
+    resultadoCalculado = nuevoResultado;
 
     return {
       ...item,

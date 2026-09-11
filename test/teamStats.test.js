@@ -214,3 +214,29 @@ test('estadisticasPeriodo concilia tarjetas desde eventos cuando el campo numér
   assert.equal(stats.rojas, 1);
 });
 
+test('estadisticasPeriodo excluye tarjetas mostradas en el banquillo y usa conteo en campo', () => {
+  const eq = {
+    id: 10,
+    nombre: 'Equipo',
+    goles: 1,
+    tarjetas_amarillas: 6,
+    tarjetas_rojas: 0,
+    eventos: [
+      { minuto: 14, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+      { minuto: 36, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+      { minuto: 45, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+      { minuto: 45, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+      { minuto: 46, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: true },
+      { minuto: 68, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false }
+    ]
+  };
+  const stats = estadisticasPeriodo(eq, 0);
+  assert.equal(stats.amarillas, 5, 'Debe contar únicamente las 5 amarillas en campo activo');
+  assert.equal(stats.rojas, 0);
+
+  // Verificación en segundo tiempo (minutos > 45)
+  const stats2T = estadisticasPeriodo(eq, 2);
+  assert.equal(stats2T.amarillas, 1, 'En 2T solo debe contar la amarilla del min 68 (la del min 46 fue en banquillo)');
+});
+
+

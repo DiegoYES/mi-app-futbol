@@ -8,7 +8,9 @@ const eventoSchema = new mongoose.Schema({
   jugador_id: Number,
   jugador: String,
   asistencia_id: Number,
-  asistencia: String
+  asistencia: String,
+  comentario: String,
+  en_banquillo: { type: Boolean, default: false }
 }, { _id: false });
 
 // Esquema para las estadísticas precalculadas de un equipo en un rango de tiempo
@@ -32,6 +34,8 @@ const estadisticasSchema = new mongoose.Schema({
   faltas: Number,
   tarjetas_amarillas: Number,
   tarjetas_rojas: Number,
+  tarjetas_amarillas_banquillo: { type: Number, default: 0 },
+  tarjetas_rojas_banquillo: { type: Number, default: 0 },
   offsides: Number
 }, { _id: false });
 
@@ -62,6 +66,8 @@ const partidoSchema = new mongoose.Schema({
     faltas: Number,
     tarjetas_amarillas: Number,
     tarjetas_rojas: Number,
+    tarjetas_amarillas_banquillo: { type: Number, default: 0 },
+    tarjetas_rojas_banquillo: { type: Number, default: 0 },
     offsides: Number,
     formacion: String,
     entrenador: String,
@@ -83,6 +89,8 @@ const partidoSchema = new mongoose.Schema({
     faltas: Number,
     tarjetas_amarillas: Number,
     tarjetas_rojas: Number,
+    tarjetas_amarillas_banquillo: { type: Number, default: 0 },
+    tarjetas_rojas_banquillo: { type: Number, default: 0 },
     offsides: Number,
     formacion: String,
     entrenador: String,

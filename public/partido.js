@@ -145,7 +145,8 @@ function pintarEstadisticasPartido(partido, finalizado) {
   ].filter(([, valor]) => valor);
   const eventos = (partido.eventos || []).map(evento => {
     const protagonistas = [evento.jugador, evento.asistencia ? `Asist. ${evento.asistencia}` : ''].filter(Boolean).join(' · ');
-    return `<div class="match-event"><time>${Number(evento.minuto) || 0}'</time><span class="event-icon">${iconoEvento(evento.tipo_evento)}</span><div><strong>${esc(evento.equipo)} · ${esc(evento.tipo_evento)}</strong>${protagonistas || evento.detalle ? `<small>${esc(protagonistas || evento.detalle)}</small>` : ''}</div></div>`;
+    const tagBanquillo = evento.en_banquillo ? ' <span class="badge-banquillo" style="font-size:0.75rem;padding:2px 6px;border-radius:4px;background:rgba(234,179,8,0.15);color:#eab308;font-weight:600;margin-left:6px;" title="Tarjeta en banquillo (no contabiliza para apuestas)">Banquillo</span>' : '';
+    return `<div class="match-event"><time>${Number(evento.minuto) || 0}'</time><span class="event-icon">${iconoEvento(evento.tipo_evento)}</span><div><strong>${esc(evento.equipo)} · ${esc(evento.tipo_evento)}${tagBanquillo}</strong>${protagonistas || evento.detalle ? `<small>${esc(protagonistas || evento.detalle)}</small>` : ''}</div></div>`;
   }).join('');
 
   cont.innerHTML = `

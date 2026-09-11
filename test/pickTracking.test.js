@@ -63,3 +63,37 @@ test('cada usuario solo puede guardar una vez el mismo mercado y partido', () =>
   assert.equal(indice[1].unique, true);
   assert.deepEqual(indice[0], { usuario: 1, partido_api_id: 1, 'mercado.id': 1 });
 });
+
+test('evaluarMercado under tarjetas amarillas excluye tarjetas de banquillo', () => {
+  const partido = {
+    estadisticas_completas: true,
+    equipo_local: {
+      goles: 2,
+      tarjetas_amarillas: 5,
+      tarjetas_amarillas_banquillo: 1,
+      eventos: [
+        { minuto: 14, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 36, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 45, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 45, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 46, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: true },
+        { minuto: 68, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false }
+      ]
+    },
+    equipo_visitante: {
+      goles: 0,
+      tarjetas_amarillas: 2,
+      eventos: [
+        { minuto: 11, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false },
+        { minuto: 21, tipo_evento: 'Tarjeta', detalle: 'Yellow Card', en_banquillo: false }
+      ]
+    }
+  };
+
+  // En campo hay 5 (local) + 2 (visitante) = 7 amarillas.
+  // Con la de banquillo serían 8.
+  // Como 7 < 7.5, under 7.5 debe ser TRUE (acertado) y over 7.5 FALSE (fallado).
+  assert.equal(evaluarMercado('amarillas_total_under_7_5', partido), true);
+  assert.equal(evaluarMercado('amarillas_total_over_7_5', partido), false);
+});
+
