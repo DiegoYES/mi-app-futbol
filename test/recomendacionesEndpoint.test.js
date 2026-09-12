@@ -98,7 +98,7 @@ test('GET /api/recomendaciones separa activas de historial y calcula resumen', a
   assert.equal(data.resumen.efectividad, 50);
 });
 
-test('GET /api/recomendaciones incluye recomendación destacada acertada vigente en activas y en historial', async t => {
+test('GET /api/recomendaciones excluye recomendaciones finalizadas de activas y las manda directo a historial', async t => {
   const ahora = new Date();
   const manana = new Date(ahora.getTime() + 24 * 3600 * 1000);
 
@@ -155,11 +155,8 @@ test('GET /api/recomendaciones incluye recomendación destacada acertada vigente
   assert.equal(res.status, 200);
   const data = await res.json();
 
-  assert.equal(data.activas.length, 1, 'La recomendación destacada acertada debe aparecer en activas');
-  assert.equal(data.activas[0].titulo, 'Parlay Triple MLS Ganador');
-  assert.equal(data.activas[0].resultado, 'acertado');
-
-  assert.equal(data.historial.length, 1, 'La recomendación resuelta también debe constar en historial');
+  assert.equal(data.activas.length, 0, 'Las recomendaciones finalizadas nunca deben aparecer en activas');
+  assert.equal(data.historial.length, 1, 'La recomendación resuelta debe ir directo a historial');
   assert.equal(data.historial[0].titulo, 'Parlay Triple MLS Ganador');
   assert.equal(data.resumen.acertadas, 1);
   assert.equal(data.resumen.efectividad, 100);

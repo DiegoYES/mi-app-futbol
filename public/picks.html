@@ -98,13 +98,30 @@
   .editorial-tab-btn { min-height:38px; padding:0 15px; border:1px solid var(--line); border-radius:10px; background:var(--surface-raised); color:var(--muted); font:inherit; font-size:.8rem; font-weight:800; cursor:pointer; transition:all .15s ease; }
   .editorial-tab-btn:hover { color:var(--ink); border-color:rgba(84,227,142,.4); }
   .editorial-tab-btn.active { background:rgba(84,227,142,.15); border-color:var(--green); color:var(--green); }
-  .historial-kpi-strip { display:none; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:16px; }
+  .historial-kpi-strip { display:none; grid-template-columns:repeat(auto-fit,minmax(130px,1fr)); gap:10px; margin-bottom:12px; }
   .hist-kpi { padding:12px; border:1px solid var(--line); border-radius:12px; background:var(--surface-raised); text-align:center; }
+  .hist-kpi.clickable { cursor:pointer; transition:transform .15s ease, border-color .15s ease, background .15s ease; user-select:none; }
+  .hist-kpi.clickable:hover { transform:translateY(-2px); border-color:rgba(84,227,142,.4); }
+  .hist-kpi.clickable.active { border-color:var(--green); background:rgba(84,227,142,.08); box-shadow:0 0 12px rgba(84,227,142,.15); }
+  .hist-kpi.clickable.active-falladas { border-color:#ff6b6b; background:rgba(255,107,107,.08); box-shadow:0 0 12px rgba(255,107,107,.15); }
   .hist-kpi span { display:block; color:var(--muted); font-size:.65rem; text-transform:uppercase; font-weight:800; }
   .hist-kpi strong { display:block; font-size:1.15rem; margin-top:2px; }
+  .historial-controls { display:none; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:18px; padding:10px 14px; background:var(--surface-raised); border:1px solid var(--line); border-radius:14px; }
+  .historial-filter-chips { display:flex; align-items:center; gap:6px; flex-wrap:wrap; }
+  .hist-chip { display:inline-flex; align-items:center; gap:5px; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:transparent; color:var(--muted); font:inherit; font-size:.75rem; font-weight:800; cursor:pointer; transition:all .15s ease; user-select:none; }
+  .hist-chip:hover { color:var(--ink); background:rgba(255,255,255,.05); }
+  .hist-chip.active { background:rgba(84,227,142,.12); color:var(--green); border-color:rgba(84,227,142,.4); }
+  .hist-chip.chip-falladas.active { background:rgba(255,107,107,.12); color:#ff6b6b; border-color:rgba(255,107,107,.4); }
+  .hist-chip.chip-anuladas.active { background:rgba(148,163,184,.15); color:var(--muted); border-color:rgba(148,163,184,.4); }
+  .hist-search-box { display:flex; align-items:center; gap:8px; flex:1; min-width:220px; max-width:380px; position:relative; }
+  .hist-search-input { width:100%; padding:7px 30px 7px 32px; border:1px solid var(--line); border-radius:9px; background:rgba(0,0,0,.25); color:var(--ink); font:inherit; font-size:.78rem; transition:border-color .15s ease; }
+  .hist-search-input:focus { outline:none; border-color:var(--green); }
+  .hist-search-icon { position:absolute; left:10px; pointer-events:none; color:var(--muted); font-size:.8rem; }
+  .hist-search-clear { position:absolute; right:8px; background:none; border:none; color:var(--muted); cursor:pointer; font-size:.9rem; padding:0 4px; line-height:1; }
+  .hist-search-clear:hover { color:var(--ink); }
   .btn-rec-cambiar-historial { padding:9px 18px; border:1px solid var(--green); border-radius:9px; background:rgba(84,227,142,.12); color:var(--green); font:inherit; font-size:.8rem; font-weight:800; cursor:pointer; transition:all .15s ease; }
   .btn-rec-cambiar-historial:hover { background:var(--green); color:#07100d; }
-  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px}.editorial-tabs{overflow-x:auto;white-space:nowrap} }
+  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px}.editorial-tabs{overflow-x:auto;white-space:nowrap}.historial-controls{flex-direction:column;align-items:stretch}.hist-search-box{max-width:none} }
 </style>
 </head>
 <body>
@@ -135,10 +152,32 @@
     </div>
 
     <div id="historial-kpis" class="historial-kpi-strip">
-      <div class="hist-kpi"><span>Total Historial</span><strong id="hist-total">0</strong></div>
-      <div class="hist-kpi"><span>Acertadas</span><strong id="hist-acertadas" style="color:var(--green)">0</strong></div>
-      <div class="hist-kpi"><span>Falladas</span><strong id="hist-falladas" style="color:var(--red)">0</strong></div>
+      <div class="hist-kpi clickable active" id="kpi-hist-total" data-kpi-filter="todos" title="Ver todo el historial"><span>Total Historial</span><strong id="hist-total">0</strong></div>
+      <div class="hist-kpi clickable" id="kpi-hist-acertadas" data-kpi-filter="acertadas" title="Filtrar por acertadas"><span>Acertadas</span><strong id="hist-acertadas" style="color:var(--green)">0</strong></div>
+      <div class="hist-kpi clickable" id="kpi-hist-falladas" data-kpi-filter="falladas" title="Filtrar por falladas"><span>Falladas</span><strong id="hist-falladas" style="color:var(--red)">0</strong></div>
       <div class="hist-kpi"><span>Efectividad</span><strong id="hist-efectividad" style="color:var(--cyan)">0%</strong></div>
+    </div>
+
+    <div id="historial-controls" class="historial-controls">
+      <div class="historial-filter-chips" role="group" aria-label="Filtrar por resultado">
+        <button type="button" class="hist-chip active" data-hist-filter="todos">
+          Todos (<span id="hist-chip-count-todos">0</span>)
+        </button>
+        <button type="button" class="hist-chip chip-acertadas" data-hist-filter="acertadas">
+          ✓ Acertadas (<span id="hist-chip-count-acertadas">0</span>)
+        </button>
+        <button type="button" class="hist-chip chip-falladas" data-hist-filter="falladas">
+          ✕ Falladas (<span id="hist-chip-count-falladas">0</span>)
+        </button>
+        <button type="button" class="hist-chip chip-anuladas" id="hist-chip-anuladas" data-hist-filter="anuladas" style="display:none;">
+          Anuladas (<span id="hist-chip-count-anuladas">0</span>)
+        </button>
+      </div>
+      <div class="hist-search-box">
+        <span class="hist-search-icon" aria-hidden="true">🔍</span>
+        <input type="text" id="hist-search-input" class="hist-search-input" placeholder="Buscar por equipo, mercado o título..." aria-label="Buscar en historial">
+        <button type="button" id="hist-search-clear" class="hist-search-clear" title="Limpiar búsqueda" hidden>×</button>
+      </div>
     </div>
 
     <div id="recomendaciones-editoriales" class="editorial-grid"><div class="loader">Cargando recomendaciones…</div></div>
@@ -227,18 +266,27 @@ let listaHistorial = [];
 let resumenEditorial = {};
 let tabEditorialActual = window.location.hash === '#historial' ? 'historial' : 'activas';
 
+let filtroHistorialResultado = 'todos';
+let filtroHistorialTexto = '';
+
 function actualizarTabsUI() {
   const btnActivas = document.getElementById('tab-editorial-activas');
   const btnHistorial = document.getElementById('tab-editorial-historial');
   const kpis = document.getElementById('historial-kpis');
+  const controls = document.getElementById('historial-controls');
+  const esHistorial = tabEditorialActual === 'historial';
+
   if (btnActivas && btnHistorial) {
-    btnActivas.classList.toggle('active', tabEditorialActual === 'activas');
-    btnActivas.setAttribute('aria-selected', String(tabEditorialActual === 'activas'));
-    btnHistorial.classList.toggle('active', tabEditorialActual === 'historial');
-    btnHistorial.setAttribute('aria-selected', String(tabEditorialActual === 'historial'));
+    btnActivas.classList.toggle('active', !esHistorial);
+    btnActivas.setAttribute('aria-selected', String(!esHistorial));
+    btnHistorial.classList.toggle('active', esHistorial);
+    btnHistorial.setAttribute('aria-selected', String(esHistorial));
   }
   if (kpis) {
-    kpis.style.display = tabEditorialActual === 'historial' ? 'grid' : 'none';
+    kpis.style.display = esHistorial ? 'grid' : 'none';
+  }
+  if (controls) {
+    controls.style.display = esHistorial ? 'flex' : 'none';
   }
 }
 
@@ -249,31 +297,48 @@ function cambiarTabEditorial(tab) {
 }
 window.cambiarTabEditorial = cambiarTabEditorial;
 
-function renderizarRecomendaciones() {
-  const contenedor = document.getElementById('recomendaciones-editoriales');
-  const lista = tabEditorialActual === 'activas' ? listaActivas : listaHistorial;
+function cambiarFiltroHistorialResultado(filtro) {
+  filtroHistorialResultado = filtro;
+  document.querySelectorAll('[data-hist-filter]').forEach(b => {
+    b.classList.toggle('active', b.dataset.histFilter === filtro);
+  });
+  const kpiTot = document.getElementById('kpi-hist-total');
+  const kpiAce = document.getElementById('kpi-hist-acertadas');
+  const kpiFal = document.getElementById('kpi-hist-falladas');
+  if (kpiTot) kpiTot.classList.toggle('active', filtro === 'todos');
+  if (kpiAce) kpiAce.classList.toggle('active', filtro === 'acertadas');
+  if (kpiFal) kpiFal.classList.toggle('active-falladas', filtro === 'falladas');
+  renderizarRecomendaciones();
+}
 
-  if (!lista.length) {
-    if (tabEditorialActual === 'activas') {
-      contenedor.innerHTML = `
-        <div class="empty-state" style="grid-column:1/-1;padding:24px 18px;">
-          <p style="font-size:1.05rem;margin:0 0 6px;color:var(--ink);">⏳ <strong>No hay recomendaciones activas en este momento</strong></p>
-          <span style="color:var(--muted);font-size:.82rem;">El equipo editorial publica las selecciones recomendadas antes de cada jornada.</span>
-          ${listaHistorial.length > 0 ? `
-            <div style="margin-top:14px;">
-              <button type="button" class="btn-rec-cambiar-historial" data-tab-editorial="historial">
-                Ver historial de picks y resultados (${listaHistorial.length}) →
-              </button>
-            </div>
-          ` : ''}
-        </div>`;
-    } else {
-      contenedor.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Todavía no hay historial de recomendaciones registradas.</div>';
-    }
-    return;
+function obtenerHistorialFiltrado() {
+  let items = listaHistorial;
+  if (filtroHistorialResultado === 'acertadas') {
+    items = items.filter(r => r.resultado === 'acertado' || r.resultado === 'acertada');
+  } else if (filtroHistorialResultado === 'falladas') {
+    items = items.filter(r => r.resultado === 'fallado' || r.resultado === 'fallada');
+  } else if (filtroHistorialResultado === 'anuladas') {
+    items = items.filter(r => r.resultado === 'anulado' || r.resultado === 'anulada');
   }
 
-  contenedor.innerHTML = lista.map(item => {
+  if (filtroHistorialTexto) {
+    const q = filtroHistorialTexto.toLowerCase();
+    items = items.filter(r => {
+      if ((r.titulo || '').toLowerCase().includes(q)) return true;
+      if ((r.descripcion || '').toLowerCase().includes(q)) return true;
+      if ((r.tipo || '').toLowerCase().includes(q)) return true;
+      return (r.selecciones || []).some(s => 
+        (s.evento || '').toLowerCase().includes(q) ||
+        (s.mercado || '').toLowerCase().includes(q) ||
+        (s.casa || '').toLowerCase().includes(q)
+      );
+    });
+  }
+  return items;
+}
+
+function pintarTarjetasRecomendaciones(lista) {
+  return lista.map(item => {
     const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
     const botonEditar = puedeGestionarRec
       ? `<button type="button" class="btn-editar-rec" data-edit-rec="${item._id}" title="Editar momios">✏️ Editar momios</button>`
@@ -303,6 +368,59 @@ function renderizarRecomendaciones() {
   }).join('');
 }
 
+function renderizarRecomendaciones() {
+  const contenedor = document.getElementById('recomendaciones-editoriales');
+  if (!contenedor) return;
+
+  if (tabEditorialActual === 'activas') {
+    if (!listaActivas.length) {
+      contenedor.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1;padding:24px 18px;">
+          <p style="font-size:1.05rem;margin:0 0 6px;color:var(--ink);">⏳ <strong>No hay recomendaciones activas en este momento</strong></p>
+          <span style="color:var(--muted);font-size:.82rem;">El equipo editorial publica las selecciones recomendadas antes de cada jornada.</span>
+          ${listaHistorial.length > 0 ? `
+            <div style="margin-top:14px;">
+              <button type="button" class="btn-rec-cambiar-historial" data-tab-editorial="historial">
+                Ver historial de picks y resultados (${listaHistorial.length}) →
+              </button>
+            </div>
+          ` : ''}
+        </div>`;
+      return;
+    }
+    contenedor.innerHTML = pintarTarjetasRecomendaciones(listaActivas);
+  } else {
+    const items = obtenerHistorialFiltrado();
+    if (!items.length) {
+      if (!listaHistorial.length) {
+        contenedor.innerHTML = '<div class="empty-state" style="grid-column:1/-1;">Todavía no hay historial de recomendaciones registradas.</div>';
+      } else {
+        contenedor.innerHTML = `
+          <div class="empty-state" style="grid-column:1/-1;padding:24px 18px;">
+            <p style="font-size:1.05rem;margin:0 0 6px;color:var(--ink);">🔍 <strong>No se encontraron recomendaciones con los filtros aplicados</strong></p>
+            <span style="color:var(--muted);font-size:.82rem;">Prueba con otra búsqueda o restablece los filtros para ver todo el historial.</span>
+            <div style="margin-top:14px;">
+              <button type="button" class="btn-rec-cambiar-historial" id="btn-limpiar-filtros-hist">
+                Mostrar todas (${listaHistorial.length})
+              </button>
+            </div>
+          </div>`;
+        document.getElementById('btn-limpiar-filtros-hist')?.addEventListener('click', () => {
+          filtroHistorialResultado = 'todos';
+          filtroHistorialTexto = '';
+          const inp = document.getElementById('hist-search-input');
+          if (inp) inp.value = '';
+          const clr = document.getElementById('hist-search-clear');
+          if (clr) clr.hidden = true;
+          cambiarFiltroHistorialResultado('todos');
+        });
+      }
+      return;
+    }
+    contenedor.innerHTML = pintarTarjetasRecomendaciones(items);
+  }
+}
+
 async function cargarRecomendacionesEditoriales() {
   const contenedor = document.getElementById('recomendaciones-editoriales');
   try {
@@ -327,6 +445,18 @@ async function cargarRecomendacionesEditoriales() {
     if (histAcertadasEl) histAcertadasEl.textContent = resumenEditorial.acertadas || 0;
     if (histFalladasEl) histFalladasEl.textContent = resumenEditorial.falladas || 0;
     if (histEfectividadEl) histEfectividadEl.textContent = resumenEditorial.efectividad != null ? `${resumenEditorial.efectividad}%` : '—';
+
+    const chipTodos = document.getElementById('hist-chip-count-todos');
+    const chipAcertadas = document.getElementById('hist-chip-count-acertadas');
+    const chipFalladas = document.getElementById('hist-chip-count-falladas');
+    const chipAnuladas = document.getElementById('hist-chip-count-anuladas');
+    const btnAnuladas = document.getElementById('hist-chip-anuladas');
+
+    if (chipTodos) chipTodos.textContent = listaHistorial.length;
+    if (chipAcertadas) chipAcertadas.textContent = resumenEditorial.acertadas || 0;
+    if (chipFalladas) chipFalladas.textContent = resumenEditorial.falladas || 0;
+    if (chipAnuladas) chipAnuladas.textContent = resumenEditorial.anuladas || 0;
+    if (btnAnuladas) btnAnuladas.style.display = (resumenEditorial.anuladas > 0) ? 'inline-flex' : 'none';
 
     if (window.location.hash === '#historial') {
       tabEditorialActual = 'historial';
@@ -624,6 +754,39 @@ window.addEventListener('hashchange', () => {
   if (window.location.hash === '#historial') cambiarTabEditorial('historial');
   else if (window.location.hash === '#activas') cambiarTabEditorial('activas');
 });
+
+document.querySelectorAll('[data-hist-filter]').forEach(btn => {
+  btn.addEventListener('click', () => {
+    cambiarFiltroHistorialResultado(btn.dataset.histFilter);
+  });
+});
+
+document.querySelectorAll('[data-kpi-filter]').forEach(kpi => {
+  kpi.addEventListener('click', () => {
+    cambiarFiltroHistorialResultado(kpi.dataset.kpiFilter);
+  });
+});
+
+const histSearchInp = document.getElementById('hist-search-input');
+const histSearchClr = document.getElementById('hist-search-clear');
+if (histSearchInp) {
+  histSearchInp.addEventListener('input', () => {
+    filtroHistorialTexto = histSearchInp.value.trim();
+    if (histSearchClr) histSearchClr.hidden = !filtroHistorialTexto;
+    renderizarRecomendaciones();
+  });
+}
+if (histSearchClr) {
+  histSearchClr.addEventListener('click', () => {
+    if (histSearchInp) {
+      histSearchInp.value = '';
+      filtroHistorialTexto = '';
+      histSearchClr.hidden = true;
+      histSearchInp.focus();
+      renderizarRecomendaciones();
+    }
+  });
+}
 
 window.addEventListener('futbol:picks-actualizados', cargarPicksGuardados);
 window.addEventListener('pageshow', event => { if (event.persisted) cargarPicksGuardados(); });

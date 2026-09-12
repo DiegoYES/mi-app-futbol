@@ -34,12 +34,11 @@ router.get('/', async (req, res) => {
       const fechaCierre = rec.cierra_en ? new Date(rec.cierra_en) : null;
       const vigente = fechaCierre && (fechaCierre.getTime() >= (ahora.getTime() - 15 * 60 * 1000));
 
-      const esActiva = Boolean(vigente && (esPendiente || rec.destacada || rec.resultado === 'acertado' || rec.resultado === 'acertada'));
+      const esActiva = Boolean(vigente && esPendiente);
 
       if (esActiva) {
         activas.push(rec);
-      }
-      if (!esPendiente || !vigente) {
+      } else {
         historial.push(rec);
       }
     }
