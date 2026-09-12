@@ -93,11 +93,19 @@
     .radar-head { display:flex;justify-content:space-between;align-items:flex-end;gap:18px;margin-bottom:16px; }
     .radar-head h2 { margin:0;font-size:1.35rem; }.radar-head p { margin:5px 0 0;color:var(--muted);font-size:.76rem; }
     .radar-date { padding:6px 10px;border:1px solid rgba(84,227,142,.25);border-radius:999px;color:var(--green);font-size:.65rem;font-weight:850;text-transform:uppercase; }
+    .radar-autoplay-badge { display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px solid var(--line);border-radius:999px;background:var(--surface-raised);color:var(--muted);font-size:.64rem;font-weight:750;white-space:nowrap;user-select:none; }
+    .radar-autoplay-dot { width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 8px rgba(84,227,142,.6);animation:radarPulse 2s infinite ease-in-out; }
+    @keyframes radarPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(.75)} }
+    .radar-autoplay-badge.is-paused { border-color:rgba(245,190,91,.35);color:var(--amber); }
+    .radar-autoplay-badge.is-paused .radar-autoplay-dot { background:var(--amber);box-shadow:none;animation:none; }
     .radar-carousel-wrap { position:relative;display:flex;align-items:center;gap:6px;margin-bottom:14px; }
     .radar-carousel-track { display:flex;gap:8px;overflow-x:auto;scroll-behavior:smooth;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:4px 2px;flex:1; }
     .radar-carousel-track::-webkit-scrollbar { display:none; }
     .radar-carousel-arrow { width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface-raised);color:var(--ink);display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:700;cursor:pointer;transition:border-color .15s,color .15s,background .15s;padding:0;line-height:1;user-select:none; }
     .radar-carousel-arrow:hover { border-color:var(--green);color:var(--green);background:rgba(84,227,142,.08); }
+    .radar-autoplay-toggle { width:30px;height:30px;min-width:30px;border-radius:50%;border:1px solid var(--line);background:var(--surface-raised);color:var(--muted);display:flex;align-items:center;justify-content:center;font-size:.74rem;cursor:pointer;transition:border-color .15s,color .15s,background .15s;padding:0;user-select:none; }
+    .radar-autoplay-toggle:hover { border-color:var(--green);color:var(--green);background:rgba(84,227,142,.08); }
+    .radar-autoplay-toggle.is-paused { border-color:var(--amber);color:var(--amber);background:rgba(245,190,91,.1); }
     .radar-carousel-item { display:inline-flex;align-items:center;gap:7px;padding:6px 13px;border:1px solid var(--line);border-radius:999px;background:var(--surface-raised);color:var(--muted);font-size:.74rem;font-weight:750;white-space:nowrap;cursor:pointer;transition:all .18s ease;text-decoration:none;user-select:none; }
     .radar-carousel-item:hover { border-color:rgba(84,227,142,.45);color:var(--ink); }
     .radar-carousel-item.active { border-color:var(--green);color:var(--green);background:rgba(84,227,142,.12);box-shadow:0 0 10px rgba(84,227,142,.15); }
@@ -107,10 +115,6 @@
     .radar-carousel-item.active .radar-badge-count { background:rgba(84,227,142,.25);color:var(--green); }
     .radar-carousel-item.has-matches .radar-badge-count { background:rgba(84,227,142,.15);color:var(--green); }
     .radar-controls { display:flex;gap:10px;align-items:center;margin-bottom:14px;flex-wrap:wrap; }
-    .radar-league-select-wrap { display:flex;align-items:center; }
-    .radar-league-select { height:36px;padding:0 34px 0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2354e38e' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E") no-repeat calc(100% - 10px) center;color:var(--ink);font-size:.74rem;font-weight:800;cursor:pointer;appearance:none;-webkit-appearance:none;outline:none;transition:border-color .15s,box-shadow .15s;min-width:210px;max-width:320px; }
-    .radar-league-select:hover,.radar-league-select:focus { border-color:var(--green);box-shadow:0 0 0 3px rgba(84,227,142,.12); }
-    .radar-league-select option { background:#111e19;color:#fff;padding:8px; }
     .radar-filters { display:flex;gap:7px;overflow-x:auto;scrollbar-width:none; }
     .radar-filters::-webkit-scrollbar { display:none; }
     .radar-filters button { min-height:36px;padding:0 12px;border:1px solid var(--line);border-radius:10px;background:var(--surface-raised);color:var(--muted);font-size:.68rem;font-weight:750;white-space:nowrap;cursor:pointer;transition:border-color .15s,color .15s; }
@@ -217,18 +221,24 @@
   </section>
 
   <section class="radar" aria-labelledby="radar-title">
-    <div class="radar-head"><div><p class="eyebrow">Radar de partidos</p><h2 id="radar-title">Lecturas destacadas de la jornada</h2><p id="radar-copy">Buscando partidos disponibles y tendencias con respaldo histórico.</p></div><span class="radar-date" id="radar-date">Cargando</span></div>
+    <div class="radar-head">
+      <div>
+        <p class="eyebrow">Radar de partidos</p>
+        <h2 id="radar-title">Lecturas destacadas de la jornada</h2>
+        <p id="radar-copy">Buscando partidos disponibles y tendencias con respaldo histórico.</p>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+        <span class="radar-autoplay-badge" id="radar-autoplay-badge" title="Rotación automática activa"><span class="radar-autoplay-dot"></span><span id="radar-autoplay-text">Auto 10s</span></span>
+        <span class="radar-date" id="radar-date">Cargando</span>
+      </div>
+    </div>
     <div class="radar-carousel-wrap">
       <button type="button" class="radar-carousel-arrow" id="radar-carousel-prev" aria-label="Ver ligas anteriores">‹</button>
       <div class="radar-carousel-track" id="radar-carousel-track" role="tablist" aria-label="Ligas principales"></div>
       <button type="button" class="radar-carousel-arrow" id="radar-carousel-next" aria-label="Ver más ligas">›</button>
+      <button type="button" class="radar-autoplay-toggle" id="radar-autoplay-btn" aria-label="Pausar rotación automática" title="Pausar rotación automática (cada 10s)">⏸</button>
     </div>
     <div class="radar-controls">
-      <div class="radar-league-select-wrap">
-        <select id="radar-league-select" class="radar-league-select" aria-label="Filtrar por liga">
-          <option value="todas">🌎 Todas las ligas</option>
-        </select>
-      </div>
       <div class="radar-filters" id="radar-filters" aria-label="Filtrar mercados"></div>
     </div>
     <div class="radar-grid" id="radar-grid"><div class="radar-empty">Construyendo radar sin consumir la API externa…</div></div>
@@ -369,6 +379,82 @@ async function obtenerAnalisisPartido(apiId){
 
 function pintarBiblioteca(){const favoritos=FutbolLibrary.favoritos();document.getElementById('favorite-teams').innerHTML=favoritos.map(e=>`<a class="personal-item" href="/equipo.html?id=${e.id}&league=${e.league}"><img src="/api/equipos/${e.id}/escudo" alt=""><span><strong>${esc(e.nombre)}</strong><small>${esc(e.competicion||'Competición guardada')}</small></span><span>→</span></a>`).join('')||'<div class="personal-empty">Marca una estrella en el directorio o en la ficha de un equipo.</div>';const comparaciones=FutbolLibrary.comparaciones();document.getElementById('saved-comparisons').innerHTML=comparaciones.map(c=>`<div class="personal-item"><span class="portal-icon">VS</span><a href="${esc(urlSegura(c.url))}"><strong>${esc(c.titulo)}</strong><small>${esc(c.competiciones)}</small></a><button type="button" data-remove-comparison="${esc(c.id)}" aria-label="Quitar comparación">×</button></div>`).join('')||'<div class="personal-empty">Guarda una pareja desde el comparador para reabrirla con sus filtros.</div>'}
 
+let radarAutoplayTimer = null;
+let radarAutoplayPausado = false;
+let radarAutoplayHover = false;
+const RADAR_ROTACION_MS = 10000;
+
+function obtenerLigasRotables() {
+  const rotables = LIGAS_PRINCIPALES_RADAR.filter(l => {
+    if (l.id === 'todas') return true;
+    return competicionesDelDia.some(c => String(c.liga_id) === String(l.id));
+  });
+  return rotables.length > 1 ? rotables : LIGAS_PRINCIPALES_RADAR;
+}
+
+function rotarSiguienteLiga() {
+  if (radarAutoplayPausado || radarAutoplayHover) return;
+  const rotables = obtenerLigasRotables();
+  if (rotables.length <= 1) return;
+  const idxActual = rotables.findIndex(l => String(l.id) === String(ligaSeleccionada));
+  const siguienteIdx = (idxActual + 1) % rotables.length;
+  const siguiente = rotables[siguienteIdx];
+  if (siguiente) {
+    cambiarFiltroLiga(siguiente.id, false);
+  }
+}
+
+function iniciarRadarAutoplay() {
+  detenerRadarAutoplay();
+  radarAutoplayTimer = setInterval(rotarSiguienteLiga, RADAR_ROTACION_MS);
+  actualizarEstadoAutoplay();
+}
+
+function detenerRadarAutoplay() {
+  if (radarAutoplayTimer) {
+    clearInterval(radarAutoplayTimer);
+    radarAutoplayTimer = null;
+  }
+}
+
+function reiniciarRadarAutoplay() {
+  detenerRadarAutoplay();
+  if (!radarAutoplayPausado) {
+    radarAutoplayTimer = setInterval(rotarSiguienteLiga, RADAR_ROTACION_MS);
+  }
+  actualizarEstadoAutoplay();
+}
+
+function alternarRadarAutoplay() {
+  radarAutoplayPausado = !radarAutoplayPausado;
+  if (radarAutoplayPausado) {
+    detenerRadarAutoplay();
+  } else {
+    iniciarRadarAutoplay();
+  }
+  actualizarEstadoAutoplay();
+}
+
+function actualizarEstadoAutoplay() {
+  const btn = document.getElementById('radar-autoplay-btn');
+  const badge = document.getElementById('radar-autoplay-badge');
+  const txt = document.getElementById('radar-autoplay-text');
+  const pausado = radarAutoplayPausado;
+  if (btn) {
+    btn.textContent = pausado ? '▶' : '⏸';
+    btn.title = pausado ? 'Reanudar rotación automática' : 'Pausar rotación automática (cada 10s)';
+    btn.setAttribute('aria-label', btn.title);
+    btn.classList.toggle('is-paused', pausado);
+  }
+  if (badge) {
+    badge.classList.toggle('is-paused', pausado);
+    badge.title = pausado ? 'Rotación automática pausada' : 'Rotación automática activa (cada 10s)';
+  }
+  if (txt) {
+    txt.textContent = pausado ? 'Pausado' : 'Auto 10s';
+  }
+}
+
 function pintarCarruselLigas(){
   const track=document.getElementById('radar-carousel-track');
   if(!track)return;
@@ -392,14 +478,45 @@ function pintarCarruselLigas(){
 
   track.querySelectorAll('.radar-carousel-item').forEach(btn=>{
     btn.onclick=async()=>{
-      await cambiarFiltroLiga(btn.dataset.leagueId);
+      await cambiarFiltroLiga(btn.dataset.leagueId, true);
     };
   });
 
   const prev=document.getElementById('radar-carousel-prev');
   const next=document.getElementById('radar-carousel-next');
-  if(prev) prev.onclick=()=>track.scrollBy({left:-220,behavior:'smooth'});
-  if(next) next.onclick=()=>track.scrollBy({left:220,behavior:'smooth'});
+  if(prev) {
+    prev.onclick=()=>{
+      const rotables = obtenerLigasRotables();
+      const idx = rotables.findIndex(l => String(l.id) === String(ligaSeleccionada));
+      const antIdx = (idx - 1 + rotables.length) % rotables.length;
+      cambiarFiltroLiga(rotables[antIdx].id, true);
+    };
+  }
+  if(next) {
+    next.onclick=()=>{
+      const rotables = obtenerLigasRotables();
+      const idx = rotables.findIndex(l => String(l.id) === String(ligaSeleccionada));
+      const sigIdx = (idx + 1) % rotables.length;
+      cambiarFiltroLiga(rotables[sigIdx].id, true);
+    };
+  }
+
+  const autoBtn = document.getElementById('radar-autoplay-btn');
+  if (autoBtn) autoBtn.onclick = alternarRadarAutoplay;
+  const badgeBtn = document.getElementById('radar-autoplay-badge');
+  if (badgeBtn) {
+    badgeBtn.style.cursor = 'pointer';
+    badgeBtn.onclick = alternarRadarAutoplay;
+  }
+
+  const radarSec = document.querySelector('.radar');
+  if (radarSec && !radarSec.dataset.hoverBound) {
+    radarSec.dataset.hoverBound = 'true';
+    radarSec.addEventListener('mouseenter', () => { radarAutoplayHover = true; });
+    radarSec.addEventListener('mouseleave', () => { radarAutoplayHover = false; });
+  }
+
+  actualizarEstadoAutoplay();
 }
 
 function pintarRadar(categoria='goles'){
@@ -444,23 +561,8 @@ function pintarRadar(categoria='goles'){
   grid.innerHTML=cards.join('')||'<div class="radar-empty">Esta jornada o competición no tiene mercados con cobertura para la categoría elegida.</div>';
 }
 
-async function cambiarFiltroLiga(ligaId){
+async function cambiarFiltroLiga(ligaId, esInteraccionManual = true){
   ligaSeleccionada=String(ligaId);
-  const selectLigas=document.getElementById('radar-league-select');
-  if(selectLigas){
-    if([...selectLigas.options].some(o=>o.value===ligaSeleccionada)){
-      selectLigas.value=ligaSeleccionada;
-    }else if(ligaSeleccionada!=='todas'){
-      const infoLiga=LIGAS_PRINCIPALES_RADAR.find(l=>String(l.id)===ligaSeleccionada);
-      const opt=document.createElement('option');
-      opt.value=ligaSeleccionada;
-      opt.textContent=`${infoLiga?infoLiga.emoji+' '+infoLiga.nombre:'Liga '+ligaSeleccionada} (0)`;
-      selectLigas.appendChild(opt);
-      selectLigas.value=ligaSeleccionada;
-    }else{
-      selectLigas.value='todas';
-    }
-  }
   document.querySelectorAll('#radar-carousel-track .radar-carousel-item').forEach(b=>{
     const activo=b.dataset.leagueId===ligaSeleccionada;
     b.classList.toggle('active',activo);
@@ -469,6 +571,9 @@ async function cambiarFiltroLiga(ligaId){
       b.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
     }
   });
+  if (esInteraccionManual) {
+    reiniciarRadarAutoplay();
+  }
   await actualizarPartidosRadar();
 }
 
@@ -546,24 +651,8 @@ async function cargarRadar(){
     document.getElementById('radar-copy').textContent=`${fecha(objetivo+'T12:00:00')} · ${dia.total||0} partidos en ${competicionesDelDia.length} ligas · ${dentro?'análisis previo':'retrospectiva claramente etiquetada'}.`;
 
     pintarCarruselLigas();
-
-    const selectLigas=document.getElementById('radar-league-select');
-    if(selectLigas){
-      selectLigas.innerHTML=`
-        <option value="todas">🌎 Todas las ligas (${dia.total||0})</option>
-        ${competicionesDelDia.map(c=>`
-          <option value="${esc(c.liga_id)}">
-            ${iconoCompeticion(c)}${esc(c.liga)} (${c.partidos.length})
-          </option>
-        `).join('')}
-      `;
-      selectLigas.value=ligaSeleccionada;
-      selectLigas.onchange=async()=>{
-        await cambiarFiltroLiga(selectLigas.value);
-      };
-    }
-
     await actualizarPartidosRadar();
+    iniciarRadarAutoplay();
   }catch(error){
     document.getElementById('radar-date').textContent='Sin datos';
     document.getElementById('radar-grid').innerHTML=`<div class="radar-empty">${esc(error.message)}</div>`;
