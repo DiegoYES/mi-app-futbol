@@ -128,12 +128,6 @@
     .radar-badge.acertado { background:rgba(84,227,142,.2);color:#54e38e;border:1px solid rgba(84,227,142,.5);box-shadow:0 0 10px rgba(84,227,142,.15); }
     .radar-badge.fallado { background:rgba(255,124,120,.2);color:#ff7c78;border:1px solid rgba(255,124,120,.5);box-shadow:0 0 10px rgba(255,124,120,.15); }
     .radar-badge.pendiente { background:rgba(104,217,231,.12);color:#68d9e7;border:1px solid rgba(104,217,231,.35); }
-    .home-rec-header-right { display:flex;align-items:center;gap:14px;flex-wrap:wrap; }
-    .home-rec-filters { display:flex;gap:5px;background:rgba(255,255,255,.04);padding:4px;border-radius:12px;border:1px solid var(--line); }
-    .home-rec-filter-btn { display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid transparent;border-radius:9px;background:transparent;color:var(--muted);font-size:.73rem;font-weight:800;cursor:pointer;transition:all .15s ease;white-space:nowrap;user-select:none; }
-    .home-rec-filter-btn:hover { color:var(--ink);background:rgba(255,255,255,.05); }
-    .home-rec-filter-btn.active { background:rgba(84,227,142,.12);color:var(--green);border-color:rgba(84,227,142,.35);box-shadow:0 0 10px rgba(84,227,142,.1); }
-    .home-rec-filter-count { font-size:.6rem;font-weight:900;padding:1px 6px;border-radius:999px;background:rgba(255,255,255,.08);color:inherit; }
     .home-picks-grid { display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;margin-bottom:24px; }
     .home-rec-card { display:flex;flex-direction:column;gap:12px;padding:20px;border:1px solid var(--line);border-radius:18px;background:var(--surface-raised);box-shadow:var(--shadow);transition:border-color .18s,transform .18s; }
     .home-rec-card p.home-rec-desc { margin:0;color:var(--muted);font-size:.73rem;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden; }
@@ -222,20 +216,7 @@
         <p class="eyebrow" style="color:var(--green);font-size:.65rem;font-weight:900;letter-spacing:.08em;text-transform:uppercase;margin:0 0 4px;">Selección de Data-Fut</p>
         <h2 id="picks-del-dia-title">🌟 Picks y Parlays Recomendados del Día</h2>
       </div>
-      <div class="home-rec-header-right">
-        <div class="home-rec-filters" id="home-rec-filters" role="tablist" aria-label="Filtrar por estado">
-          <button type="button" class="home-rec-filter-btn active" data-rec-filter="pendientes" role="tab" aria-selected="true">
-            ⏳ Pendientes <span class="home-rec-filter-count" id="count-rec-pendientes">0</span>
-          </button>
-          <button type="button" class="home-rec-filter-btn" data-rec-filter="finalizados" role="tab" aria-selected="false">
-            🏁 Finalizados <span class="home-rec-filter-count" id="count-rec-finalizados">0</span>
-          </button>
-          <button type="button" class="home-rec-filter-btn" data-rec-filter="todos" role="tab" aria-selected="false">
-            Todos <span class="home-rec-filter-count" id="count-rec-todos">0</span>
-          </button>
-        </div>
-        <a href="/picks.html" style="color:var(--green);font-size:.8rem;font-weight:800;text-decoration:none;white-space:nowrap;">Ver todos los picks →</a>
-      </div>
+      <a href="/picks.html" style="color:var(--green);font-size:.8rem;font-weight:800;text-decoration:none;white-space:nowrap;">Ver historial y todos los picks →</a>
     </div>
     <div id="home-picks-grid" class="home-picks-grid"><div class="loader">Cargando recomendaciones del día...</div></div>
   </section>
@@ -682,170 +663,94 @@ function estadoBusqueda(texto, abierta=false){document.getElementById('home-sear
 function cerrarBusqueda(){const salida=document.getElementById('home-team-results');const consulta=document.getElementById('home-team-search').value.trim();salida.hidden=true;document.getElementById('home-team-search').removeAttribute('aria-activedescendant');estadoBusqueda(consulta.length>=2?'Pulsa para ver resultados':'Escribe 2 letras o más')}
 async function cargarIndiceEquipos(){if(indiceEquipos)return indiceEquipos;try{const cache=sessionStorage.getItem('datafut_indice_equipos');if(cache){const parseado=JSON.parse(cache);if(Array.isArray(parseado)&&parseado.length){indiceEquipos=parseado;return indiceEquipos}}}catch{}const salida=document.getElementById('home-team-results');salida.hidden=false;estadoBusqueda('Preparando equipos…',true);salida.innerHTML='<div class="home-search-empty">Preparando índice local…</div>';const r=await fetch('/api/home/equipos');const d=await r.json().catch(()=>({}));if(!r.ok||!Array.isArray(d.equipos))throw new Error(d.error||'No se pudo cargar el índice de equipos');indiceEquipos=d.equipos;try{sessionStorage.setItem('datafut_indice_equipos',JSON.stringify(indiceEquipos))}catch{}return indiceEquipos}
 async function buscarEquipoGlobal(){const input=document.getElementById('home-team-search');const salida=document.getElementById('home-team-results');const consulta=input.value.trim();document.getElementById('home-search-clear').hidden=!consulta;if(consulta.length<2){cerrarBusqueda();return}try{const equipos=await cargarIndiceEquipos();if(input.value.trim()!==consulta)return;const encontrados=FutbolSearch.ordenar(equipos,consulta,e=>e.nombre).slice(0,8);salida.hidden=false;estadoBusqueda(encontrados.length===1?'1 resultado':`${encontrados.length} resultados`,true);salida.innerHTML=encontrados.map((e,i)=>`<a id="home-team-option-${i}" class="home-search-result" role="option" aria-selected="false" href="/equipo.html?id=${e.id}&league=${e.league}&season=${e.season}"><img src="/api/equipos/${e.id}/escudo" alt=""><div><strong>${esc(e.nombre)}</strong><span>${esc(e.competiciones.join(' · '))}</span></div><span class="home-search-result-arrow" aria-hidden="true">→</span></a>`).join('')||'<div class="home-search-empty">No encontramos equipos con ese nombre. Prueba con menos palabras.</div>'}catch(error){salida.hidden=false;estadoBusqueda('Búsqueda no disponible',true);salida.innerHTML='<div class="home-search-empty">No se pudo preparar la búsqueda. Inténtalo de nuevo.</div>'}}
-let datosRecomendacionesPortada = null;
-let filtroRecPortadaActual = 'pendientes';
-
-function pintarRecomendacionesPortada(filtro = filtroRecPortadaActual) {
-  filtroRecPortadaActual = filtro;
-  const cont = document.getElementById('home-picks-grid');
-  if (!cont || !datosRecomendacionesPortada) return;
-
-  const activas = datosRecomendacionesPortada.activas || [];
-  const historial = datosRecomendacionesPortada.historial || [];
-
-  const esPendiente = r => !r.resultado || r.resultado === 'pendiente';
-  const esFinalizado = r => ['acertado', 'acertada', 'fallado', 'fallada', 'anulado', 'anulada'].includes(r.resultado);
-
-  const pendientes = activas.filter(esPendiente);
-
-  const finalizadasMap = new Map();
-  for (const r of activas.filter(esFinalizado)) {
-    finalizadasMap.set(r._id || `${r.titulo}_${r.cierra_en}`, r);
-  }
-  for (const r of historial) {
-    const key = r._id || `${r.titulo}_${r.cierra_en}`;
-    if (!finalizadasMap.has(key)) {
-      finalizadasMap.set(key, r);
-    }
-  }
-  const finalizados = Array.from(finalizadasMap.values());
-  const todos = activas;
-
-  const cPend = document.getElementById('count-rec-pendientes');
-  const cFin = document.getElementById('count-rec-finalizados');
-  const cTod = document.getElementById('count-rec-todos');
-  if (cPend) cPend.textContent = pendientes.length;
-  if (cFin) cFin.textContent = finalizados.length;
-  if (cTod) cTod.textContent = todos.length;
-
-  document.querySelectorAll('#home-rec-filters [data-rec-filter]').forEach(b => {
-    const activo = b.dataset.recFilter === filtro;
-    b.classList.toggle('active', activo);
-    b.setAttribute('aria-selected', String(activo));
-  });
-
-  let lista = [];
-  if (filtro === 'pendientes') {
-    lista = pendientes;
-  } else if (filtro === 'finalizados') {
-    lista = finalizados.slice(0, 6);
-  } else {
-    lista = todos.slice(0, 6);
-  }
-
-  if (!lista.length) {
-    if (filtro === 'pendientes') {
-      cont.innerHTML = `
-        <div class="home-rec-empty-box" style="grid-column: 1 / -1; padding: 24px 22px; border: 1px dashed rgba(84,227,142,.35); border-radius: 16px; background: rgba(84,227,142,.04); display: flex; flex-direction: column; gap: 14px;">
-          <div style="display:flex;align-items:flex-start;gap:14px;flex-wrap:wrap;">
-            <div style="width:42px;height:42px;border-radius:12px;background:rgba(84,227,142,.12);color:var(--green);display:grid;place-items:center;font-size:1.3rem;flex-shrink:0;">⏳</div>
-            <div style="flex:1;min-width:240px;">
-              <strong style="display:block;color:var(--ink);font-size:1rem;margin-bottom:3px;">No hay recomendaciones pendientes en este momento</strong>
-              <p style="margin:0;color:var(--muted);font-size:.78rem;line-height:1.5;">Todos los parlays publicados para hoy han concluido o el equipo editorial está preparando los de la próxima jornada.</p>
-            </div>
-          </div>
-          ${finalizados.length > 0 ? `
-            <div style="display:flex;justify-content:flex-end;padding-top:4px;">
-              <button type="button" data-go-filter="finalizados" style="display:inline-flex;align-items:center;gap:6px;background:none;border:none;color:var(--green);font-size:.82rem;font-weight:800;cursor:pointer;">
-                Ver los parlays finalizados recientemente (${finalizados.length}) →
-              </button>
-            </div>
-          ` : ''}
-        </div>`;
-      return;
-    } else {
-      cont.innerHTML = `<div class="home-rec-empty">No hay recomendaciones en esta categoría. <a href="/picks.html" style="color:var(--green);font-weight:800;">Ver todos los picks →</a></div>`;
-      return;
-    }
-  }
-
-  cont.innerHTML = lista.map(rec => {
-    const cuota = rec.cuota_total ? Number(rec.cuota_total).toFixed(2) : '—';
-    const momioAmericano = rec.momio_total_americano ? (rec.momio_total_americano > 0 ? `+${rec.momio_total_americano}` : rec.momio_total_americano) : '';
-    const momioDisplay = momioAmericano ? `${cuota} (${momioAmericano})` : cuota;
-    const badgeResultado = rec.resultado === 'acertado' || rec.resultado === 'acertada'
-      ? '<span class="home-rec-badge acertada">✓ Acertada</span>'
-      : rec.resultado === 'fallado' || rec.resultado === 'fallada'
-        ? '<span class="home-rec-badge fallada">✕ Fallada</span>'
-        : rec.resultado === 'anulado' || rec.resultado === 'anulada'
-          ? '<span class="home-rec-badge anulada">Anulada</span>'
-          : '<span class="home-rec-badge pendiente">⏳ Pendiente</span>';
-    return `<article class="home-rec-card ${rec.destacada ? 'destacada' : ''}">
-      <div class="home-rec-head">
-        <div>
-          <small>Cierra: ${rec.cierra_en ? new Date(rec.cierra_en).toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' }) : 'Próximamente'}</small>
-          <h3>${esc(rec.titulo)}</h3>
-        </div>
-        <div class="home-rec-badges">
-          ${rec.destacada ? '<span class="home-rec-badge destacada">⭐ Destacada</span>' : ''}
-          <span class="home-rec-badge tipo">${esc(rec.tipo)}</span>
-          <span class="home-rec-badge ${rec.visibilidad}">${esc(rec.visibilidad)}</span>
-          ${badgeResultado}
-        </div>
-      </div>
-      ${rec.descripcion ? `<p class="home-rec-desc" title="${esc(rec.descripcion)}">${esc(rec.descripcion)}</p>` : ''}
-      ${rec.bloqueada ? `
-        <div style="padding:14px;border:1px dashed rgba(104,217,231,.4);border-radius:10px;background:rgba(104,217,231,.05);text-align:center;">
-          <span style="display:block;color:var(--cyan);font-size:.72rem;font-weight:800;">🔒 Contenido Premium</span>
-          <small style="color:var(--muted);font-size:.65rem;">Incluido en tu suscripción de Data-Fut</small>
-        </div>
-      ` : `
-        <ul class="home-rec-selections">
-          ${(rec.selecciones || []).map(s => {
-            const estadoSel = s.estado_seleccion || 'pendiente';
-            const labelSel = estadoSel === 'acertado' ? '✓ Acertado' : estadoSel === 'fallado' ? '✕ Fallado' : estadoSel === 'anulado' ? 'Anulado' : '⏳ Pendiente';
-            const marcadorTexto = s.partido_info?.goles_local != null ? ` · Marcador: <b style="color:var(--ink);">${s.partido_info.goles_local} - ${s.partido_info.goles_visitante} (${s.partido_info.estado || 'FT'})</b>` : '';
-            return `
-            <li class="home-rec-item ${estadoSel}">
-              <div>
-                <strong>${esc(s.mercado)}</strong>
-                <span>${esc(s.evento)}${marcadorTexto}</span>
-              </div>
-              <div class="home-rec-item-right">
-                <b>${s.cuota ? Number(s.cuota).toFixed(2) : ''}</b>
-                <span class="badge-sel ${estadoSel}">${labelSel}</span>
-              </div>
-            </li>`;
-          }).join('')}
-        </ul>
-      `}
-      <div class="home-rec-footer">
-        <div class="home-rec-odd">
-          <span>Cuota total</span>
-          <strong>${momioDisplay}</strong>
-        </div>
-        <a class="home-rec-cta" href="/picks.html">Ver en Mejores picks →</a>
-      </div>
-    </article>`;
-  }).join('');
-}
-
 async function cargarPicksRecomendadosPortada() {
   const cont = document.getElementById('home-picks-grid');
   if (!cont) return;
   try {
     const resp = await fetch('/api/recomendaciones', { cache: 'no-store' });
     if (!resp.ok) throw new Error('No se pudieron cargar las recomendaciones');
-    datosRecomendacionesPortada = await resp.json();
+    const datos = await resp.json();
+    const activas = datos.activas || [];
 
-    cont.onclick = e => {
-      const btn = e.target.closest('[data-go-filter]');
-      if (btn) {
-        pintarRecomendacionesPortada(btn.dataset.goFilter);
-      }
-    };
+    // En la portada mostramos únicamente recomendaciones pendientes
+    const pendientes = activas.filter(r => !r.resultado || r.resultado === 'pendiente');
 
-    document.querySelectorAll('#home-rec-filters [data-rec-filter]').forEach(btn => {
-      btn.onclick = () => {
-        pintarRecomendacionesPortada(btn.dataset.recFilter);
-      };
-    });
+    if (!pendientes.length) {
+      cont.innerHTML = `
+        <div class="home-rec-empty-box" style="grid-column: 1 / -1; padding: 22px; border: 1px dashed rgba(84,227,142,.35); border-radius: 16px; background: rgba(84,227,142,.04); display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;">
+          <div style="display:flex;align-items:center;gap:14px;min-width:240px;flex:1;">
+            <div style="width:42px;height:42px;border-radius:12px;background:rgba(84,227,142,.12);color:var(--green);display:grid;place-items:center;font-size:1.3rem;flex-shrink:0;">⏳</div>
+            <div>
+              <strong style="display:block;color:var(--ink);font-size:.95rem;margin-bottom:3px;">No hay recomendaciones pendientes en este momento</strong>
+              <p style="margin:0;color:var(--muted);font-size:.78rem;line-height:1.45;">Los parlays publicados para hoy han concluido o el equipo editorial está preparando los de la próxima jornada.</p>
+            </div>
+          </div>
+          <a href="/picks.html" style="display:inline-flex;align-items:center;gap:6px;padding:9px 16px;border-radius:10px;background:var(--green);color:#0d1117;font-size:.78rem;font-weight:800;text-decoration:none;white-space:nowrap;">
+            Consultar historial en Mejores picks →
+          </a>
+        </div>`;
+      return;
+    }
 
-    const activas = datosRecomendacionesPortada.activas || [];
-    const tienePendientes = activas.some(r => !r.resultado || r.resultado === 'pendiente');
-    filtroRecPortadaActual = tienePendientes ? 'pendientes' : (activas.length > 0 ? 'todos' : 'finalizados');
-
-    pintarRecomendacionesPortada(filtroRecPortadaActual);
+    cont.innerHTML = pendientes.map(rec => {
+      const cuota = rec.cuota_total ? Number(rec.cuota_total).toFixed(2) : '—';
+      const momioAmericano = rec.momio_total_americano ? (rec.momio_total_americano > 0 ? `+${rec.momio_total_americano}` : rec.momio_total_americano) : '';
+      const momioDisplay = momioAmericano ? `${cuota} (${momioAmericano})` : cuota;
+      const badgeResultado = rec.resultado === 'acertado' || rec.resultado === 'acertada'
+        ? '<span class="home-rec-badge acertada">✓ Acertada</span>'
+        : rec.resultado === 'fallado' || rec.resultado === 'fallada'
+          ? '<span class="home-rec-badge fallada">✕ Fallada</span>'
+          : rec.resultado === 'anulado' || rec.resultado === 'anulada'
+            ? '<span class="home-rec-badge anulada">Anulada</span>'
+            : '<span class="home-rec-badge pendiente">⏳ Pendiente</span>';
+      return `<article class="home-rec-card ${rec.destacada ? 'destacada' : ''}">
+        <div class="home-rec-head">
+          <div>
+            <small>Cierra: ${rec.cierra_en ? new Date(rec.cierra_en).toLocaleString('es-MX', { dateStyle:'short', timeStyle:'short' }) : 'Próximamente'}</small>
+            <h3>${esc(rec.titulo)}</h3>
+          </div>
+          <div class="home-rec-badges">
+            ${rec.destacada ? '<span class="home-rec-badge destacada">⭐ Destacada</span>' : ''}
+            <span class="home-rec-badge tipo">${esc(rec.tipo)}</span>
+            <span class="home-rec-badge ${rec.visibilidad}">${esc(rec.visibilidad)}</span>
+            ${badgeResultado}
+          </div>
+        </div>
+        ${rec.descripcion ? `<p class="home-rec-desc" title="${esc(rec.descripcion)}">${esc(rec.descripcion)}</p>` : ''}
+        ${rec.bloqueada ? `
+          <div style="padding:14px;border:1px dashed rgba(104,217,231,.4);border-radius:10px;background:rgba(104,217,231,.05);text-align:center;">
+            <span style="display:block;color:var(--cyan);font-size:.72rem;font-weight:800;">🔒 Contenido Premium</span>
+            <small style="color:var(--muted);font-size:.65rem;">Incluido en tu suscripción de Data-Fut</small>
+          </div>
+        ` : `
+          <ul class="home-rec-selections">
+            ${(rec.selecciones || []).map(s => {
+              const estadoSel = s.estado_seleccion || 'pendiente';
+              const labelSel = estadoSel === 'acertado' ? '✓ Acertado' : estadoSel === 'fallado' ? '✕ Fallado' : estadoSel === 'anulado' ? 'Anulado' : '⏳ Pendiente';
+              const marcadorTexto = s.partido_info?.goles_local != null ? ` · Marcador: <b style="color:var(--ink);">${s.partido_info.goles_local} - ${s.partido_info.goles_visitante} (${s.partido_info.estado || 'FT'})</b>` : '';
+              return `
+              <li class="home-rec-item ${estadoSel}">
+                <div>
+                  <strong>${esc(s.mercado)}</strong>
+                  <span>${esc(s.evento)}${marcadorTexto}</span>
+                </div>
+                <div class="home-rec-item-right">
+                  <b>${s.cuota ? Number(s.cuota).toFixed(2) : ''}</b>
+                  <span class="badge-sel ${estadoSel}">${labelSel}</span>
+                </div>
+              </li>`;
+            }).join('')}
+          </ul>
+        `}
+        <div class="home-rec-footer">
+          <div class="home-rec-odd">
+            <span>Cuota total</span>
+            <strong>${momioDisplay}</strong>
+          </div>
+          <a class="home-rec-cta" href="/picks.html">Ver en Mejores picks →</a>
+        </div>
+      </article>`;
+    }).join('');
   } catch (e) {
     cont.innerHTML = '<div class="home-rec-empty">Explora los <a href="/picks.html" style="color:var(--green);font-weight:800;">mejores picks con probabilidad estadística →</a></div>';
   }
