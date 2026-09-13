@@ -564,12 +564,14 @@ function pintarRadar(categoria='goles'){
 
 async function cambiarFiltroLiga(ligaId, esInteraccionManual = true){
   ligaSeleccionada=String(ligaId);
+  const track=document.getElementById('radar-carousel-track');
   document.querySelectorAll('#radar-carousel-track .radar-carousel-item').forEach(b=>{
     const activo=b.dataset.leagueId===ligaSeleccionada;
     b.classList.toggle('active',activo);
     b.setAttribute('aria-selected',String(activo));
-    if(activo){
-      b.scrollIntoView({behavior:'smooth',block:'nearest',inline:'center'});
+    if(activo && track){
+      const left = b.offsetLeft - (track.clientWidth / 2) + (b.clientWidth / 2);
+      track.scrollTo({ left: Math.max(0, left), behavior: 'smooth' });
     }
   });
   if (esInteraccionManual) {
