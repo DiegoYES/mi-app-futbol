@@ -126,6 +126,10 @@ const partidoSchema = new mongoose.Schema({
   tiempos_consultados_en: { type: Date, default: null },
   tiempos_disponibles: { type: Boolean, default: null },
   eventos_completos: { type: Boolean, default: false },
+  // El proveedor a veces devuelve vacío para torneos sin cobertura de
+  // eventos: se marca para no gastar cuota reintentando en cada corrida.
+  // Reintento explícito con SYNC_RETRY_GAPS=true. Campo aditivo.
+  eventos_no_disponibles: { type: Boolean, default: false },
   jugadores_completos: { type: Boolean, default: false },
   detalle_completo: { type: Boolean, default: false },
   detalle_consultado_en: { type: Date, default: null },

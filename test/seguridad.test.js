@@ -17,6 +17,7 @@ const {
   revisarConfiguracionSegura,
   textoDeConsulta
 } = require('../middleware/security');
+const { duracionSesionMs } = require('../middleware/auth');
 const { normalizarRuta } = require('../middleware/paginasPrivadas');
 
 async function servidorTemporal(t) {
@@ -304,4 +305,26 @@ test('el otorgamiento premium usa $set atómico y nunca save() del documento', (
   assert.doesNotMatch(webhook, /usuario\.save\(\)/, 'el webhook no debe guardar el documento completo');
   assert.match(billing, /Usuario\.findByIdAndUpdate\(req\.usuario\._id, \{\s*\$set: \{ plan: 'premium'/, 'la reconciliación debe otorgar premium con $set atómico');
   assert.doesNotMatch(billing, /req\.usuario\.save\(\)/, 'la reconciliación no debe guardar el documento completo');
+});
+
+test('la cookie de sesión vive lo mismo que el token (7d por defecto)', () => {
+  assert.equal(duracionSesionMs('7d'), 7 * 24 * 60 * 60 * 1000, '7d debe dar 7 días en ms');
+  assert.equal(duracionSesionMs('30d'), 30 * 24 * 60 * 60 * 1000, 'respeta JWT_EXPIRA cuando se configura');
+  assert.equal(duracionSesionMs('basura'), 7 * 24 * 60 * 60 * 1000, 'un valor inválido cae a 7d');
+  const auth = fs.readFileSync(path.join(__dirname, '../middleware/auth.js'), 'utf8');
+  assert.match(auth, /JWT_EXPIRA = process\.env\.JWT_EXPIRA \|\| '7d'/, 'el default debe ser 7d como en .env.example');
+  const rutas = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
+  assert.match(rutas, /maxAge: duracionSesionMs\(\)/, 'la cookie debe derivar su maxAge del token');
+  assert.doesNotMatch(rutas, /maxAge: 30 \* 24 \* 60 \* 60 \* 1000/, 'no debe quedar maxAge fijo de 30d');
+});
+
+test('el sync nunca convierte dato ausente en cero ni pisa detalle existente', () => {
+  const syncDb = fs.readFileSync(path.join(__dirname, '../scripts/syncDatabase.js'), 'utf8');
+  assert.doesNotMatch(syncDb, /parseInt\(s\.find\(x => x\.type/, 'extraerStats no debe usar parseInt con || 0');
+  assert.match(syncDb, /valorEstadistica\(s, 'Total Shots'\)/, 'usa el helper nulable como completarEstadisticas.js');
+  const calendario = fs.readFileSync(path.join(__dirname, '../scripts/syncCalendario.js'), 'utf8');
+  assert.match(calendario, /\$setOnInsert/, 'el upsert de calendario debe llevar defaults sólo para inserts');
+  const eventos = fs.readFileSync(path.join(__dirname, '../scripts/guardarEventos.js'), 'utf8');
+  assert.match(eventos, /jugador_id \|\| e\?\.jugador/, 'debe detectar eventos ricos antes de escribir');
+  assert.match(eventos, /eventos_no_disponibles: \{ \$ne: true \}/, 'no debe reintentar huecos vacíos sin SYNC_RETRY_GAPS');
 });

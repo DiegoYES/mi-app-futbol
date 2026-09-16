@@ -230,15 +230,18 @@ async function procesarDetallePartido(fixtureId, homeTeamId, awayTeamId) {
     const awayStats = fullFixture.statistics.find(s => s.team.id === awayTeamId);
     const update = { estadisticas_completas: tieneMetricasBasicas(homeStats) && tieneMetricasBasicas(awayStats) };
 
+    // Un dato ausente queda en null, nunca en 0: misma convención que
+    // completarEstadisticas.js (valorEstadistica). Sólo afecta escrituras
+    // futuras; ningún documento existente se reescribe.
     function extraerStats(statsObj, prefijo) {
       const s = statsObj.statistics;
-      update[`${prefijo}.tiros_total`] = parseInt(s.find(x => x.type === 'Total Shots')?.value) || 0;
-      update[`${prefijo}.tiros_puerta`] = parseInt(s.find(x => x.type === 'Shots on Goal')?.value) || 0;
-      update[`${prefijo}.corners`] = valorEstadistica(s, "Corner Kicks");
-      update[`${prefijo}.faltas`] = parseInt(s.find(x => x.type === 'Fouls')?.value) || 0;
-      update[`${prefijo}.tarjetas_amarillas`] = parseInt(s.find(x => x.type === 'Yellow Cards')?.value) || 0;
-      update[`${prefijo}.tarjetas_rojas`] = parseInt(s.find(x => x.type === 'Red Cards')?.value) || 0;
-      update[`${prefijo}.offsides`] = parseInt(s.find(x => x.type === 'Offsides')?.value) || 0;
+      update[`${prefijo}.tiros_total`] = valorEstadistica(s, 'Total Shots');
+      update[`${prefijo}.tiros_puerta`] = valorEstadistica(s, 'Shots on Goal');
+      update[`${prefijo}.corners`] = valorEstadistica(s, 'Corner Kicks');
+      update[`${prefijo}.faltas`] = valorEstadistica(s, 'Fouls');
+      update[`${prefijo}.tarjetas_amarillas`] = valorEstadistica(s, 'Yellow Cards');
+      update[`${prefijo}.tarjetas_rojas`] = valorEstadistica(s, 'Red Cards');
+      update[`${prefijo}.offsides`] = valorEstadistica(s, 'Offsides');
     }
 
     if (homeStats) extraerStats(homeStats, 'equipo_local');

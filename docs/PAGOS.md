@@ -56,3 +56,14 @@
 - Renovaciones exitosas y rechazadas.
 - Cancelaciones y motivo opcional.
 - Ingreso mensual recurrente y usuarios con acceso incongruente.
+
+## Operación (2026-09)
+
+- El checkout usa cerrojo por usuario (`jobLock` en Mongo): un segundo POST
+  concurrente recibe `409 CHECKOUT_EN_CURSO` en vez de crear un preapproval
+  huérfano en Mercado Pago.
+- La clave de idempotencia incluye `x-request-id` a propósito: Mercado Pago
+  reutiliza el mismo `data.id` en cada cambio de estado (pending → authorized
+  → cancelled) y cada aviso debe procesarse; el request-id va firmado con HMAC.
+- Sin transacciones multi-documento (Mongo standalone): cada escritura es
+  atómica por documento con `$set` y los reintentos reparan parciales.
