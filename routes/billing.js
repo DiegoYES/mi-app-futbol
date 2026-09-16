@@ -5,6 +5,7 @@ const { crearLimitador } = require('../middleware/rateLimit');
 const { errorServidor } = require('../middleware/security');
 const { TERMS_VERSION, consentimientoValido } = require('../services/terms');
 const { registrarEventoProducto } = require('../services/productEvents');
+const { crearBloqueoTrabajo } = require('../services/jobLock');
 const {
   ErrorMercadoPago,
   PRECIO_MENSUAL,
@@ -65,13 +66,28 @@ router.get('/status', requireAuth, async (req, res) => {
 });
 
 router.post('/subscribe', requireAuth, limiteBilling, async (req, res) => {
+  if (!consentimientoValido(req.body)) {
+    return res.status(400).json({
+      error: 'Debes leer y aceptar los Términos y Condiciones antes de continuar.',
+      codigo: 'TERMINOS_NO_ACEPTADOS'
+    });
+  }
+
+  // Cerrojo en Mongo (válido entre procesos del pool) con propietario único por
+  // petición: dos POST simultáneos del mismo usuario crearían dos preapprovals
+  // en Mercado Pago y uno quedaría huérfano.
+  const cerrojo = crearBloqueoTrabajo({ leaseMs: 30_000 });
+  const nombreCerrojo = `billing:subscribe:${req.usuario._id}`;
+  let adquirido = false;
   try {
-    if (!consentimientoValido(req.body)) {
-      return res.status(400).json({
-        error: 'Debes leer y aceptar los Términos y Condiciones antes de continuar.',
-        codigo: 'TERMINOS_NO_ACEPTADOS'
+    ({ adquirido } = await cerrojo.adquirir(nombreCerrojo));
+    if (!adquirido) {
+      return res.status(409).json({
+        error: 'Ya estamos preparando tu checkout. Espera unos segundos e inténtalo de nuevo.',
+        codigo: 'CHECKOUT_EN_CURSO'
       });
     }
+
     const aceptadosEn = new Date();
     const existente = await Suscripcion.findOne({ usuario: req.usuario._id });
     if (existente?.estado === 'autorizada') {
@@ -113,6 +129,8 @@ router.post('/subscribe', requireAuth, limiteBilling, async (req, res) => {
       return res.status(502).json({ error: error.message, codigo: 'MERCADOPAGO_ERROR' });
     }
     return errorServidor(res, error, 'No se pudo iniciar la suscripción.');
+  } finally {
+    if (adquirido) await cerrojo.liberar(nombreCerrojo).catch(() => {});
   }
 });
 

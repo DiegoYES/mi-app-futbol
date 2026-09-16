@@ -28,6 +28,10 @@ router.post('/mercadopago', async (req, res) => {
   }
 
   const tipo = String(req.body?.type || req.query.type || 'desconocido');
+  // x-request-id forma parte de la clave a propósito: Mercado Pago reutiliza el
+  // mismo data.id de la preapproval en cada cambio de estado (pending →
+  // authorized → cancelled) y cada aviso debe procesarse. No lo controla el
+  // cliente porque va dentro del manifiesto firmado con HMAC.
   const clave = `${requestId}:${tipo}:${dataId}`;
   try {
     await EventoPago.create({ proveedor: 'mercadopago', clave, tipo, recurso_id: dataId });

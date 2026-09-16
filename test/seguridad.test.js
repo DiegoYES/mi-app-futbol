@@ -224,3 +224,56 @@ test('la ruta de explicacion de mercado valida el identificador de mercado', () 
   assert.match(codigo, /mercadoId = String\(req\.params\.mercado/, 'no extrae mercadoId de params');
   assert.match(codigo, /\[a-zA-Z0-9_.-]\{2,64\}/, 'no valida formato alfanumérico seguro');
 });
+
+test('el H2H exige dos equipos enteros y distintos antes de consultar Mongo', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+  const inicio = codigo.indexOf("app.get('/api/equipos/h2h'");
+  const bloque = codigo.slice(inicio, codigo.indexOf('Partido.find(filtro)', inicio));
+  assert.ok(inicio > -1, 'no existe la ruta /api/equipos/h2h');
+  assert.match(bloque, /Number\.parseInt\(req\.query\.team1, 10\)/, 'team1 debe parsearse con radix');
+  assert.match(bloque, /\[team1, team2\]\.every\(Number\.isInteger\)/, 'falta comprobar que ambos equipos sean enteros');
+  assert.match(bloque, /team1 === team2/, 'falta rechazar el mismo equipo dos veces');
+  assert.doesNotMatch(bloque, /[^.]parseInt\(req\.query\.\w+\)/, 'no debe quedar parseInt sin radix');
+  assert.match(bloque, /leagueId !== null && !Number\.isInteger\(leagueId\)/, 'una competición no numérica debe responder 400');
+  assert.match(bloque, /season !== null && !Number\.isInteger\(season\)/, 'una temporada no numérica debe responder 400');
+  assert.match(bloque, /La temporada no es válida\./, 'falta el mensaje de temporada inválida');
+  assert.doesNotMatch(bloque, /if \(Number\.isInteger\(season\)\) filtro/, 'season=abc no debe ignorarse en silencio');
+});
+
+test('el checkout de suscripción se serializa por usuario con cerrojo en Mongo', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../routes/billing.js'), 'utf8');
+  assert.match(codigo, /crearBloqueoTrabajo\(\{ leaseMs: 30_000 \}\)/, 'falta crear el cerrojo por petición');
+  assert.match(codigo, /`billing:subscribe:\$\{req\.usuario\._id\}`/, 'el cerrojo debe ser por usuario');
+  assert.match(codigo, /CHECKOUT_EN_CURSO/, 'falta responder 409 cuando otro checkout está en curso');
+  assert.match(codigo, /cerrojo\.liberar\(nombreCerrojo\)/, 'el cerrojo debe liberarse en finally');
+});
+
+test('el buscador spotlight escapa el catálogo antes de insertarlo con innerHTML', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../public/spotlight-search.js'), 'utf8');
+  assert.match(codigo, /function esc\(valor\)/, 'falta el helper esc()');
+  const inicio = codigo.indexOf('resultsEl.innerHTML = itemsAMostrar');
+  assert.ok(inicio > -1, 'no se encontró el render de resultados');
+  const plantilla = codigo.slice(inicio, codigo.indexOf(".join('')", inicio));
+  for (const campo of ['url', 'icono', 'nombre', 'sub']) {
+    assert.match(plantilla, new RegExp(`\\$\\{esc\\(item\\.${campo}\\)\\}`), `item.${campo} debe pasar por esc()`);
+    assert.doesNotMatch(plantilla, new RegExp(`\\$\\{item\\.${campo}\\}`), `item.${campo} no debe interpolarse sin escapar`);
+  }
+});
+
+test('el buscador spotlight descarta items con href/src fuera de la allowlist de protocolos', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../public/spotlight-search.js'), 'utf8');
+  assert.match(codigo, /resultados\.filter\(itemSeguro\)/, 'los resultados deben filtrarse con itemSeguro antes de renderizar');
+  assert.match(codigo, /urlSegura\(item\.url\) && urlSegura\(item\.icono\)/, 'itemSeguro debe validar url e icono');
+
+  const inicio = codigo.indexOf('function urlSegura(valor)');
+  assert.ok(inicio > -1, 'falta el helper urlSegura()');
+  const fin = codigo.indexOf('\n  }\n', inicio) + 4;
+  const urlSegura = new Function(`${codigo.slice(inicio, fin)}; return urlSegura;`)();
+
+  for (const permitida of ['/competicion.html?id=262', '/api/ligas/262/logo', '/brand-mark.svg', 'https://data-fut.com/x', 'http://localhost:3000/x', 'data:image/png;base64,AAAA']) {
+    assert.equal(urlSegura(permitida), true, `${permitida} debería aceptarse`);
+  }
+  for (const bloqueada of ['javascript:alert(1)', 'JavaScript:alert(1)', ' javascript:alert(1)', 'data:text/html,<script>', 'vbscript:x', '//evil.com/x', 'ftp://x', 'competicion.html', '', null, undefined]) {
+    assert.equal(urlSegura(bloqueada), false, `${String(bloqueada)} debería rechazarse`);
+  }
+});

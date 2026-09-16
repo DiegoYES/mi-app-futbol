@@ -128,7 +128,9 @@ app.use(express.static(path.join(__dirname, 'public'), { index: false }));
 
 app.use('/api/auth', authRoutes);
 app.use('/api/eventos-producto', productEventsRoutes);
-app.use('/api/asistente', aiChatRoutes);
+// El asistente consume cuota de Gemini: exige sesión para que ningún anónimo
+// rotando IPs pueda agotar el presupuesto.
+app.use('/api/asistente', requireAuth, aiChatRoutes);
 // Billing sólo exige sesión: una prueba vencida también debe poder pagar.
 app.use('/api/billing', billingRoutes);
 app.use('/api/admin', adminRoutes);
@@ -779,10 +781,20 @@ app.get('/api/arbitros/detalle', cacheMiddleware, async (req, res) => {
 // H2H
 app.get('/api/equipos/h2h', cacheMiddleware, async (req, res) => {
   try {
-    const team1 = parseInt(req.query.team1);
-    const team2 = parseInt(req.query.team2);
-    const leagueId = req.query.league ? parseInt(req.query.league) : null;
-    const season = req.query.season ? parseInt(req.query.season, 10) : null;
+    const team1 = Number.parseInt(req.query.team1, 10);
+    const team2 = Number.parseInt(req.query.team2, 10);
+    const leagueId = req.query.league ? Number.parseInt(req.query.league, 10) : null;
+    const season = req.query.season ? Number.parseInt(req.query.season, 10) : null;
+
+    if (![team1, team2].every(Number.isInteger) || team1 === team2) {
+      return res.status(400).json({ error: 'Debes indicar dos equipos distintos.' });
+    }
+    if (leagueId !== null && !Number.isInteger(leagueId)) {
+      return res.status(400).json({ error: 'La competición no es válida.' });
+    }
+    if (season !== null && !Number.isInteger(season)) {
+      return res.status(400).json({ error: 'La temporada no es válida.' });
+    }
 
     const filtro = {
       $or: [
@@ -794,7 +806,7 @@ app.get('/api/equipos/h2h', cacheMiddleware, async (req, res) => {
     if (leagueId) {
       filtro['liga.id'] = leagueId;
     }
-    if (Number.isInteger(season)) filtro['liga.temporada'] = season;
+    if (season !== null) filtro['liga.temporada'] = season;
 
     const partidos = await Partido.find(filtro).sort({ fecha: -1 }).lean();
 

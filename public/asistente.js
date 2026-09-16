@@ -286,6 +286,8 @@
         let respuestaBot = '';
         if (res.ok && datos.respuesta) {
           respuestaBot = datos.respuesta;
+        } else if (res.status === 401) {
+          respuestaBot = 'Para chatear conmigo necesitas iniciar sesión en Data-Fut. Entra a tu cuenta y vuelve a preguntarme.';
         } else {
           respuestaBot = datos.error || 'No pude procesar tu duda en este momento. Intenta de nuevo más tarde.';
         }

@@ -217,3 +217,12 @@ test('responderConsulta inyecta el bloque de contexto en el system_instruction d
   assert.match(systemInstructionCapturado, /Over 2\.5 goles/);
   assert.match(res.respuesta, /Over 2\.5 goles/);
 });
+
+test('el asistente exige sesión y limita por cuenta: nadie anónimo puede gastar cuota de Gemini', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const servidor = fs.readFileSync(path.join(__dirname, '../server.js'), 'utf8');
+  const ruta = fs.readFileSync(path.join(__dirname, '../routes/aiChat.js'), 'utf8');
+  assert.match(servidor, /app\.use\('\/api\/asistente',\s*requireAuth,\s*aiChatRoutes\)/, '/api/asistente debe montarse detrás de requireAuth');
+  assert.match(ruta, /keyGenerator:\s*req\s*=>\s*String\(req\.usuario\?\._id/, 'el límite del chat debe contarse por usuario, no por IP');
+});

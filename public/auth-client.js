@@ -757,7 +757,7 @@
   function cargarSpotlightSearch() {
     if (document.querySelector('script[src*="spotlight-search.js"]')) return;
     const script = document.createElement('script');
-    script.src = '/spotlight-search.js?v=20260824-spotlight';
+    script.src = '/spotlight-search.js?v=20260915-esc';
     script.defer = true;
     document.head.appendChild(script);
   }

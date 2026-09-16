@@ -6,9 +6,12 @@ const { registrarEventoProducto } = require('../services/productEvents');
 
 const router = express.Router();
 
+// Se monta detrás de requireAuth, así que el límite se aplica por cuenta y no
+// por IP: cambiar de red no da más mensajes.
 const limiteAsistente = crearLimitador('asistente-chat', {
   windowMs: 60_000,
   limit: 10,
+  keyGenerator: req => String(req.usuario?._id || 'sin-usuario'),
   standardHeaders: 'draft-8',
   legacyHeaders: false
 });

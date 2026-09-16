@@ -155,7 +155,8 @@ test('esStaff exime a marketing y admin del rate limiting pero evalúa usuarios 
   assert.equal(esStaff({ usuario: { rol: 'marketing' } }), true);
   assert.equal(esStaff({ usuario: { rol: 'admin' } }), true);
   assert.equal(esStaff({ usuario: { rol: 'usuario' } }), false);
-  assert.equal(esStaff({ usuario: { _id: '6a7975b7a2bf1e560d2327fd', rol: 'usuario' } }), true);
+  // Ningún identificador fijo otorga privilegios: sólo el rol.
+  assert.equal(esStaff({ usuario: { _id: '6a7975b7a2bf1e560d2327fd', rol: 'usuario' } }), false);
 
   // 2. req anónimo sin token
   assert.equal(esStaff({}), false);
@@ -175,9 +176,9 @@ test('esStaff exime a marketing y admin del rate limiting pero evalúa usuarios 
   assert.equal(esStaff({ cookies: { token: tokenAdmin } }), true);
   assert.equal(esStaff({ cookies: { token: tokenUser } }), false);
 
-  // 5. req con Cookie token del id de marketing conocido
+  // 5. un token con rol usuario no es staff aunque su id coincida con una cuenta antigua
   const tokenLegacyMarketing = firmarToken({ _id: '6a7975b7a2bf1e560d2327fd', rol: 'usuario', sesion_version: 0 });
-  assert.equal(esStaff({ cookies: { token: tokenLegacyMarketing } }), true);
+  assert.equal(esStaff({ cookies: { token: tokenLegacyMarketing } }), false);
 });
 
 test('limiteUsuario no bloquea ráfagas de marketing pero sí a usuarios normales', async t => {
@@ -388,3 +389,11 @@ test('el usuario de marketing puede consultar y guardar picks de partidos termin
 });
 
 
+
+test('esStaff no contiene identificadores de usuario fijos', () => {
+  const fs = require('fs');
+  const path = require('path');
+  const codigo = fs.readFileSync(path.join(__dirname, '../middleware/security.js'), 'utf8');
+  assert.doesNotMatch(codigo, /_id\)\s*===\s*'[0-9a-f]{24}'/, 'no debe compararse req.usuario._id contra un ObjectId literal');
+  assert.doesNotMatch(codigo, /payload\?\.id\s*===\s*'[0-9a-f]{24}'/, 'no debe compararse el id del token contra un ObjectId literal');
+});

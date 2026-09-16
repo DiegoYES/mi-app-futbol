@@ -12,6 +12,28 @@
   let indiceActivo = 0;
   let cargandoCatalogo = false;
 
+  function esc(valor) {
+    return String(valor ?? '')
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
+
+  // esc() impide romper el atributo, pero no bloquea `javascript:`; sólo se
+  // aceptan rutas relativas del sitio, http(s) e imágenes embebidas.
+  function urlSegura(valor) {
+    const texto = String(valor ?? '').trim();
+    if (!texto) return false;
+    if (texto.startsWith('/')) return !texto.startsWith('//');
+    return /^(https?:\/\/|data:image\/)/i.test(texto);
+  }
+
+  function itemSeguro(item) {
+    return Boolean(item) && urlSegura(item.url) && urlSegura(item.icono);
+  }
+
   async function cargarCatalogo() {
     if (catalogoItems.length > 0 || cargandoCatalogo) return;
     cargandoCatalogo = true;
@@ -201,7 +223,7 @@
     }
 
     const maxResults = 8;
-    const itemsAMostrar = resultados.slice(0, maxResults);
+    const itemsAMostrar = resultados.filter(itemSeguro).slice(0, maxResults);
 
     if (!itemsAMostrar.length) {
       resultsEl.innerHTML = '<div class="spotlight-empty">No se encontraron coincidencias.</div>';
@@ -209,11 +231,11 @@
     }
 
     resultsEl.innerHTML = itemsAMostrar.map((item, idx) => `
-      <a href="${item.url}" class="spotlight-item ${idx === indiceActivo ? 'active' : ''}" data-url="${item.url}" role="option" aria-selected="${idx === indiceActivo}">
-        <img src="${item.icono}" alt="" class="spotlight-item-icon">
+      <a href="${esc(item.url)}" class="spotlight-item ${idx === indiceActivo ? 'active' : ''}" data-url="${esc(item.url)}" role="option" aria-selected="${idx === indiceActivo}">
+        <img src="${esc(item.icono)}" alt="" class="spotlight-item-icon">
         <div class="spotlight-item-text">
-          <span class="spotlight-item-title">${item.nombre}</span>
-          <span class="spotlight-item-sub">${item.sub}</span>
+          <span class="spotlight-item-title">${esc(item.nombre)}</span>
+          <span class="spotlight-item-sub">${esc(item.sub)}</span>
         </div>
       </a>
     `).join('');

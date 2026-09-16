@@ -130,15 +130,20 @@ function extraerTokenSeguro(req) {
   return null;
 }
 
+const ROLES_STAFF = ['admin', 'marketing'];
+
+// El privilegio sale exclusivamente del rol; nunca de un identificador fijo.
+// La rama por token sólo aplica en rutas públicas donde aún no corrió
+// requireAuth: si la sesión fue revocada, requireAuth la rechaza igual.
 function esStaff(req) {
-  if (req?.usuario && (['admin', 'marketing'].includes(req.usuario.rol) || String(req.usuario._id) === '6a7975b7a2bf1e560d2327fd')) {
+  if (req?.usuario && ROLES_STAFF.includes(req.usuario.rol)) {
     return true;
   }
   const token = extraerTokenSeguro(req);
   if (token && process.env.JWT_SECRET) {
     try {
       const payload = jwt.verify(token, process.env.JWT_SECRET);
-      if (['admin', 'marketing'].includes(payload?.rol) || payload?.id === '6a7975b7a2bf1e560d2327fd') {
+      if (ROLES_STAFF.includes(payload?.rol)) {
         return true;
       }
     } catch {
