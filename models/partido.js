@@ -158,5 +158,21 @@ partidoSchema.index(
   { arbitro: 1, 'liga.id': 1, 'liga.temporada': -1, estado: 1, fecha: -1 },
   { name: 'arbitro_liga_temporada_estado_fecha' }
 );
+// Los scripts de sincronización barren por liga/temporada/estado filtrando lo
+// pendiente en memoria. Estos compuestos evitan el COLLSCAN parcial.
+// Sólo definiciones: ningún documento se modifica.
+partidoSchema.index(
+  { 'liga.id': 1, 'liga.temporada': -1, estado: 1, estadisticas_completas: 1, estadisticas_no_disponibles: 1 },
+  { name: 'sync_estadisticas_pendientes' }
+);
+partidoSchema.index(
+  { 'liga.id': 1, 'liga.temporada': -1, estado: 1, detalle_completo: 1 },
+  { name: 'sync_detalle_pendiente' }
+);
+// Fallback de admin/desde-boleta: busca por pareja de equipos y fecha.
+partidoSchema.index(
+  { 'equipo_local.id': 1, 'equipo_visitante.id': 1, fecha: 1 },
+  { name: 'boleta_equipos_fecha' }
+);
 
 module.exports = mongoose.model('Partido', partidoSchema);

@@ -277,3 +277,31 @@ test('el buscador spotlight descarta items con href/src fuera de la allowlist de
     assert.equal(urlSegura(bloqueada), false, `${String(bloqueada)} debería rechazarse`);
   }
 });
+
+test('los modelos declaran los índices de sync, boleta e IP sin tocar documentos', () => {
+  const partido = fs.readFileSync(path.join(__dirname, '../models/partido.js'), 'utf8');
+  const usuario = fs.readFileSync(path.join(__dirname, '../models/Usuario.js'), 'utf8');
+  assert.match(partido, /name: 'sync_estadisticas_pendientes'/, 'falta el índice de estadísticas pendientes');
+  assert.match(partido, /name: 'sync_detalle_pendiente'/, 'falta el índice de detalle pendiente');
+  assert.match(partido, /name: 'boleta_equipos_fecha'/, 'falta el índice del fallback por equipos');
+  assert.match(usuario, /name: 'usuario_ip_registro'/, 'falta el índice de IP de registro');
+});
+
+test('desde-boleta resuelve partidos en batch en vez de un findOne por selección', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
+  const inicio = codigo.indexOf('/recomendaciones/desde-boleta/');
+  const bloque = codigo.slice(inicio, codigo.indexOf('Recomendacion.create', inicio));
+  assert.ok(inicio > -1, 'no existe la ruta desde-boleta');
+  assert.match(bloque, /api_id: \{ \$in: ids/, 'falta la consulta batch por api_id');
+  assert.match(bloque, /partidosPorApiId\.get\(sel\.partido_api_id\)/, 'falta el mapa por api_id');
+  assert.doesNotMatch(bloque, /await Partido\.findOne\(\{ api_id: sel\.partido_api_id \}\)/, 'no debe quedar findOne por selección');
+});
+
+test('el otorgamiento premium usa $set atómico y nunca save() del documento', () => {
+  const webhook = fs.readFileSync(path.join(__dirname, '../routes/mercadoPagoWebhook.js'), 'utf8');
+  const billing = fs.readFileSync(path.join(__dirname, '../routes/billing.js'), 'utf8');
+  assert.match(webhook, /Usuario\.findByIdAndUpdate\(usuario\._id, \{\s*\$set: \{ plan: 'premium'/, 'el webhook debe otorgar premium con $set atómico');
+  assert.doesNotMatch(webhook, /usuario\.save\(\)/, 'el webhook no debe guardar el documento completo');
+  assert.match(billing, /Usuario\.findByIdAndUpdate\(req\.usuario\._id, \{\s*\$set: \{ plan: 'premium'/, 'la reconciliación debe otorgar premium con $set atómico');
+  assert.doesNotMatch(billing, /req\.usuario\.save\(\)/, 'la reconciliación no debe guardar el documento completo');
+});

@@ -277,18 +277,22 @@ router.post('/recomendaciones/desde-boleta/:id', validarIdMongo, async (req, res
     const seleccionesEnriquecidas = [];
     let fechaMinima = null;
 
+    // Una sola consulta por api_id (índice único) en vez de un findOne por
+    // selección. El fallback por equipos queda sólo para selecciones antiguas
+    // sin partido_api_id. Ninguna escritura a Partido: sólo lectura.
+    const idsApi = [...new Set(boleta.selecciones.map(sel => sel.partido_api_id).filter(Number.isInteger))];
+    const partidosPorApiId = new Map((await Partido.find({ api_id: { $in: idsApi } })
+      .select(CAMPOS_PARTIDO_RECOMENDACION).lean()).map(partido => [partido.api_id, partido]));
+
     for (let i = 0; i < boleta.selecciones.length; i++) {
       const sel = boleta.selecciones[i];
-      let partido = null;
-      if (sel.partido_api_id) {
-        partido = await Partido.findOne({ api_id: sel.partido_api_id }).lean();
-      }
+      let partido = Number.isInteger(sel.partido_api_id) ? (partidosPorApiId.get(sel.partido_api_id) || null) : null;
       if (!partido && sel.local?.id && sel.visitante?.id) {
         partido = await Partido.findOne({
           'equipo_local.id': sel.local.id,
           'equipo_visitante.id': sel.visitante.id,
           fecha: { $gte: new Date(ahora.getTime() - 4 * 3600000) }
-        }).sort({ fecha: 1 }).lean();
+        }).select(CAMPOS_PARTIDO_RECOMENDACION).sort({ fecha: 1 }).lean();
       }
 
       const fechaPartido = partido?.fecha || new Date(ahora.getTime() + 24 * 3600000);
