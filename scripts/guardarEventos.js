@@ -19,6 +19,10 @@ const RETARDO = Number(process.env.SYNC_DELAY_MS) >= 0
   : 7000;
 let peticionesRealizadas = 0;
 let detener = false;
+// Tope de seguridad en memoria: el filtro ya acota a pendientes, esto sólo
+// evita un array ilimitado si el rezago crece. Reanudar procesa el resto.
+const TOPE_LOTE = 1500;
+const REINTENTAR_HUECOS = /^(1|true|yes|si|sí)$/i.test(String(process.env.SYNC_RETRY_GAPS || ''));
 
 const httpsAgent = new https.Agent({ family: 4 });
 
@@ -47,6 +51,18 @@ function obtenerRango(minuto) {
 async function guardarEventosPartido(partidoBD) {
   if (detener || peticionesRealizadas >= PETICIONES_MAXIMAS) return;
 
+  // Nunca pisar eventos ricos (con jugador/asistencia/comentario, guardados
+  // por completarDetallesLote) con la versión pobre de este endpoint. Esta
+  // lectura usa el índice único de api_id y no gasta cuota de API.
+  const actual = await Partido.findOne({ api_id: partidoBD.api_id })
+    .select('equipo_local.eventos equipo_visitante.eventos')
+    .lean();
+  const previos = [...(actual?.equipo_local?.eventos || []), ...(actual?.equipo_visitante?.eventos || [])];
+  if (previos.some(e => e?.jugador_id || e?.jugador || e?.asistencia || e?.comentario || e?.asistencia_id)) {
+    console.log(`   ⏭️ Eventos ricos ya guardados en partido ${partidoBD.api_id}, se conserva el detalle.`);
+    return;
+  }
+
   try {
     await esperar(RETARDO);
     const { data } = await axios.get('https://v3.football.api-sports.io/fixtures/events', {
@@ -56,7 +72,13 @@ async function guardarEventosPartido(partidoBD) {
     });
     peticionesRealizadas++;
 
-    if (!data.response || data.response.length === 0) return;
+    // Respuesta vacía = el proveedor no cubre este partido: se marca para no
+    // quemar cuota en cada corrida. Sólo flags, ningún dato se sobrescribe.
+    if (!data.response || data.response.length === 0) {
+      await Partido.updateOne({ api_id: partidoBD.api_id }, { $set: { eventos_no_disponibles: true } });
+      console.log(`   ⚠️ Sin eventos en proveedor para partido ${partidoBD.api_id}, marcado como no disponible.`);
+      return;
+    }
 
     const eventosLocal = [];
     const eventosVisitante = [];
@@ -145,8 +167,10 @@ async function main() {
     'liga.temporada': Number(config.seasonDefault),
     estado: 'FT',
     estadisticas_completas: true,
-    eventos_completos: { $ne: true }
-  }).lean();
+    eventos_completos: { $ne: true },
+    // Huecos ya consultados que el proveedor dejó vacíos: sólo con reintento explícito.
+    ...(REINTENTAR_HUECOS ? {} : { eventos_no_disponibles: { $ne: true } })
+  }).sort({ fecha: -1 }).limit(TOPE_LOTE).lean();
 
   console.log(`⚽ Procesando ${partidos.length} partidos de ligas ${ligas.join(', ')} (eventos)...`);
 

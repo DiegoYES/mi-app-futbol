@@ -71,6 +71,19 @@ logs, capturas ni respuestas HTTP.
   cuando está habilitado, Redis. El
   diagnóstico detallado está restringido al administrador en
   `/api/admin/produccion/estado` y nunca devuelve claves.
+- Sesión de 7 días (`JWT_EXPIRA=7d`) con cookie `maxAge` derivada del token;
+  el privilegio de staff sale sólo del rol (`admin`/`marketing`), nunca de un ID.
+- Checkout con cerrojo por usuario en Mongo (`409 CHECKOUT_EN_CURSO`) y
+  otorgamiento premium con `$set` atómico. Sin transacciones
+  multi-documento: Mongo corre standalone y no las soporta; el reintento del
+  webhook más la reconciliación de `/billing/status` reparan estados parciales.
+- Sync nulable: un dato ausente del proveedor se guarda `null`, nunca `0`;
+  `guardarEventos` no pisa eventos ricos y marca `eventos_no_disponibles`
+  para no gastar cuota (reintento con `SYNC_RETRY_GAPS=true`); los upserts
+  llevan `$setOnInsert` para no tocar documentos existentes.
+- Índices de sync/IP/boleta se crean con `npm run db:indexes` (aditivo).
+  `playwright` sigue en `dependencies` a propósito: staging instala con
+  `--omit=dev` y el smoke test lo requiere.
 
 ## VM recomendada
 

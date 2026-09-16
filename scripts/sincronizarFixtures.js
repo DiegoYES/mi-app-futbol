@@ -49,7 +49,18 @@ async function sincronizarLiga(leagueId) {
     await Partido.bulkWrite(fixtures.map(item => ({ updateOne: {
       filter: { api_id: item.fixture.id },
       update: {
-        $set: documentoFixture(item, config.ligas)
+        $set: documentoFixture(item, config.ligas),
+        // Sólo en inserts: los partidos existentes no se tocan.
+        $setOnInsert: {
+          estadisticas_completas: false,
+          estadisticas_no_disponibles: false,
+          tiempos_completos: false,
+          eventos_completos: false,
+          eventos_no_disponibles: false,
+          jugadores_completos: false,
+          detalle_completo: false,
+          fecha_actualizacion: new Date()
+        }
       },
       upsert: true
     } })));

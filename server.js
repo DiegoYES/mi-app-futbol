@@ -365,6 +365,10 @@ app.get('/api/equipos/:id/estadisticas-detalladas', cacheMiddleware, async (req,
 
     // Para periodos parciales no mezclamos partidos sin estadísticas por tiempo.
     if (half !== 0) filtroPartidos.tiempos_completos = true;
+    // La condición local/visitante se filtra en Mongo: antes se traía todo y
+    // se descartaba en Node. El filtro JS siguiente queda como red de seguridad.
+    if (scope === 'local') filtroPartidos['equipo_local.id'] = teamId;
+    else if (scope === 'visitante') filtroPartidos['equipo_visitante.id'] = teamId;
 
     let partidosDB = await Partido.find(filtroPartidos).sort({ fecha: -1 }).lean();
 
@@ -438,10 +442,17 @@ app.get('/api/equipos/:id/historial', cacheMiddleware, async (req, res) => {
     if (!Number.isInteger(teamId) || !Number.isInteger(leagueId)) {
       return res.status(400).json({ error: 'Equipo o competición inválidos.' });
     }
+    // El equipo se filtra en Mongo (no se trae toda la liga a Node).
+    // Sólo lectura y proyección mínima: la tabla se reconstruye igual.
     const partidos = await Partido.find({
       'liga.id': leagueId,
-      estado: { $in: ['FT', 'AET', 'PEN'] }
-    }).select('liga.temporada equipo_local equipo_visitante').lean();
+      estado: { $in: ['FT', 'AET', 'PEN'] },
+      $or: [{ 'equipo_local.id': teamId }, { 'equipo_visitante.id': teamId }]
+    }).select([
+      'liga.temporada',
+      'equipo_local.id', 'equipo_local.nombre', 'equipo_local.goles',
+      'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.goles'
+    ].join(' ')).lean();
     const porTemporada = new Map();
     const fila = (tabla, equipo) => {
       if (!tabla.has(equipo.id)) tabla.set(equipo.id, { id: equipo.id, nombre: equipo.nombre, jugados: 0, ganados: 0, empatados: 0, perdidos: 0, goles_favor: 0, goles_contra: 0, puntos: 0 });

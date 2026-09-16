@@ -103,7 +103,17 @@ async function sincronizarFecha(fecha, ligasSeguidas = new Set(Object.keys(confi
       finalizados.push({ api_id: f.fixture.id, homeId: f.teams.home.id, awayId: f.teams.away.id });
     }
 
-    const resultado = await Partido.updateOne({ api_id: f.fixture.id }, { $set: doc }, { upsert: true });
+    // $setOnInsert sólo rellena defaults en documentos nuevos: los partidos
+    // ya guardados conservan su detalle avanzado intacto.
+    const resultado = await Partido.updateOne({ api_id: f.fixture.id }, { $set: doc, $setOnInsert: {
+      estadisticas_completas: false,
+      estadisticas_no_disponibles: false,
+      tiempos_completos: false,
+      eventos_completos: false,
+      eventos_no_disponibles: false,
+      jugadores_completos: false,
+      detalle_completo: false
+    } }, { upsert: true });
     if (resultado.upsertedCount) nuevos++;
     else if (resultado.modifiedCount) actualizados++;
   }

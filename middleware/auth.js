@@ -3,7 +3,18 @@ const Usuario = require('../models/Usuario');
 const { limiteUsuario } = require('./security');
 
 const JWT_SECRET = process.env.JWT_SECRET;
-const JWT_EXPIRA = process.env.JWT_EXPIRA || '30d';
+const JWT_EXPIRA = process.env.JWT_EXPIRA || '7d';
+
+// La cookie debe vivir lo mismo que el token: con JWT_EXPIRA=7d y maxAge fijo
+// de 30d el navegador conservaba 23 días una cookie ya inservible.
+function duracionSesionMs(valor = JWT_EXPIRA) {
+  const texto = String(valor || '').trim().toLowerCase();
+  const coincidencia = texto.match(/^(\d+)\s*([smhd])$/);
+  if (!coincidencia) return 7 * 24 * 60 * 60 * 1000;
+  const cantidad = Number.parseInt(coincidencia[1], 10);
+  const factor = { s: 1000, m: 60 * 1000, h: 60 * 60 * 1000, d: 24 * 60 * 60 * 1000 }[coincidencia[2]];
+  return Math.min(Math.max(cantidad * factor, 60 * 1000), 90 * 24 * 60 * 60 * 1000);
+}
 
 if (!JWT_SECRET) {
   console.error('❌ Falta JWT_SECRET en el archivo .env. La autenticación no funcionará.');
@@ -112,6 +123,7 @@ function requireEditorial(req, res, next) {
 const protegido = [requireAuth, limiteUsuario, requireAcceso];
 
 module.exports = {
+  duracionSesionMs,
   firmarToken,
   sesionCoincide,
   requireAuth,

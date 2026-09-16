@@ -82,10 +82,15 @@ router.post('/mercadopago', async (req, res) => {
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
+    // Sin transacciones multi-documento: Mongo corre standalone y no las
+    // soporta. Cada escritura es atómica por documento y el reintento del
+    // webhook (EventoPago se borra ante error) más la reconciliación de
+    // /billing/status reparan un estado parcial. $set evita pisar ediciones
+    // concurrentes del perfil que un .save() del documento completo sí pisaría.
     if (estado === 'autorizada') {
-      usuario.plan = 'premium';
-      usuario.suscripcion_termina = periodoFin;
-      await usuario.save();
+      await Usuario.findByIdAndUpdate(usuario._id, {
+        $set: { plan: 'premium', suscripcion_termina: periodoFin }
+      });
     }
     return res.status(200).json({ recibido: true });
   } catch (error) {
