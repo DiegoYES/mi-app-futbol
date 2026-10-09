@@ -162,9 +162,11 @@ node -e "require('dotenv').config();const m=require('mongoose');m.connect(proces
 tail -30 /tmp/futbol-batch1.log
 ```
 ```bash
-# Auditar ceros sospechosos en estadísticas (solo lectura; informe en artifacts/)
+# Auditar ceros sospechosos: por defecto temporadas API 2025 y 2026.
+# Solo lectura; informe en artifacts/. No incluye temporadas anteriores.
 npm run audit:stats-zeros
 npm run audit:stats-zeros -- --temporada-min=2025 --liga=262
+npm run audit:stats-zeros -- --temporada-min=2026 --temporada-max=2026
 
 # Con --incluir-pendientes suma los finalizados sin estadísticas que el cron ya
 # no revisita (temporada 2025 completa y 2026 con más de 14 días).
@@ -177,5 +179,10 @@ npm run audit:stats-zeros -- --temporada-min=2025 --incluir-pendientes
 # reanudable: los api_id ya revisados quedan en `auditoria_cobertura`.
 node scripts/auditarCerosEstadisticas.js --execute --allow-prod \
   --confirm-production=REPARAR_CEROS_PRODUCCION \
-  --temporada-min=2025 --incluir-pendientes --max-partidos=2000 --max-llamadas=100
+  --temporada-min=2025 --temporada-max=2026 --incluir-pendientes --max-partidos=2000 --max-llamadas=100
 ```
+
+`--temporada-min` y `--temporada-max` permiten ajustar el rango explícitamente;
+sin opciones se limita a 2025-2026. La reparación conserva los ceros confirmados
+por el proveedor y usa `null` únicamente cuando faltan estadísticas; no inventa
+valores ni convierte todos los ceros en ausencias.

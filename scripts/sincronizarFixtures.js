@@ -58,8 +58,7 @@ async function sincronizarLiga(leagueId) {
           eventos_completos: false,
           eventos_no_disponibles: false,
           jugadores_completos: false,
-          detalle_completo: false,
-          fecha_actualizacion: new Date()
+          detalle_completo: false
         }
       },
       upsert: true

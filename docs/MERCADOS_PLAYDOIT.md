@@ -6,6 +6,8 @@ La aplicación conserva su stack actual: Express, MongoDB/Mongoose y frontend HT
 
 Las predicciones originales se generan en `services/pickEngine.js`. El motor usa únicamente partidos anteriores: el equipo local aporta sus partidos previos como local y el visitante sus partidos previos como visitante. Para una línea real que no existe en el catálogo se recalcula una frecuencia empírica con suavizado beta desde esos conteos; nunca se copia el porcentaje de otra línea. Las líneas enteras separan victorias, derrotas y push. No se eligió Poisson porque el proyecto no tiene todavía una validación de dispersión que justifique esa distribución.
 
+Los cálculos de equipos y jugadores excluyen estadísticas ausentes o inválidas de la muestra; un cero real sí cuenta. Si la muestra válida no alcanza `MODEL_MIN_SAMPLE`, se informa `MODEL_PROBABILITY_NOT_AVAILABLE`. Las líneas vacías no se convierten en cero: se busca una alternativa válida en `line`, `handicap`, `total` o el texto de la selección; sin línea se informa `LINE_NOT_AVAILABLE`.
+
 No se realizan apuestas, no se presionan botones de apuesta, no se leen contraseñas y no se intenta eludir captcha, autenticación o protecciones antibot.
 
 ## Instalación

@@ -1,5 +1,6 @@
 const { aplicarAlias, normalizarTexto } = require('./strings');
 const { cuotaDecimal } = require('./odds');
+const { numeroFinitoNullable } = require('../statValue');
 
 function categoriaMercado(mercado, seleccion) {
   const texto = normalizarTexto(`${aplicarAlias('mercados', mercado)} ${seleccion}`);
@@ -25,8 +26,10 @@ function ladoSeleccion(texto) {
 }
 
 function obtenerLinea(raw, texto) {
-  const directa = Number(raw.line ?? raw.handicap ?? raw.total);
-  if (Number.isFinite(directa)) return directa;
+  for (const valor of [raw.line, raw.handicap, raw.total]) {
+    const directa = numeroFinitoNullable(valor);
+    if (directa !== null) return directa;
+  }
   const match = String(texto).match(/(?:más|mas|over|menos|under)\s*(?:de\s*)?([0-9]+(?:[.,][0-9]+)?)/i);
   return match ? Number(match[1].replace(',', '.')) : null;
 }

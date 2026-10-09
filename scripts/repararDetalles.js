@@ -119,19 +119,49 @@ function crearFiltro(args, ahora = new Date()) {
 }
 
 async function actualizarDesdeApi(detalle, partido) {
-  const estado = detalle.fixture?.status?.short;
+  const doc = documentoFixture(detalle);
+  const estado = doc.estado;
   await Partido.updateOne(
     { _id: partido._id },
     {
       $set: {
-        ...documentoFixture(detalle),
+        ...doc,
         estado_consultado_en: new Date()
       }
     }
   );
 
   if (ESTADOS_FINALIZADOS.has(estado)) {
-    await guardarDetalleFixture(detalle, partido);
+    const detalleNormalizado = {
+      ...detalle,
+      fixture: {
+        ...detalle.fixture,
+        status: {
+          ...detalle.fixture?.status,
+          short: estado,
+          long: estado === 'FT' ? 'Match Finished' : (detalle.fixture?.status?.long || estado)
+        }
+      },
+      goals: {
+        home: doc['equipo_local.goles'],
+        away: doc['equipo_visitante.goles']
+      }
+    };
+    const partidoActualizado = {
+      ...partido,
+      ...doc,
+      equipo_local: {
+        ...partido.equipo_local,
+        id: doc['equipo_local.id'] || partido.equipo_local?.id,
+        goles: doc['equipo_local.goles']
+      },
+      equipo_visitante: {
+        ...partido.equipo_visitante,
+        id: doc['equipo_visitante.id'] || partido.equipo_visitante?.id,
+        goles: doc['equipo_visitante.goles']
+      }
+    };
+    await guardarDetalleFixture(detalleNormalizado, partidoActualizado);
   }
   return estado;
 }

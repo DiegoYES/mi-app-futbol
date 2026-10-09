@@ -730,14 +730,24 @@
     if (window.FutbolSocial) return iniciar();
     if (document.querySelector('script[data-social-icons]')) return;
     const script = document.createElement('script');
-    script.src = '/social-icons.js?v=20260824-social';
+    script.src = '/social-icons.js?v=20261009-social';
     script.dataset.socialIcons = 'true';
     script.onload = iniciar;
     document.head.appendChild(script);
   }
 
+  function inyectarEstilosPieLegal() {
+    if (document.getElementById('estilos-pie-legal')) return;
+    const estilos = document.createElement('style');
+    estilos.id = 'estilos-pie-legal';
+    estilos.nonce = document.querySelector('meta[name="csp-nonce"]')?.content || '';
+    estilos.textContent = `.site-legal-footer{width:min(1180px,calc(100% - 32px));margin:34px auto 20px;padding:18px 20px;border-top:1px solid rgba(255,255,255,.11);color:#9db1a8;font-size:.66rem;line-height:1.65;text-align:center}.site-legal-footer p{margin:4px 0}.site-social-links,.landing-social-links{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:0 0 13px}.social-link{display:grid;place-items:center;width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.11);border-radius:9px;color:#eef8f2!important;text-decoration:none}.social-link:hover{border-color:#54e38e;color:#54e38e!important}.social-link svg{width:17px;height:17px;display:block}.site-legal-footer strong{color:#eef8f2}.site-legal-footer a{color:#68d9e7}`;
+    document.head.appendChild(estilos);
+  }
+
   function pintarAvisoLegal() {
     if (document.getElementById('site-legal-footer')) return;
+    inyectarEstilosPieLegal();
     const pie = document.createElement('footer');
     pie.id = 'site-legal-footer';
     pie.className = 'site-legal-footer';
