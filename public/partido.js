@@ -29,6 +29,99 @@ let refrescandoPartido = false;
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
 
+const CLAVE_BOLETA_DRAFT = 'datafut_boleta_draft';
+
+function obtenerBorradorBoleta() {
+  try {
+    const raw = localStorage.getItem(CLAVE_BOLETA_DRAFT);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function guardarBorradorBoleta(items) {
+  try {
+    if (items && items.length) {
+      localStorage.setItem(CLAVE_BOLETA_DRAFT, JSON.stringify(items));
+    } else {
+      localStorage.removeItem(CLAVE_BOLETA_DRAFT);
+    }
+    window.dispatchEvent(new CustomEvent('futbol:boleta-draft-cambio', { detail: items || [] }));
+  } catch {}
+}
+
+function claveBoletaPartido(mercadoId) {
+  if (!datosPicksPartido?.partido) return '';
+  const p = datosPicksPartido.partido;
+  const temp = p.liga?.temporada || temporadaPartido || 2026;
+  const per = filtrosMercado.periodo || 0;
+  const localId = p.local?.id || ID_LOCAL;
+  const visitanteId = p.visitante?.id || ID_VISITANTE;
+  const ligaId = p.liga?.id || ID_LIGA;
+  return `${localId}:${visitanteId}:${ligaId}:${ligaId}:${temp}:${temp}:local:10:${per}:visitante:10:${per}:${mercadoId}`;
+}
+
+function alternarSeleccionBoletaPartido(mercadoId) {
+  if (!datosPicksPartido?.partido) return;
+  const mercado = datosPicksPartido.mercados?.find(m => m.id === mercadoId);
+  if (!mercado) return;
+  const clave = claveBoletaPartido(mercado.id);
+  const items = obtenerBorradorBoleta();
+  const index = items.findIndex(it => it.clave === clave);
+
+  if (index >= 0) {
+    items.splice(index, 1);
+  } else {
+    if (items.length >= 20) {
+      alert('Una boleta admite hasta 20 selecciones.');
+      return;
+    }
+    const p = datosPicksPartido.partido;
+    const temp = p.liga?.temporada || temporadaPartido || 2026;
+    const per = filtrosMercado.periodo || 0;
+    const localId = p.local?.id || ID_LOCAL;
+    const visitanteId = p.visitante?.id || ID_VISITANTE;
+    const ligaId = p.liga?.id || ID_LIGA;
+
+    items.push({
+      clave,
+      partido_api_id: Number(ID_PARTIDO) || p.api_id,
+      partido_liga_id: ligaId,
+      liga_nombre: p.liga?.nombre || 'Liga ' + ligaId,
+      team_local: localId,
+      team_visitante: visitanteId,
+      league_local: ligaId,
+      league_visitante: ligaId,
+      temporada_local: temp,
+      temporada_visitante: temp,
+      condicion_local: 'local',
+      condicion_visitante: 'visitante',
+      limite_local: 10,
+      limite_visitante: 10,
+      periodo_local: per,
+      periodo_visitante: per,
+      mercado_id: mercado.id,
+      mercado_nombre: mercado.mercado,
+      local_nombre: p.local?.nombre || datosLocal?.info?.equipo || 'Local',
+      visitante_nombre: p.visitante?.nombre || datosVisitante?.info?.equipo || 'Visitante',
+      estimacion: mercado.estimacion,
+      muestra: mercado.muestra,
+      categoria: mercado.categoria,
+      tipo: mercado.tipo,
+      alcance: mercado.alcance,
+      linea: mercado.linea,
+      fecha_agregado: new Date().toISOString()
+    });
+  }
+
+  guardarBorradorBoleta(items);
+  pintarPicksPartido();
+  window.FutbolPicks?.actualizar?.();
+}
+
 const NOMBRES_CATEGORIAS = {
   goles: 'Goles', resultado: 'Resultado', corners: 'Córners', tarjetas: 'Tarjetas',
   tiros: 'Tiros', tiros_puerta: 'Tiros a puerta', faltas: 'Faltas', offsides: 'Fueras de juego'
@@ -521,6 +614,8 @@ function pintarPicksPartido() {
   const recomendados = new Set(datos.recomendados || []);
   const opciones = prepararFiltrosMercado(datos);
   const mercados = filtrarMercados(datos);
+  const draftItems = obtenerBorradorBoleta();
+  const clavesEnBoleta = new Set(draftItems.map(it => it.clave));
   cont.innerHTML = `
     ${datos.motivo_no_guardable ? `<div class="warning">${esc(datos.motivo_no_guardable)}</div>` : ''}
     <section class="market-explorer">
@@ -607,11 +702,19 @@ function pintarPicksPartido() {
         } else if (item.requiere_avanzadas) {
           accion = '<span class="pick-result">Sin dato final</span>';
         }
-        return `<article class="pick-card ${recomendados.has(item.id) ? 'recomendado' : ''} ${item.guardado ? 'guardado' : ''}">
+        const clave = claveBoletaPartido(item.id);
+        const enBoleta = clavesEnBoleta.has(clave);
+        const botonBoleta = (datos.guardable || item.resultado_historico == null)
+          ? `<button type="button" class="pick-add" data-slip-market="${esc(item.id)}">${enBoleta ? '✓ En la boleta' : '+ Agregar a boleta'}</button>`
+          : '';
+        return `<article class="pick-card ${recomendados.has(item.id) ? 'recomendado' : ''} ${item.guardado ? 'guardado' : ''} ${enBoleta ? 'seleccionada' : ''}">
           <div class="pick-market">${esc(item.mercado)}</div>
           <div class="pick-estimate">${item.estimacion}%</div>
           <div class="pick-meta"><span class="confidence-${esc(item.confianza)}">${esc(item.confianza)}</span><span>muestra ${item.muestra} · ${item.fuentes}/2 fuentes</span></div>
-          <button type="button" class="pick-why" data-explicar-pick="${esc(item.id)}" aria-haspopup="dialog">¿Por qué ${item.estimacion}%?</button>
+          <div class="pick-buttons">
+            <button type="button" class="pick-why" data-explicar-pick="${esc(item.id)}" aria-haspopup="dialog">¿Por qué ${item.estimacion}%?</button>
+            ${botonBoleta}
+          </div>
           <div class="pick-reason" data-razon-pick="${esc(item.id)}" hidden>
             <strong>De dónde sale</strong>
             <ul>${notaParcial}${detalle}</ul>
@@ -782,6 +885,11 @@ document.addEventListener('DOMContentLoaded', () => {
       consultarLineaPersonalizada();
       return;
     }
+    const botonSlip = event.target.closest('[data-slip-market]');
+    if (botonSlip) {
+      alternarSeleccionBoletaPartido(botonSlip.dataset.slipMarket);
+      return;
+    }
     const boton = event.target.closest('[data-guardar-pick]');
     if (boton) guardarPick(boton.dataset.guardarPick);
   });
@@ -823,6 +931,16 @@ document.addEventListener('DOMContentLoaded', () => {
   const dialogoExplicacion = document.getElementById('match-explanation-dialog');
   document.getElementById('match-explanation-close').addEventListener('click', () => dialogoExplicacion.close());
   dialogoExplicacion.addEventListener('click', event => { if (event.target === dialogoExplicacion) dialogoExplicacion.close(); });
+  window.addEventListener('storage', event => {
+    if (event.key === CLAVE_BOLETA_DRAFT && datosPicksPartido) {
+      pintarPicksPartido();
+    }
+  });
+  window.addEventListener('futbol:boleta-draft-cambio', () => {
+    if (datosPicksPartido) {
+      pintarPicksPartido();
+    }
+  });
   cargarTodo();
   cargarPicks();
   const refrescarPartido = async () => {
