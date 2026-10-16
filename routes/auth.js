@@ -1,7 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const Usuario = require('../models/Usuario');
-const { firmarToken, requireAuth, usuarioDeSesion } = require('../middleware/auth');
+const { firmarToken, duracionSesionMs, requireAuth, usuarioDeSesion } = require('../middleware/auth');
 const { crearLimitador } = require('../middleware/rateLimit');
 const { errorServidor } = require('../middleware/security');
 const { registrarEventoProducto } = require('../services/productEvents');
@@ -53,7 +53,7 @@ const OPCIONES_COOKIE = {
   httpOnly: true,
   sameSite: 'lax',
   secure: process.env.NODE_ENV === 'production',
-  maxAge: 30 * 24 * 60 * 60 * 1000
+  maxAge: duracionSesionMs()
 };
 
 function validarEmail(email) {

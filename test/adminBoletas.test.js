@@ -229,9 +229,15 @@ test('POST /api/admin/recomendaciones/desde-boleta/:id permite a marketing y adm
   const origRecCreate = Recomendacion.create;
   const Partido = require('../models/partido');
   const origPartidoFindOne = Partido.findOne;
+  const origPartidoFind = Partido.find;
   Partido.findOne = () => ({
     lean: async () => null,
-    sort: () => ({ lean: async () => null })
+    sort: () => ({ lean: async () => null }),
+    select: () => ({ sort: () => ({ lean: async () => null }) })
+  });
+  // desde-boleta resuelve por api_id en batch: sin partidos en DB usa el fallback.
+  Partido.find = () => ({
+    select: () => ({ lean: async () => [] })
   });
 
   Usuario.findById = async (id) => ({
@@ -278,6 +284,7 @@ test('POST /api/admin/recomendaciones/desde-boleta/:id permite a marketing y adm
     Boleta.findById = origBoletaFindById;
     Recomendacion.create = origRecCreate;
     Partido.findOne = origPartidoFindOne;
+    Partido.find = origPartidoFind;
   });
 
   const app = express();

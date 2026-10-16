@@ -22,11 +22,41 @@ async function revalidarPartidoPorId(apiId) {
   const cambios = { ...documentoFixture(fixture), estado_consultado_en: new Date() };
   await Partido.updateOne({ api_id: apiId }, { $set: cambios });
   let cobertura = null;
-  if (ESTADOS_FINALIZADOS.has(fixture.fixture.status.short)) {
-    cobertura = await guardarDetalleFixture(fixture, partido);
+  const estado = cambios.estado;
+  if (ESTADOS_FINALIZADOS.has(estado)) {
+    const fixtureNormalizado = {
+      ...fixture,
+      fixture: {
+        ...fixture.fixture,
+        status: {
+          ...fixture.fixture?.status,
+          short: estado,
+          long: estado === 'FT' ? 'Match Finished' : (fixture.fixture?.status?.long || estado)
+        }
+      },
+      goals: {
+        home: cambios['equipo_local.goles'],
+        away: cambios['equipo_visitante.goles']
+      }
+    };
+    const partidoActualizado = {
+      ...partido,
+      ...cambios,
+      equipo_local: {
+        ...partido.equipo_local,
+        id: cambios['equipo_local.id'] || partido.equipo_local?.id,
+        goles: cambios['equipo_local.goles']
+      },
+      equipo_visitante: {
+        ...partido.equipo_visitante,
+        id: cambios['equipo_visitante.id'] || partido.equipo_visitante?.id,
+        goles: cambios['equipo_visitante.goles']
+      }
+    };
+    cobertura = await guardarDetalleFixture(fixtureNormalizado, partidoActualizado);
   }
   await invalidarCacheDatosPartidos();
-  return { encontrado: true, recibido: true, estado_anterior: partido.estado, estado: fixture.fixture.status.short, cobertura };
+  return { encontrado: true, recibido: true, estado_anterior: partido.estado, estado, cobertura };
 }
 
 async function revalidarLote(filtro, { limite = 10, modelo = Partido, revalidar = revalidarPartidoPorId } = {}) {

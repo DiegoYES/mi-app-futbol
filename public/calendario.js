@@ -254,7 +254,7 @@ function pintarCompeticiones(competiciones, fechaRef) {
         const ligaLocal = p.local.liga_id || c.liga_id;
         const ligaVisitante = p.visitante.liga_id || c.liga_id;
         const url=`/partido.html?local=${p.local.id}&visitante=${p.visitante.id}&liga=${c.liga_id}&partido=${p.api_id}&fecha=${fechaRef}`;
-        const urlComparador=`/comparador.html?local=${p.local.id}&leagueLocal=${ligaLocal}&visitante=${p.visitante.id}&leagueVisitante=${ligaVisitante}`;
+        const urlComparador=`/comparador.html?local=${p.local.id}&leagueLocal=${ligaLocal}&visitante=${p.visitante.id}&leagueVisitante=${ligaVisitante}&partido=${p.api_id}&liga=${c.liga_id}`;
         const favorito = FutbolLibrary.esPartidoFavorito(p.api_id);
         return `<div class="match-shell"><div class="match" role="link" tabindex="0" data-match-open="${esc(url)}">
           <div class="hora ${enJuego ? 'live-badge' : ''}">${enJuego ? '<span class="live-dot"></span>' : ''}${esc(estadoVisible)}</div>
@@ -375,7 +375,7 @@ document.addEventListener('keydown', event => {
   window.location.href = tarjeta.dataset.matchOpen;
 });
 
-document.addEventListener('click',async event=>{const boton=event.target.closest('[data-save-pick]');if(!boton)return;event.preventDefault();event.stopPropagation();boton.disabled=true;try{const r=await fetch('/api/picks/seguimiento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({partido_id:Number(boton.dataset.savePick),mercado_id:boton.dataset.market})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'No se pudo guardar');boton.textContent='✓ Guardado';boton.classList.add('saved')}catch(error){boton.textContent=error.message;setTimeout(()=>{boton.textContent='Guardar';boton.disabled=false},2200)}});
+document.addEventListener('click',async event=>{const boton=event.target.closest('[data-save-pick]');if(!boton)return;event.preventDefault();event.stopPropagation();boton.disabled=true;try{const r=await fetch('/api/picks/seguimiento',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({partido_id:Number(boton.dataset.savePick),mercado_id:boton.dataset.market})});const d=await r.json().catch(()=>({}));if(!r.ok)throw new Error(d.error||'No se pudo guardar');boton.textContent='✓ Guardado';boton.classList.add('saved');window.FutbolPicks?.notificarCambio?.();}catch(error){boton.textContent=error.message;setTimeout(()=>{boton.textContent='Guardar';boton.disabled=false},2200)}});
 
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);

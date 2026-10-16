@@ -1,3 +1,10 @@
+function numeroFinitoNullable(valor) {
+  if (typeof valor !== 'number' && typeof valor !== 'string') return null;
+  if (typeof valor === 'string' && !valor.trim()) return null;
+  const numero = Number(valor);
+  return Number.isFinite(numero) ? numero : null;
+}
+
 function valorEstadistica(estadisticas, tipo) {
   const item = Array.isArray(estadisticas) ? estadisticas.find(stat => stat.type === tipo) : null;
   if (!item) return null;
@@ -28,4 +35,4 @@ function tieneMetricasBasicas(bloque, { goles = null, tarjetasEventos = null } =
   return true;
 }
 
-module.exports = { valorEstadistica, tieneMetricasBasicas };
+module.exports = { numeroFinitoNullable, valorEstadistica, tieneMetricasBasicas };

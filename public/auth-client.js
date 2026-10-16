@@ -445,7 +445,9 @@
         lista.innerHTML = '<div class="global-picks-empty"><span style="display:block;font-size:1.3rem;margin-bottom:6px;">📋</span>No tienes selecciones por armar.<br><small style="display:block;margin-top:5px;color:#9db1a8;">Guarda pronósticos desde cualquier partido para armar tu boleta.</small></div>';
       } else {
         lista.innerHTML = pendientes.map(pick => {
-          const url = `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`;
+          const url = pick.partido_api_id
+            ? `/partido.html?local=${pick.local.id}&visitante=${pick.visitante.id}&liga=${pick.liga.id}&partido=${pick.partido_api_id}#picks`
+            : `/comparador.html?local=${pick.local.id}&leagueLocal=${pick.rawDraft?.league_local || pick.liga.id}&visitante=${pick.visitante.id}&leagueVisitante=${pick.rawDraft?.league_visitante || pick.liga.id}`;
           return `<article class="global-pick-item">
             <div class="global-pick-top">
               <img class="global-pick-logo" src="${esc(pick.local.logo || '/brand-mark.svg')}" alt="${esc(pick.local.nombre)}" loading="lazy">
@@ -514,8 +516,56 @@
     }
   }
 
+  const CLAVE_BOLETA_DRAFT = 'datafut_boleta_draft';
+
+  function obtenerBorradorBoletaStorage() {
+    try {
+      const guardado = localStorage.getItem(CLAVE_BOLETA_DRAFT);
+      if (!guardado) return [];
+      const parsed = JSON.parse(guardado);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+
+  function convertirDraftAPick(draft) {
+    return {
+      _id: 'draft_' + draft.clave,
+      es_borrador: true,
+      draft_clave: draft.clave,
+      estado: 'pendiente',
+      partido_api_id: draft.partido_api_id || null,
+      local: {
+        id: draft.team_local,
+        nombre: draft.local_nombre,
+        logo: `/api/equipos/${draft.team_local}/escudo`
+      },
+      visitante: {
+        id: draft.team_visitante,
+        nombre: draft.visitante_nombre,
+        logo: `/api/equipos/${draft.team_visitante}/escudo`
+      },
+      liga: {
+        id: draft.partido_liga_id || draft.league_local,
+        nombre: draft.liga_nombre || 'Comparador',
+        temporada: draft.temporada_local || 2026
+      },
+      mercado: {
+        id: draft.mercado_id,
+        base_id: draft.mercado_id,
+        nombre: draft.mercado_nombre,
+        periodo: draft.periodo_local || 0
+      },
+      estimacion: draft.estimacion,
+      fecha_partido: draft.fecha_agregado ? new Date(draft.fecha_agregado) : new Date(),
+      rawDraft: draft
+    };
+  }
+
   async function actualizarPicksFlotantes() {
     try {
+      const draftItems = obtenerBorradorBoletaStorage().map(convertirDraftAPick);
       const [respPicks, respBoletas] = await Promise.all([
         fetchOriginal('/api/picks/seguimiento', { cache: 'no-store' }),
         fetchOriginal('/api/boletas', { cache: 'no-store' })
@@ -523,7 +573,10 @@
 
       if (respPicks.ok) {
         const datos = await respPicks.json();
-        ultimosPicksCargados = datos.picks || [];
+        const serverPicks = datos.picks || [];
+        ultimosPicksCargados = [...draftItems, ...serverPicks];
+      } else {
+        ultimosPicksCargados = draftItems;
       }
 
       if (respBoletas.ok) {
@@ -654,22 +707,42 @@
       try {
         const payload = {
           nombre,
-          selecciones: pendientes.map(pick => ({
-            partido_api_id: pick.partido_api_id,
-            team_local: pick.local.id,
-            team_visitante: pick.visitante.id,
-            league_local: pick.liga.id,
-            league_visitante: pick.liga.id,
-            temporada_local: pick.liga.temporada,
-            temporada_visitante: pick.liga.temporada,
-            condicion_local: 'local',
-            condicion_visitante: 'visitante',
-            limite_local: 10,
-            limite_visitante: 10,
-            periodo_local: pick.mercado?.periodo || 0,
-            periodo_visitante: pick.mercado?.periodo || 0,
-            mercado_id: pick.mercado?.base_id || pick.mercado?.id
-          }))
+          selecciones: pendientes.map(pick => {
+            if (pick.es_borrador && pick.rawDraft) {
+              return {
+                partido_api_id: pick.rawDraft.partido_api_id || undefined,
+                team_local: pick.rawDraft.team_local,
+                team_visitante: pick.rawDraft.team_visitante,
+                league_local: pick.rawDraft.league_local,
+                league_visitante: pick.rawDraft.league_visitante,
+                temporada_local: pick.rawDraft.temporada_local,
+                temporada_visitante: pick.rawDraft.temporada_visitante,
+                condicion_local: pick.rawDraft.condicion_local || 'local',
+                condicion_visitante: pick.rawDraft.condicion_visitante || 'visitante',
+                limite_local: pick.rawDraft.limite_local ?? 10,
+                limite_visitante: pick.rawDraft.limite_visitante ?? 10,
+                periodo_local: pick.rawDraft.periodo_local || 0,
+                periodo_visitante: pick.rawDraft.periodo_visitante || 0,
+                mercado_id: pick.rawDraft.mercado_id
+              };
+            }
+            return {
+              partido_api_id: pick.partido_api_id,
+              team_local: pick.local.id,
+              team_visitante: pick.visitante.id,
+              league_local: pick.liga.id,
+              league_visitante: pick.liga.id,
+              temporada_local: pick.liga.temporada,
+              temporada_visitante: pick.liga.temporada,
+              condicion_local: 'local',
+              condicion_visitante: 'visitante',
+              limite_local: 10,
+              limite_visitante: 10,
+              periodo_local: pick.mercado?.periodo || 0,
+              periodo_visitante: pick.mercado?.periodo || 0,
+              mercado_id: pick.mercado?.base_id || pick.mercado?.id
+            };
+          })
         };
         const resp = await fetch('/api/boletas', {
           method: 'POST',
@@ -679,7 +752,12 @@
         const resData = await resp.json().catch(() => ({}));
         if (!resp.ok) throw new Error(resData.error || 'No se pudo crear la boleta');
         
-        await Promise.all(pendientes.map(pick => fetch(`/api/picks/seguimiento/${pick._id}`, { method: 'DELETE', cache: 'no-store' }).catch(() => {})));
+        const serverPendientes = pendientes.filter(p => !p.es_borrador);
+        if (serverPendientes.length) {
+          await Promise.all(serverPendientes.map(pick => fetch(`/api/picks/seguimiento/${pick._id}`, { method: 'DELETE', cache: 'no-store' }).catch(() => {})));
+        }
+        localStorage.removeItem(CLAVE_BOLETA_DRAFT);
+        window.dispatchEvent(new CustomEvent('futbol:boleta-draft-cambio', { detail: [] }));
         notificarCambioPicks();
 
         window.location.href = '/boletas.html';
@@ -717,10 +795,33 @@
       const boton = event.target.closest('[data-global-pick-delete]');
       if (!boton || boton.disabled) return;
       boton.disabled = true;
+      const pickId = boton.dataset.globalPickDelete;
+      if (pickId && pickId.startsWith('draft_')) {
+        const clave = pickId.slice(6);
+        const drafts = obtenerBorradorBoletaStorage().filter(d => d.clave !== clave);
+        if (drafts.length) {
+          localStorage.setItem(CLAVE_BOLETA_DRAFT, JSON.stringify(drafts));
+        } else {
+          localStorage.removeItem(CLAVE_BOLETA_DRAFT);
+        }
+        window.dispatchEvent(new CustomEvent('futbol:boleta-draft-cambio', { detail: drafts }));
+        actualizarPicksFlotantes();
+        return;
+      }
       const respuesta = await fetch(`/api/picks/seguimiento/${boton.dataset.globalPickDelete}`, { method: 'DELETE', cache: 'no-store' });
       if (respuesta.ok) notificarCambioPicks();
       else boton.disabled = false;
     });
+
+    window.addEventListener('storage', (e) => {
+      if (e.key === CLAVE_BOLETA_DRAFT) {
+        actualizarPicksFlotantes();
+      }
+    });
+    window.addEventListener('futbol:boleta-draft-cambio', () => {
+      actualizarPicksFlotantes();
+    });
+
     actualizarPicksFlotantes();
   }
 
@@ -730,14 +831,24 @@
     if (window.FutbolSocial) return iniciar();
     if (document.querySelector('script[data-social-icons]')) return;
     const script = document.createElement('script');
-    script.src = '/social-icons.js?v=20260824-social';
+    script.src = '/social-icons.js?v=20261009-social';
     script.dataset.socialIcons = 'true';
     script.onload = iniciar;
     document.head.appendChild(script);
   }
 
+  function inyectarEstilosPieLegal() {
+    if (document.getElementById('estilos-pie-legal')) return;
+    const estilos = document.createElement('style');
+    estilos.id = 'estilos-pie-legal';
+    estilos.nonce = document.querySelector('meta[name="csp-nonce"]')?.content || '';
+    estilos.textContent = `.site-legal-footer{width:min(1180px,calc(100% - 32px));margin:34px auto 20px;padding:18px 20px;border-top:1px solid rgba(255,255,255,.11);color:#9db1a8;font-size:.66rem;line-height:1.65;text-align:center}.site-legal-footer p{margin:4px 0}.site-social-links,.landing-social-links{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin:0 0 13px}.social-link{display:grid;place-items:center;width:38px;height:38px;padding:0;border:1px solid rgba(255,255,255,.11);border-radius:9px;color:#eef8f2!important;text-decoration:none}.social-link:hover{border-color:#54e38e;color:#54e38e!important}.social-link svg{width:17px;height:17px;display:block}.site-legal-footer strong{color:#eef8f2}.site-legal-footer a{color:#68d9e7}`;
+    document.head.appendChild(estilos);
+  }
+
   function pintarAvisoLegal() {
     if (document.getElementById('site-legal-footer')) return;
+    inyectarEstilosPieLegal();
     const pie = document.createElement('footer');
     pie.id = 'site-legal-footer';
     pie.className = 'site-legal-footer';

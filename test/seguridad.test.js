@@ -17,6 +17,7 @@ const {
   revisarConfiguracionSegura,
   textoDeConsulta
 } = require('../middleware/security');
+const { duracionSesionMs } = require('../middleware/auth');
 const { normalizarRuta } = require('../middleware/paginasPrivadas');
 
 async function servidorTemporal(t) {
@@ -276,4 +277,54 @@ test('el buscador spotlight descarta items con href/src fuera de la allowlist de
   for (const bloqueada of ['javascript:alert(1)', 'JavaScript:alert(1)', ' javascript:alert(1)', 'data:text/html,<script>', 'vbscript:x', '//evil.com/x', 'ftp://x', 'competicion.html', '', null, undefined]) {
     assert.equal(urlSegura(bloqueada), false, `${String(bloqueada)} debería rechazarse`);
   }
+});
+
+test('los modelos declaran los índices de sync, boleta e IP sin tocar documentos', () => {
+  const partido = fs.readFileSync(path.join(__dirname, '../models/partido.js'), 'utf8');
+  const usuario = fs.readFileSync(path.join(__dirname, '../models/Usuario.js'), 'utf8');
+  assert.match(partido, /name: 'sync_estadisticas_pendientes'/, 'falta el índice de estadísticas pendientes');
+  assert.match(partido, /name: 'sync_detalle_pendiente'/, 'falta el índice de detalle pendiente');
+  assert.match(partido, /name: 'boleta_equipos_fecha'/, 'falta el índice del fallback por equipos');
+  assert.match(usuario, /name: 'usuario_ip_registro'/, 'falta el índice de IP de registro');
+});
+
+test('desde-boleta resuelve partidos en batch en vez de un findOne por selección', () => {
+  const codigo = fs.readFileSync(path.join(__dirname, '../routes/admin.js'), 'utf8');
+  const inicio = codigo.indexOf('/recomendaciones/desde-boleta/');
+  const bloque = codigo.slice(inicio, codigo.indexOf('Recomendacion.create', inicio));
+  assert.ok(inicio > -1, 'no existe la ruta desde-boleta');
+  assert.match(bloque, /api_id: \{ \$in: ids/, 'falta la consulta batch por api_id');
+  assert.match(bloque, /partidosPorApiId\.get\(sel\.partido_api_id\)/, 'falta el mapa por api_id');
+  assert.doesNotMatch(bloque, /await Partido\.findOne\(\{ api_id: sel\.partido_api_id \}\)/, 'no debe quedar findOne por selección');
+});
+
+test('el otorgamiento premium usa $set atómico y nunca save() del documento', () => {
+  const webhook = fs.readFileSync(path.join(__dirname, '../routes/mercadoPagoWebhook.js'), 'utf8');
+  const billing = fs.readFileSync(path.join(__dirname, '../routes/billing.js'), 'utf8');
+  assert.match(webhook, /Usuario\.findByIdAndUpdate\(usuario\._id, \{\s*\$set: \{ plan: 'premium'/, 'el webhook debe otorgar premium con $set atómico');
+  assert.doesNotMatch(webhook, /usuario\.save\(\)/, 'el webhook no debe guardar el documento completo');
+  assert.match(billing, /Usuario\.findByIdAndUpdate\(req\.usuario\._id, \{\s*\$set: \{ plan: 'premium'/, 'la reconciliación debe otorgar premium con $set atómico');
+  assert.doesNotMatch(billing, /req\.usuario\.save\(\)/, 'la reconciliación no debe guardar el documento completo');
+});
+
+test('la cookie de sesión vive lo mismo que el token (7d por defecto)', () => {
+  assert.equal(duracionSesionMs('7d'), 7 * 24 * 60 * 60 * 1000, '7d debe dar 7 días en ms');
+  assert.equal(duracionSesionMs('30d'), 30 * 24 * 60 * 60 * 1000, 'respeta JWT_EXPIRA cuando se configura');
+  assert.equal(duracionSesionMs('basura'), 7 * 24 * 60 * 60 * 1000, 'un valor inválido cae a 7d');
+  const auth = fs.readFileSync(path.join(__dirname, '../middleware/auth.js'), 'utf8');
+  assert.match(auth, /JWT_EXPIRA = process\.env\.JWT_EXPIRA \|\| '7d'/, 'el default debe ser 7d como en .env.example');
+  const rutas = fs.readFileSync(path.join(__dirname, '../routes/auth.js'), 'utf8');
+  assert.match(rutas, /maxAge: duracionSesionMs\(\)/, 'la cookie debe derivar su maxAge del token');
+  assert.doesNotMatch(rutas, /maxAge: 30 \* 24 \* 60 \* 60 \* 1000/, 'no debe quedar maxAge fijo de 30d');
+});
+
+test('el sync nunca convierte dato ausente en cero ni pisa detalle existente', () => {
+  const syncDb = fs.readFileSync(path.join(__dirname, '../scripts/syncDatabase.js'), 'utf8');
+  assert.doesNotMatch(syncDb, /parseInt\(s\.find\(x => x\.type/, 'extraerStats no debe usar parseInt con || 0');
+  assert.match(syncDb, /valorEstadistica\(s, 'Total Shots'\)/, 'usa el helper nulable como completarEstadisticas.js');
+  const calendario = fs.readFileSync(path.join(__dirname, '../scripts/syncCalendario.js'), 'utf8');
+  assert.match(calendario, /\$setOnInsert/, 'el upsert de calendario debe llevar defaults sólo para inserts');
+  const eventos = fs.readFileSync(path.join(__dirname, '../scripts/guardarEventos.js'), 'utf8');
+  assert.match(eventos, /jugador_id \|\| e\?\.jugador/, 'debe detectar eventos ricos antes de escribir');
+  assert.match(eventos, /eventos_no_disponibles: \{ \$ne: true \}/, 'no debe reintentar huecos vacíos sin SYNC_RETRY_GAPS');
 });

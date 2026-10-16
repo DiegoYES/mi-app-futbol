@@ -58,8 +58,15 @@ function alternarSeleccionBoleta(mercadoId) {
             alert('Una boleta admite hasta 20 selecciones.');
             return;
         }
+        const partidoIdUrl = Number(parametrosEstadoInicial.get('partido')) || undefined;
+        const ligaIdUrl = Number(parametrosEstadoInicial.get('liga')) || picksActuales.liga_ids?.local;
+        const ligaNombreUrl = picksActuales.liga || picksActuales.ligas?.local?.nombre || 'Comparador';
+
         seleccionesBoleta.set(clave, {
             clave,
+            partido_api_id: partidoIdUrl,
+            partido_liga_id: ligaIdUrl,
+            liga_nombre: ligaNombreUrl,
             team_local: picksActuales.local.id,
             team_visitante: picksActuales.visitante.id,
             league_local: picksActuales.liga_ids.local,
@@ -81,11 +88,14 @@ function alternarSeleccionBoleta(mercadoId) {
             categoria: mercado.categoria,
             tipo: mercado.tipo,
             alcance: mercado.alcance,
-            linea: mercado.linea
+            linea: mercado.linea,
+            fecha_agregado: new Date().toISOString()
         });
     }
+    if (typeof guardarBorradorBoletaStorage === 'function') guardarBorradorBoletaStorage();
     pintarPicks();
     pintarBoleta();
+    window.FutbolPicks?.actualizar?.();
 }
 
 async function guardarBoleta() {
@@ -101,18 +111,21 @@ async function guardarBoleta() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 nombre: document.getElementById('bet-slip-name').value,
-                selecciones: items.map(({ team_local, team_visitante, league_local, league_visitante, temporada_local, temporada_visitante, condicion_local, condicion_visitante, limite_local, limite_visitante, periodo_local, periodo_visitante, mercado_id }) => ({
+                selecciones: items.map(({ team_local, team_visitante, league_local, league_visitante, temporada_local, temporada_visitante, condicion_local, condicion_visitante, limite_local, limite_visitante, periodo_local, periodo_visitante, mercado_id, partido_api_id }) => ({
                     team_local, team_visitante, league_local, league_visitante,
                     temporada_local, temporada_visitante, condicion_local, condicion_visitante,
-                    limite_local, limite_visitante, periodo_local, periodo_visitante, mercado_id
+                    limite_local, limite_visitante, periodo_local, periodo_visitante, mercado_id,
+                    partido_api_id
                 }))
             })
         });
         const data = await respuesta.json().catch(() => ({}));
         if (!respuesta.ok) throw new Error(data.error || 'No se pudo guardar la boleta.');
         seleccionesBoleta.clear();
+        if (typeof guardarBorradorBoletaStorage === 'function') guardarBorradorBoletaStorage();
         pintarPicks();
         pintarBoleta();
+        window.FutbolPicks?.actualizar?.();
         alert('Boleta guardada. Puedes verla en “Mis boletas”.');
     } catch (error) {
         estado.textContent = error.message;

@@ -3,7 +3,37 @@ let picksActuales = null;
 let soloRecomendadosPicks = false;
 let restaurandoEstadoUrl = true;
 const parametrosEstadoInicial = new URLSearchParams(window.location.search);
+const CLAVE_BOLETA_DRAFT = 'datafut_boleta_draft';
 const seleccionesBoleta = new Map();
+
+function cargarBorradorBoletaStorage() {
+    try {
+        const guardado = localStorage.getItem(CLAVE_BOLETA_DRAFT);
+        if (guardado) {
+            const items = JSON.parse(guardado);
+            if (Array.isArray(items)) {
+                seleccionesBoleta.clear();
+                items.forEach(it => {
+                    if (it && it.clave) seleccionesBoleta.set(it.clave, it);
+                });
+            }
+        }
+    } catch {}
+}
+
+function guardarBorradorBoletaStorage() {
+    try {
+        const items = [...seleccionesBoleta.values()];
+        if (items.length) {
+            localStorage.setItem(CLAVE_BOLETA_DRAFT, JSON.stringify(items));
+        } else {
+            localStorage.removeItem(CLAVE_BOLETA_DRAFT);
+        }
+        window.dispatchEvent(new CustomEvent('futbol:boleta-draft-cambio', { detail: items }));
+    } catch {}
+}
+
+cargarBorradorBoletaStorage();
 const CLAVE_FORMATO_FRECUENCIA = 'football-stats-display-mode';
 let formatoFrecuencia = localStorage.getItem(CLAVE_FORMATO_FRECUENCIA) === 'count' ? 'count' : 'percent';
 const datosComparacion = { a: null, b: null };
@@ -1071,11 +1101,27 @@ function configurarEventos() {
         const boton = event.target.closest('[data-remove-slip]');
         if (!boton) return;
         seleccionesBoleta.delete(boton.dataset.removeSlip);
+        guardarBorradorBoletaStorage();
         pintarPicks();
         pintarBoleta();
+        window.FutbolPicks?.actualizar?.();
     });
     document.getElementById('bet-slip-clear').addEventListener('click', () => {
         seleccionesBoleta.clear();
+        guardarBorradorBoletaStorage();
+        pintarPicks();
+        pintarBoleta();
+        window.FutbolPicks?.actualizar?.();
+    });
+    window.addEventListener('storage', event => {
+        if (event.key === CLAVE_BOLETA_DRAFT) {
+            cargarBorradorBoletaStorage();
+            pintarPicks();
+            pintarBoleta();
+        }
+    });
+    window.addEventListener('futbol:boleta-draft-cambio', () => {
+        cargarBorradorBoletaStorage();
         pintarPicks();
         pintarBoleta();
     });
@@ -1142,6 +1188,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     ['league-a', 'league-b'].forEach(id => prepararSelectorLiga(document.getElementById(id)));
     ['team-a', 'team-b'].forEach(id => prepararSelectorEquipo(document.getElementById(id)));
     configurarEventos();
+    pintarBoleta();
     await cargarLigas();
     try {
         await preseleccionarDesdeUrl();

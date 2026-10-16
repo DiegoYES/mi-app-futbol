@@ -175,7 +175,23 @@ router.get('/competiciones/:id', cacheMiddleware, async (req, res) => {
     temporadas.sort((a, b) => b - a);
     const solicitada = req.query.season === undefined ? temporadas[0] : Number.parseInt(req.query.season, 10);
     if (!Number.isInteger(solicitada) || !temporadas.includes(solicitada)) return res.status(404).json({ error: 'La temporada no está guardada.' });
-    const partidos = await Partido.find({ 'liga.id': id, 'liga.temporada': solicitada }).sort({ fecha: -1 }).lean();
+    // Proyección explícita: excluye eventos, estadísticas por rango y
+    // alineaciones pesadas. La respuesta usa sólo estos campos.
+    const partidos = await Partido.find({ 'liga.id': id, 'liga.temporada': solicitada })
+      .select([
+        'api_id', 'fecha', 'estado',
+        'liga.id', 'liga.nombre', 'liga.jornada', 'liga.temporada',
+        'equipo_local.id', 'equipo_local.nombre', 'equipo_local.goles',
+        'equipo_local.goles_primer_tiempo', 'equipo_local.corners',
+        'equipo_local.tarjetas_amarillas', 'equipo_local.tarjetas_rojas',
+        'equipo_local.tiros_total', 'equipo_local.tiros_puerta', 'equipo_local.faltas',
+        'equipo_visitante.id', 'equipo_visitante.nombre', 'equipo_visitante.goles',
+        'equipo_visitante.goles_primer_tiempo', 'equipo_visitante.corners',
+        'equipo_visitante.tarjetas_amarillas', 'equipo_visitante.tarjetas_rojas',
+        'equipo_visitante.tiros_total', 'equipo_visitante.tiros_puerta', 'equipo_visitante.faltas',
+        'estadisticas_completas', 'jugadores_completos'
+      ].join(' '))
+      .sort({ fecha: -1 }).lean();
     const finalizados = partidos.filter(partido => ['FT', 'AET', 'PEN'].includes(partido.estado));
     const finalizado = partido => ['FT', 'AET', 'PEN'].includes(partido.estado);
     const porJornada = new Map();

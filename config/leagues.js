@@ -132,7 +132,9 @@ module.exports = {
     // ----- Torneos internacionales -----
     1:   { nombre: 'FIFA World Cup', pais: 'Mundo', codigo: 'WW', liga_principal: false },
     4:   { nombre: 'UEFA Euro', pais: 'Europa', codigo: 'EU', liga_principal: false },
+    5:   { nombre: 'UEFA Nations League', pais: 'Europa', codigo: 'EU', liga_principal: false },
     9:   { nombre: 'Copa América', pais: 'Sudamérica', codigo: 'SA', liga_principal: false },
+    10:  { nombre: 'Amistosos Internacionales', pais: 'Mundo', codigo: 'WW', liga_principal: false },
     536: { nombre: 'CONCACAF Nations League', pais: 'CONCACAF', codigo: 'MX', liga_principal: false },
 
     // ----- Ecosistema Norteamérica -----

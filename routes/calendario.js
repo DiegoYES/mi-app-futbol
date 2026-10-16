@@ -40,7 +40,10 @@ const PRIORIDAD_LIGAS = {
   281: 16,// Perú Primera División
   13: 17, // CONMEBOL Libertadores
   11: 18, // CONMEBOL Sudamericana
-  88: 19, // Eredivisie
+  5: 19,  // UEFA Nations League
+  10: 20, // Amistosos Internacionales
+  536: 21,// CONCACAF Nations League
+  88: 22, // Eredivisie
   94: 20, // Primeira Liga
   144: 21,// Jupiler Pro League
   203: 22,// Süper Lig

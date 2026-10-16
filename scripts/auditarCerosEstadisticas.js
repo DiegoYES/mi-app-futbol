@@ -9,8 +9,8 @@
 // Por defecto es solo lectura (dry-run): no llama a la API ni modifica Mongo.
 //
 // Uso:
-//   node scripts/auditarCerosEstadisticas.js                       # informe
-//   node scripts/auditarCerosEstadisticas.js --temporada-min=2025  # acotar
+//   node scripts/auditarCerosEstadisticas.js                       # informe 2025-2026
+//   node scripts/auditarCerosEstadisticas.js --temporada-min=2026  # acotar
 //   node scripts/auditarCerosEstadisticas.js --temporada-min=2025 --incluir-pendientes
 //     # suma los finalizados sin estadísticas que el cron ya no revisita
 //   node scripts/auditarCerosEstadisticas.js --execute --allow-prod \
@@ -86,7 +86,11 @@ function parseArgs(argv = process.argv.slice(2)) {
     return resultado;
   }, {});
 
-  args.temporadaMin = enteroNoNegativo(args.temporadaMin, 0, '--temporada-min');
+  args.temporadaMin = enteroNoNegativo(args.temporadaMin, 2025, '--temporada-min');
+  args.temporadaMax = enteroNoNegativo(args.temporadaMax, 2026, '--temporada-max');
+  if (args.temporadaMin > args.temporadaMax) {
+    throw new Error('--temporada-min no puede ser mayor que --temporada-max.');
+  }
   args.liga = args.liga === undefined ? null : enteroPositivo(args.liga, null, '--liga');
   args.maxPartidos = enteroPositivo(args.maxPartidos, 500, '--max-partidos');
   args.maxLlamadas = enteroPositivo(args.maxLlamadas, 25, '--max-llamadas');
@@ -136,7 +140,7 @@ function filtroBase(args) {
   } else {
     filtro.estadisticas_completas = true;
   }
-  if (args.temporadaMin) filtro['liga.temporada'] = { $gte: args.temporadaMin };
+  filtro['liga.temporada'] = { $gte: args.temporadaMin, $lte: args.temporadaMax };
   if (args.liga) filtro['liga.id'] = args.liga;
   return filtro;
 }
@@ -456,7 +460,7 @@ async function main() {
     const auditoria = mongoose.connection.db.collection(COLECCION_AUDITORIA);
 
     console.log('\n📊 Auditoría de ceros sospechosos en estadísticas');
-    console.log(`   Filtro: finalizados con estadisticas_completas=true${args.incluirPendientes ? ' o pendientes de cobertura' : ''}${args.temporadaMin ? `, temporada ≥ ${args.temporadaMin}` : ''}${args.liga ? `, liga ${args.liga}` : ''}`);
+    console.log(`   Filtro: finalizados con estadisticas_completas=true${args.incluirPendientes ? ' o pendientes de cobertura' : ''}, temporadas ${args.temporadaMin}-${args.temporadaMax}${args.liga ? `, liga ${args.liga}` : ''}`);
     const resumen = await resumirSospechosos(args);
     console.log(`   Partidos sospechosos: ${resumen.total} (≈ ${resumen.llamadas_para_reparar_todo} llamadas para revisarlos todos)`);
     for (const item of resumen.por_categoria) console.log(`   - ${item.categoria.padEnd(36)} ${String(item.partidos).padStart(6)}  ${item.descripcion}`);
