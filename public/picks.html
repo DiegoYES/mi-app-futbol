@@ -121,7 +121,52 @@
   .hist-search-clear:hover { color:var(--ink); }
   .btn-rec-cambiar-historial { padding:9px 18px; border:1px solid var(--green); border-radius:9px; background:rgba(84,227,142,.12); color:var(--green); font:inherit; font-size:.8rem; font-weight:800; cursor:pointer; transition:all .15s ease; }
   .btn-rec-cambiar-historial:hover { background:var(--green); color:#07100d; }
-  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px}.editorial-tabs{overflow-x:auto;white-space:nowrap}.historial-controls{flex-direction:column;align-items:stretch}.hist-search-box{max-width:none} }
+
+  /* Toolbar de exportación admin */
+  .admin-export-toolbar { display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:11px 16px; background:linear-gradient(135deg, rgba(84,227,142,.12), rgba(15,36,27,.9)); border:1px solid rgba(84,227,142,.42); border-radius:14px; box-shadow:0 4px 20px rgba(0,0,0,.35); animation:exportBarSlide .2s ease; }
+  @keyframes exportBarSlide { from { opacity:0; transform:translateY(-6px); } to { opacity:1; transform:translateY(0); } }
+  .admin-export-info { display:flex; align-items:center; gap:10px; }
+  .admin-export-tag { background:var(--green); color:#07100d; font-size:.65rem; font-weight:900; padding:4px 8px; border-radius:6px; text-transform:uppercase; letter-spacing:.05em; }
+  #admin-export-count-text { color:var(--ink); font-size:.82rem; font-weight:750; }
+  .admin-export-buttons { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .btn-export-pri { min-height:36px; padding:0 14px; background:var(--green); color:#07100d; border:1px solid var(--green); border-radius:9px; font:inherit; font-size:.76rem; font-weight:900; cursor:pointer; display:inline-flex; align-items:center; gap:6px; transition:all .15s ease; }
+  .btn-export-pri:hover { background:#68f7a5; box-shadow:0 0 14px rgba(84,227,142,.45); }
+  .btn-export-sec { min-height:36px; padding:0 12px; background:rgba(104,217,231,.12); color:var(--cyan); border:1px solid rgba(104,217,231,.4); border-radius:9px; font:inherit; font-size:.76rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all .15s ease; }
+  .btn-export-sec:hover { background:var(--cyan); color:#07100d; }
+  .btn-export-clean { min-height:36px; padding:0 12px; background:rgba(245,190,91,.12); color:var(--amber); border:1px solid rgba(245,190,91,.4); border-radius:9px; font:inherit; font-size:.76rem; font-weight:800; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:all .15s ease; }
+  .btn-export-clean:hover { background:var(--amber); color:#07100d; }
+  .btn-export-ghost { min-height:36px; padding:0 10px; background:transparent; color:var(--muted); border:1px solid var(--line); border-radius:9px; font:inherit; font-size:.72rem; font-weight:750; cursor:pointer; transition:all .15s ease; }
+  .btn-export-ghost:hover { color:var(--ink); border-color:rgba(255,255,255,.3); }
+
+  /* Checkbox de selección en tarjeta */
+  .rec-select-checkbox { display:inline-flex; align-items:center; cursor:pointer; user-select:none; margin-top:2px; flex-shrink:0; }
+  .rec-select-checkbox input { position:absolute; opacity:0; width:0; height:0; }
+  .rec-check-mark { width:22px; height:22px; border-radius:7px; border:2px solid rgba(84,227,142,.45); background:rgba(0,0,0,.4); display:grid; place-items:center; transition:all .15s ease; }
+  .rec-check-mark::after { content:'✓'; color:#07100d; font-size:13px; font-weight:900; display:none; }
+  .rec-select-checkbox input:checked + .rec-check-mark { background:var(--green); border-color:var(--green); }
+  .rec-select-checkbox input:checked + .rec-check-mark::after { display:block; }
+  .rec-select-checkbox:hover .rec-check-mark { border-color:var(--green); box-shadow:0 0 8px rgba(84,227,142,.3); }
+  .editorial-card.seleccionada-export { border-color:var(--green) !important; box-shadow:0 0 18px rgba(84,227,142,.25); transform:translateY(-2px); }
+
+  /* Botón individual copiar imagen */
+  .btn-copiar-imagen-rec { padding:4px 9px; border:1px solid rgba(104,217,231,.45); border-radius:999px; background:rgba(104,217,231,.12); color:var(--cyan); font-size:.58rem; font-weight:900; text-transform:uppercase; cursor:pointer; display:inline-flex; align-items:center; gap:3px; transition:background .15s, color .15s; }
+  .btn-copiar-imagen-rec:hover { background:var(--cyan); color:#07100d; }
+
+  /* Modo captura limpia */
+  body.clean-capture-mode .btn-editar-rec,
+  body.clean-capture-mode .btn-eliminar-rec,
+  body.clean-capture-mode .btn-copiar-imagen-rec,
+  body.clean-capture-mode .rec-select-checkbox,
+  body.clean-capture-mode .admin-export-toolbar { display:none !important; }
+
+  .clean-capture-banner { position:fixed; top:16px; right:18px; background:rgba(15,36,27,.95); border:1px solid var(--green); box-shadow:0 8px 32px rgba(0,0,0,.75); padding:8px 14px; border-radius:12px; display:flex; align-items:center; gap:12px; z-index:9999; font-size:.78rem; backdrop-filter:blur(8px); animation:fadeInDown .2s ease; }
+  .clean-capture-banner button { padding:5px 12px; border:1px solid var(--green); border-radius:7px; background:var(--green); color:#07100d; font:inherit; font-size:.72rem; font-weight:900; cursor:pointer; }
+
+  /* Toast de notificación */
+  .picks-toast { position:fixed; bottom:28px; left:50%; transform:translateX(-50%) translateY(80px); background:#0d2119; color:#eef8f2; border:1px solid var(--green); box-shadow:0 14px 40px rgba(0,0,0,.7), 0 0 20px rgba(84,227,142,.3); padding:12px 24px; border-radius:999px; font-size:.84rem; font-weight:800; z-index:10001; display:flex; align-items:center; gap:10px; opacity:0; pointer-events:none; transition:transform .25s cubic-bezier(0.16, 1, 0.3, 1), opacity .25s ease; }
+  .picks-toast.visible { transform:translateX(-50%) translateY(0); opacity:1; }
+
+  @media (max-width:520px) { .page-nav{overflow-x:auto;white-space:nowrap}.pick-kpis{gap:8px}.pick-kpi{padding:13px}.history-item{padding:13px}.history-match,.history-market{min-width:0}.history-match strong,.history-market strong{overflow-wrap:anywhere}.history-prob{font-size:1.1rem}.general-controls,.general-grid,.editorial-grid{grid-template-columns:1fr}.general-card{min-height:155px}.editorial-head{display:block}.editorial-badges{justify-content:flex-start;margin-top:9px}.editorial-tabs{overflow-x:auto;white-space:nowrap}.historial-controls{flex-direction:column;align-items:stretch}.hist-search-box{max-width:none}.admin-export-toolbar{flex-direction:column;align-items:stretch}.admin-export-buttons{width:100%} }
 </style>
 </head>
 <body>
@@ -180,6 +225,30 @@
       </div>
     </div>
 
+    <div id="admin-export-toolbar" class="admin-export-toolbar" style="display:none;">
+      <div class="admin-export-info">
+        <span class="admin-export-tag">📸 Exportar Parlays</span>
+        <span id="admin-export-count-text"><strong>0</strong> seleccionados</span>
+      </div>
+      <div class="admin-export-buttons">
+        <button type="button" id="btn-export-copy-clipboard" class="btn-export-pri" title="Copiar imagen limpia de los parlays seleccionados al portapapeles">
+          📋 Copiar imagen al portapapeles
+        </button>
+        <button type="button" id="btn-export-download-png" class="btn-export-sec" title="Descargar como archivo PNG">
+          ⬇️ Descargar PNG
+        </button>
+        <button type="button" id="btn-export-toggle-clean" class="btn-export-clean" title="Ocultar botones de edición para tomar capturas manuales">
+          👁️ Vista limpia
+        </button>
+        <button type="button" id="btn-export-select-all" class="btn-export-ghost">
+          Seleccionar visibles
+        </button>
+        <button type="button" id="btn-export-clear" class="btn-export-ghost">
+          Desmarcar
+        </button>
+      </div>
+    </div>
+
     <div id="recomendaciones-editoriales" class="editorial-grid"><div class="loader">Cargando recomendaciones…</div></div>
   </section>
 
@@ -230,6 +299,14 @@
     </div>
   </form>
 </dialog>
+
+<div id="clean-capture-floating-banner" class="clean-capture-banner" style="display:none;">
+  <span>👁️ <strong>Vista limpia activa</strong> · Botones de edición ocultos</span>
+  <button type="button" id="btn-exit-clean-capture">Restaurar vista (Esc)</button>
+</div>
+
+<div id="picks-toast" class="picks-toast" aria-live="polite"></div>
+
 <script>
 function esc(valor) {
   return String(valor ?? '')
@@ -268,6 +345,467 @@ let tabEditorialActual = window.location.hash === '#historial' ? 'historial' : '
 
 let filtroHistorialResultado = 'todos';
 let filtroHistorialTexto = '';
+const seleccionadasParaImagen = new Set();
+
+function mostrarPicksToast(mensaje, icono = '✓') {
+  const toast = document.getElementById('picks-toast');
+  if (!toast) return;
+  toast.innerHTML = `<span style="font-size:1.15rem;">${icono}</span><span>${esc(mensaje)}</span>`;
+  toast.classList.add('visible');
+  clearTimeout(toast._timer);
+  toast._timer = setTimeout(() => {
+    toast.classList.remove('visible');
+  }, 3400);
+}
+
+function descargarBlob(blob, nombreArchivo) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = nombreArchivo;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+function roundRectCanvas(ctx, x, y, w, h, r) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function wrapTextoCanvas(ctx, text, maxWidth) {
+  if (!text) return [];
+  const palabras = String(text).split(' ');
+  const lineas = [];
+  let lineaActual = '';
+  for (const palabra of palabras) {
+    const prueba = lineaActual ? `${lineaActual} ${palabra}` : palabra;
+    if (ctx.measureText(prueba).width > maxWidth && lineaActual) {
+      lineas.push(lineaActual);
+      lineaActual = palabra;
+    } else {
+      lineaActual = prueba;
+    }
+  }
+  if (lineaActual) lineas.push(lineaActual);
+  return lineas;
+}
+
+function truncarTextoCanvas(ctx, text, maxWidth) {
+  if (!text) return '';
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  let str = text;
+  while (str.length > 0 && ctx.measureText(str + '…').width > maxWidth) {
+    str = str.slice(0, -1);
+  }
+  return str + '…';
+}
+
+function obtenerItemsSeleccionados() {
+  const todos = [...listaActivas, ...listaHistorial];
+  const mapa = new Map();
+  todos.forEach(it => mapa.set(String(it._id), it));
+  const seleccionados = [];
+  seleccionadasParaImagen.forEach(id => {
+    if (mapa.has(id)) seleccionados.push(mapa.get(id));
+  });
+  return seleccionados;
+}
+
+function actualizarToolbarExportacion() {
+  const toolbar = document.getElementById('admin-export-toolbar');
+  if (!toolbar) return;
+  if (!puedeGestionarRec) {
+    toolbar.style.display = 'none';
+    return;
+  }
+  toolbar.style.display = 'flex';
+  const count = seleccionadasParaImagen.size;
+  const countText = document.getElementById('admin-export-count-text');
+  if (countText) {
+    countText.innerHTML = `<strong>${count}</strong> ${count === 1 ? 'parlay seleccionado' : 'parlays seleccionados'}`;
+  }
+
+  document.querySelectorAll('.rec-card-checkbox').forEach(cb => {
+    const isChecked = seleccionadasParaImagen.has(String(cb.dataset.recId));
+    cb.checked = isChecked;
+    const card = cb.closest('.editorial-card');
+    if (card) {
+      card.classList.toggle('seleccionada-export', isChecked);
+    }
+  });
+}
+
+async function renderizarCanvasParlays(items) {
+  const dpr = 2;
+  const numItems = items.length;
+  const numCols = numItems === 1 ? 1 : 2;
+  const cardWidth = numCols === 1 ? 680 : 610;
+  const colGap = 24;
+  const paddingX = 36;
+  const headerHeight = 92;
+  const footerBrandHeight = 58;
+
+  const totalWidth = (paddingX * 2) + (numCols * cardWidth) + ((numCols - 1) * colGap);
+
+  const measureCanvas = document.createElement('canvas');
+  const mCtx = measureCanvas.getContext('2d');
+
+  function medirTarjeta(item) {
+    const w = cardWidth - 44;
+    mCtx.font = 'bold 20px "Segoe UI", -apple-system, Roboto, sans-serif';
+    const titleLines = wrapTextoCanvas(mCtx, item.titulo || 'Parlay Recomendado', w);
+    const titleH = Math.max(26, titleLines.length * 25);
+
+    let descH = 0;
+    let descLines = [];
+    if (item.descripcion) {
+      mCtx.font = '13px "Segoe UI", -apple-system, Roboto, sans-serif';
+      descLines = wrapTextoCanvas(mCtx, item.descripcion, w);
+      descH = descLines.length * 18 + 14;
+    }
+
+    const selecciones = item.selecciones || [];
+    const selRowH = 54;
+    const selGap = 6;
+    const selectionsH = selecciones.length ? (selecciones.length * (selRowH + selGap)) : 0;
+    const blockH = item.bloqueada ? 52 : 0;
+    const footH = 46;
+
+    const totalH = 22 + 28 + titleH + 8 + descH + selectionsH + blockH + 16 + footH + 22;
+    return { totalH, titleLines, titleH, descLines, descH };
+  }
+
+  const medidas = items.map(medirTarjeta);
+
+  const filas = [];
+  for (let i = 0; i < numItems; i += numCols) {
+    filas.push(items.slice(i, i + numCols));
+  }
+
+  const rowHeights = filas.map((fila, fIdx) => {
+    const indices = fila.map((_, colIdx) => fIdx * numCols + colIdx);
+    return Math.max(...indices.map(idx => medidas[idx].totalH));
+  });
+
+  const rowGap = 24;
+  const cardsTotalHeight = rowHeights.reduce((acc, h) => acc + h, 0) + ((filas.length - 1) * rowGap);
+  const totalHeight = headerHeight + cardsTotalHeight + footerBrandHeight;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(totalWidth * dpr);
+  canvas.height = Math.round(totalHeight * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+
+  // Fondo canvas
+  const bgGrad = ctx.createLinearGradient(0, 0, totalWidth, totalHeight);
+  bgGrad.addColorStop(0, '#06110d');
+  bgGrad.addColorStop(0.5, '#091913');
+  bgGrad.addColorStop(1, '#050c09');
+  ctx.fillStyle = bgGrad;
+  ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+  // Barra de acento superior
+  ctx.fillStyle = '#54e38e';
+  ctx.fillRect(0, 0, totalWidth, 4);
+
+  // Cabecera branding
+  ctx.fillStyle = '#54e38e';
+  ctx.beginPath();
+  ctx.arc(paddingX + 16, 46, 14, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = '#07100d';
+  ctx.font = '900 13px "Segoe UI", -apple-system, Roboto, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText('DF', paddingX + 16, 46);
+
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = '#eef8f2';
+  ctx.font = '900 22px "Segoe UI", -apple-system, Roboto, sans-serif';
+  ctx.fillText('DATA-FUT', paddingX + 40, 49);
+
+  ctx.fillStyle = '#54e38e';
+  ctx.font = '800 12px "Segoe UI", -apple-system, Roboto, sans-serif';
+  ctx.fillText('· PICKS & PARLAYS CERTIFICADOS', paddingX + 160, 48);
+
+  const rightTag = 'DATA-FUT.COM · ANÁLISIS ESTADÍSTICO';
+  ctx.font = 'bold 11px "Segoe UI", -apple-system, Roboto, sans-serif';
+  ctx.textAlign = 'right';
+  ctx.fillStyle = '#8da399';
+  ctx.fillText(rightTag, totalWidth - paddingX, 48);
+
+  ctx.strokeStyle = 'rgba(84, 227, 142, 0.18)';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  ctx.moveTo(paddingX, 72);
+  ctx.lineTo(totalWidth - paddingX, 72);
+  ctx.stroke();
+
+  // Renderizar tarjetas
+  let startY = headerHeight;
+
+  filas.forEach((fila, fIdx) => {
+    const rowH = rowHeights[fIdx];
+
+    fila.forEach((item, colIdx) => {
+      const itemGlobalIdx = fIdx * numCols + colIdx;
+      const cardX = paddingX + (colIdx * (cardWidth + colGap));
+      const cardY = startY;
+      const cWidth = cardWidth;
+      const cHeight = rowH;
+      const infoMedida = medidas[itemGlobalIdx];
+
+      roundRectCanvas(ctx, cardX, cardY, cWidth, cHeight, 16);
+      ctx.fillStyle = '#0c1d17';
+      ctx.fill();
+      ctx.strokeStyle = item.destacada ? 'rgba(84, 227, 142, 0.55)' : 'rgba(84, 227, 142, 0.22)';
+      ctx.lineWidth = item.destacada ? 1.8 : 1;
+      ctx.stroke();
+
+      const pad = 22;
+      let currY = cardY + pad;
+
+      const tipo = item.tipo === 'parlay' ? 'PARLAY' : item.tipo === 'combinada' ? 'COMBINADA' : 'PICK INDIVIDUAL';
+      const catText = item.destacada ? `★ DESTACADA · ${tipo}` : tipo;
+      ctx.textAlign = 'left';
+      ctx.font = '800 11px "Segoe UI", -apple-system, Roboto, sans-serif';
+      ctx.fillStyle = item.destacada ? '#f5be5b' : '#68d9e7';
+      ctx.fillText(catText, cardX + pad, currY + 12);
+
+      let rightBadgeX = cardX + cWidth - pad;
+
+      const esAcertada = item.resultado === 'acertado' || item.resultado === 'acertada';
+      const esFallada = item.resultado === 'fallado' || item.resultado === 'fallada';
+      const esAnulada = item.resultado === 'anulado' || item.resultado === 'anulada';
+      const labelRes = esAcertada ? '✓ ACERTADA' : esFallada ? '✕ FALLADA' : esAnulada ? 'ANULADA' : '⏳ PENDIENTE';
+      const colorRes = esAcertada ? '#54e38e' : esFallada ? '#ff7c78' : esAnulada ? '#8da399' : '#f5be5b';
+      const bgRes = esAcertada ? 'rgba(84,227,142,0.16)' : esFallada ? 'rgba(255,124,120,0.16)' : esAnulada ? 'rgba(141,163,153,0.16)' : 'rgba(245,190,91,0.16)';
+
+      ctx.font = '800 10.5px "Segoe UI", -apple-system, Roboto, sans-serif';
+      const resWidth = ctx.measureText(labelRes).width + 16;
+      rightBadgeX -= resWidth;
+
+      roundRectCanvas(ctx, rightBadgeX, currY, resWidth, 20, 6);
+      ctx.fillStyle = bgRes;
+      ctx.fill();
+      ctx.strokeStyle = colorRes;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = colorRes;
+      ctx.fillText(labelRes, rightBadgeX + (resWidth / 2), currY + 14);
+
+      rightBadgeX -= 8;
+      const visText = (item.visibilidad || 'gratis').toUpperCase();
+      const esPremium = visText === 'PREMIUM';
+      const colorVis = esPremium ? '#f5be5b' : '#8da399';
+      const bgVis = esPremium ? 'rgba(245,190,91,0.15)' : 'rgba(141,163,153,0.12)';
+      const visWidth = ctx.measureText(visText).width + 14;
+      rightBadgeX -= visWidth;
+
+      roundRectCanvas(ctx, rightBadgeX, currY, visWidth, 20, 6);
+      ctx.fillStyle = bgVis;
+      ctx.fill();
+      ctx.strokeStyle = colorVis;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+
+      ctx.textAlign = 'center';
+      ctx.fillStyle = colorVis;
+      ctx.fillText(visText, rightBadgeX + (visWidth / 2), currY + 14);
+
+      currY += 28;
+
+      ctx.textAlign = 'left';
+      ctx.font = 'bold 20px "Segoe UI", -apple-system, Roboto, sans-serif';
+      ctx.fillStyle = '#ffffff';
+      infoMedida.titleLines.forEach((tLine, lIdx) => {
+        ctx.fillText(tLine, cardX + pad, currY + 18 + (lIdx * 25));
+      });
+      currY += infoMedida.titleH + 8;
+
+      if (infoMedida.descLines.length) {
+        ctx.font = '13px "Segoe UI", -apple-system, Roboto, sans-serif';
+        ctx.fillStyle = '#9cb3a7';
+        infoMedida.descLines.forEach((dLine, dlIdx) => {
+          ctx.fillText(dLine, cardX + pad, currY + 14 + (dlIdx * 18));
+        });
+        currY += infoMedida.descH;
+      }
+
+      if (item.bloqueada) {
+        roundRectCanvas(ctx, cardX + pad, currY, cWidth - (pad * 2), 44, 8);
+        ctx.fillStyle = 'rgba(245, 190, 91, 0.1)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(245, 190, 91, 0.3)';
+        ctx.stroke();
+        ctx.textAlign = 'center';
+        ctx.font = 'bold 12px "Segoe UI", -apple-system, Roboto, sans-serif';
+        ctx.fillStyle = '#f5be5b';
+        ctx.fillText('🔒 Contenido exclusivo para miembros premium', cardX + (cWidth / 2), currY + 26);
+        currY += 50;
+      }
+
+      const selecciones = item.selecciones || [];
+      const selRowH = 54;
+      const selGap = 6;
+
+      selecciones.forEach((sel, sIdx) => {
+        const selY = currY + (sIdx * (selRowH + selGap));
+        const selW = cWidth - (pad * 2);
+
+        roundRectCanvas(ctx, cardX + pad, selY, selW, selRowH, 10);
+        ctx.fillStyle = 'rgba(15, 36, 27, 0.65)';
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(84, 227, 142, 0.16)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        const stSel = sel.estado_seleccion || 'pendiente';
+        const hitColor = stSel === 'acertado' ? '#54e38e' : stSel === 'fallado' ? '#ff7c78' : stSel === 'anulado' ? '#8da399' : '#f5be5b';
+        ctx.fillStyle = hitColor;
+        roundRectCanvas(ctx, cardX + pad, selY, 4, selRowH, 2);
+        ctx.fill();
+
+        ctx.font = 'bold 14px "Segoe UI", -apple-system, Roboto, sans-serif';
+        const momioTexto = `@ ${mostrarMomio(sel.cuota, sel.momio_americano)}`;
+        const momioWidth = ctx.measureText(momioTexto).width;
+
+        const selTagText = stSel === 'acertado' ? '✓ ACERTADO' : stSel === 'fallado' ? '✕ FALLADO' : stSel === 'anulado' ? 'ANULADO' : '⏳ PEND.';
+        ctx.font = '800 10px "Segoe UI", -apple-system, Roboto, sans-serif';
+        const tagWidth = ctx.measureText(selTagText).width + 12;
+
+        const rightBlockW = Math.max(momioWidth, tagWidth) + 12;
+        const rightBlockX = cardX + pad + selW - 12;
+
+        ctx.textAlign = 'right';
+        ctx.font = 'bold 14px "Segoe UI", -apple-system, Roboto, sans-serif';
+        ctx.fillStyle = '#54e38e';
+        ctx.fillText(momioTexto, rightBlockX, selY + 22);
+
+        const badgeTagX = rightBlockX - tagWidth;
+        roundRectCanvas(ctx, badgeTagX, selY + 28, tagWidth, 18, 5);
+        ctx.fillStyle = stSel === 'acertado' ? 'rgba(84,227,142,0.18)' : stSel === 'fallado' ? 'rgba(255,124,120,0.18)' : 'rgba(245,190,91,0.18)';
+        ctx.fill();
+        ctx.strokeStyle = hitColor;
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        ctx.textAlign = 'center';
+        ctx.font = '800 9.5px "Segoe UI", -apple-system, Roboto, sans-serif';
+        ctx.fillStyle = hitColor;
+        ctx.fillText(selTagText, badgeTagX + (tagWidth / 2), selY + 41);
+
+        const maxLeftW = selW - rightBlockW - 24;
+        const marcador = sel.partido_info?.goles_local != null
+          ? ` (${sel.partido_info.goles_local} - ${sel.partido_info.goles_visitante}${sel.partido_info.estado ? ' ' + sel.partido_info.estado : ''})`
+          : '';
+        const eventText = `${sel.evento || 'Partido'}${marcador}`;
+
+        ctx.textAlign = 'left';
+        ctx.font = 'bold 14px "Segoe UI", -apple-system, Roboto, sans-serif';
+        ctx.fillStyle = '#eef8f2';
+        ctx.fillText(truncarTextoCanvas(ctx, eventText, maxLeftW), cardX + pad + 14, selY + 22);
+
+        const fPart = sel.fecha_partido ? fecha(sel.fecha_partido) : '';
+        const subParts = [fPart, sel.mercado, sel.casa].filter(Boolean);
+        const subText = subParts.join(' · ');
+
+        ctx.font = '11.5px "Segoe UI", -apple-system, Roboto, sans-serif';
+        ctx.fillStyle = '#8da399';
+        ctx.fillText(truncarTextoCanvas(ctx, subText, maxLeftW), cardX + pad + 14, selY + 41);
+      });
+
+      const footerY = cardY + cHeight - 48;
+
+      ctx.strokeStyle = 'rgba(84, 227, 142, 0.2)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(cardX + pad, footerY);
+      ctx.lineTo(cardX + cWidth - pad, footerY);
+      ctx.stroke();
+
+      ctx.textAlign = 'left';
+      ctx.font = '12px "Segoe UI", -apple-system, Roboto, sans-serif';
+      ctx.fillStyle = '#8da399';
+      ctx.fillText(`Cierra ${fecha(item.cierra_en)}`, cardX + pad, footerY + 28);
+
+      ctx.textAlign = 'right';
+      ctx.font = 'bold 14px "Segoe UI", -apple-system, Roboto, sans-serif';
+      ctx.fillStyle = '#eef8f2';
+      const labelMomioTot = `Momio total `;
+      const valorMomioTot = mostrarMomio(item.cuota_total, item.momio_total_americano);
+      ctx.fillText(`${labelMomioTot}${valorMomioTot}`, cardX + cWidth - pad, footerY + 28);
+    });
+
+    startY += rowH + rowGap;
+  });
+
+  const footerBarY = totalHeight - 32;
+  ctx.textAlign = 'center';
+  ctx.font = '600 12px "Segoe UI", -apple-system, Roboto, sans-serif';
+  ctx.fillStyle = '#7a9185';
+  ctx.fillText('Generado en Data-Fut.com · Estadísticas avanzadas y modelado probabilístico de fútbol', totalWidth / 2, footerBarY);
+
+  return canvas;
+}
+
+async function exportarParlays(items, accion = 'clipboard') {
+  if (!items || !items.length) {
+    mostrarPicksToast('Marca la casilla de al menos 1 parlay para exportar', '⚠️');
+    return;
+  }
+  mostrarPicksToast('Generando imagen limpia...', '⏳');
+
+  try {
+    const canvas = await renderizarCanvasParlays(items);
+    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error('No se pudo generar la imagen');
+
+    if (accion === 'clipboard') {
+      let copiado = false;
+      if (navigator.clipboard && window.ClipboardItem) {
+        try {
+          await navigator.clipboard.write([
+            new ClipboardItem({ 'image/png': blob })
+          ]);
+          copiado = true;
+        } catch (clipErr) {
+          console.warn('Error en clipboard.write:', clipErr);
+        }
+      }
+
+      if (copiado) {
+        const cant = items.length === 1 ? 'Parlay copiado' : `${items.length} parlays copiados`;
+        mostrarPicksToast(`¡${cant} al portapapeles! Listo para pegar (Ctrl+V) en tu IA`, '📋');
+      } else {
+        const nombre = `datafut-parlays-${Date.now()}.png`;
+        descargarBlob(blob, nombre);
+        mostrarPicksToast('Portapapeles no disponible directamente. Se descargó el archivo PNG.', '⬇️');
+      }
+    } else {
+      const nombre = `datafut-parlays-${Date.now()}.png`;
+      descargarBlob(blob, nombre);
+      mostrarPicksToast('Imagen PNG descargada con éxito', '⬇️');
+    }
+  } catch (err) {
+    console.error('Error al exportar imagen:', err);
+    mostrarPicksToast(`Error al procesar imagen: ${err.message || 'Error desconocido'}`, '⚠️');
+  }
+}
 
 function actualizarTabsUI() {
   const btnActivas = document.getElementById('tab-editorial-activas');
@@ -339,7 +877,20 @@ function obtenerHistorialFiltrado() {
 
 function pintarTarjetasRecomendaciones(lista) {
   return lista.map(item => {
+    const itemId = String(item._id);
     const tipo = item.tipo === 'parlay' ? 'Parlay' : item.tipo === 'combinada' ? 'Combinada' : 'Pick individual';
+    const estaSeleccionada = seleccionadasParaImagen.has(itemId);
+
+    const selectorAdmin = puedeGestionarRec
+      ? `<label class="rec-select-checkbox" title="Seleccionar para exportar imagen">
+          <input type="checkbox" class="rec-card-checkbox" data-rec-id="${item._id}" ${estaSeleccionada ? 'checked' : ''}>
+          <span class="rec-check-mark"></span>
+        </label>`
+      : '';
+
+    const botonCopiar = puedeGestionarRec
+      ? `<button type="button" class="btn-copiar-imagen-rec" data-copy-img-rec="${item._id}" title="Copiar imagen limpia de este parlay al portapapeles">📸 Copiar imagen</button>`
+      : '';
     const botonEditar = puedeGestionarRec
       ? `<button type="button" class="btn-editar-rec" data-edit-rec="${item._id}" title="Editar momios">✏️ Editar momios</button>`
       : '';
@@ -353,7 +904,7 @@ function pintarTarjetasRecomendaciones(lista) {
         : item.resultado === 'anulado' || item.resultado === 'anulada'
           ? '<span class="editorial-badge anulado">Anulada</span>'
           : '<span class="editorial-badge pendiente">⏳ Pendiente</span>';
-    const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${botonEditar}${botonEliminar}`;
+    const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${botonCopiar}${botonEditar}${botonEliminar}`;
     const contenido = item.bloqueada
       ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
       : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${(item.selecciones || []).map(seleccion => {
@@ -364,7 +915,7 @@ function pintarTarjetasRecomendaciones(lista) {
             : '';
           return `<li class="editorial-selection ${estadoSel}"><div><strong>${esc(seleccion.evento)} ${marcador}</strong><span>${fecha(seleccion.fecha_partido)} · ${esc(seleccion.mercado)}${seleccion.casa ? ` · ${esc(seleccion.casa)}` : ''}</span></div><div class="editorial-selection-right"><b>@ ${mostrarMomio(seleccion.cuota, seleccion.momio_americano)}</b><span class="badge-sel ${estadoSel}">${labelSel}</span></div></li>`;
         }).join('')}</ol>`;
-    return `<article class="editorial-card ${item.destacada ? 'featured' : ''}"><div class="editorial-head"><div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>Momio total ${mostrarMomio(item.cuota_total, item.momio_total_americano)}</strong></footer></article>`;
+    return `<article class="editorial-card ${item.destacada ? 'featured' : ''} ${estaSeleccionada ? 'seleccionada-export' : ''}" data-card-id="${item._id}"><div class="editorial-head"><div style="display:flex;align-items:flex-start;gap:10px;">${selectorAdmin}<div><small>${item.destacada ? '⭐ Destacada · ' : ''}${tipo}</small><h4>${esc(item.titulo)}</h4></div></div><div class="editorial-badges">${badges}</div></div>${contenido}<footer class="editorial-footer"><span>Cierra ${fecha(item.cierra_en)}</span><strong>Momio total ${mostrarMomio(item.cuota_total, item.momio_total_americano)}</strong></footer></article>`;
   }).join('');
 }
 
@@ -386,6 +937,7 @@ function renderizarRecomendaciones() {
             </div>
           ` : ''}
         </div>`;
+      actualizarToolbarExportacion();
       return;
     }
     contenedor.innerHTML = pintarTarjetasRecomendaciones(listaActivas);
@@ -415,10 +967,12 @@ function renderizarRecomendaciones() {
           cambiarFiltroHistorialResultado('todos');
         });
       }
+      actualizarToolbarExportacion();
       return;
     }
     contenedor.innerHTML = pintarTarjetasRecomendaciones(items);
   }
+  actualizarToolbarExportacion();
 }
 
 async function cargarRecomendacionesEditoriales() {
@@ -683,6 +1237,16 @@ formEditMomios?.addEventListener('submit', async (e) => {
 });
 
 document.getElementById('recomendaciones-editoriales')?.addEventListener('click', async event => {
+  const btnCopyImg = event.target.closest('[data-copy-img-rec]');
+  if (btnCopyImg) {
+    const id = btnCopyImg.dataset.copyImgRec;
+    const item = [...listaActivas, ...listaHistorial].find(r => String(r._id) === String(id));
+    if (item) {
+      exportarParlays([item], 'clipboard');
+    }
+    return;
+  }
+
   const btnEdit = event.target.closest('[data-edit-rec]');
   if (btnEdit) {
     abrirModalEditarMomios(btnEdit.dataset.editRec);
@@ -713,6 +1277,65 @@ document.getElementById('recomendaciones-editoriales')?.addEventListener('click'
     btn.disabled = false;
     btn.textContent = '🗑️ Quitar';
   }
+});
+
+document.getElementById('recomendaciones-editoriales')?.addEventListener('change', event => {
+  const cb = event.target.closest('.rec-card-checkbox');
+  if (!cb) return;
+  const id = String(cb.dataset.recId);
+  if (cb.checked) {
+    seleccionadasParaImagen.add(id);
+  } else {
+    seleccionadasParaImagen.delete(id);
+  }
+  const card = cb.closest('.editorial-card');
+  if (card) {
+    card.classList.toggle('seleccionada-export', cb.checked);
+  }
+  actualizarToolbarExportacion();
+});
+
+document.getElementById('btn-export-copy-clipboard')?.addEventListener('click', () => {
+  const items = obtenerItemsSeleccionados();
+  exportarParlays(items, 'clipboard');
+});
+
+document.getElementById('btn-export-download-png')?.addEventListener('click', () => {
+  const items = obtenerItemsSeleccionados();
+  exportarParlays(items, 'download');
+});
+
+document.getElementById('btn-export-toggle-clean')?.addEventListener('click', () => {
+  document.body.classList.add('clean-capture-mode');
+  const banner = document.getElementById('clean-capture-floating-banner');
+  if (banner) banner.style.display = 'flex';
+  mostrarPicksToast('Modo captura limpia activo. Puedes usar Win + Shift + S. Presiona Esc para salir.', '👁️');
+});
+
+document.getElementById('btn-exit-clean-capture')?.addEventListener('click', () => {
+  document.body.classList.remove('clean-capture-mode');
+  const banner = document.getElementById('clean-capture-floating-banner');
+  if (banner) banner.style.display = 'none';
+});
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && document.body.classList.contains('clean-capture-mode')) {
+    document.body.classList.remove('clean-capture-mode');
+    const banner = document.getElementById('clean-capture-floating-banner');
+    if (banner) banner.style.display = 'none';
+  }
+});
+
+document.getElementById('btn-export-select-all')?.addEventListener('click', () => {
+  const visibles = tabEditorialActual === 'activas' ? listaActivas : obtenerHistorialFiltrado();
+  visibles.forEach(item => seleccionadasParaImagen.add(String(item._id)));
+  actualizarToolbarExportacion();
+  mostrarPicksToast(`${visibles.length} parlays seleccionados`, '✓');
+});
+
+document.getElementById('btn-export-clear')?.addEventListener('click', () => {
+  seleccionadasParaImagen.clear();
+  actualizarToolbarExportacion();
 });
 
 document.addEventListener('click', event => {
