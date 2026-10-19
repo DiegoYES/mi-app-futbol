@@ -126,6 +126,10 @@ const partidoSchema = new mongoose.Schema({
   tiempos_consultados_en: { type: Date, default: null },
   tiempos_disponibles: { type: Boolean, default: null },
   eventos_completos: { type: Boolean, default: false },
+  // El proveedor a veces devuelve vacío para torneos sin cobertura de
+  // eventos: se marca para no gastar cuota reintentando en cada corrida.
+  // Reintento explícito con SYNC_RETRY_GAPS=true. Campo aditivo.
+  eventos_no_disponibles: { type: Boolean, default: false },
   jugadores_completos: { type: Boolean, default: false },
   detalle_completo: { type: Boolean, default: false },
   detalle_consultado_en: { type: Date, default: null },
@@ -157,6 +161,22 @@ partidoSchema.index(
 partidoSchema.index(
   { arbitro: 1, 'liga.id': 1, 'liga.temporada': -1, estado: 1, fecha: -1 },
   { name: 'arbitro_liga_temporada_estado_fecha' }
+);
+// Los scripts de sincronización barren por liga/temporada/estado filtrando lo
+// pendiente en memoria. Estos compuestos evitan el COLLSCAN parcial.
+// Sólo definiciones: ningún documento se modifica.
+partidoSchema.index(
+  { 'liga.id': 1, 'liga.temporada': -1, estado: 1, estadisticas_completas: 1, estadisticas_no_disponibles: 1 },
+  { name: 'sync_estadisticas_pendientes' }
+);
+partidoSchema.index(
+  { 'liga.id': 1, 'liga.temporada': -1, estado: 1, detalle_completo: 1 },
+  { name: 'sync_detalle_pendiente' }
+);
+// Fallback de admin/desde-boleta: busca por pareja de equipos y fecha.
+partidoSchema.index(
+  { 'equipo_local.id': 1, 'equipo_visitante.id': 1, fecha: 1 },
+  { name: 'boleta_equipos_fecha' }
 );
 
 module.exports = mongoose.model('Partido', partidoSchema);

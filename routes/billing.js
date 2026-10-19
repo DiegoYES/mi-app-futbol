@@ -1,5 +1,6 @@
 const express = require('express');
 const Suscripcion = require('../models/Suscripcion');
+const Usuario = require('../models/Usuario');
 const { requireAuth } = require('../middleware/auth');
 const { crearLimitador } = require('../middleware/rateLimit');
 const { errorServidor } = require('../middleware/security');
@@ -41,9 +42,11 @@ router.get('/status', requireAuth, async (req, res) => {
         await suscripcion.save();
 
         if (estado === 'autorizada') {
-          req.usuario.plan = 'premium';
-          req.usuario.suscripcion_termina = periodoFin;
-          await req.usuario.save();
+          // $set atómico en vez de guardar el documento hidratado: no pisa
+          // ediciones concurrentes del perfil y no requiere transacciones.
+          await Usuario.findByIdAndUpdate(req.usuario._id, {
+            $set: { plan: 'premium', suscripcion_termina: periodoFin }
+          });
         }
       }
     } catch (error) {

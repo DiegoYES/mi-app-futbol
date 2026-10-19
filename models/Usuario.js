@@ -53,6 +53,10 @@ function ocultarPassword(_doc, salida) {
 usuarioSchema.set('toJSON', { transform: ocultarPassword });
 usuarioSchema.set('toObject', { transform: ocultarPassword });
 
+// El límite de cuentas por IP (registro/login) y el agregado de
+// admin/ips-duplicadas consultan por este campo en hot path.
+usuarioSchema.index({ ip_registro: 1 }, { name: 'usuario_ip_registro' });
+
 usuarioSchema.pre('save', async function () {
   if (!this.isModified('password')) return;
   this.password = await bcrypt.hash(this.password, 12);

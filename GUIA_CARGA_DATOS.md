@@ -4,6 +4,41 @@
 
 **Reset de cuota: 6:00 PM México todos los días**
 
+## Carga verificada — 9 de octubre de 2026
+
+Plan Pro activo: 7,500 consultas diarias. Se actualizaron las competiciones
+configuradas con temporadas disponibles en el proveedor para 2025, 2026 y 2027.
+La temporada API 2027 disponible en esta carga corresponde a Japón.
+
+- 2,085 partidos añadidos: 678 de 2025, 1,113 de 2026 y 294 de 2027.
+- 10,313 partidos consultados por ID para completar detalle o revalidar cobertura.
+- 868 partidos adicionales con estadísticas de equipo y 1,698 con rendimientos
+  individuales de jugadores.
+- Ningún partido finalizado quedó con `detalle_completo != true` en estas
+  temporadas. Esta marca significa detalle consultado, no cobertura garantizada:
+  algunos proveedores no entregan estadísticas o jugadores.
+- 5,442 consultas de primer/segundo tiempo: 5,316 completos y 126 sin cobertura,
+  registrados como consultados para no repetirlos automáticamente.
+- Sin pendientes de primera consulta de tiempos en 2026/2027. Quedan **6,351
+  partidos de 2025** con estadísticas de equipo pero sin primera consulta de tiempos.
+- Carga detenida por presupuesto voluntario, con 1,050 consultas locales restantes
+  antes del reset UTC. Bloqueos liberados y caché de partidos invalidada.
+
+Para continuar únicamente los tiempos pendientes de 2025, revisar primero la
+cuota renovada y ejecutar el script existente bajo bloqueo, ajustando el tope
+para conservar al menos 1,000 consultas para la operación automática:
+
+```bash
+npm run quota:sync
+SYNC_DELAY_MS=300 SYNC_MAX_REQUESTS=6000 FOOTBALL_SEASON=2025 \
+  SYNC_LEAGUES="$(node -e "process.stdout.write(Object.keys(require('./config/leagues').ligas).join(','))")" \
+  node scripts/ejecutarConBloqueo.js cron:hourly -- node scripts/completarEstadisticasTiempos.js
+```
+
+No usar `SYNC_RETRY_GAPS=true` para esta continuación: también volvería a consultar
+partidos cuyo proveedor ya respondió sin cobertura. Evitar solapar la carga con
+otros batches; el bloqueo mostrado impide la concurrencia con el cron horario.
+
 ## ⏰ Pendiente de hoy — 30 de julio de 2026, 6:00 PM México
 
 Revisar la cuota renovada y ejecutar el lote que completa estadísticas, eventos,
@@ -162,9 +197,11 @@ node -e "require('dotenv').config();const m=require('mongoose');m.connect(proces
 tail -30 /tmp/futbol-batch1.log
 ```
 ```bash
-# Auditar ceros sospechosos en estadísticas (solo lectura; informe en artifacts/)
+# Auditar ceros sospechosos: por defecto temporadas API 2025 y 2026.
+# Solo lectura; informe en artifacts/. No incluye temporadas anteriores.
 npm run audit:stats-zeros
 npm run audit:stats-zeros -- --temporada-min=2025 --liga=262
+npm run audit:stats-zeros -- --temporada-min=2026 --temporada-max=2026
 
 # Con --incluir-pendientes suma los finalizados sin estadísticas que el cron ya
 # no revisita (temporada 2025 completa y 2026 con más de 14 días).
@@ -177,5 +214,10 @@ npm run audit:stats-zeros -- --temporada-min=2025 --incluir-pendientes
 # reanudable: los api_id ya revisados quedan en `auditoria_cobertura`.
 node scripts/auditarCerosEstadisticas.js --execute --allow-prod \
   --confirm-production=REPARAR_CEROS_PRODUCCION \
-  --temporada-min=2025 --incluir-pendientes --max-partidos=2000 --max-llamadas=100
+  --temporada-min=2025 --temporada-max=2026 --incluir-pendientes --max-partidos=2000 --max-llamadas=100
 ```
+
+`--temporada-min` y `--temporada-max` permiten ajustar el rango explícitamente;
+sin opciones se limita a 2025-2026. La reparación conserva los ceros confirmados
+por el proveedor y usa `null` únicamente cuando faltan estadísticas; no inventa
+valores ni convierte todos los ceros en ausencias.

@@ -4,6 +4,7 @@ const { normalizarTexto, resolverNombre, similitud } = require('./strings');
 const { probabilidadEmpirica } = require('./probability');
 const { claveMercado } = require('./marketMatchingService');
 const { probabilidadImplicita, sinVig, valorEsperado } = require('./odds');
+const { numeroFinitoNullable } = require('../statValue');
 
 const CAMPOS_JUGADOR = { player_cards: 'amarillas', player_shots: 'tiros', player_shots_on_target: 'tiros_puerta', player_fouls: 'faltas_cometidas' };
 const CAMPOS_EQUIPO = { corners: 'corners', cards: 'amarillas', shots: 'tiros', shots_on_target: 'tiros_puerta', fouls: 'faltas' };
@@ -61,8 +62,8 @@ function valorEquipo(partido, campo, alcance) {
   if (!campoPartido) return null;
   const valorLocal = partido.equipo_local?.[campoPartido];
   const valorVisitante = partido.equipo_visitante?.[campoPartido];
-  const local = valorLocal == null ? NaN : Number(valorLocal);
-  const visitante = valorVisitante == null ? NaN : Number(valorVisitante);
+  const local = numeroFinitoNullable(valorLocal);
+  const visitante = numeroFinitoNullable(valorVisitante);
   if (alcance === 'local') return Number.isFinite(local) ? local : null;
   if (alcance === 'visitante') return Number.isFinite(visitante) ? visitante : null;
   return Number.isFinite(local) && Number.isFinite(visitante) ? local + visitante : null;

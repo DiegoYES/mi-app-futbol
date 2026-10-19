@@ -90,8 +90,10 @@ if [ "$BATCH" = "hourly" ]; then
 
   echo ""
   echo "▸ Completar eventos, alineaciones y jugadores pendientes"
-  SYNC_RETRY_GAPS=true SYNC_RECENT_DAYS=3 SYNC_ALL_LOADED_LEAGUES=true FOOTBALL_SEASON=2026 \
-    node scripts/completarDetallesLote.js
+  for SEASON in 2026 2027; do
+    SYNC_RETRY_GAPS=true SYNC_RECENT_DAYS=3 SYNC_ALL_LOADED_LEAGUES=true FOOTBALL_SEASON="$SEASON" \
+      node scripts/completarDetallesLote.js
+  done
 
 # ------------------------------------------------------------------
 # BATCH 1 (00:10 CST): cierre nocturno

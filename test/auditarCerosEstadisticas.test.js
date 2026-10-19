@@ -20,11 +20,15 @@ function bloque(teamId, valores) {
 test('los argumentos tienen valores conservadores por defecto', () => {
   const args = parseArgs([]);
   assert.equal(args.execute, false);
+  assert.equal(args.temporadaMin, 2025);
+  assert.equal(args.temporadaMax, 2026);
   assert.equal(args.maxLlamadas, 25);
   assert.equal(args.reservaCronHora, 250);
   assert.equal(args.reservaMinima, 1000);
   assert.throws(() => parseArgs(['--max-llamadas=0']), /entero positivo/);
   assert.throws(() => parseArgs(['sin-guiones']), /no reconocido/);
+  assert.throws(() => parseArgs(['--temporada-min=2027']), /mayor que/);
+  assert.throws(() => parseArgs(['--temporada-max=2024']), /mayor que/);
 });
 
 test('la reserva para el cron crece con las horas restantes del día UTC', () => {
@@ -103,14 +107,23 @@ test('sin bloques de estadísticas anula las métricas y marca sin cobertura', (
 
 test('por defecto solo audita completas; --incluir-pendientes suma los finalizados sin cobertura', () => {
   const base = filtroBase(parseArgs(['--temporada-min=2025', '--liga=262']));
-  assert.deepEqual(base, { estado: { $in: ['FT', 'AET', 'PEN'] }, estadisticas_completas: true, 'liga.temporada': { $gte: 2025 }, 'liga.id': 262 });
+  assert.deepEqual(base, { estado: { $in: ['FT', 'AET', 'PEN'] }, estadisticas_completas: true, 'liga.temporada': { $gte: 2025, $lte: 2026 }, 'liga.id': 262 });
 
   const conPendientes = filtroBase(parseArgs(['--incluir-pendientes']));
   assert.equal(conPendientes.estadisticas_completas, undefined);
+  assert.deepEqual(conPendientes['liga.temporada'], { $gte: 2025, $lte: 2026 });
   assert.deepEqual(conPendientes.$or, [
     { estadisticas_completas: true },
     { estadisticas_completas: { $ne: true }, estadisticas_no_disponibles: { $ne: true } }
   ]);
+});
+
+test('el alcance predeterminado excluye temporadas anteriores y permite acotar 2026', () => {
+  const rango = filtroBase(parseArgs([]))['liga.temporada'];
+  const temporadas = [2021, 2022, 2023, 2024, 2025, 2026, 2027];
+  assert.deepEqual(temporadas.filter(t => t >= rango.$gte && t <= rango.$lte), [2025, 2026]);
+  assert.deepEqual(filtroBase(parseArgs(['--temporada-min=2026']))['liga.temporada'], { $gte: 2026, $lte: 2026 });
+  assert.deepEqual(filtroBase(parseArgs(['--temporada-max=2025']))['liga.temporada'], { $gte: 2025, $lte: 2025 });
 });
 
 test('un pendiente con estadísticas en el proveedor queda completado en una sola pasada', () => {

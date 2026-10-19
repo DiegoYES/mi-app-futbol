@@ -1,7 +1,9 @@
+const { numeroFinitoNullable } = require('../statValue');
+
 function probabilidadEmpirica(valores, lado, linea, alpha = 2, beta = 2) {
-  const validos = valores.map(Number).filter(Number.isFinite);
-  if (!validos.length || !Number.isFinite(Number(linea))) return null;
-  const limite = Number(linea);
+  const validos = valores.map(numeroFinitoNullable).filter(Number.isFinite);
+  const limite = numeroFinitoNullable(linea);
+  if (!validos.length || limite === null) return null;
   const entero = Number.isInteger(limite);
   const gana = valor => lado === 'OVER' ? valor > limite : valor < limite;
   const push = valor => entero && valor === limite;

@@ -7,7 +7,7 @@
     telegram: '<path d="M3 11l18-8-5 18-5-7zM11 14l10-11"/>', discord: '<path d="M7 7c4-2 6-2 10 0 2 3 3 7 2 11-2 1-3 2-5 2l-1-2M17 17c-4 2-6 2-10 0l-1 3c-2 0-3-1-5-2 0-4 0-8 2-11 4-2 6-2 10 0"/><circle cx="8" cy="13" r="1"/><circle cx="16" cy="13" r="1"/>',
     twitch: '<path d="M4 3h17v12l-5 5h-4l-3 3v-3H4zM9 8v6M15 8v6"/>', web: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18"/>', link: '<path d="M10 14l4-4M8 17H6a4 4 0 0 1 0-8h3M16 7h2a4 4 0 0 1 0 8h-3"/>'
   };
-  function icono(nombre) { return `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${trazos[nombre] || trazos.link}</svg>`; }
+  function icono(nombre) { return `<svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${trazos[nombre] || trazos.link}</svg>`; }
   function pintar(contenedor, enlaces) {
     if (!contenedor) return;
     contenedor.innerHTML = (enlaces || []).map(e => `<a class="social-link" href="${String(e.url).replaceAll('&','&amp;').replaceAll('"','&quot;')}" target="_blank" rel="noopener noreferrer" aria-label="${String(e.nombre).replaceAll('&','&amp;').replaceAll('"','&quot;')}">${icono(e.icono)}</a>`).join('');
