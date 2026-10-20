@@ -106,6 +106,39 @@ test('responderConsulta maneja errores 500 de API con mensaje amigable', async (
   assert.match(res.respuesta, /No pude procesar tu consulta/i);
 });
 
+test('responderConsulta intenta modelo de respaldo si el principal retorna 503 saturado', async () => {
+  const urlsLlamadas = [];
+  const mockFetch = async (url) => {
+    urlsLlamadas.push(url);
+    if (url.includes('gemini-3-flash-preview')) {
+      return {
+        ok: false,
+        status: 503,
+        json: async () => ({ error: { message: 'Model high demand' } })
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({
+        candidates: [{ content: { parts: [{ text: 'Respuesta desde modelo de respaldo' }] } }]
+      })
+    };
+  };
+
+  const res = await responderConsulta('Hola bot', {
+    apiKey: 'test-api-key',
+    modelo: 'gemini-3-flash-preview',
+    fetchImpl: mockFetch
+  });
+
+  assert.equal(res.ok, true);
+  assert.equal(res.respuesta, 'Respuesta desde modelo de respaldo');
+  assert.equal(urlsLlamadas.length, 2);
+  assert.match(urlsLlamadas[0], /gemini-3-flash-preview/);
+  assert.match(urlsLlamadas[1], /gemini-3\.5-flash/);
+});
+
 test('responderConsulta maneja respuestas sin candidatos válidos', async () => {
   const mockFetch = async () => ({
     ok: true,

@@ -1,4 +1,5 @@
-const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3.1-flash-lite';
+const DEFAULT_GEMINI_MODEL = process.env.GEMINI_MODEL || 'gemini-3-flash-preview';
+const FALLBACK_GEMINI_MODEL = 'gemini-3.5-flash';
 const { esPickTrivial } = require('./pickRules');
 
 function obtenerEndpointGemini(modelo, apiKey) {
@@ -172,35 +173,57 @@ async function responderConsulta(mensaje, { apiKey = process.env.GEMINI_API_KEY,
     };
   }
 
-  const endpoint = obtenerEndpointGemini(modelo, apiKey);
+  const modeloActual = modelo || DEFAULT_GEMINI_MODEL;
+  const endpoint = obtenerEndpointGemini(modeloActual, apiKey);
   const bloqueContexto = formatearContextoDeportivo(contexto);
   const systemPrompt = bloqueContexto ? `${SYSTEM_INSTRUCTION}\n\n${bloqueContexto}` : SYSTEM_INSTRUCTION;
 
+  const payload = {
+    system_instruction: {
+      parts: [{ text: systemPrompt }]
+    },
+    contents: [
+      {
+        role: 'user',
+        parts: [{ text: textoLimpio }]
+      }
+    ],
+    generationConfig: {
+      temperature: 0.4,
+      maxOutputTokens: 600
+    }
+  };
+
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-    const respuesta = await fetchImpl(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      signal: controller.signal,
-      body: JSON.stringify({
-        system_instruction: {
-          parts: [{ text: systemPrompt }]
-        },
-        contents: [
-          {
-            role: 'user',
-            parts: [{ text: textoLimpio }]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 600
+    let respuesta;
+    try {
+      respuesta = await fetchImpl(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
+        body: JSON.stringify(payload)
+      });
+
+      // Si el modelo principal está temporalmente saturado (503) y no es el de respaldo, intentamos el de respaldo
+      if (respuesta.status === 503 && modeloActual !== FALLBACK_GEMINI_MODEL) {
+        console.warn(`[aiChat] Modelo ${modeloActual} saturado (503). Reintentando con modelo de respaldo ${FALLBACK_GEMINI_MODEL}...`);
+        const fallbackEndpoint = obtenerEndpointGemini(FALLBACK_GEMINI_MODEL, apiKey);
+        const fallbackRespuesta = await fetchImpl(fallbackEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          signal: controller.signal,
+          body: JSON.stringify(payload)
+        });
+        if (fallbackRespuesta.ok || fallbackRespuesta.status === 429) {
+          respuesta = fallbackRespuesta;
         }
-      })
-    });
-    clearTimeout(timeoutId);
+      }
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (respuesta.status === 429) {
       return {
@@ -230,6 +253,7 @@ async function responderConsulta(mensaje, { apiKey = process.env.GEMINI_API_KEY,
     return { ok: true, respuesta: sanitizarRespuesta(textoRespuesta) };
   } catch (error) {
     if (error.name === 'AbortError') {
+      console.warn('[aiChat] Solicitud a Gemini abortada por timeout');
       return {
         ok: true,
         respuesta: 'La respuesta tardó demasiado en generarse. Por favor, realiza una pregunta más breve.'
