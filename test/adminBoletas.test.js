@@ -462,4 +462,23 @@ test('PATCH /api/admin/recomendaciones/:id/momios permite a marketing y admin ac
     body: JSON.stringify({ momio_total: 'invalido' })
   });
   assert.equal(resInvalido.status, 400);
+
+  // 4. Actualizar visibilidad directamente con PATCH /visibilidad
+  const resVis = await fetch(`${baseUrl}/api/admin/recomendaciones/6aa1d66a7c39f8cb03203dcc/visibilidad`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenMarketing}` },
+    body: JSON.stringify({ visibilidad: 'gratis' })
+  });
+  assert.equal(resVis.status, 200);
+  const dataVis = await resVis.json();
+  assert.equal(dataVis.visibilidad, 'gratis');
+  assert.equal(recMock.visibilidad, 'gratis');
+
+  // 5. Usuario normal bloqueado en /visibilidad
+  const resVisBloq = await fetch(`${baseUrl}/api/admin/recomendaciones/6aa1d66a7c39f8cb03203dcc/visibilidad`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tokenUsuario}` },
+    body: JSON.stringify({ visibilidad: 'premium' })
+  });
+  assert.equal(resVisBloq.status, 403);
 });

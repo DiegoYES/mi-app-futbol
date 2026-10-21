@@ -347,3 +347,55 @@ test('enriquecerRecomendacionesConEvaluacion evalúa combinadas y parlays correc
   assert.equal(resCorr[0].selecciones[1].estado_seleccion, 'acertado');
 });
 
+test('enriquecerRecomendacionesConEvaluacion desmarca destacada al fallar o al ganar todos, pero la conserva si hay pendientes vivos', async () => {
+  const partidosMap = new Map([
+    [301, { api_id: 301, estado: 'FT', equipo_local: { goles: 2 }, equipo_visitante: { goles: 1 } }],
+    [302, { api_id: 302, estado: 'FT', equipo_local: { goles: 0 }, equipo_visitante: { goles: 0 } }],
+    [303, { api_id: 303, estado: 'NS', equipo_local: { goles: null }, equipo_visitante: { goles: null } }]
+  ]);
+
+  // Caso 1: 1 acertado + 1 pendiente (sin fallos) -> debe SEGUIR destacada y pendiente
+  const parlayVivo = [{
+    _id: 'rec-dest-viva',
+    tipo: 'parlay',
+    resultado: 'pendiente',
+    destacada: true,
+    selecciones: [
+      { partido_api_id: 301, mercado_id: 'over_2_5' },
+      { partido_api_id: 303, mercado_id: 'over_2_5' }
+    ]
+  }];
+  const resVivo = await enriquecerRecomendacionesConEvaluacion(parlayVivo, { persistir: false, partidosMap });
+  assert.equal(resVivo[0].resultado, 'pendiente');
+  assert.equal(resVivo[0].destacada, true, 'Debe seguir destacada porque tiene 1 acertado y 1 pendiente vivo');
+
+  // Caso 2: 1 fallado + 1 pendiente -> se debe QUITAR de destacadas y pasar a fallado
+  const parlayMuerto = [{
+    _id: 'rec-dest-muerta',
+    tipo: 'parlay',
+    resultado: 'pendiente',
+    destacada: true,
+    selecciones: [
+      { partido_api_id: 302, mercado_id: 'over_2_5' },
+      { partido_api_id: 303, mercado_id: 'over_2_5' }
+    ]
+  }];
+  const resMuerto = await enriquecerRecomendacionesConEvaluacion(parlayMuerto, { persistir: false, partidosMap });
+  assert.equal(resMuerto[0].resultado, 'fallado');
+  assert.equal(resMuerto[0].destacada, false, 'Debe quitarse de destacadas en cuanto un pick sale fallado');
+
+  // Caso 3: Todos acertados -> se debe QUITAR de destacadas y pasar a acertado
+  const parlayGanado = [{
+    _id: 'rec-dest-ganada',
+    tipo: 'parlay',
+    resultado: 'pendiente',
+    destacada: true,
+    selecciones: [
+      { partido_api_id: 301, mercado_id: 'over_2_5' }
+    ]
+  }];
+  const resGanado = await enriquecerRecomendacionesConEvaluacion(parlayGanado, { persistir: false, partidosMap });
+  assert.equal(resGanado[0].resultado, 'acertado');
+  assert.equal(resGanado[0].destacada, false, 'Debe quitarse de destacadas cuando todos los picks salen acertados');
+});
+

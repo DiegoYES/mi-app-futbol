@@ -161,3 +161,93 @@ test('GET /api/recomendaciones excluye recomendaciones finalizadas de activas y 
   assert.equal(data.resumen.acertadas, 1);
   assert.equal(data.resumen.efectividad, 100);
 });
+
+test('GET /api/recomendaciones mantiene en activas un parlay con 1 pick acertado y 1 pendiente aunque cierra_en haya pasado', async t => {
+  const ahora = new Date();
+  const ayer = new Date(ahora.getTime() - 24 * 3600 * 1000);
+  const manana = new Date(ahora.getTime() + 24 * 3600 * 1000);
+
+  const mockDb = [
+    {
+      _id: 'rec-parlay-vivo',
+      tipo: 'parlay',
+      titulo: 'Parlay Doble Vivo',
+      visibilidad: 'gratis',
+      estado_publicacion: 'publicada',
+      destacada: true,
+      resultado: 'pendiente',
+      cierra_en: ayer, // el primer partido ya empezó ayer
+      selecciones: [
+        {
+          partido_api_id: 401,
+          mercado_id: 'over_1_5',
+          fecha_partido: ayer,
+          cuota: 1.3,
+          momio_americano: -333,
+          formato_momio: 'decimal',
+          momio_capturado: '1.30',
+          estado_seleccion: 'acertado'
+        },
+        {
+          partido_api_id: 402,
+          mercado_id: 'over_2_5',
+          fecha_partido: manana,
+          cuota: 1.5,
+          momio_americano: -200,
+          formato_momio: 'decimal',
+          momio_capturado: '1.50',
+          estado_seleccion: 'pendiente'
+        }
+      ]
+    }
+  ];
+
+  const origFind = Recomendacion.find;
+  Recomendacion.find = () => ({
+    sort() { return this; },
+    limit() { return this; },
+    async lean() { return JSON.parse(JSON.stringify(mockDb)); }
+  });
+  t.after(() => { Recomendacion.find = origFind; });
+
+  const Partido = require('../models/partido');
+  const origPartidoFind = Partido.find;
+  Partido.find = () => ({
+    async lean() {
+      return [
+        { api_id: 401, estado: 'FT', equipo_local: { goles: 2 }, equipo_visitante: { goles: 0 } },
+        { api_id: 402, estado: 'NS', equipo_local: { goles: null }, equipo_visitante: { goles: null } }
+      ];
+    }
+  });
+  t.after(() => { Partido.find = origPartidoFind; });
+
+  const app = express();
+  app.use(express.json());
+  app.use((req, res, next) => {
+    req.usuario = {
+      _id: 'usuario-test',
+      rol: 'usuario',
+      estadoAcceso() {
+        return { tieneAcceso: true, plan: 'gratis' };
+      }
+    };
+    next();
+  });
+  app.use('/api/recomendaciones', router);
+
+  const servidor = await new Promise(resolve => {
+    const s = app.listen(0, '127.0.0.1', () => resolve(s));
+  });
+  t.after(() => new Promise(resolve => servidor.close(resolve)));
+  const { port } = servidor.address();
+  const baseUrl = `http://127.0.0.1:${port}`;
+
+  const res = await fetch(`${baseUrl}/api/recomendaciones`);
+  assert.equal(res.status, 200);
+  const data = await res.json();
+
+  assert.equal(data.activas.length, 1, 'El parlay vivo debe permanecer en activas');
+  assert.equal(data.activas[0].titulo, 'Parlay Doble Vivo');
+  assert.equal(data.historial.length, 0);
+});

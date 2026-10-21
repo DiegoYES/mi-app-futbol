@@ -582,11 +582,36 @@ router.patch('/recomendaciones/:id/momios', validarIdMongo, async (req, res) => 
       }
     }
 
+    // Actualizar visibilidad si se envió
+    if (['gratis', 'premium'].includes(req.body?.visibilidad)) {
+      actual.visibilidad = req.body.visibilidad;
+    }
+
     await actual.save();
     res.json({ mensaje: 'Momios actualizados correctamente.', recomendacion: actual });
   } catch (error) {
     if (error.name === 'CastError') return res.status(404).json({ error: 'Recomendación no encontrada.' });
     if (error.name === 'ValidationError') return res.status(400).json({ error: 'Revisa los datos de los momios.' });
+    errorServidor(res, error);
+  }
+});
+
+router.patch('/recomendaciones/:id/visibilidad', validarIdMongo, async (req, res) => {
+  try {
+    const visibilidad = req.body?.visibilidad;
+    if (!['gratis', 'premium'].includes(visibilidad)) {
+      return res.status(400).json({ error: 'La visibilidad debe ser gratis o premium.' });
+    }
+    const actual = await Recomendacion.findById(req.params.id);
+    if (!actual) return res.status(404).json({ error: 'Recomendación no encontrada.' });
+
+    actual.visibilidad = visibilidad;
+    await actual.save();
+
+    res.json({ mensaje: 'Visibilidad actualizada correctamente.', visibilidad: actual.visibilidad, recomendacion: actual });
+  } catch (error) {
+    if (error.name === 'CastError') return res.status(404).json({ error: 'Recomendación no encontrada.' });
+    if (error.name === 'ValidationError') return res.status(400).json({ error: 'Visibilidad no válida.' });
     errorServidor(res, error);
   }
 });

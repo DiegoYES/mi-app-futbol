@@ -24,17 +24,21 @@ router.get('/', async (req, res) => {
     const sanitizadas = enriquecidas.map(item => recomendacionParaUsuario(item, tieneAcceso));
 
     // Separación limpia:
-    // Activas: Estado pendiente y la fecha de cierre aún no ha expirado (con 15 min de gracia de inicio de partido).
-    // Historial: Ya evaluadas (acertado, fallado, anulado) o con hora de cierre rebasada.
+    // Activas: Estado pendiente (sin ningún pick fallado) y con fecha de cierre vigente o con selecciones aún por disputarse.
+    // Historial: Ya evaluadas (acertado, fallado, anulado) o concluidas.
     const activas = [];
     const historial = [];
 
-    for (const rec of sanitizadas) {
-      const esPendiente = !rec.resultado || rec.resultado === 'pendiente';
-      const fechaCierre = rec.cierra_en ? new Date(rec.cierra_en) : null;
+    for (let i = 0; i < enriquecidas.length; i++) {
+      const original = enriquecidas[i];
+      const rec = sanitizadas[i];
+
+      const tienePicksPendientes = Array.isArray(original.selecciones) && original.selecciones.some(s => !s.estado_seleccion || s.estado_seleccion === 'pendiente');
+      const esPendiente = !original.resultado || original.resultado === 'pendiente';
+      const fechaCierre = original.cierra_en ? new Date(original.cierra_en) : null;
       const vigente = fechaCierre && (fechaCierre.getTime() >= (ahora.getTime() - 15 * 60 * 1000));
 
-      const esActiva = Boolean(vigente && esPendiente);
+      const esActiva = Boolean(esPendiente && (vigente || tienePicksPendientes));
 
       if (esActiva) {
         activas.push(rec);

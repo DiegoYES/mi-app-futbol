@@ -47,6 +47,10 @@
   .editorial-badge.fallado, .editorial-badge.fallada { background:rgba(255,124,120,.18);color:var(--red);border:1px solid rgba(255,124,120,.45); }
   .editorial-badge.pendiente { background:rgba(245,190,91,.15);color:var(--amber);border:1px solid rgba(245,190,91,.35); }
   .editorial-badge.anulado, .editorial-badge.anulada { background:rgba(148,163,184,.15);color:var(--muted);border:1px solid rgba(148,163,184,.35); }
+  .editorial-badge.btn-toggle-visibilidad { font:inherit;font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;border:1px dashed rgba(84,227,142,.45);display:inline-flex;align-items:center;gap:3px;transition:transform .12s ease,filter .12s ease,background .12s ease;user-select:none; }
+  .editorial-badge.btn-toggle-visibilidad:hover { transform:scale(1.06);filter:brightness(1.25); }
+  .editorial-badge.btn-toggle-visibilidad.premium { border-color:rgba(104,217,231,.55); }
+  body.clean-capture-mode .btn-toggle-visibilidad { border:none !important;cursor:default !important;pointer-events:none !important; }
   .btn-editar-rec { padding:4px 9px;border:1px solid rgba(84,227,142,.45);border-radius:999px;background:rgba(84,227,142,.12);color:var(--green);font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .15s,color .15s; }
   .btn-editar-rec:hover { background:var(--green);color:#07100d; }
   .btn-eliminar-rec { padding:4px 9px;border:1px solid rgba(255,124,120,.45);border-radius:999px;background:rgba(255,124,120,.12);color:var(--red);font-size:.58rem;font-weight:900;text-transform:uppercase;cursor:pointer;display:inline-flex;align-items:center;gap:3px;transition:background .15s,color .15s; }
@@ -313,6 +317,14 @@
       <span>Momio total del parlay / recomendación:</span>
       <input id="edit-momios-total-input" type="text" placeholder="Ej. 2.45 o +145" required>
       <small style="color:var(--muted);font-size:.68rem;">Admite formato decimal (ej. 2.45) o americano (ej. +145).</small>
+    </div>
+
+    <div class="rec-modal-field">
+      <span>Tipo de acceso / Visibilidad:</span>
+      <select id="edit-momios-visibilidad-select" style="width:100%;padding:8px 12px;border:1px solid rgba(84,227,142,.4);border-radius:8px;background:#0d1814;color:#eef8f2;font-size:.82rem;font-weight:700;">
+        <option value="gratis">🎁 Gratis (visible para todos)</option>
+        <option value="premium">👑 Premium (sólo miembros)</option>
+      </select>
     </div>
 
     <div class="rec-modal-actions">
@@ -976,7 +988,10 @@ function pintarTarjetasRecomendaciones(lista) {
         : item.resultado === 'anulado' || item.resultado === 'anulada'
           ? '<span class="editorial-badge anulado">Anulada</span>'
           : '<span class="editorial-badge pendiente">⏳ Pendiente</span>';
-    const badges = `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>${badgeResultado}${badgeCopiado}${botonCopiar}${botonEditar}${botonEliminar}`;
+    const badgeVisibilidad = puedeGestionarRec
+      ? `<button type="button" class="editorial-badge btn-toggle-visibilidad ${item.visibilidad === 'premium' ? 'premium' : ''}" data-toggle-visibilidad="${item._id}" data-visibilidad-actual="${item.visibilidad || 'gratis'}" title="Cambiar a ${item.visibilidad === 'premium' ? 'GRATIS' : 'PREMIUM'} (clic para alternar)">${item.visibilidad === 'premium' ? '👑 PREMIUM' : '🎁 GRATIS'} ⇄</button>`
+      : `<span class="editorial-badge ${item.visibilidad === 'premium' ? 'premium' : ''}">${esc(item.visibilidad)}</span>`;
+    const badges = `${badgeVisibilidad}${badgeResultado}${badgeCopiado}${botonCopiar}${botonEditar}${botonEliminar}`;
     const contenido = item.bloqueada
       ? `<div class="editorial-lock"><strong>🔒 Recomendación premium</strong><span>Activa tu membresía para revelar todas las selecciones y el análisis.</span><a href="/suscripcion.html">Obtener acceso por $70 MXN →</a></div>`
       : `${item.descripcion ? `<p class="editorial-analysis">${esc(item.descripcion)}</p>` : ''}<ol class="editorial-selections">${(item.selecciones || []).map(seleccion => {
@@ -1314,6 +1329,8 @@ function abrirModalEditarMomios(recId) {
   }
 
   document.getElementById('edit-momios-total-input').value = item.momio_total_capturado || item.cuota_total || '';
+  const selectVis = document.getElementById('edit-momios-visibilidad-select');
+  if (selectVis) selectVis.value = item.visibilidad || 'premium';
   modalEditMomios?.showModal();
 }
 
@@ -1330,13 +1347,15 @@ formEditMomios?.addEventListener('submit', async (e) => {
       momio: input.value.trim()
     }));
     const momioTotal = document.getElementById('edit-momios-total-input').value.trim();
+    const visibilidad = document.getElementById('edit-momios-visibilidad-select')?.value;
 
     const resp = await fetch(`/api/admin/recomendaciones/${recId}/momios`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         selecciones,
-        momio_total: momioTotal
+        momio_total: momioTotal,
+        visibilidad
       })
     });
     const datos = await resp.json().catch(() => ({}));
@@ -1353,6 +1372,41 @@ formEditMomios?.addEventListener('submit', async (e) => {
 });
 
 document.getElementById('recomendaciones-editoriales')?.addEventListener('click', async event => {
+  const btnToggleVis = event.target.closest('[data-toggle-visibilidad]');
+  if (btnToggleVis) {
+    event.preventDefault();
+    const id = String(btnToggleVis.dataset.toggleVisibilidad);
+    const visActual = btnToggleVis.dataset.visibilidadActual || 'gratis';
+    const nuevaVis = visActual === 'premium' ? 'gratis' : 'premium';
+
+    btnToggleVis.disabled = true;
+    btnToggleVis.style.opacity = '0.6';
+
+    try {
+      const resp = await fetch(`/api/admin/recomendaciones/${id}/visibilidad`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visibilidad: nuevaVis })
+      });
+      const datos = await resp.json().catch(() => ({}));
+      if (!resp.ok) throw new Error(datos.error || 'No se pudo cambiar la visibilidad.');
+
+      const actualizar = lista => {
+        const it = lista.find(r => String(r._id) === id);
+        if (it) it.visibilidad = nuevaVis;
+      };
+      actualizar(listaActivas);
+      actualizar(listaHistorial);
+
+      renderizarRecomendaciones();
+      mostrarPicksToast(`Parlay cambiado a ${nuevaVis.toUpperCase()}`, nuevaVis === 'premium' ? '👑' : '🎁');
+    } catch (err) {
+      mostrarPicksToast(`Error: ${err.message}`, '⚠️');
+      btnToggleVis.disabled = false;
+      btnToggleVis.style.opacity = '';
+    }
+    return;
+  }
   const badgeToggle = event.target.closest('[data-toggle-copiado]');
   if (badgeToggle) {
     const id = String(badgeToggle.dataset.toggleCopiado);

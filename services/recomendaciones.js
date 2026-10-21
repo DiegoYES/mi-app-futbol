@@ -279,11 +279,30 @@ async function enriquecerRecomendacionesConEvaluacion(recomendaciones, opciones 
       }
     }
 
-    if (persistir && item._id && nuevoResultado !== item.resultado) {
+    let nuevaDestacada = Boolean(item.destacada);
+    // Regla de destacados:
+    // Se quita de destacados en cuanto:
+    // 1) Uno de los picks salga como fallado (el parlay/recomendación ya está perdido).
+    // 2) O todos los picks salgan como acertados/resueltos (el parlay ya concluyó).
+    // Si hay 1 o 2 acertados pero aún queda al menos 1 pendiente (y ninguno fallado), debe seguir destacado.
+    if (item.destacada) {
+      if (hayFallados || nuevoResultado === 'fallado' || todasResueltas || ['fallado', 'acertado', 'anulado'].includes(item.resultado)) {
+        nuevaDestacada = false;
+      }
+    }
+
+    const cambioResultado = nuevoResultado !== item.resultado;
+    const cambioDestacada = nuevaDestacada !== Boolean(item.destacada);
+
+    if (persistir && item._id && (cambioResultado || cambioDestacada)) {
+      const updateFields = {};
+      if (cambioResultado) updateFields.resultado = nuevoResultado;
+      if (cambioDestacada) updateFields.destacada = nuevaDestacada;
+
       operacionesBulk.push({
         updateOne: {
           filter: { _id: item._id },
-          update: { $set: { resultado: nuevoResultado } }
+          update: { $set: updateFields }
         }
       });
     }
@@ -292,6 +311,7 @@ async function enriquecerRecomendacionesConEvaluacion(recomendaciones, opciones 
     return {
       ...item,
       resultado: resultadoCalculado,
+      destacada: nuevaDestacada,
       selecciones: seleccionesEnriquecidas
     };
   });
