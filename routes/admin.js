@@ -708,7 +708,7 @@ router.get('/resumen', async (req, res) => {
 });
 
 const ESTADOS_TICKET = new Set(['nueva', 'en_revision', 'planeada', 'resuelta', 'descartada']);
-const TIPOS_TICKET = new Set(['idea', 'mejora', 'error', 'otro']);
+const TIPOS_TICKET = new Set(['idea', 'mejora', 'error', 'pago', 'otro']);
 const PRIORIDADES_TICKET = new Set(['baja', 'media', 'alta', 'urgente']);
 
 router.get('/sugerencias', async (req, res) => {

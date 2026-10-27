@@ -4,11 +4,13 @@ const sugerenciaSchema = new mongoose.Schema({
   usuario: { type: mongoose.Schema.Types.ObjectId, ref: 'Usuario', required: true, index: true },
   tipo: {
     type: String,
-    enum: ['idea', 'mejora', 'error', 'otro'],
+    enum: ['idea', 'mejora', 'error', 'pago', 'otro'],
     required: true
   },
   asunto: { type: String, required: true, trim: true, minlength: 5, maxlength: 120 },
   descripcion: { type: String, required: true, trim: true, minlength: 20, maxlength: 3000 },
+  referencia_pago: { type: String, trim: true, maxlength: 100, default: '' },
+  evidencia_url: { type: String, trim: true, maxlength: 500, default: '' },
   estado: {
     type: String,
     enum: ['nueva', 'en_revision', 'planeada', 'resuelta', 'descartada'],

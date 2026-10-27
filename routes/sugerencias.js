@@ -3,7 +3,7 @@ const Sugerencia = require('../models/Sugerencia');
 const { crearLimitador } = require('../middleware/rateLimit');
 
 const router = express.Router();
-const TIPOS = new Set(['idea', 'mejora', 'error', 'otro']);
+const TIPOS = new Set(['idea', 'mejora', 'error', 'pago', 'otro']);
 
 const limiteCreacion = crearLimitador('sugerencias', {
   windowMs: 60 * 60 * 1000,
@@ -23,6 +23,8 @@ function serializar(ticket) {
     tipo: ticket.tipo,
     asunto: ticket.asunto,
     descripcion: ticket.descripcion,
+    referencia_pago: ticket.referencia_pago || '',
+    evidencia_url: ticket.evidencia_url || '',
     estado: ticket.estado,
     prioridad: ticket.prioridad,
     respuesta_admin: ticket.respuesta_admin,
@@ -50,6 +52,8 @@ router.post('/', limiteCreacion, async (req, res) => {
     const tipo = texto(req.body?.tipo);
     const asunto = texto(req.body?.asunto);
     const descripcion = texto(req.body?.descripcion);
+    const referencia_pago = texto(req.body?.referencia_pago).slice(0, 100);
+    const evidencia_url = texto(req.body?.evidencia_url).slice(0, 500);
 
     if (!TIPOS.has(tipo)) {
       return res.status(400).json({ error: 'Selecciona un tipo de ticket válido.' });
@@ -61,9 +65,22 @@ router.post('/', limiteCreacion, async (req, res) => {
       return res.status(400).json({ error: 'El detalle debe tener entre 20 y 3000 caracteres.' });
     }
 
-    const ticket = await Sugerencia.create({ usuario: req.usuario._id, tipo, asunto, descripcion });
+    const prioridad = tipo === 'pago' ? 'alta' : 'media';
+
+    const ticket = await Sugerencia.create({
+      usuario: req.usuario._id,
+      tipo,
+      asunto,
+      descripcion,
+      referencia_pago,
+      evidencia_url,
+      prioridad
+    });
+
     res.status(201).json({
-      mensaje: 'Ticket enviado. Gracias por ayudarnos a mejorar.',
+      mensaje: tipo === 'pago'
+        ? 'Ticket de pago recibido. Revisaremos tu comprobante para activar tu acceso a la brevedad.'
+        : 'Ticket enviado. Gracias por ayudarnos a mejorar.',
       ticket: serializar(ticket)
     });
   } catch (error) {

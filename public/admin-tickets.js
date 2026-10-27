@@ -1,7 +1,7 @@
 const ESTADOS_TICKET = {
   nueva:'Nueva', en_revision:'En revisión', planeada:'Planeada', resuelta:'Resuelta', descartada:'Descartada'
 };
-const TIPOS_TICKET = { idea:'Idea', mejora:'Mejora', error:'Error', otro:'Otro' };
+const TIPOS_TICKET = { idea:'Idea', mejora:'Mejora', error:'Error', pago:'Problema con pago', otro:'Otro' };
 const PRIORIDADES_TICKET = { baja:'Baja', media:'Media', alta:'Alta', urgente:'Urgente' };
 
 function opcionesTicket(opciones, actual) {
@@ -29,9 +29,20 @@ async function cargarTickets() {
   contenedor.innerHTML = datos.tickets.map(ticket => `
     <article class="admin-ticket" data-ticket="${ticket._id}">
       <div class="admin-ticket-head">
-        <div><span class="admin-ticket-meta">${escaparHtml(TIPOS_TICKET[ticket.tipo])} · ${fecha(ticket.creada_en)}</span><h3>${escaparHtml(ticket.asunto)}</h3><span class="admin-ticket-meta">${escaparHtml(ticket.usuario?.nombre || 'Usuario eliminado')} · ${escaparHtml(ticket.usuario?.email || 'sin email')}</span></div>
+        <div>
+          <span class="admin-ticket-meta">${escaparHtml(TIPOS_TICKET[ticket.tipo] || ticket.tipo)} · ${fecha(ticket.creada_en)}</span>
+          ${ticket.tipo === 'pago' ? '<span class="badge" style="margin-left:6px;background:rgba(245,190,91,0.18);color:var(--amber);border:1px solid rgba(245,190,91,0.4)">PAGO</span>' : ''}
+          <h3>${escaparHtml(ticket.asunto)}</h3>
+          <span class="admin-ticket-meta">${escaparHtml(ticket.usuario?.nombre || 'Usuario eliminado')} · ${escaparHtml(ticket.usuario?.email || 'sin email')}</span>
+        </div>
         <span class="badge ${ticket.estado === 'resuelta' ? 'premium' : ticket.estado === 'descartada' ? 'expirado' : 'prueba'}">${escaparHtml(ESTADOS_TICKET[ticket.estado])}</span>
       </div>
+      ${(ticket.referencia_pago || ticket.evidencia_url) ? `
+        <div style="margin:10px 0;padding:10px 14px;border-radius:9px;background:rgba(245,190,91,0.08);border:1px solid rgba(245,190,91,0.3);font-size:0.78rem;line-height:1.55">
+          ${ticket.referencia_pago ? `<div><span style="color:var(--muted)">Número de operación:</span> <b style="color:var(--amber);letter-spacing:0.02em">${escaparHtml(ticket.referencia_pago)}</b></div>` : ''}
+          ${ticket.evidencia_url ? `<div><span style="color:var(--muted)">Comprobante adjunto:</span> <a href="${escaparHtml(ticket.evidencia_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);text-decoration:underline;font-weight:750">Abrir comprobante ↗</a></div>` : ''}
+        </div>
+      ` : ''}
       <p class="admin-ticket-desc">${escaparHtml(ticket.descripcion)}</p>
       <div class="ticket-edit">
         <div><label>Estado</label><select data-campo="estado">${opcionesTicket(ESTADOS_TICKET, ticket.estado)}</select></div>

@@ -44,8 +44,22 @@
           <option value="idea">Idea</option>
           <option value="mejora">Mejora</option>
           <option value="error">Algo no funciona</option>
+          <option value="pago">Problema con pago</option>
           <option value="otro">Otro</option>
         </select>
+      </div>
+      <div id="aviso-pago" class="note" style="display:none;margin-bottom:15px;border-color:rgba(245,190,91,.35);background:rgba(245,190,91,.08);color:#fae1af">
+        <strong style="color:var(--amber);display:block;margin-bottom:4px">⚠️ Es indispensable adjuntar evidencia</strong>
+        Para poder rastrear tu transacción en Mercado Pago y activar tu suscripción, ingresa tu número de operación y un enlace a tu captura de pantalla o comprobante de pago.
+      </div>
+      <div class="field" id="campo-ref-pago" style="display:none">
+        <label for="referencia_pago">Número de operación / referencia de Mercado Pago</label>
+        <input id="referencia_pago" maxlength="100" placeholder="Ej. 1029384756 o MP-XXXXX">
+      </div>
+      <div class="field" id="campo-evidencia" style="display:none">
+        <label for="evidencia_url">Enlace a comprobante o captura de pantalla</label>
+        <input id="evidencia_url" type="url" maxlength="500" placeholder="https://drive.google.com/... o https://imgur.com/...">
+        <small class="help">Enlace público de Google Drive, Imgur, Dropbox, etc.</small>
       </div>
       <div class="field">
         <label for="asunto">Asunto</label>
@@ -71,7 +85,19 @@
 const ETIQUETAS_ESTADO = {
   nueva: 'Nueva', en_revision: 'En revisión', planeada: 'Planeada', resuelta: 'Resuelta', descartada: 'Descartada'
 };
-const ETIQUETAS_TIPO = { idea: 'Idea', mejora: 'Mejora', error: 'Error', otro: 'Otro' };
+const ETIQUETAS_TIPO = { idea: 'Idea', mejora: 'Mejora', error: 'Error', pago: 'Problema con pago', otro: 'Otro' };
+
+function actualizarCamposPago() {
+  const tipo = document.getElementById('tipo').value;
+  const esPago = tipo === 'pago';
+  const aviso = document.getElementById('aviso-pago');
+  const campoRef = document.getElementById('campo-ref-pago');
+  const campoEvi = document.getElementById('campo-evidencia');
+  if (aviso) aviso.style.display = esPago ? 'block' : 'none';
+  if (campoRef) campoRef.style.display = esPago ? 'block' : 'none';
+  if (campoEvi) campoEvi.style.display = esPago ? 'block' : 'none';
+}
+document.getElementById('tipo').addEventListener('change', actualizarCamposPago);
 
 function escaparHtml(valor) {
   return String(valor ?? '').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#039;');
@@ -105,9 +131,15 @@ async function cargarTickets() {
     contenedor.innerHTML = datos.tickets.map(ticket => `
       <article class="ticket">
         <div class="ticket-top">
-          <div><span class="meta">${escaparHtml(ETIQUETAS_TIPO[ticket.tipo])} · ${fecha(ticket.creada_en)}</span><h3>${escaparHtml(ticket.asunto)}</h3></div>
-          <div class="badges"><span class="badge ${ticket.estado}">${escaparHtml(ETIQUETAS_ESTADO[ticket.estado])}</span><span class="badge">${escaparHtml(ticket.prioridad)}</span></div>
+          <div><span class="meta">${escaparHtml(ETIQUETAS_TIPO[ticket.tipo] || ticket.tipo)} · ${fecha(ticket.creada_en)}</span><h3>${escaparHtml(ticket.asunto)}</h3></div>
+          <div class="badges"><span class="badge ${ticket.estado}">${escaparHtml(ETIQUETAS_ESTADO[ticket.estado] || ticket.estado)}</span><span class="badge">${escaparHtml(ticket.prioridad)}</span></div>
         </div>
+        ${(ticket.referencia_pago || ticket.evidencia_url) ? `
+          <div style="margin-top:10px;padding:9px 12px;border-radius:8px;background:rgba(255,255,255,.03);border:1px solid var(--line);font-size:.73rem;line-height:1.5">
+            ${ticket.referencia_pago ? `<div><span style="color:var(--muted)">Operación:</span> <b>${escaparHtml(ticket.referencia_pago)}</b></div>` : ''}
+            ${ticket.evidencia_url ? `<div><span style="color:var(--muted)">Comprobante:</span> <a href="${escaparHtml(ticket.evidencia_url)}" target="_blank" rel="noopener noreferrer" style="color:var(--cyan);text-decoration:underline;font-weight:700">Ver enlace adjunto ↗</a></div>` : ''}
+          </div>
+        ` : ''}
         <p>${escaparHtml(ticket.descripcion)}</p>
         ${ticket.respuesta_admin ? `<div class="respuesta"><b>Respuesta del equipo</b><p>${escaparHtml(ticket.respuesta_admin)}</p></div>` : ''}
       </article>`).join('');
@@ -130,12 +162,15 @@ document.getElementById('ticket-form').addEventListener('submit', async evento =
       body: JSON.stringify({
         tipo: document.getElementById('tipo').value,
         asunto: document.getElementById('asunto').value,
-        descripcion: document.getElementById('descripcion').value
+        descripcion: document.getElementById('descripcion').value,
+        referencia_pago: document.getElementById('referencia_pago')?.value || '',
+        evidencia_url: document.getElementById('evidencia_url')?.value || ''
       })
     });
     const datos = await leerRespuesta(respuesta);
     if (!respuesta.ok) throw new Error(datos.error || 'No se pudo enviar el ticket.');
     evento.target.reset();
+    actualizarCamposPago();
     mensaje.className = 'mensaje ok';
     mensaje.textContent = datos.mensaje;
     await cargarTickets();
@@ -151,7 +186,10 @@ document.addEventListener('DOMContentLoaded', cargarTickets);
 document.addEventListener('DOMContentLoaded', () => {
   const parametros = new URLSearchParams(location.search);
   const tipo = parametros.get('tipo');
-  if (tipo && Object.hasOwn(ETIQUETAS_TIPO, tipo)) document.getElementById('tipo').value = tipo;
+  if (tipo && Object.hasOwn(ETIQUETAS_TIPO, tipo)) {
+    document.getElementById('tipo').value = tipo;
+    actualizarCamposPago();
+  }
   if (parametros.get('asunto')) document.getElementById('asunto').value = parametros.get('asunto').slice(0, 120);
 });
 </script>

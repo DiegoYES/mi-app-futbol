@@ -84,4 +84,104 @@
   }
 
   cargar();
+
+  // Gestión del modal para reportar problemas de pago
+  const modalPago = document.getElementById('modal-ticket-pago');
+  const btnAbrirPago = document.getElementById('btn-problema-pago');
+  const btnCerrarPago = document.getElementById('cerrar-modal-pago');
+  const btnCancelarPago = document.getElementById('btn-cancelar-modal-pago');
+  const formPago = document.getElementById('form-ticket-pago');
+  const msgPago = document.getElementById('msg-ticket-pago');
+  const btnEnviarPago = document.getElementById('btn-enviar-ticket-pago');
+
+  function abrirModalPago() {
+    if (!modalPago) return;
+    if (msgPago) {
+      msgPago.textContent = '';
+      msgPago.className = 'billing-msg-feedback';
+    }
+    if (typeof modalPago.showModal === 'function') {
+      modalPago.showModal();
+    } else {
+      modalPago.setAttribute('open', '');
+    }
+  }
+
+  function cerrarModalPago() {
+    if (!modalPago) return;
+    if (typeof modalPago.close === 'function') {
+      modalPago.close();
+    } else {
+      modalPago.removeAttribute('open');
+    }
+  }
+
+  if (btnAbrirPago) btnAbrirPago.addEventListener('click', abrirModalPago);
+  if (btnCerrarPago) btnCerrarPago.addEventListener('click', cerrarModalPago);
+  if (btnCancelarPago) btnCancelarPago.addEventListener('click', cerrarModalPago);
+
+  if (modalPago) {
+    modalPago.addEventListener('click', (e) => {
+      const rect = modalPago.getBoundingClientRect();
+      const clickEnDialog = (
+        rect.top <= e.clientY && e.clientY <= rect.top + rect.height &&
+        rect.left <= e.clientX && e.clientX <= rect.left + rect.width
+      );
+      if (!clickEnDialog) cerrarModalPago();
+    });
+  }
+
+  const urlParams = new URLSearchParams(window.location.search);
+  if (urlParams.get('problema') === '1' || urlParams.get('reportar') === '1' || urlParams.get('tipo') === 'pago') {
+    abrirModalPago();
+  }
+
+  if (formPago) {
+    formPago.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const asunto = document.getElementById('pago-asunto').value.trim();
+      const referencia_pago = document.getElementById('pago-referencia').value.trim();
+      const evidencia_url = document.getElementById('pago-evidencia').value.trim();
+      const descripcion = document.getElementById('pago-descripcion').value.trim();
+
+      if (btnEnviarPago) btnEnviarPago.disabled = true;
+      if (msgPago) {
+        msgPago.className = 'billing-msg-feedback';
+        msgPago.textContent = 'Enviando reporte…';
+      }
+
+      try {
+        const resp = await fetch('/api/sugerencias', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            tipo: 'pago',
+            asunto,
+            referencia_pago,
+            evidencia_url,
+            descripcion
+          })
+        });
+        const datos = await resp.json().catch(() => ({}));
+        if (!resp.ok) throw new Error(datos.error || 'No se pudo enviar el reporte.');
+
+        if (msgPago) {
+          msgPago.className = 'billing-msg-feedback ok';
+          msgPago.innerHTML = (datos.mensaje || 'Reporte recibido.') + ' Puedes dar seguimiento en <a href="/sugerencias.html" style="color:var(--cyan);text-decoration:underline;font-weight:750">Tus tickets</a>.';
+        }
+        formPago.reset();
+        const inputAsunto = document.getElementById('pago-asunto');
+        if (inputAsunto) inputAsunto.value = 'Problema con acreditación de pago Mercado Pago';
+        setTimeout(() => {
+          if (btnEnviarPago) btnEnviarPago.disabled = false;
+        }, 2500);
+      } catch (err) {
+        if (msgPago) {
+          msgPago.className = 'billing-msg-feedback error';
+          msgPago.textContent = err.message;
+        }
+        if (btnEnviarPago) btnEnviarPago.disabled = false;
+      }
+    });
+  }
 })();

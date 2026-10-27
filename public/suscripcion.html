@@ -16,6 +16,33 @@
     .billing-consent{display:flex;gap:10px;align-items:flex-start;margin:24px 0;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface-soft);font-size:.82rem;line-height:1.5}.billing-consent a{color:var(--cyan);font-weight:800}
     .billing-actions{display:flex;gap:10px;flex-wrap:wrap}.billing-actions button{min-height:46px;padding:0 20px}.billing-primary{border-color:var(--green);background:var(--green);color:#07100d;font-weight:900}
     .billing-status{margin:18px 0 0;color:var(--muted);font-size:.8rem}.billing-error{color:#ff8d8d}.billing-note{font-size:.75rem;color:var(--muted)}
+    .billing-support-strip{margin-top:32px;padding:18px 20px;border:1px solid rgba(104,217,231,.22);border-radius:14px;background:rgba(104,217,231,.05);display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
+    .billing-support-info strong{display:block;font-size:.92rem;color:var(--cyan);margin-bottom:4px}
+    .billing-support-info p{margin:0;font-size:.78rem;color:var(--muted);max-width:480px;line-height:1.45}
+    .billing-support-btn{padding:10px 18px;border:1px solid var(--cyan);border-radius:10px;background:rgba(104,217,231,.12);color:var(--cyan);font-weight:800;font-size:.82rem;cursor:pointer;white-space:nowrap;transition:all .15s ease}
+    .billing-support-btn:hover{background:var(--cyan);color:#07100d}
+
+    .billing-dialog{width:min(580px,calc(100% - 24px));max-height:min(90vh,720px);overflow-y:auto;padding:0;border:1px solid rgba(84,227,142,.28);border-radius:18px;background:var(--surface);color:var(--ink);box-shadow:0 30px 90px rgba(0,0,0,.85)}
+    .billing-dialog::backdrop{background:rgba(3,10,8,.8);backdrop-filter:blur(4px)}
+    .billing-dialog-head{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--line);background:var(--surface-raised)}
+    .billing-dialog-head h3{margin:0;font-size:1.05rem;color:var(--ink)}
+    .billing-dialog-close{background:transparent;border:1px solid var(--line);border-radius:8px;color:var(--muted);font-size:1.1rem;cursor:pointer;padding:4px 10px;line-height:1}
+    .billing-dialog-close:hover{color:var(--ink);border-color:var(--green)}
+    .billing-dialog-body{padding:22px}
+    .billing-alert-evidencia{padding:13px 15px;border:1px solid rgba(245,190,91,.35);background:rgba(245,190,91,.08);border-radius:12px;color:#fae1af;font-size:.8rem;line-height:1.5;margin-bottom:18px}
+    .billing-alert-evidencia strong{display:block;color:var(--amber);margin-bottom:4px}
+    .billing-form-group{margin-bottom:16px}
+    .billing-form-group label{display:block;margin-bottom:6px;color:#c7d7cf;font-size:.76rem;font-weight:750}
+    .billing-form-group input,.billing-form-group textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#09130f;color:var(--ink);font:inherit;font-size:.85rem}
+    .billing-form-group input:focus,.billing-form-group textarea:focus{border-color:var(--green);outline:none;box-shadow:0 0 0 2px rgba(84,227,142,.15)}
+    .billing-form-group textarea{min-height:110px;resize:vertical}
+    .billing-help-text{display:block;margin-top:4px;font-size:.68rem;color:var(--muted)}
+    .billing-dialog-actions{display:flex;gap:10px;margin-top:20px}
+    .billing-btn-secundario{padding:0 18px;min-height:44px;border:1px solid var(--line);border-radius:10px;background:transparent;color:var(--muted);font-weight:700;cursor:pointer}
+    .billing-btn-secundario:hover{color:var(--ink);border-color:var(--muted)}
+    .billing-msg-feedback{margin-top:14px;font-size:.8rem;min-height:18px;line-height:1.4}
+    .billing-msg-feedback.ok{color:var(--green)}
+    .billing-msg-feedback.error{color:var(--red)}
   </style>
 </head>
 <body data-product-event="subscription_view">
@@ -40,7 +67,54 @@
       <a href="/">Volver al inicio</a>
     </div>
     <p id="billing-status" class="billing-status" aria-live="polite">Consultando tu membresía…</p>
+
+    <div class="billing-support-strip">
+      <div class="billing-support-info">
+        <strong>¿Problema con tu pago?</strong>
+        <p>¿Realizaste tu pago y no se activó tu cuenta, o tuviste un error al pagar? Envíanos un reporte con tu comprobante para resolverlo de inmediato.</p>
+      </div>
+      <button id="btn-problema-pago" type="button" class="billing-support-btn">¿Problema con tu pago?</button>
+    </div>
   </main>
+
+  <dialog id="modal-ticket-pago" class="billing-dialog">
+    <div class="billing-dialog-head">
+      <h3>Reportar problema con tu pago</h3>
+      <button type="button" id="cerrar-modal-pago" class="billing-dialog-close" aria-label="Cerrar">✕</button>
+    </div>
+    <div class="billing-dialog-body">
+      <div class="billing-alert-evidencia">
+        <strong>⚠️ Es indispensable adjuntar evidencia</strong>
+        Para que podamos localizar tu transacción y activar tu suscripción sin demora, por favor ingresa tu <b>número de operación de Mercado Pago</b> y/o pega un <b>enlace a tu comprobante o captura de pantalla</b>.
+      </div>
+      <form id="form-ticket-pago">
+        <div class="billing-form-group">
+          <label for="pago-asunto">Asunto</label>
+          <input id="pago-asunto" required minlength="5" maxlength="120" value="Problema con acreditación de pago Mercado Pago">
+        </div>
+        <div class="billing-form-group">
+          <label for="pago-referencia">Número de operación / referencia de Mercado Pago</label>
+          <input id="pago-referencia" maxlength="100" placeholder="Ej. 1029384756 o MP-XXXXX">
+          <small class="billing-help-text">Lo encuentras en el detalle del cobro en tu app de Mercado Pago o en el email de confirmación.</small>
+        </div>
+        <div class="billing-form-group">
+          <label for="pago-evidencia">Enlace a comprobante o captura de pantalla</label>
+          <input id="pago-evidencia" type="url" maxlength="500" placeholder="https://drive.google.com/... o https://imgur.com/...">
+          <small class="billing-help-text">Sube tu captura a Google Drive (con acceso de lectura), Imgur o Dropbox y pega el link aquí.</small>
+        </div>
+        <div class="billing-form-group">
+          <label for="pago-descripcion">Detalles del problema</label>
+          <textarea id="pago-descripcion" required minlength="20" maxlength="3000" placeholder="Describe qué ocurrió (ej. se cobró en mi tarjeta pero mi cuenta continúa sin acceso Premium)..."></textarea>
+          <small class="billing-help-text">Mínimo 20 caracteres.</small>
+        </div>
+        <div class="billing-dialog-actions">
+          <button type="submit" id="btn-enviar-ticket-pago" class="billing-primary">Enviar reporte de pago</button>
+          <button type="button" id="btn-cancelar-modal-pago" class="billing-btn-secundario">Cancelar</button>
+        </div>
+        <p id="msg-ticket-pago" class="billing-msg-feedback" role="status" aria-live="polite"></p>
+      </form>
+    </div>
+  </dialog>
   <script src="/suscripcion.js"></script>
   <script src="/product-events.js" defer></script>
   <script src="/asistente.js?v=20260915-auth" defer></script>

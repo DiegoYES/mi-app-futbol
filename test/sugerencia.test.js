@@ -18,6 +18,22 @@ test('un ticket válido recibe estado y prioridad iniciales', () => {
   assert.equal(ticket.prioridad, 'media');
 });
 
+test('un ticket de tipo pago admite referencia_pago y evidencia_url', () => {
+  const ticket = new Sugerencia({
+    usuario: usuarioId,
+    tipo: 'pago',
+    asunto: 'Error al acreditar suscripción Mercado Pago',
+    descripcion: 'Se realizó el cobro por 70 pesos en la tarjeta pero sigo como usuario gratuito.',
+    referencia_pago: 'MP-892749104',
+    evidencia_url: 'https://drive.google.com/file/d/comprobante123/view'
+  });
+
+  assert.equal(ticket.validateSync(), undefined);
+  assert.equal(ticket.tipo, 'pago');
+  assert.equal(ticket.referencia_pago, 'MP-892749104');
+  assert.equal(ticket.evidencia_url, 'https://drive.google.com/file/d/comprobante123/view');
+});
+
 test('un ticket rechaza tipos y textos fuera de los límites', () => {
   const ticket = new Sugerencia({
     usuario: usuarioId,
